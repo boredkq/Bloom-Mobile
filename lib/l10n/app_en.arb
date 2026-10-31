@@ -32,7 +32,6 @@
   "@commonUnfollow": { "description": "desktop: search.unfollow" },
   "commonLoadMore": "Load more",
   "@commonLoadMore": { "description": "desktop: search.loadMore" },
-  "commonShowMore": "Show more",
   "commonTrack": "Track",
   "@commonTrack": { "description": "desktop: search.kind.track" },
   "commonAlbum": "Album",
@@ -196,7 +195,15 @@
   "artistSimilar": "Fans might also like",
   "@artistSimilar": { "description": "desktop: search.similarArtists" },
   "artistNoTracks": "This artist has no available tracks",
-  "artistTracksToNewPlaylist": "Tracks to a new playlist",
+  "artistAbout": "About",
+  "artistAboutProfile": "About",
+  "artistLikes": "Likes",
+  "artistShowAll": "Show all",
+  "artistImport": "Import",
+  "artistImportLoading": "Loading all of the artist's tracks…",
+  "artistLikesLoading": "Loading all of the likes…",
+  "likesCount": "{count, plural, one{{count} like} other{{count} likes}}",
+  "@likesCount": { "placeholders": { "count": { "type": "int" } } },
   "artistNotFoundOnSource": "Not found on the source",
   "followedToast": "Following {name}",
   "@followedToast": { "placeholders": { "name": { "type": "String" } } },
@@ -215,7 +222,6 @@
   "setAlbumNotFound": "Album not found",
   "setPlaylistNotFound": "Playlist not found",
   "setNoTracks": "No tracks available",
-  "setSaveToLibrary": "Save to library",
 
   "@_library": {},
   "libTabAll": "All",
@@ -579,35 +585,6 @@
   "searchNothingFound": "Nothing found",
   "searchFindSomething": "Find something",
   "searchSectionEmpty": "Nothing found in this section",
-
-  "@_profileView": {},
-  "pvPlaylistCreated": "Playlist created — {tracks}",
-  "@pvPlaylistCreated": { "placeholders": { "tracks": { "type": "String" } } },
-  "pvImporting": "Importing {count}…",
-  "@pvImporting": { "placeholders": { "count": { "type": "int" } } },
-  "pvImportProgress": "Importing: {done}/{total}",
-  "@pvImportProgress": {
-    "placeholders": {
-      "done": { "type": "int" },
-      "total": { "type": "int" }
-    }
-  },
-  "pvImported": "Imported: {ok} of {total}",
-  "@pvImported": {
-    "placeholders": {
-      "ok": { "type": "int" },
-      "total": { "type": "int" }
-    }
-  },
-  "pvPlaylistsTitle": "Playlists · {count}",
-  "@pvPlaylistsTitle": { "placeholders": { "count": { "type": "int" } } },
-  "pvImportAll": "Import all",
-  "pvLikesTitle": "Likes · {count}",
-  "@pvLikesTitle": { "placeholders": { "count": { "type": "int" } } },
-  "pvToPlaylist": "To a playlist",
-  "pvNothingPublic": "This account has no public playlists or likes",
-  "pvAdded": "Added: {tracks}",
-  "@pvAdded": { "placeholders": { "tracks": { "type": "String" } } },
 
   "@_profile": {},
   "profileDefaultName": "Listener",
@@ -1334,7 +1311,6 @@
   "@lfmToastDisconnected": { "description": "desktop: lastfm.toast.disconnected" },
   "lfmToastKeysSaved": "Last.fm: keys saved",
   "@lfmToastKeysSaved": { "description": "desktop: lastfm.toast.keysSaved" },
-
 
   "@_wrapped": {},
   "wrMonth": "Month in review",

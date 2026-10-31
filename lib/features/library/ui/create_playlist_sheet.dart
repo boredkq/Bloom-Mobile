@@ -94,11 +94,7 @@ Future<void> showCreatePlaylistSheet(
       if (context.mounted) context.go('/library/list/${playlist.id}');
     case _Imported(:final result):
       messenger.toast(
-        result.createdId != null
-            ? l10n.cpImported(result.title, result.added)
-            : result.added == 0
-            ? l10n.cpAllAlreadyIn
-            : l10n.cpAdded(result.added),
+        importResultText(l10n, result),
         kind: result.added == 0 ? ToastKind.info : ToastKind.success,
       );
       // В созданный плейлист уходим, как и при обычном создании; при импорте

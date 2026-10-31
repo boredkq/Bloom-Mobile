@@ -66,9 +66,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonLoadMore => 'Load more';
 
   @override
-  String get commonShowMore => 'Show more';
-
-  @override
   String get commonTrack => 'Track';
 
   @override
@@ -331,7 +328,36 @@ class AppLocalizationsEn extends AppLocalizations {
   String get artistNoTracks => 'This artist has no available tracks';
 
   @override
-  String get artistTracksToNewPlaylist => 'Tracks to a new playlist';
+  String get artistAbout => 'About';
+
+  @override
+  String get artistAboutProfile => 'About';
+
+  @override
+  String get artistLikes => 'Likes';
+
+  @override
+  String get artistShowAll => 'Show all';
+
+  @override
+  String get artistImport => 'Import';
+
+  @override
+  String get artistImportLoading => 'Loading all of the artist\'s tracks…';
+
+  @override
+  String get artistLikesLoading => 'Loading all of the likes…';
+
+  @override
+  String likesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count likes',
+      one: '$count like',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get artistNotFoundOnSource => 'Not found on the source';
@@ -360,9 +386,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setNoTracks => 'No tracks available';
-
-  @override
-  String get setSaveToLibrary => 'Save to library';
 
   @override
   String get libTabAll => 'All';
@@ -1157,50 +1180,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get searchSectionEmpty => 'Nothing found in this section';
-
-  @override
-  String pvPlaylistCreated(String tracks) {
-    return 'Playlist created — $tracks';
-  }
-
-  @override
-  String pvImporting(int count) {
-    return 'Importing $count…';
-  }
-
-  @override
-  String pvImportProgress(int done, int total) {
-    return 'Importing: $done/$total';
-  }
-
-  @override
-  String pvImported(int ok, int total) {
-    return 'Imported: $ok of $total';
-  }
-
-  @override
-  String pvPlaylistsTitle(int count) {
-    return 'Playlists · $count';
-  }
-
-  @override
-  String get pvImportAll => 'Import all';
-
-  @override
-  String pvLikesTitle(int count) {
-    return 'Likes · $count';
-  }
-
-  @override
-  String get pvToPlaylist => 'To a playlist';
-
-  @override
-  String get pvNothingPublic => 'This account has no public playlists or likes';
-
-  @override
-  String pvAdded(String tracks) {
-    return 'Added: $tracks';
-  }
 
   @override
   String get profileDefaultName => 'Listener';

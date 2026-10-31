@@ -46,19 +46,6 @@ class SearchResults {
       artists.isEmpty && playlists.isEmpty && albums.isEmpty && tracks.isEmpty;
 }
 
-/// Профиль (ссылка на `/username`): артист + его плейлисты + лайки.
-class ProfileData {
-  final Artist artist;
-  final List<Playlist> playlists;
-  final List<Track> likes;
-
-  const ProfileData({
-    required this.artist,
-    this.playlists = const [],
-    this.likes = const [],
-  });
-}
-
 /// Результат резолва вставленной ссылки.
 sealed class ResolvedUrl {
   const ResolvedUrl();
@@ -77,11 +64,6 @@ class ResolvedArtist extends ResolvedUrl {
 class ResolvedSet extends ResolvedUrl {
   final Playlist playlist;
   const ResolvedSet(this.playlist);
-}
-
-class ResolvedProfile extends ResolvedUrl {
-  final ProfileData profile;
-  const ResolvedProfile(this.profile);
 }
 
 /// Новинки площадки. У Яндекса/YTM это свежие альбомы, у SoundCloud — треки
@@ -112,7 +94,13 @@ class ArtistPageData {
   /// Все треки артиста (секция «Треки» с «загрузить ещё»).
   final List<Track> tracks;
   final List<Playlist> albums;
+
+  /// A listener's playlists (a profile has no albums).
   final List<Playlist> playlists;
+
+  /// A listener's likes as a collection: set, the page is a profile and
+  /// [tracks] are these likes.
+  final Playlist? likes;
 
   /// Похожие исполнители; пусто у площадок, которые их не отдают.
   final List<Artist> similarArtists;
@@ -130,6 +118,7 @@ class ArtistPageData {
     this.tracks = const [],
     this.albums = const [],
     this.playlists = const [],
+    this.likes,
     this.similarArtists = const [],
     this.tracksCursor,
     this.tracksTotal,

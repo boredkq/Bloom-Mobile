@@ -6,6 +6,7 @@
 library;
 
 import '../../core/entities/entities.dart';
+import '../../core/l10n/l10n.dart';
 import '../../core/providers/music_provider.dart';
 import 'models.dart';
 import 'sc_sources.dart' show similarTracks, waveRelated, waveStation;
@@ -79,12 +80,11 @@ Playlist setFromSc(ScRawPlaylist p, {required bool isAlbum}) => Playlist(
   source: MusicSource.soundcloud,
 );
 
-/// Лайки аккаунта как коллекция (`sc:likes:<id>`) — то, что импортируют и
-/// привязывают источником, как на ПК (`SoundCloud::likesOf`). Название с
-/// языком интерфейса даёт вызывающий.
-Playlist scLikesOf(Artist account, String title) => Playlist(
+/// A listener's likes as a collection (`sc:likes:<id>`): what's imported and
+/// linked as a source, named in the language of the moment.
+Playlist scLikesOf(Artist account) => Playlist(
   id: 'sc:likes:${scNumericId(account.id)}',
-  title: title,
+  title: globalL10n?.iuLikesTitle(account.name) ?? 'Likes · ${account.name}',
   cover: account.avatar,
   ownerName: account.name,
   ownerAvatar: account.avatar,
@@ -190,9 +190,13 @@ class SoundCloudProvider extends MusicProvider {
       case 'track':
         return ResolvedTrack(trackFromSc(r.track!));
       case 'artist':
-        // Ссылка на аккаунт (`/username`) — не одинокая карточка артиста, а
-        // профиль: шапка, плейлисты аккаунта и лайки. Так же на десктопе.
-        return ResolvedProfile(await _profile(r.artist!));
+        // soundcloud.com/<user>/likes: their likes, as a playlist of their own.
+        final path = Uri.tryParse(url.trim())?.pathSegments ?? const [];
+        final artist = artistFromSc(r.artist!);
+        if (path.length >= 2 && path[1].toLowerCase() == 'likes') {
+          return ResolvedSet(scLikesOf(artist));
+        }
+        return ResolvedArtist(artist);
       case 'album':
         return ResolvedSet(setFromSc(r.playlist!, isAlbum: true));
       case 'playlist':
@@ -200,27 +204,6 @@ class SoundCloudProvider extends MusicProvider {
       default:
         return null;
     }
-  }
-
-  /// Профиль аккаунта: артист, обогащённый `getUser`, его плейлисты и лайки.
-  /// Три эндпоинта параллельно; каждый гасит свою ошибку в пустоту, поэтому
-  /// недоступные лайки не уносят с собой всю шапку.
-  Future<ProfileData> _profile(ScRawArtist raw) async {
-    final userId = '${raw.id}';
-    final parts = await Future.wait([
-      sc.getUser(userId).then<Object?>((v) => v, onError: (_) => null),
-      sc.userPlaylists(userId).then<Object?>((v) => v, onError: (_) => null),
-      sc.userLikes(userId).then<Object?>((v) => v, onError: (_) => null),
-    ]);
-    final user = parts[0] as ScRawUser?;
-    final playlists = (parts[1] as List<ScRawPlaylist>?) ?? const [];
-    final likes = (parts[2] as List<ScRawTrack>?) ?? const [];
-
-    return ProfileData(
-      artist: user == null ? artistFromSc(raw) : _artistFromUser(user),
-      playlists: playlists.map((p) => setFromSc(p, isAlbum: false)).toList(),
-      likes: likes.map(trackFromSc).toList(),
-    );
   }
 
   @override
@@ -278,24 +261,22 @@ class SoundCloudProvider extends MusicProvider {
 
   @override
   Future<ArtistPageData?> getArtist(String id) async {
-    final userId = '${scNumericId(id)}';
-    // Всё параллельно: страница артиста собирается из пяти разных эндпоинтов,
-    // последовательно это заняло бы секунды. Каждый уже гасит свои ошибки в
-    // пустоту, кроме getUser — без него страницу рисовать нечем.
-    final parts = await Future.wait([
-      sc.getUser(userId).then<Object?>((v) => v, onError: (_) => null),
-      sc.artistTopTracks(userId).then<Object?>((v) => v, onError: (_) => null),
-      sc.artistData(userId).then<Object?>((v) => v, onError: (_) => null),
-      sc.relatedArtists(userId).then<Object?>((v) => v, onError: (_) => null),
-      sc.userPlaylists(userId).then<Object?>((v) => v, onError: (_) => null),
-    ]);
-
-    final user = parts[0] as ScRawUser?;
+    final user = await sc.getUser('${scNumericId(id)}');
     if (user == null) return null;
-    final top = (parts[1] as List<ScRawTrack>?) ?? const [];
-    final data = parts[2] as ScArtistData?;
-    final related = (parts[3] as List<ScRawArtist>?) ?? const [];
-    final playlists = (parts[4] as List<ScRawPlaylist>?) ?? const [];
+    // One with no tracks of their own is a listener, whose page is a profile.
+    if (user.trackCount == 0) return _profile(user);
+    final userId = '${user.id}';
+    // In parallel: the page is four endpoints, each failing into nothing.
+    final parts = await Future.wait([
+      sc.artistTopTracks(userId).then<Object?>((v) => v, onError: (_) => null),
+      sc
+          .artistData(userId, artistName: user.username)
+          .then<Object?>((v) => v, onError: (_) => null),
+      sc.relatedArtists(userId).then<Object?>((v) => v, onError: (_) => null),
+    ]);
+    final top = (parts[0] as List<ScRawTrack>?) ?? const [];
+    final data = parts[1] as ScArtistData?;
+    final related = (parts[2] as List<ScRawArtist>?) ?? const [];
 
     return ArtistPageData(
       artist: _artistFromUser(user),
@@ -304,9 +285,28 @@ class SoundCloudProvider extends MusicProvider {
       albums:
           data?.albums.map((p) => setFromSc(p, isAlbum: true)).toList() ??
           const [],
-      playlists: playlists.map((p) => setFromSc(p, isAlbum: false)).toList(),
       similarArtists: related.map(artistFromSc).toList(),
       tracksCursor: data?.tracksNext,
+      tracksTotal: user.trackCount,
+    );
+  }
+
+  /// A listener's page: their playlists, and their likes as the rows.
+  Future<ArtistPageData> _profile(ScRawUser user) async {
+    final artist = _artistFromUser(user);
+    final parts = await Future.wait([
+      sc.userTrackLikes(user.id).then<Object?>((v) => v, onError: (_) => null),
+      sc.userPlaylists('${user.id}'),
+    ]);
+    final likes = parts[0] as ScTracksCursorPage?;
+    final playlists = parts[1] as List<ScRawPlaylist>;
+    return ArtistPageData(
+      artist: artist,
+      likes: scLikesOf(artist),
+      tracks: likes?.tracks.map(trackFromSc).toList() ?? const [],
+      playlists: playlists.map((p) => setFromSc(p, isAlbum: false)).toList(),
+      tracksCursor: likes?.next,
+      tracksTotal: user.likesCount,
     );
   }
 
@@ -335,6 +335,7 @@ class SoundCloudProvider extends MusicProvider {
         trackCount: full.trackCount > 0 ? full.trackCount : tracks.length,
         ownerName: _blankToNull(full.ownerName),
         ownerAvatar: full.ownerAvatar,
+        ownerId: full.ownerId == null ? null : scArtistId(full.ownerId!),
         year: _blankToNull(full.year),
         releaseDate: _blankToNull(full.releaseDate),
         isAlbum: isAlbum,
@@ -346,7 +347,7 @@ class SoundCloudProvider extends MusicProvider {
 
   @override
   Future<TrackPage?> getArtistTracksPage(String cursor) async {
-    final page = await sc.artistTracksPage(cursor);
+    final page = await sc.listPage(cursor);
     return TrackPage(
       tracks: page.tracks.map(trackFromSc).toList(),
       hasMore: page.next != null,

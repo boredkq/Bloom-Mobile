@@ -212,12 +212,6 @@ abstract class AppLocalizations {
   /// **'Load more'**
   String get commonLoadMore;
 
-  /// No description provided for @commonShowMore.
-  ///
-  /// In en, this message translates to:
-  /// **'Show more'**
-  String get commonShowMore;
-
   /// desktop: search.kind.track
   ///
   /// In en, this message translates to:
@@ -674,11 +668,53 @@ abstract class AppLocalizations {
   /// **'This artist has no available tracks'**
   String get artistNoTracks;
 
-  /// No description provided for @artistTracksToNewPlaylist.
+  /// No description provided for @artistAbout.
   ///
   /// In en, this message translates to:
-  /// **'Tracks to a new playlist'**
-  String get artistTracksToNewPlaylist;
+  /// **'About'**
+  String get artistAbout;
+
+  /// No description provided for @artistAboutProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get artistAboutProfile;
+
+  /// No description provided for @artistLikes.
+  ///
+  /// In en, this message translates to:
+  /// **'Likes'**
+  String get artistLikes;
+
+  /// No description provided for @artistShowAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Show all'**
+  String get artistShowAll;
+
+  /// No description provided for @artistImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get artistImport;
+
+  /// No description provided for @artistImportLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading all of the artist\'s tracks…'**
+  String get artistImportLoading;
+
+  /// No description provided for @artistLikesLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading all of the likes…'**
+  String get artistLikesLoading;
+
+  /// No description provided for @likesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} like} other{{count} likes}}'**
+  String likesCount(int count);
 
   /// No description provided for @artistNotFoundOnSource.
   ///
@@ -727,12 +763,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No tracks available'**
   String get setNoTracks;
-
-  /// No description provided for @setSaveToLibrary.
-  ///
-  /// In en, this message translates to:
-  /// **'Save to library'**
-  String get setSaveToLibrary;
 
   /// No description provided for @libTabAll.
   ///
@@ -2011,66 +2041,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Nothing found in this section'**
   String get searchSectionEmpty;
-
-  /// No description provided for @pvPlaylistCreated.
-  ///
-  /// In en, this message translates to:
-  /// **'Playlist created — {tracks}'**
-  String pvPlaylistCreated(String tracks);
-
-  /// No description provided for @pvImporting.
-  ///
-  /// In en, this message translates to:
-  /// **'Importing {count}…'**
-  String pvImporting(int count);
-
-  /// No description provided for @pvImportProgress.
-  ///
-  /// In en, this message translates to:
-  /// **'Importing: {done}/{total}'**
-  String pvImportProgress(int done, int total);
-
-  /// No description provided for @pvImported.
-  ///
-  /// In en, this message translates to:
-  /// **'Imported: {ok} of {total}'**
-  String pvImported(int ok, int total);
-
-  /// No description provided for @pvPlaylistsTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Playlists · {count}'**
-  String pvPlaylistsTitle(int count);
-
-  /// No description provided for @pvImportAll.
-  ///
-  /// In en, this message translates to:
-  /// **'Import all'**
-  String get pvImportAll;
-
-  /// No description provided for @pvLikesTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Likes · {count}'**
-  String pvLikesTitle(int count);
-
-  /// No description provided for @pvToPlaylist.
-  ///
-  /// In en, this message translates to:
-  /// **'To a playlist'**
-  String get pvToPlaylist;
-
-  /// No description provided for @pvNothingPublic.
-  ///
-  /// In en, this message translates to:
-  /// **'This account has no public playlists or likes'**
-  String get pvNothingPublic;
-
-  /// No description provided for @pvAdded.
-  ///
-  /// In en, this message translates to:
-  /// **'Added: {tracks}'**
-  String pvAdded(String tracks);
 
   /// No description provided for @profileDefaultName.
   ///

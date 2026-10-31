@@ -142,7 +142,10 @@ class ScRawUser {
   final String fullName;
   final String? avatar;
   final String? banner;
-  final int trackCount;
+
+  /// `null` when the answer had no count: then I can't tell a listener.
+  final int? trackCount;
+  final int? likesCount;
   final String description;
   final String? website;
   final String? permalink;
@@ -154,6 +157,7 @@ class ScRawUser {
     required this.avatar,
     required this.banner,
     required this.trackCount,
+    this.likesCount,
     required this.description,
     required this.website,
     required this.permalink,
@@ -170,12 +174,10 @@ class ScArtistData {
   final List<ScRawTrack> tracks;
   final String? tracksNext;
   final List<ScRawPlaylist> albums;
-  final int userId;
   const ScArtistData({
     required this.tracks,
     required this.tracksNext,
     required this.albums,
-    required this.userId,
   });
 }
 
@@ -187,6 +189,7 @@ class ScPlaylistFull {
 
   /// Аватар владельца (для строки владельца в hero).
   final String? ownerAvatar;
+  final int? ownerId;
   final int trackCount;
 
   /// Год выпуска (release_date / created_at).
@@ -201,6 +204,7 @@ class ScPlaylistFull {
     required this.cover,
     required this.ownerName,
     required this.ownerAvatar,
+    this.ownerId,
     required this.trackCount,
     required this.year,
     this.releaseDate = '',

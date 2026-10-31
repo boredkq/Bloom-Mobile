@@ -87,6 +87,14 @@ String describeImportFailure(AppLocalizations l, ImportFailure reason) =>
       ImportFailure.playlistGone => l.iuPlaylistGone,
     };
 
+/// What an import did, for its toast.
+String importResultText(AppLocalizations l, ImportResult r) =>
+    r.createdId != null
+    ? l.cpImported(r.title, r.added)
+    : r.added == 0
+    ? l.cpAllAlreadyIn
+    : l.cpAdded(r.added);
+
 /// Резолв ссылки в набор треков. Общая точка для импорта и «обновить треки».
 Future<ResolvedCollection> resolveCollectionUrl(
   ProviderRegistry registry,
@@ -97,41 +105,33 @@ Future<ResolvedCollection> resolveCollectionUrl(
     throw const ImportException(ImportFailure.unrecognized);
   }
   final link = url.trim();
-  switch (found.resolved) {
-    case ResolvedSet(playlist: final p):
-      final content = p.isAlbum
-          ? await found.provider.getAlbum(p.id)
-          : await found.provider.getPlaylist(p.id);
-      if (content == null) {
-        throw const ImportException(ImportFailure.unrecognized);
-      }
-      // Название и обложку страница знает лучше, чем ссылка.
-      final page = content.playlist;
-      return ResolvedCollection(
-        source: PlSourceRef.of(p).copyWith(
-          url: link,
-          title: page.title.isEmpty ? null : page.title,
-          owner: page.ownerName,
-          cover: page.cover,
-        ),
-        tracks: content.tracks,
-      );
-    case ResolvedProfile(:final profile):
-      // Ссылка на аккаунт — его лайки, коллекцией `sc:likes:<id>`.
-      return ResolvedCollection(
-        source: PlSourceRef.of(
-          scLikesOf(profile.artist, likesTitle(profile.artist.name)),
-        ).copyWith(url: link),
-        tracks: profile.likes,
-      );
-    case ResolvedTrack() || ResolvedArtist():
-      throw const ImportException(ImportFailure.unsupported);
+  // A listener's link means their likes.
+  final set = switch (found.resolved) {
+    ResolvedSet(playlist: final p) => p,
+    ResolvedArtist(:final artist)
+        when artist.source == MusicSource.soundcloud =>
+      scLikesOf(artist),
+    ResolvedTrack() ||
+    ResolvedArtist() => throw const ImportException(ImportFailure.unsupported),
+  };
+  final content = set.isAlbum
+      ? await found.provider.getAlbum(set.id)
+      : await found.provider.getPlaylist(set.id);
+  if (content == null) {
+    throw const ImportException(ImportFailure.unrecognized);
   }
+  // Название и обложку страница знает лучше, чем ссылка.
+  final page = content.playlist;
+  return ResolvedCollection(
+    source: PlSourceRef.of(set).copyWith(
+      url: link,
+      title: page.title.isEmpty ? null : page.title,
+      owner: page.ownerName,
+      cover: page.cover,
+    ),
+    tracks: content.tracks,
+  );
 }
-
-/// «Лайки · имя» — название лайков аккаунта, на языке, что стоит сейчас.
-String likesTitle(String name) =>
-    globalL10n?.iuLikesTitle(name) ?? 'Likes · $name';
 
 /// Треки привязанной коллекции — по её id у её площадки, как на ПК
 /// (`Provider::collection`). `null` — площадки нет, она выключена или
@@ -174,19 +174,39 @@ Future<ImportResult> importUrlInto(
   if (source.tracks.isEmpty) {
     throw const ImportException(ImportFailure.noTracks);
   }
+  return importTracksInto(
+    library,
+    read,
+    source.tracks,
+    target,
+    title: source.title,
+    cover: source.cover,
+    source: source.source,
+  );
+}
 
-  final tracks = source.tracks;
-
+/// [tracks] into [target]. A collection's [source] stays linked for "Refresh
+/// tracks", both on a new playlist and on the one imported into; an artist's
+/// page is no source.
+ImportResult importTracksInto(
+  LibraryController library,
+  LibraryState Function() read,
+  List<Track> tracks,
+  ImportTarget target, {
+  required String title,
+  String? cover,
+  PlSourceRef? source,
+}) {
   switch (target.kind) {
     case ImportTargetKind.create:
       final playlist = library.createPlaylist(
-        source.title,
+        title,
         tracks: tracks,
-        cover: source.cover,
-        source: source.source,
+        cover: cover,
+        source: source,
       );
       return ImportResult(
-        title: source.title,
+        title: title,
         added: tracks.length,
         total: tracks.length,
         createdId: playlist.id,
@@ -194,31 +214,28 @@ Future<ImportResult> importUrlInto(
 
     case ImportTargetKind.library:
       return ImportResult(
-        title: source.title,
+        title: title,
         added: library.addToLibrary(tracks),
         total: tracks.length,
       );
 
     case ImportTargetKind.favorites:
       return ImportResult(
-        title: source.title,
+        title: title,
         added: library.addToFavorites(tracks),
         total: tracks.length,
       );
 
     case ImportTargetKind.playlist:
       final id = target.playlistId!;
-      // Плейлист мог исчезнуть, пока тянулись треки: тогда добавлять некуда.
-      final before = read().playlists.where((p) => p.id == id).firstOrNull;
-      if (before == null) {
+      // The playlist may have gone while the tracks were coming.
+      if (!read().playlists.any((p) => p.id == id)) {
         throw const ImportException(ImportFailure.playlistGone);
       }
       final added = library.addTracksToPlaylist(id, tracks);
-      // Коллекция становится ещё одним источником «Обновить треки» — если её
-      // сюда ещё не привязывали.
-      library.linkSource(id, source.source);
+      if (source != null) library.linkSource(id, source);
       return ImportResult(
-        title: source.title,
+        title: title,
         added: added,
         total: tracks.length,
         createdId: id,

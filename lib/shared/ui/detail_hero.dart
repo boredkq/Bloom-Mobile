@@ -1,15 +1,6 @@
-/// Шапка страницы артиста и страницы альбома/плейлиста.
-///
-/// Раскладка из референса: картинка во всю ширину, поверх неё сверху круглые
-/// «назад» и «…», внизу по центру — название, подпись и ряд действий. Картинка
-/// растворяется в фоне страницы, поэтому граница между шапкой и списком не
-/// видна.
-///
-/// Это слайвер, а не обычный блок: при прокрутке ряд круглых кнопок остаётся
-/// приклеенным к верху экрана ([StickyHero]).
-///
-/// Отдельно от hero трек-листа библиотеки: там левое выравнивание, свои кнопки
-/// (сортировка, поиск по списку) и коллаж 2×2 вместо одной обложки.
+/// The artist's and the album's / playlist's header: the picture full width,
+/// "back" and "⋯" over its top, the title, the line under it and the actions
+/// at its bottom. A sliver: the round buttons stay pinned ([StickyHero]).
 library;
 
 import 'package:flutter/material.dart';
@@ -35,32 +26,36 @@ class DetailHero extends StatelessWidget {
     required this.subtitle,
     required this.actions,
     this.owner,
+    this.ownerAvatar,
+    this.onOwner,
     this.onMenu,
     this.flight,
   });
 
-  /// Картинка фона: аватар артиста или обложка сета. Баннер профиля площадки
-  /// сюда НЕ идёт — на десктопе шапка артиста тоже строится на аватарке
-  /// (`heroCover = artist.avatar`), а `bannerUrl` только разбирается в модель.
+  /// The artist's avatar or the set's cover; a profile's banner isn't used.
   final String? image;
 
   final String title;
 
-  /// Владелец сета — отдельной строкой между названием и статистикой.
+  /// The set's owner, between the title and the numbers.
   final String? owner;
 
-  /// Статистика: подписчики, число треков, год.
+  /// The owner's face beside their name.
+  final String? ownerAvatar;
+
+  /// Set when the owner is an artist whose page a tap opens.
+  final VoidCallback? onOwner;
+
+  /// The numbers: the count, the length, an album's year.
   final String subtitle;
 
-  /// Ряд кнопок под подписью («Воспроизвести» + круглые).
+  /// The row under it: "Play" and the round ones.
   final Widget actions;
 
-  /// Меню «…» справа сверху; `null` — кнопки нет.
+  /// "⋯" at the top right; none when null.
   final VoidCallback? onMenu;
 
-  /// Обложка карточки, с которой сюда пришли: она перелетает в [image].
-  /// `null` — пришли не с карточки (у карточки не было обложки, переход из
-  /// шторки), и шапка просто проявляется вместе со страницей.
+  /// The card's cover, flying into [image]; null, the header just fades in.
   final CoverFlight? flight;
 
   @override
@@ -68,8 +63,8 @@ class DetailHero extends StatelessWidget {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
     final size = MediaQuery.of(context).size;
-    // Картинка квадратная, но на вытянутом экране её нельзя пускать во всю
-    // ширину: до кнопок пришлось бы листать. Поэтому ещё и потолок по высоте.
+    // Square, but capped by height: on a tall screen the buttons would need
+    // a scroll.
     final height = size.width * 0.92 < size.height * 0.5
         ? size.width * 0.92
         : size.height * 0.5;
@@ -77,8 +72,7 @@ class DetailHero extends StatelessWidget {
     return StickyHero(
       height: height + 72,
       flying: flight != null,
-      // Картинка идёт и под рядом действий, а кончается скруглённым краем:
-      // граница со списком видна, а не размазана в фон.
+      // The picture goes under the actions and ends rounded: the edge shows.
       background: HeroCover(
         child: CoverHero(
           tag: flight?.tag,
@@ -109,14 +103,8 @@ class DetailHero extends StatelessWidget {
             style: theme.headlineSmall?.copyWith(fontSize: 28),
           ),
           if (owner case final name? when name.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              name,
-              maxLines: 1,
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-              style: theme.titleMedium?.copyWith(color: t.text2),
-            ),
+            const SizedBox(height: 6),
+            _Owner(name: name, avatar: ownerAvatar, onTap: onOwner),
           ],
           if (subtitle.isNotEmpty) ...[
             const SizedBox(height: 4),
@@ -136,23 +124,59 @@ class DetailHero extends StatelessWidget {
   }
 }
 
-/// Фон шапки: картинка либо приглушённый знак bloom на плёнке — как у пустой
-/// обложки в [Cover], чтобы «нет картинки» выглядело одинаково везде.
+/// A collection's owner under its title, with their face; a link when they're
+/// an artist.
+class _Owner extends StatelessWidget {
+  const _Owner({required this.name, this.avatar, this.onTap});
+
+  final String name;
+  final String? avatar;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final row = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (avatar case final url? when url.isNotEmpty) ...[
+          Cover(url: url, size: 24, circle: true),
+          const SizedBox(width: 8),
+        ],
+        Flexible(
+          child: Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: onTap == null ? t.text2 : t.text,
+            ),
+          ),
+        ),
+      ],
+    );
+    return Center(
+      child: onTap == null
+          ? row
+          : Pressable(onTap: onTap, scale: 0.97, child: row),
+    );
+  }
+}
+
+/// The picture, or the dim Bloom mark as an empty [Cover] has it.
 class _Background extends StatelessWidget {
   const _Background({required this.url, this.previous});
 
   final String? url;
 
-  /// Обложка карточки, с которой прилетели. Площадка ту же картинку отдаёт
-  /// другой ссылкой (крупнее), и ответ сети приходит посреди перелёта — без
-  /// подмены шапка на полкадра мигнула бы заглушкой ровно в момент посадки.
+  /// The card's cover: the platform's bigger one comes mid-flight, and without
+  /// it the header would blink empty as it lands.
   final String? previous;
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    // Заливка сплошная, а не плёнка `ovlBg`: с картинкой-фоном сквозь шапку
-    // без обложки были видны обои — заголовок висел прямо на них.
+    // Solid, not a film: a background picture would show through.
     Widget empty() => ColoredBox(
       color: t.coverEmpty,
       child: Center(child: BloomMark(size: 96, color: t.text, opacity: 0.16)),
@@ -179,21 +203,12 @@ class _Background extends StatelessWidget {
   }
 }
 
-/// Наплыв на смене «Воспроизвести» ↔ «Пауза». Коротко: подмена знака должна
-/// успеть за тапом, а не тянуться после него.
+/// "Play" ↔ "Pause": short, so the swap keeps up with the tap.
 const Duration _swap = Duration(milliseconds: 180);
 
-/// Широкая кнопка списка: «Воспроизвести», а пока очередь набрана ЭТИМ списком
-/// — «Пауза».
-///
-/// Страница списка — то же место, откуда его и поставили, поэтому второй тап
-/// обязан снимать/ставить паузу, а не перезапускать список с первого трека:
-/// иначе кнопка теряла бы то, что слушают прямо сейчас. Заодно она повторяет
-/// эквалайзер на плитке ([SetEqualizer]) — обе поверхности отвечают на «играет
-/// ли это» одинаково.
-///
-/// Общая для шапки площадки ([HeroActions]) и для страницы списка библиотеки:
-/// кнопка там одна и та же, и разъехаться им нельзя.
+/// A list's wide button: "Play", and "Pause" while the queue is this list's,
+/// so a second tap pauses instead of starting over. The platform's pages and
+/// the library's lists share it.
 class HeroPlayButton extends ConsumerWidget {
   const HeroPlayButton({
     super.key,
@@ -202,16 +217,14 @@ class HeroPlayButton extends ConsumerWidget {
     this.label,
   });
 
-  /// Ключ источника этой страницы (`PlaySource.id`): совпал с играющим — кнопка
-  /// становится паузой. `null` — источника у страницы нет, кнопка всегда
-  /// «Воспроизвести».
+  /// The page's `PlaySource.id`: while it plays, the button pauses. Null,
+  /// always "Play".
   final String? sourceId;
 
-  /// `null` — играть нечего (страница ещё грузится или треков нет).
+  /// Null: nothing to play (loading, or no tracks).
   final VoidCallback? onPlay;
 
-  /// `null` — обычное «Воспроизвести»; берётся при отрисовке, потому что
-  /// значение по умолчанию у параметра обязано быть константой.
+  /// Null: the usual "Play" (a default must be a constant).
   final String? label;
 
   @override
@@ -239,18 +252,15 @@ class HeroPlayButton extends ConsumerWidget {
           borderRadius: BorderRadius.circular(999),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 13),
-            // Знак и подпись меняются вместе и одним наплывом: врозь они бы
-            // разъехались по времени, а рывок ширины при смене слова заметен
-            // сильнее самой подмены. Ширину держит сама пилюля (она во всю
-            // строку), поэтому наплыв идёт на месте, ничего не двигая.
+            // The icon and the word swap together, in place: the pill holds
+            // the width.
             child: AnimatedSwitcher(
               duration: _swap,
               switchInCurve: Curves.easeOut,
               switchOutCurve: Curves.easeIn,
               transitionBuilder: (child, anim) => FadeTransition(
                 opacity: anim,
-                // Чуть «подрастает» вместо простого проявления: кнопка отвечает
-                // на тап заметнее, но без прыжка — 4% и только.
+                // A 4% grow, so the tap shows without a jump.
                 child: ScaleTransition(
                   scale: Tween<double>(begin: 0.96, end: 1).animate(anim),
                   child: child,
@@ -276,7 +286,7 @@ class HeroPlayButton extends ConsumerWidget {
       );
     }
 
-    // Играет не этот список — обычная кнопка, подписки на плеер ей не нужно.
+    // Another list plays: a plain button, no need to watch the player.
     if (!mine) {
       return pill(
         icon: Bi.playBold,
@@ -285,8 +295,8 @@ class HeroPlayButton extends ConsumerWidget {
       );
     }
 
-    // Состояние берём у самого плеера, а не у `PlaybackState`: пауза из шторки
-    // и с гарнитуры до него не доходит.
+    // From the player itself: a pause from the shade or a headset skips
+    // `PlaybackState`.
     final playing = ref.watch(playingNowProvider);
     return pill(
       icon: playing ? Bi.pauseBold : Bi.playBold,
@@ -295,7 +305,7 @@ class HeroPlayButton extends ConsumerWidget {
   }
 }
 
-/// Ряд действий шапки: широкая кнопка «Воспроизвести» и круглые рядом.
+/// The header's actions: the wide "Play" and the round ones beside it.
 class HeroActions extends StatelessWidget {
   const HeroActions({
     super.key,
@@ -305,17 +315,16 @@ class HeroActions extends StatelessWidget {
     this.label,
   });
 
-  /// `null` — играть нечего (страница ещё грузится или треков нет).
+  /// Null: nothing to play (loading, or no tracks).
   final VoidCallback? onPlay;
 
-  /// Круглые кнопки справа от «Воспроизвести».
+  /// The round buttons right of "Play".
   final List<Widget> trailing;
 
-  /// Источник очереди этой страницы — см. [HeroPlayButton.sourceId].
+  /// See [HeroPlayButton.sourceId].
   final String? sourceId;
 
-  /// `null` — обычное «Воспроизвести»; берётся при отрисовке, потому что
-  /// значение по умолчанию у параметра обязано быть константой.
+  /// Null: the usual "Play" (a default must be a constant).
   final String? label;
 
   @override

@@ -15,11 +15,13 @@ import '../../core/l10n/source_label.dart';
 import '../../core/entities/entities.dart';
 import '../../core/store/library_store.dart';
 import '../../features/detail/artists_sheet.dart';
+import '../../features/library/import_url.dart';
 import '../../features/library/local_tracks.dart';
 import '../../features/library/switch_platform.dart';
 import '../../features/offline/file_download.dart';
 import '../../features/offline/offline_actions.dart';
 import '../../features/offline/offline_store.dart';
+import '../../features/player/play_source.dart';
 import '../../features/player/player_controller.dart';
 import '../../features/wave/wave_actions.dart';
 import '../../features/wave/wave_store.dart';
@@ -457,6 +459,101 @@ Future<void> showAddTracksToPlaylistSheet(
   );
 }
 
+/// "To the queue" and "Play next" for a whole list: a track's two items, for
+/// all of [tracks].
+List<SheetAction> queueSheetActions(
+  BuildContext context,
+  WidgetRef ref,
+  List<Track> tracks, {
+  PlaySource? source,
+}) {
+  final messenger = ScaffoldMessenger.of(context);
+  final l10n = context.l;
+  final player = ref.read(playbackProvider.notifier);
+  return [
+    SheetAction(
+      icon: Bi.inboxIn,
+      label: l10n.tlToQueue,
+      onTap: tracks.isEmpty
+          ? null
+          : () {
+              final added = player.queueTracks(tracks, source: source);
+              messenger.toast(
+                added > 0 ? l10n.tlQueuedTracks(added) : l10n.swAlreadyInQueue,
+              );
+            },
+    ),
+    SheetAction(
+      icon: Bi.skipNext,
+      label: l10n.tlPlayNext,
+      onTap: tracks.isEmpty
+          ? null
+          : () {
+              final moved = player.queueTracksNext(tracks, source: source);
+              if (moved > 0) messenger.toast(l10n.tlQueuedNext(moved));
+            },
+    ),
+  ];
+}
+
+/// Where a page's whole list goes: a new playlist named as the page, all
+/// tracks, liked, or one of the playlists.
+Future<ImportTarget?> pickImportTarget(
+  BuildContext context, {
+  required String title,
+  String? cover,
+  bool circle = false,
+}) => showBloomSheetChild<ImportTarget>(
+  context: context,
+  backdrop: cover,
+  header: SheetLineHeader(
+    cover: cover,
+    title: context.l.artistImport,
+    subtitle: title,
+    circle: circle,
+  ),
+  child: Consumer(
+    builder: (context, ref, _) {
+      final t = context.bloom;
+      void pick(ImportTarget target) => Navigator.of(context).pop(target);
+      return SheetPanel(
+        children: [
+          _SimpleRow(
+            icon: Bi.plus,
+            label: context.l.commonCreatePlaylist,
+            color: t.accent,
+            onTap: () => pick(const ImportTarget.create()),
+          ),
+          sheetDivider(),
+          _SimpleRow(
+            icon: Bi.musicNote,
+            label: context.l.commonAllTracks,
+            color: t.text,
+            onTap: () => pick(const ImportTarget(ImportTargetKind.library)),
+          ),
+          sheetDivider(),
+          _SimpleRow(
+            icon: Bi.heartBold,
+            label: context.l.commonFavorites,
+            color: t.text,
+            onTap: () => pick(const ImportTarget(ImportTargetKind.favorites)),
+          ),
+          for (final pl in ref.watch(libraryProvider).playlists) ...[
+            sheetDivider(indent: 64),
+            _PlaylistRow(
+              playlist: pl,
+              tracks: const [],
+              onTap: () => pick(
+                ImportTarget(ImportTargetKind.playlist, playlistId: pl.id),
+              ),
+            ),
+          ],
+        ],
+      );
+    },
+  ),
+);
+
 /// Строка шторки без обложки — под высоту строки плейлиста.
 class _SimpleRow extends StatelessWidget {
   const _SimpleRow({
@@ -496,10 +593,17 @@ class _SimpleRow extends StatelessWidget {
 }
 
 class _PlaylistRow extends ConsumerWidget {
-  const _PlaylistRow({required this.playlist, required this.tracks});
+  const _PlaylistRow({
+    required this.playlist,
+    required this.tracks,
+    this.onTap,
+  });
 
   final UserPlaylist playlist;
   final List<Track> tracks;
+
+  /// Instead of adding [tracks] here.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -508,15 +612,18 @@ class _PlaylistRow extends ConsumerWidget {
     // Галочка — «всё это уже здесь»: у пачки половина треков в плейлисте ещё
     // не отметка, добавить остальные по-прежнему есть смысл.
     final ids = playlist.trackIds.toSet();
-    final has = tracks.every((track) => ids.contains(track.id));
+    final has =
+        tracks.isNotEmpty && tracks.every((track) => ids.contains(track.id));
 
     return Pressable(
-      onTap: () {
-        ref
-            .read(libraryProvider.notifier)
-            .addTracksToPlaylist(playlist.id, tracks);
-        Navigator.of(context).pop();
-      },
+      onTap:
+          onTap ??
+          () {
+            ref
+                .read(libraryProvider.notifier)
+                .addTracksToPlaylist(playlist.id, tracks);
+            Navigator.of(context).pop();
+          },
       scale: 0.98,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

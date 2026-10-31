@@ -194,7 +194,9 @@ Future<ArtistPageData?> _artistPage(RecsInput input, Artist artist) async {
   final provider = _providerOf(input, artist.source);
   if (provider == null) return null;
   try {
-    return await provider.getArtist(artist.id);
+    final page = await provider.getArtist(artist.id);
+    // A listener's page lists their likes, not their music.
+    return page?.likes == null ? page : null;
   } on Object {
     return null;
   }

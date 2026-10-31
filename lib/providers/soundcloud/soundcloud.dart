@@ -487,18 +487,26 @@ Future<int> _resolveUserId(String idOrUrl) async {
   throw const ScException('search.err.artistUndetermined');
 }
 
-/// Плейлисты пользователя (профиль по ссылке); ошибки — пустой список.
+/// A listener's playlists, albums aside; errors give none.
 Future<List<ScRawPlaylist>> userPlaylists(String idOrUrl) async {
   try {
     final id = await _resolveUserId(idOrUrl);
     final d = await apiFetch(
-      'https://api-v2.soundcloud.com/users/$id/playlists?limit=50',
+      'https://api-v2.soundcloud.com/users/$id/playlists_without_albums'
+      '?limit=20&linked_partitioning=1',
     );
     return _varr(d, 'collection').where(_hasId).map(mapRawPlaylist).toList();
   } catch (_) {
     return [];
   }
 }
+
+/// The first page of a listener's liked tracks. Track likes only: /likes mixes
+/// playlists in, and a page of those would end the paging.
+Future<ScTracksCursorPage> userTrackLikes(int userId) => listPage(
+  'https://api-v2.soundcloud.com/users/$userId/track_likes'
+  '?limit=50&linked_partitioning=1',
+);
 
 /// Лайкнутые треки пользователя (профиль по ссылке); ошибки — пустой список.
 /// SC отдаёт лайки страницами (в выдаче попадаются и плейлисты — их пропускаем),
@@ -550,7 +558,8 @@ Future<ScRawUser?> getUser(String idOrUrl) async {
       fullName: _vstr(u, 'full_name') ?? '',
       avatar: _t500(_vstr(u, 'avatar_url')),
       banner: banner,
-      trackCount: _vu64(u, 'track_count') ?? 0,
+      trackCount: _vu64(u, 'track_count'),
+      likesCount: _vu64(u, 'likes_count'),
       description: _vstr(u, 'description') ?? '',
       website: _vstr(u, 'website'),
       permalink: _vstr(u, 'permalink_url'),
@@ -654,17 +663,14 @@ Future<ScArtistData> artistData(String idOrUrl, {String? artistName}) async {
   String? tracksNext;
   if (userId != 0) {
     try {
-      final d = await apiFetch(
+      final page = await listPage(
         'https://api-v2.soundcloud.com/users/$userId/tracks'
         '?limit=50&linked_partitioning=1',
       );
-      final coll = _varr(d, 'collection');
-      tracks = coll.where(_hasId).map(mapRawTrack).toList();
-      // SC отдаёт next_href даже на неполной/последней странице — считаем
-      // последней, если пришло меньше лимита.
-      tracksNext = coll.length >= 50 ? _vstr(d, 'next_href') : null;
+      tracks = page.tracks;
+      tracksNext = page.next;
     } catch (_) {
-      // молча — падаем в следующий фолбэк
+      // I fall back to the search below.
     }
   }
 
@@ -711,12 +717,7 @@ Future<ScArtistData> artistData(String idOrUrl, {String? artistName}) async {
     }
   }
 
-  return ScArtistData(
-    tracks: tracks,
-    tracksNext: tracksNext,
-    albums: albums,
-    userId: userId,
-  );
+  return ScArtistData(tracks: tracks, tracksNext: tracksNext, albums: albums);
 }
 
 /// Похожие исполнители (`/users/{id}/relatedartists`) — секция «Похожие» на
@@ -734,19 +735,35 @@ Future<List<ScRawArtist>> relatedArtists(String idOrUrl) async {
   }
 }
 
-/// Следующая страница треков артиста по курсору (`next_href`).
-Future<ScTracksCursorPage> artistTracksPage(String cursor) async {
-  try {
-    final d = await apiFetch(cursor);
-    final coll = _varr(d, 'collection');
-    return ScTracksCursorPage(
-      tracks: coll.where(_hasId).map(mapRawTrack).toList(),
-      // Пустая страница — конец (next_href может быть «висячим»).
-      next: coll.isNotEmpty ? _vstr(d, 'next_href') : null,
-    );
-  } catch (_) {
-    return const ScTracksCursorPage(tracks: [], next: null);
+/// A page of a user's list of tracks (their own, their likes) by its link.
+/// SC filters these page by page (blocked in the region, taken down): a page
+/// comes short, even empty, with more behind it. I skip a few empty ones in a
+/// row; the list ends where next_href does. A failed page throws.
+Future<ScTracksCursorPage> listPage(String url, {int hops = 0}) async {
+  // next_href may carry an old client_id; apiFetch adds the current one.
+  final uri = Uri.parse(url);
+  final link = uri.queryParameters.containsKey('client_id')
+      ? uri
+            .replace(
+              queryParameters: {...uri.queryParameters}..remove('client_id'),
+            )
+            .toString()
+      : url;
+  final d = await apiFetch(link);
+  final coll = _varr(d, 'collection');
+  final next = _vstr(d, 'next_href');
+  if (coll.isEmpty && next != null && hops < 4) {
+    return listPage(next, hops: hops + 1);
   }
+  return ScTracksCursorPage(
+    tracks: [
+      for (final x in coll)
+        // A like wraps its track.
+        if (_hasId(x) ? x : _obj(x, 'track') case final o? when _hasId(o))
+          mapRawTrack(o),
+    ],
+    next: coll.isEmpty ? null : next,
+  );
 }
 
 // ============================ Плейлисты / треки ============================
@@ -806,6 +823,7 @@ Future<ScPlaylistFull> playlistById(int id) async {
     cover: cover,
     ownerName: _vstr(user, 'username') ?? '',
     ownerAvatar: _t300(_vstr(user, 'avatar_url')),
+    ownerId: _vu64(user, 'id'),
     trackCount: _vu64(data, 'track_count') ?? tracks.length,
     year: _playlistYear(data),
     releaseDate: _playlistDate(data),

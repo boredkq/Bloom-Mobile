@@ -39,6 +39,7 @@ import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/detail_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/sticky_hero.dart';
+import '../../../shared/ui/track_actions.dart';
 import '../../../shared/ui/track_swipes.dart';
 import '../dups.dart';
 import '../local_tracks.dart';
@@ -924,35 +925,11 @@ Future<void> showPlaylistMenu(
           label: context.l.commonShuffle,
           onTap: tracks.isEmpty ? null : () => play(shuffle: true),
         ),
-        // Очередью список дополняют целиком — те же два пункта, что у трека,
-        // только про весь плейлист (десктопные `lib.plmenu.toQueue`/`playNext`).
-        SheetAction(
-          icon: Bi.inboxIn,
-          label: context.l.tlToQueue,
-          onTap: tracks.isEmpty
-              ? null
-              : () {
-                  final added = ref
-                      .read(playbackProvider.notifier)
-                      .queueTracks(tracks, source: LibSource(playlist.id));
-                  messenger.toast(
-                    added > 0
-                        ? l10n.tlQueuedTracks(added)
-                        : l10n.swAlreadyInQueue,
-                  );
-                },
-        ),
-        SheetAction(
-          icon: Bi.skipNext,
-          label: context.l.tlPlayNext,
-          onTap: tracks.isEmpty
-              ? null
-              : () {
-                  final moved = ref
-                      .read(playbackProvider.notifier)
-                      .queueTracksNext(tracks, source: LibSource(playlist.id));
-                  if (moved > 0) messenger.toast(l10n.tlQueuedNext(moved));
-                },
+        ...queueSheetActions(
+          context,
+          ref,
+          tracks,
+          source: LibSource(playlist.id),
         ),
       ],
       [

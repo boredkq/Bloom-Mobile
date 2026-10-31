@@ -8,8 +8,8 @@
 ///
 /// Сюда же вставляют ссылки: как на десктопе, поле поиска — единственная точка
 /// импорта. Похожая на ссылку строка идёт в `resolveUrlAny` вместо поиска, и
-/// трек/артист/плейлист/альбом превращается в одну карточку выдачи, а ссылка
-/// на аккаунт — в профиль ([ProfileView]) с плейлистами и лайками.
+/// трек/артист/плейлист/альбом превращается в одну карточку выдачи; artist's
+/// or a listener's link opens their page at once.
 library;
 
 import 'package:flutter/material.dart';
@@ -35,7 +35,6 @@ import '../../../shared/ui/platform_logo.dart';
 import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/skeleton.dart';
 import '../recent_store.dart';
-import 'profile_view.dart';
 
 /// Похожа ли строка на ссылку. Домены ловим и без протокола — вставляют и так.
 /// Точный разбор всё равно за площадкой, здесь только выбор ветки.
@@ -46,8 +45,7 @@ bool looksLikeUrl(String query) =>
       caseSensitive: false,
     ).hasMatch(query);
 
-/// Зарезолвленная ссылка → выдача из одной карточки. Профиль сюда не попадает:
-/// у него свой вид.
+/// Зарезолвленная ссылка → выдача из одной карточки.
 SearchResults _resolvedToResults(ResolvedUrl resolved) => switch (resolved) {
   ResolvedTrack(:final track) => SearchResults(tracks: [track]),
   ResolvedArtist(:final artist) => SearchResults(artists: [artist]),
@@ -55,7 +53,6 @@ SearchResults _resolvedToResults(ResolvedUrl resolved) => switch (resolved) {
     playlist.isAlbum
         ? SearchResults(albums: [playlist])
         : SearchResults(playlists: [playlist]),
-  ResolvedProfile() => SearchResults.empty,
 };
 
 enum SearchTab {
@@ -99,10 +96,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   bool _loading = false;
   String? _error;
 
-  /// Аккаунт, найденный по вставленной ссылке. Пока он есть, вместо выдачи (и
-  /// чипов над ней) показывается профиль.
-  ProfileData? _profile;
-
   /// Был ли уже прогон. Нужен, чтобы отличать «ещё не искали» от «искали и не
   /// нашли»: реестр гасит ошибки провайдеров в пустую выдачу, и без этого
   /// флага неудачный поиск выглядел как нетронутый экран.
@@ -134,7 +127,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       _lastQuery = query;
       _loading = true;
       _error = null;
-      _profile = null;
     });
 
     try {
@@ -148,13 +140,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           setState(() {
             _loading = false;
             _searched = true;
-            if (found.resolved case ResolvedProfile(:final profile)) {
-              _profile = profile;
-              _results = SearchResults.empty;
-            } else {
-              _results = _resolvedToResults(found.resolved);
-            }
+            _results = _resolvedToResults(found.resolved);
           });
+          if (found.resolved case ResolvedArtist(:final artist)) {
+            openArtist(context, artist.id, initial: artist);
+          }
           return;
         }
       }
@@ -230,7 +220,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       _results = SearchResults.empty;
                       _error = null;
                       _searched = false;
-                      _profile = null;
                     }),
                   ),
                 ),
@@ -242,16 +231,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               ],
             ),
           ),
-          // A profile has no kinds to split it into.
-          if (_profile == null)
-            BigTabs<SearchTab>(
-              tabs: [
-                for (final tab in SearchTab.values)
-                  BigTab(tab, tab.label(context.l), has: _has(tab)),
-              ],
-              current: _activeTab,
-              onPick: _go,
-            ),
+          BigTabs<SearchTab>(
+            tabs: [
+              for (final tab in SearchTab.values)
+                BigTab(tab, tab.label(context.l), has: _has(tab)),
+            ],
+            current: _activeTab,
+            onPick: _go,
+          ),
           Expanded(child: _body(context)),
         ],
       ),
@@ -278,7 +265,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         ),
       );
     }
-    if (_profile case final profile?) return ProfileView(profile: profile);
     if (_results.isEmpty) {
       // До первого запроса вместо заглушки — недавние. После неудачного поиска
       // их не показываем: ответ «ничего не нашлось» относится к тому, что ввели,
@@ -958,12 +944,11 @@ class _ResultsView extends ConsumerWidget {
       ),
     );
 
-    // The order is the PC's: tracks, artists, albums, playlists.
     final sections = <Widget>[
       if (tracks.isNotEmpty) ...[
         if (all) label(SearchTab.tracks) else const SizedBox(height: 12),
         for (var i = 0; i < shownTracks; i++)
-          // A track plays alone, as on the PC.
+          // A track plays alone.
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: TrackRow(
@@ -1046,50 +1031,6 @@ class _SearchSkeleton extends StatelessWidget {
   }
 }
 
-/// Ширины «строк» подписей — по кругу, чтобы плашки не выстраивались в
-/// одинаковую линейку.
-const List<double> _titleWidths = [0.62, 0.48, 0.71, 0.55];
-const List<double> _subWidths = [0.34, 0.42, 0.28, 0.38];
-
-/// Плашка на месте [TrackRow]: те же отступы и обложка 48, поэтому высота
-/// строки совпадает с настоящей.
-class _TrackRowSkeleton extends StatelessWidget {
-  const _TrackRowSkeleton({required this.index});
-
-  final int index;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      child: Row(
-        children: [
-          const SkeletonBox(width: 48, height: 48),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SkeletonLine(
-                  widthFactor: _titleWidths[index % _titleWidths.length],
-                  height: 13,
-                ),
-                const SizedBox(height: 7),
-                SkeletonLine(
-                  widthFactor: _subWidths[index % _subWidths.length],
-                  height: 11,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          const SkeletonBox(width: 30, height: 11, radius: 6),
-        ],
-      ),
-    );
-  }
-}
-
 class _TracksSkeleton extends StatelessWidget {
   const _TracksSkeleton({required this.count});
 
@@ -1101,45 +1042,8 @@ class _TracksSkeleton extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
       physics: const NeverScrollableScrollPhysics(),
       itemCount: count,
-      itemBuilder: (context, i) => _TrackRowSkeleton(index: i),
+      itemBuilder: (context, i) => TrackRowSkeleton(index: i),
     );
-  }
-}
-
-/// Плашка на месте [SetCard]/[ArtistCard]: обложка на всю ширину ячейки и две
-/// строки подписи (у артиста — одна, как и в карточке без счётчика).
-class _CardSkeleton extends StatelessWidget {
-  const _CardSkeleton({required this.circle, this.width});
-
-  final bool circle;
-
-  /// `null` — на всю ширину ячейки сетки; число — фиксированная ширина
-  /// карточки в карусели.
-  final double? width;
-
-  @override
-  Widget build(BuildContext context) {
-    final content = LayoutBuilder(
-      builder: (context, box) => Column(
-        crossAxisAlignment: circle
-            ? CrossAxisAlignment.center
-            : CrossAxisAlignment.start,
-        children: [
-          SkeletonBox(
-            width: box.maxWidth,
-            height: box.maxWidth,
-            circle: circle,
-          ),
-          const SizedBox(height: 10),
-          SkeletonBox(width: box.maxWidth * (circle ? 0.7 : 0.8), height: 12),
-          if (!circle) ...[
-            const SizedBox(height: 6),
-            SkeletonBox(width: box.maxWidth * 0.5, height: 10),
-          ],
-        ],
-      ),
-    );
-    return width == null ? content : SizedBox(width: width, child: content);
   }
 }
 
@@ -1170,7 +1074,7 @@ class _GridSkeleton extends StatelessWidget {
         mainAxisExtent: cell + 48,
       ),
       itemCount: count,
-      itemBuilder: (context, _) => _CardSkeleton(circle: circle),
+      itemBuilder: (context, _) => CardSkeleton(circle: circle),
     );
   }
 }
@@ -1187,11 +1091,11 @@ class _AllSkeleton extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       children: [
         const _SectionLabelSkeleton(width: 48),
-        for (var i = 0; i < _tracksPreview; i++) _TrackRowSkeleton(index: i),
+        for (var i = 0; i < _tracksPreview; i++) TrackRowSkeleton(index: i),
         const _SectionLabelSkeleton(width: 62),
-        const _CarouselSkeleton(height: 168, card: 104, circle: true),
+        const CarouselSkeleton(height: 168, card: 104, circle: true),
         const _SectionLabelSkeleton(width: 58),
-        const _CarouselSkeleton(height: 212, card: 132),
+        const CarouselSkeleton(height: 212, card: 132),
       ],
     );
   }
@@ -1211,38 +1115,6 @@ class _SectionLabelSkeleton extends StatelessWidget {
       child: Align(
         alignment: AlignmentDirectional.centerStart,
         child: SkeletonBox(width: width, height: 14, radius: 7),
-      ),
-    );
-  }
-}
-
-/// Лента заготовок вместо [EntityCarousel]: карточек ровно столько, чтобы
-/// ряд был заполнен до правого края.
-class _CarouselSkeleton extends StatelessWidget {
-  const _CarouselSkeleton({
-    required this.height,
-    required this.card,
-    this.circle = false,
-  });
-
-  final double height;
-  final double card;
-  final bool circle;
-
-  @override
-  Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    final count = (width / (card + 12)).ceil();
-
-    return SizedBox(
-      height: height,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: count,
-        separatorBuilder: (_, _) => const SizedBox(width: 12),
-        itemBuilder: (context, _) => _CardSkeleton(circle: circle, width: card),
       ),
     );
   }

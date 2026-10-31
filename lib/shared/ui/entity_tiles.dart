@@ -961,26 +961,37 @@ class EntityCarousel extends StatelessWidget {
 /// A section title. With [onTap] it's a link to the whole of it, an arrow
 /// after the words.
 class SectionTitle extends StatelessWidget {
-  const SectionTitle(this.title, {super.key, this.onTap, this.side = 16});
+  const SectionTitle(
+    this.title, {
+    super.key,
+    this.onTap,
+    this.side = 16,
+    this.actionLabel,
+    this.onAction,
+  });
 
   final String title;
   final VoidCallback? onTap;
+
+  /// A small link at the right ("Show all").
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   /// Off the screen's edges; 8 where the rows below pad themselves.
   final double side;
 
   @override
   Widget build(BuildContext context) {
+    final action = onAction == null ? null : actionLabel;
+    final text = Text(
+      title,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: Theme.of(context).textTheme.titleLarge,
+    );
     final row = Row(
       children: [
-        Flexible(
-          child: Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-        ),
+        if (action == null) Flexible(child: text) else Expanded(child: text),
         if (onTap != null)
           Padding(
             padding: const EdgeInsets.only(left: 2, top: 2),
@@ -990,6 +1001,22 @@ class SectionTitle extends StatelessWidget {
               color: context.bloom.text.withValues(alpha: 0.55),
             ),
           ),
+        if (action case final label?) ...[
+          Pressable(
+            onTap: onAction,
+            scale: 0.97,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 12, top: 4, bottom: 4),
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  fontSize: 15,
+                  color: context.bloom.text2,
+                ),
+              ),
+            ),
+          ),
+        ],
       ],
     );
     return Padding(

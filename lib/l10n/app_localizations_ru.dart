@@ -66,9 +66,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get commonLoadMore => 'Загрузить ещё';
 
   @override
-  String get commonShowMore => 'Показать ещё';
-
-  @override
   String get commonTrack => 'Трек';
 
   @override
@@ -335,7 +332,38 @@ class AppLocalizationsRu extends AppLocalizations {
   String get artistNoTracks => 'У этого артиста нет доступных треков';
 
   @override
-  String get artistTracksToNewPlaylist => 'Треки в новый плейлист';
+  String get artistAbout => 'Об артисте';
+
+  @override
+  String get artistAboutProfile => 'О себе';
+
+  @override
+  String get artistLikes => 'Лайки';
+
+  @override
+  String get artistShowAll => 'Показать все';
+
+  @override
+  String get artistImport => 'Импортировать';
+
+  @override
+  String get artistImportLoading => 'Загружаем все треки артиста…';
+
+  @override
+  String get artistLikesLoading => 'Загружаем все лайки…';
+
+  @override
+  String likesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count лайков',
+      many: '$count лайков',
+      few: '$count лайка',
+      one: '$count лайк',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get artistNotFoundOnSource => 'Не нашли у площадки';
@@ -364,9 +392,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get setNoTracks => 'Нет доступных треков';
-
-  @override
-  String get setSaveToLibrary => 'Сохранить в библиотеку';
 
   @override
   String get libTabAll => 'Все';
@@ -1178,51 +1203,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get searchSectionEmpty => 'В этом разделе ничего не нашлось';
-
-  @override
-  String pvPlaylistCreated(String tracks) {
-    return 'Плейлист создан — $tracks';
-  }
-
-  @override
-  String pvImporting(int count) {
-    return 'Импортирую $count…';
-  }
-
-  @override
-  String pvImportProgress(int done, int total) {
-    return 'Импортирую: $done/$total';
-  }
-
-  @override
-  String pvImported(int ok, int total) {
-    return 'Импортировано: $ok из $total';
-  }
-
-  @override
-  String pvPlaylistsTitle(int count) {
-    return 'Плейлисты · $count';
-  }
-
-  @override
-  String get pvImportAll => 'Импортировать все';
-
-  @override
-  String pvLikesTitle(int count) {
-    return 'Лайки · $count';
-  }
-
-  @override
-  String get pvToPlaylist => 'В плейлист';
-
-  @override
-  String get pvNothingPublic =>
-      'У этого аккаунта нет открытых плейлистов и лайков';
-
-  @override
-  String pvAdded(String tracks) {
-    return 'Добавлено: $tracks';
-  }
 
   @override
   String get profileDefaultName => 'Пользователь';

@@ -1,9 +1,6 @@
-/// Страница альбома или плейлиста площадки: шапка с обложкой и трек-лист.
-///
-/// Библиотечный плейлист живёт на другом экране (`TracklistScreen`): там свои
-/// обложка, сортировка и правка состава. Здесь всё приходит из сети и трогать
-/// его нельзя — можно только слушать и сохранить копию к себе, как это делает
-/// импорт по ссылке.
+/// A platform's album or playlist: the header and the rows. It comes from the
+/// network and can't be edited, only listened to and imported; the library's
+/// own lists have a page of their own.
 library;
 
 import 'package:flutter/material.dart';
@@ -15,6 +12,7 @@ import '../../../core/l10n/l10n.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/store/library_store.dart';
 import '../../../features/customization/ui/app_background.dart';
+import '../../../features/library/import_url.dart';
 import '../../../features/player/play_source.dart';
 import '../../../features/player/player_controller.dart';
 import '../../../shared/ui/atoms.dart';
@@ -23,16 +21,19 @@ import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/detail_hero.dart';
-import '../../../shared/ui/entity_tiles.dart';
+import '../../../shared/ui/track_actions.dart';
+import '../../../shared/util/artists.dart';
 import '../../../shared/util/format.dart';
+import '../detail_nav.dart';
+import 'detail_parts.dart';
 
 class SetScreen extends ConsumerStatefulWidget {
   const SetScreen({super.key, required this.set, this.flight});
 
-  /// Сет из карточки: шапка рисуется до ответа сети.
+  /// The card's set: the header shows before the network answers.
   final Playlist set;
 
-  /// Обложка карточки, с которой пришли: она перелетает в шапку.
+  /// The card's cover, flying into the header.
   final CoverFlight? flight;
 
   @override
@@ -74,8 +75,8 @@ class _SetScreenState extends ConsumerState<SetScreen> {
               : context.l.setPlaylistNotFound;
           return;
         }
-        // Обложку и владельца из карточки не теряем: у SoundCloud полная
-        // выдача сета иногда приходит без них.
+        // I keep the card's cover and owner: a full answer comes without
+        // them at times.
         _set = Playlist(
           id: content.playlist.id,
           title: content.playlist.title,
@@ -84,6 +85,7 @@ class _SetScreenState extends ConsumerState<SetScreen> {
           trackCount: content.playlist.trackCount ?? content.tracks.length,
           ownerName: content.playlist.ownerName ?? widget.set.ownerName,
           ownerAvatar: content.playlist.ownerAvatar ?? widget.set.ownerAvatar,
+          ownerId: content.playlist.ownerId ?? widget.set.ownerId,
           year: content.playlist.year ?? widget.set.year,
           isAlbum: content.playlist.isAlbum,
           duration: content.playlist.duration ?? widget.set.duration,
@@ -99,6 +101,46 @@ class _SetScreenState extends ConsumerState<SetScreen> {
         _error = e.toString();
       });
     }
+  }
+
+  /// Where a tap on the owner leads: an artist of the platform. A playlist's
+  /// owner is often just someone, a link only when they're an artist on it.
+  String? _ownerLink() {
+    final owner = _set.ownerName;
+    if (owner == null || owner.isEmpty) return null;
+    if (_set.ownerId case final id? when id.isNotEmpty) return id;
+    final name = owner.toLowerCase();
+    for (final track in _tracks) {
+      for (final a in artistLinks(track)) {
+        if (a.id != null && a.name.toLowerCase() == name) return a.id;
+      }
+    }
+    return null;
+  }
+
+  /// The owner's face: the platform's, else a track's (SoundCloud).
+  String? _ownerAvatar() {
+    if (_set.ownerAvatar case final url? when url.isNotEmpty) return url;
+    final name = _set.ownerName?.toLowerCase();
+    for (final track in _tracks) {
+      if (track.artist.toLowerCase() == name) return ownArtistAvatar(track);
+    }
+    return null;
+  }
+
+  void _openOwner() {
+    final id = _ownerLink();
+    if (id == null) return;
+    openArtist(
+      context,
+      id,
+      initial: Artist(
+        id: id,
+        name: _set.ownerName ?? '',
+        avatar: _ownerAvatar(),
+        source: _set.source,
+      ),
+    );
   }
 
   String _kindWord(BuildContext context) =>
@@ -118,13 +160,9 @@ class _SetScreenState extends ConsumerState<SetScreen> {
         .playQueueShuffled(_tracks, source: SetSource(_set));
   }
 
-  /// Есть ли уже сохранённая копия — плейлист, к которому эта коллекция
-  /// привязана источником (тем же, из которого «Обновить треки» тянет новые
-  /// треки), как на ПК.
+  /// Saved already: a playlist has this collection linked as its source.
   static bool _savedIn(LibraryState lib, Playlist set) =>
       lib.playlists.any((p) => p.sources.any((s) => s.id == set.id));
-
-  bool get _saved => _savedIn(ref.read(libraryProvider), _set);
 
   @override
   Widget build(BuildContext context) {
@@ -133,7 +171,7 @@ class _SetScreenState extends ConsumerState<SetScreen> {
     final saved = _savedIn(ref.watch(libraryProvider), _set);
 
     return Scaffold(
-      // Под страницей может лежать картинка фона — тогда своей заливки нет.
+      // A background picture may lie under the page: then no fill of its own.
       backgroundColor: ref.watch(backgroundOnProvider)
           ? Colors.transparent
           : t.bg,
@@ -143,6 +181,8 @@ class _SetScreenState extends ConsumerState<SetScreen> {
             image: _set.cover,
             title: _set.title,
             owner: _set.ownerName,
+            ownerAvatar: _ownerAvatar(),
+            onOwner: _ownerLink() == null ? null : _openOwner,
             subtitle: _subtitle(),
             flight: widget.flight,
             onMenu: _menu,
@@ -166,61 +206,18 @@ class _SetScreenState extends ConsumerState<SetScreen> {
             ),
           ),
           if (_loading)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 40),
-                child: Center(
-                  child: SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: t.accent,
-                    ),
-                  ),
-                ),
-              ),
-            )
+            const SliverToBoxAdapter(child: DetailSkeleton(artist: false))
           else if (_error case final message?)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  message,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: t.danger),
-                ),
-              ),
-            )
+            SliverToBoxAdapter(child: DetailError(message))
           else if (_tracks.isEmpty)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 40),
-                child: Center(
-                  child: Text(
-                    context.l.setNoTracks,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(color: t.muted),
-                  ),
-                ),
-              ),
-            )
+            SliverToBoxAdapter(child: DetailEmpty(context.l.setNoTracks))
           else ...[
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(8, 4, 8, 16),
               sliver: SliverList.builder(
                 itemCount: _tracks.length,
-                itemBuilder: (context, i) => TrackRow(
+                itemBuilder: (context, i) => DetailRow(
                   track: _tracks[i],
-                  queue: _tracks,
-                  index: i,
-                  source: SetSource(_set),
-                  // В альбоме обложка у всех треков одна — на её месте номер,
-                  // как в десктопном `PlaylistBody numbered`. У плейлиста
-                  // треки разношёрстные, там обложка и остаётся.
                   number: _set.isAlbum ? i + 1 : null,
                 ),
               ),
@@ -228,18 +225,16 @@ class _SetScreenState extends ConsumerState<SetScreen> {
             if (_releaseLabel() case final release?)
               SliverToBoxAdapter(child: _ReleaseBlock(date: release)),
           ],
-          // Хвост под бары каркаса: они плавают над списком, и последняя строка
-          // иначе остаётся под миниплеером.
+          // The bars float over the list: the last row clears them.
           const SliverBottomBarsInset(),
         ],
       ),
     );
   }
 
-  /// Подпись под названием: год, число треков, общая длительность — как в
-  /// шапке сета на десктопе. Полная дата выхода у альбома стоит отдельным
-  /// блоком «Релиз» под треклистом (см. [_releaseLabel]), в шапке — только год.
-  /// A playlist has no date at all: when it was made says nothing.
+  /// Under the title: the kind, an album's year, the count and the length; the
+  /// full date stands under the rows. A playlist has no date at all: when it
+  /// was made says nothing.
   String _subtitle() {
     final count = _tracks.isNotEmpty ? _tracks.length : _set.trackCount;
     final total = _tracks.isEmpty
@@ -250,11 +245,11 @@ class _SetScreenState extends ConsumerState<SetScreen> {
       _kindWord(context),
       ?year,
       if (count case final n?) context.l.tracksCount(n),
-      if (total case final d? when d > Duration.zero) mmss(d),
+      if (total case final d? when d.inMinutes > 0) totalDur(context.l, d),
     ].join(' · ');
   }
 
-  /// Год: от площадки, иначе из даты выхода, иначе самый частый среди треков.
+  /// The platform's year, else the release date's, else the tracks' commonest.
   String? _year() {
     if (_set.year case final y? when y.isNotEmpty) return y;
     final date = _set.releaseDate;
@@ -271,10 +266,8 @@ class _SetScreenState extends ConsumerState<SetScreen> {
         .key;
   }
 
-  /// Подпись блока «Релиз» под треклистом (порт `albumRelease` десктопного
-  /// `DetailView`, 3.0): полная дата от площадки («13 мая 2024»), иначе год —
-  /// SoundCloud и YouTube Music отдают только его. Только у альбома; нет ни
-  /// того ни другого — блока нет.
+  /// An album's release under its rows: the full date when the platform gave
+  /// one, else the year.
   String? _releaseLabel() {
     if (!_set.isAlbum) return null;
     return releaseDateLabel(
@@ -304,8 +297,7 @@ class _SetScreenState extends ConsumerState<SetScreen> {
   }
 
   Future<void> _menu() async {
-    final saved = _saved;
-
+    final canPlay = _tracks.isNotEmpty;
     await showBloomSheet(
       context: context,
       backdrop: _set.cover,
@@ -319,25 +311,52 @@ class _SetScreenState extends ConsumerState<SetScreen> {
           SheetAction(
             icon: Bi.playBold,
             label: context.l.commonPlay,
-            onTap: _tracks.isEmpty ? null : _play,
+            onTap: canPlay ? _play : null,
           ),
           SheetAction(
             icon: Bi.shuffle,
             label: context.l.commonShuffle,
-            onTap: _tracks.isEmpty ? null : _shuffle,
+            onTap: canPlay ? _shuffle : null,
           ),
+          ...queueSheetActions(context, ref, _tracks, source: SetSource(_set)),
         ],
         [
           SheetAction(
-            icon: saved ? Bi.check : Bi.import,
-            label: saved
-                ? context.l.commonAlreadyInLibrary
-                : context.l.setSaveToLibrary,
-            onTap: _tracks.isEmpty ? null : () => _save(saved),
+            icon: Bi.import,
+            label: context.l.artistImport,
+            onTap: canPlay ? _import : null,
           ),
         ],
       ],
     );
+  }
+
+  /// The whole list into the library; the collection stays linked as the
+  /// playlist's source.
+  Future<void> _import() async {
+    final target = await pickImportTarget(
+      context,
+      title: _set.title,
+      cover: _set.cover,
+    );
+    if (target == null || !mounted) return;
+    try {
+      final result = importTracksInto(
+        ref.read(libraryProvider.notifier),
+        () => ref.read(libraryProvider),
+        _tracks,
+        target,
+        title: _set.title,
+        cover: _set.cover,
+        source: PlSourceRef.of(_set),
+      );
+      _toast(
+        importResultText(context.l, result),
+        result.added == 0 ? ToastKind.info : ToastKind.success,
+      );
+    } on ImportException catch (e) {
+      _toast(describeImportFailure(context.l, e.reason), ToastKind.warn);
+    }
   }
 
   void _toast(String message, [ToastKind kind = ToastKind.info]) {
@@ -346,8 +365,7 @@ class _SetScreenState extends ConsumerState<SetScreen> {
   }
 }
 
-/// Блок «Релиз» под треклистом альбома — десктопный `.sp-am-release`: тонкая
-/// линия сверху, приглушённая подпись и крупная дата.
+/// "Release" under an album's rows: a thin line, a dim label, the date large.
 class _ReleaseBlock extends StatelessWidget {
   const _ReleaseBlock({required this.date});
 
