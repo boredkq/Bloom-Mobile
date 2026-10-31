@@ -1,10 +1,4 @@
-/// Переход к артисту ТРЕКА — с развилкой на нескольких артистов.
-///
-/// У площадки имя артиста одно строкой («A, B feat. C»), а точный id есть
-/// только у аккаунта, который трек залил. Поэтому одного артиста открываем
-/// сразу, а нескольких сначала показываем шторкой: остальных приходится искать
-/// по имени (как делает `ArtistLinks` на десктопе), и выбрать, к кому идти,
-/// может только сам слушатель.
+/// Going to a track's artist: one opens at once, several are picked in a sheet.
 library;
 
 import 'dart:async';
@@ -25,29 +19,35 @@ import '../../shared/ui/pressable.dart';
 import '../../shared/util/artists.dart';
 import 'detail_nav.dart';
 
-/// Открыть артиста играющего трека: одного — сразу, нескольких — через выбор.
+/// Whether the track has an artist to go to: one with a known page, or
+/// several to pick from.
+bool canOpenTrackArtist(Track track) {
+  final links = artistLinks(track);
+  return links.length > 1 || links.length == 1 && links.first.id != null;
+}
+
+/// Opens the track's artist; with several, a sheet asks which.
 ///
-/// Ничего не делает, если артист один и точного id у трека нет: искать по имени
-/// там, где выбирать не из чего, значит уводить наугад.
+/// A lone artist with no known page opens nothing: searching by name with
+/// nothing to choose from would lead anywhere.
 Future<void> openTrackArtist(
   BuildContext context,
   WidgetRef ref,
   Track track,
 ) async {
-  final names = parseArtists(track.artist);
-  if (names.length < 2) {
-    final id = track.artistId;
+  final links = artistLinks(track);
+  if (links.length < 2) {
+    final id = links.firstOrNull?.id;
     if (id == null) return;
     return openArtist(
       context,
       id,
-      // Шапка страницы рисуется сразу, не дожидаясь сети: имя и аватарку
-      // артиста трек уже везёт с собой.
+      // The header draws at once: the track already carries the name and avatar.
       initial: Artist(
         id: id,
-        name: track.artist,
+        name: links.first.name,
         source: track.source,
-        avatar: track.artistAvatar,
+        avatar: ownArtistAvatar(track),
         verified: track.artistVerified,
       ),
     );
@@ -61,77 +61,90 @@ Future<void> openTrackArtist(
       title: track.name,
       subtitle: track.artist,
     ),
-    child: _ArtistPicker(track: track, names: names),
+    child: _ArtistPicker(track: track, links: links),
   );
-  // Страницу открываем ПОСЛЕ шторки и от контекста экрана: контекст самой
-  // шторки к этому моменту уже отвязан от дерева.
+  // I open the page from the screen's context: the sheet's is gone by now.
   if (picked == null || !context.mounted) return;
   await openArtist(context, picked.id, initial: picked);
 }
 
-/// Список артистов трека: аватар, имя, подписчики. Аватары и id подтягиваются
-/// по одному, каждый своим запросом — строка появляется сразу, картинка встаёт
-/// на место, когда придёт.
+/// The track's artists: avatar and name. Each is looked up on its own, so a
+/// row shows at once and its picture comes in when found.
 class _ArtistPicker extends ConsumerStatefulWidget {
-  const _ArtistPicker({required this.track, required this.names});
+  const _ArtistPicker({required this.track, required this.links});
 
   final Track track;
-  final List<String> names;
+  final List<ArtistLink> links;
 
   @override
   ConsumerState<_ArtistPicker> createState() => _ArtistPickerState();
 }
 
 class _ArtistPickerState extends ConsumerState<_ArtistPicker> {
-  /// Имени нет в карте — ещё ищем; null — искали и не нашли.
+  /// A name missing here is still being looked for; null — not found.
   final Map<String, Artist?> _found = {};
 
   @override
   void initState() {
     super.initState();
+    final source = widget.track.source;
+    // Known pages go without a search; only their avatars are looked up.
+    for (final l in widget.links) {
+      if (l.id case final id?) {
+        _found[l.name] = Artist(id: id, name: l.name, source: source);
+      }
+    }
     unawaited(_resolve());
   }
 
   Future<void> _resolve() async {
     final provider = ref.read(registryProvider).byId(widget.track.source.id);
-    // Площадки нет (трек из библиотеки, провайдер выключен) — искать негде:
-    // в списке останутся имена без аватарок и без перехода.
+    // No platform to ask: the unknown names stay without a page.
     if (provider == null) {
       if (mounted) {
         setState(() {
-          for (final name in widget.names) {
-            _found[name] = null;
+          for (final l in widget.links) {
+            _found.putIfAbsent(l.name, () => null);
           }
         });
       }
       return;
     }
-    // Одинаковые имена в строке («A & A») ищем один раз.
+    // The same name twice in a line ("A & A") is looked up once.
     await Future.wait([
-      for (final name in widget.names.toSet()) _one(provider, name),
+      for (final l in {for (final l in widget.links) l.name: l}.values)
+        _one(provider, l),
     ]);
   }
 
-  Future<void> _one(MusicProvider provider, String name) async {
+  Future<void> _one(MusicProvider provider, ArtistLink link) async {
     Artist? artist;
     try {
-      artist = await findArtistCached(provider, name);
+      artist = await findArtistCached(provider, link.name);
     } catch (_) {
-      // Сети нет или площадка отказала: строка останется без перехода, но в
-      // память промах не пишем — со связью он повторится удачнее.
+      // No network: the row stays as it is, and the miss isn't remembered.
+      if (link.id != null) return;
     }
     if (!mounted) return;
-    setState(() => _found[name] = artist);
+    setState(() {
+      final known = _found[link.name];
+      if (known == null) {
+        _found[link.name] = artist;
+      } else if (artist?.id == known.id) {
+        // Someone else's avatar is worse than none.
+        _found[link.name] = known.copyWith(avatar: artist!.avatar);
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return SheetPanel(
       children: [
-        for (final (i, name) in widget.names.indexed) ...[
-          // Текст строки: 14 + аватар 44 + 14.
+        for (final (i, link) in widget.links.indexed) ...[
+          // Row text: 14 + avatar 44 + 14.
           if (i > 0) sheetDivider(indent: 72),
-          _row(name),
+          _row(link.name),
         ],
       ],
     );
@@ -148,7 +161,7 @@ class _ArtistPickerState extends ConsumerState<_ArtistPicker> {
         : context.l.artistNotFoundOnSource;
 
     return Pressable(
-      // Пока ищем и когда не нашли — идти некуда: строка просто не нажимается.
+      // Nowhere to go while looking and when not found.
       onTap: artist == null ? null : () => Navigator.of(context).pop(artist),
       scale: 0.98,
       child: Padding(
@@ -162,8 +175,8 @@ class _ArtistPickerState extends ConsumerState<_ArtistPicker> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    // Нашли — показываем имя аккаунта, к которому уйдём: оно
-                    // может отличаться от куска строки трека.
+                    // Found: the name of the account it leads to, which may
+                    // differ from the piece of the line.
                     artist?.name ?? name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

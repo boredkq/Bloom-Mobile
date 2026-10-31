@@ -743,10 +743,7 @@ class _PickItem extends ConsumerWidget {
 String? _picture(WidgetRef ref, WaveOption o) {
   final track = o.track!;
   if (o.kind == WaveOptionKind.track) return track.cover;
-  final own = track.artistAvatar;
-  if (parseArtists(track.artist).length == 1 && own != null && own.isNotEmpty) {
-    return own;
-  }
+  if (ownArtistAvatar(track) case final own?) return own;
   return ref.watch(
         artistAvatarsProvider.select(
           (m) => m[artistAvatarKey(track.source, o.name)],

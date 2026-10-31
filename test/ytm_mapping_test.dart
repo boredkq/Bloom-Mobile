@@ -147,6 +147,10 @@ void main() {
       expect(t.title, 'Песня');
       expect(t.artist, 'Первый, Второй');
       expect(t.artistId, 'UC1');
+      expect(t.artists, [
+        (id: 'UC1', name: 'Первый'),
+        (id: 'UC2', name: 'Второй'),
+      ]);
       expect(t.duration, const Duration(minutes: 3, seconds: 45));
       // Обложку апскейлим до 544 — карточка в мобилке крупнее 60px.
       expect(t.cover, 'https://lh3.googleusercontent.com/aaa=w544-h544-l90-rj');

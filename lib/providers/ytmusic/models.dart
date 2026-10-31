@@ -28,6 +28,9 @@ class YtmRawTrack {
 
   /// browseId артиста (`UC…`) для перехода на его страницу; пусто, если нет.
   final String artistId;
+
+  /// Every artist with a page, for the artist links.
+  final List<({String id, String name})> artists;
   final String cover;
   final Duration duration;
 
@@ -38,6 +41,7 @@ class YtmRawTrack {
     required this.artistId,
     required this.cover,
     required this.duration,
+    this.artists = const [],
   });
 
   /// Строки альбома донашивают обложку и артиста со страницы — см. `album()`.
@@ -46,6 +50,7 @@ class YtmRawTrack {
     title: title,
     artist: artist ?? this.artist,
     artistId: artistId,
+    artists: artists,
     cover: cover ?? this.cover,
     duration: duration,
   );

@@ -47,10 +47,8 @@ Future<void> showTrackActions(
   final lib = ref.read(libraryProvider);
   final isFav = lib.isFav(track.id);
   final inLib = lib.isInLib(track.id);
-  // Артистов в строке трека может быть несколько, а точный id есть только у
-  // первого: тогда пункт ведёт не на страницу, а в шторку с выбором.
-  final artists = parseArtists(track.artist);
-  final canOpenArtist = track.artistId != null || artists.length > 1;
+  // Several artists lead to a sheet to pick from, not straight to a page.
+  final artists = artistLinks(track);
   // Пункт показываем, только если площадка вообще отдаёт трек файлом.
   final canOffline = ref.read(offlineProvider.notifier).canDownload(track);
   final hasCover = track.cover?.isNotEmpty ?? false;
@@ -156,9 +154,7 @@ Future<void> showTrackActions(
           ),
       ],
       [
-        // Одиночного артиста без точного id открывать нечем — искать по имени
-        // там, где выбирать не из чего, значит уводить наугад.
-        if (canOpenArtist)
+        if (canOpenTrackArtist(track))
           SheetAction(
             icon: Bi.user,
             label: context.l.taGoToArtist,

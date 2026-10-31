@@ -52,6 +52,10 @@ Track trackFromYtm(YtmRawTrack t) => Track(
   cover: _blankToNull(t.cover),
   source: MusicSource.ytmusic,
   artistId: t.artistId.isEmpty ? null : ytmArtistId(t.artistId),
+  artists: [
+    for (final a in t.artists)
+      (name: a.name, id: a.id.isEmpty ? null : ytmArtistId(a.id)),
+  ],
   url: 'https://music.youtube.com/watch?v=${t.id}',
   // Стрим резолвится по videoId из сквозного id, сырьё площадки не нужно.
 );

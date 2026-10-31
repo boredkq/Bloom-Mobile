@@ -57,6 +57,10 @@ Track trackFromYm(YmRawTrack t) => Track(
   year: _blankToNull(t.year),
   releaseDate: _blankToNull(t.releaseDate),
   artistId: t.artistId.isEmpty ? null : ymArtistId(t.artistId),
+  artists: [
+    for (final a in t.artists)
+      (name: a.name, id: a.id.isEmpty ? null : ymArtistId(a.id)),
+  ],
   // Стрим резолвится по id трека, поэтому сырьё площадки нужно ровно для
   // одного: не гонять запрос за треком, который Яндекс сам пометил
   // недоступным.

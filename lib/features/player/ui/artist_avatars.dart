@@ -1,14 +1,11 @@
-/// Аватарки артистов трека — стопкой перед их именем в плеере.
+/// The track's artists' avatars, stacked before their names in the player.
 ///
-/// Настоящие аватарки с площадки, те же самые, что показывает шторка выбора
-/// артистов: у трека своя картинка есть только у аккаунта, который его залил,
-/// остальных приходится искать по имени ([findArtistCached]). Поиск общий со
-/// шторкой, поэтому открытая до этого шторка (и наоборот) уже всё нашла.
+/// Only the uploader's picture comes with the track; the rest are looked up by
+/// name ([findArtistCached]), the same lookup the artist sheet uses.
 ///
-/// Пока ищем и грузим — не показываем НИЧЕГО, не нашли или картинка битая —
-/// тоже: заглушка со знаком bloom рядом с именем читалась бы как чужая
-/// аватарка, а пустой кружок — как недогруз. Строка с именем от этого
-/// разъезжается один раз, когда картинки приезжают.
+/// While looking and loading nothing shows, and nothing when not found or
+/// broken: a stand-in next to the name would read as someone's avatar, an
+/// empty circle as still loading. The line shifts once, when they arrive.
 library;
 
 import 'dart:async';
@@ -21,7 +18,6 @@ import '../../../core/entities/entities.dart';
 import '../../../core/providers/artist_lookup.dart';
 import '../../../core/providers/music_provider.dart';
 import '../../../core/store/cover_store.dart';
-import '../../../l10n/app_localizations.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/util/artists.dart';
 
@@ -39,14 +35,6 @@ const double _gap = 2;
 /// Отступ от стопки до имени.
 const double _lead = 8;
 
-/// «Неизвестный исполнитель» на всех языках — не имя, искать его по площадкам
-/// бессмысленно. Все языки, а не текущий: строка пишется в трек при импорте
-/// локального файла и остаётся на языке, который был тогда.
-final Set<String> _unknownArtist = {
-  for (final locale in AppLocalizations.supportedLocales)
-    lookupAppLocalizations(locale).commonUnknownArtist,
-};
-
 class TrackArtistAvatars extends ConsumerStatefulWidget {
   const TrackArtistAvatars({super.key, required this.track});
 
@@ -57,13 +45,11 @@ class TrackArtistAvatars extends ConsumerStatefulWidget {
 }
 
 class _TrackArtistAvatarsState extends ConsumerState<TrackArtistAvatars> {
-  /// Имена в порядке строки трека. Заодно метка «того самого» запроса: список
-  /// пересоздаётся на каждой смене трека, и по нему поиск понимает, что искал
-  /// для уже уехавшего трека.
-  List<String> _names = const [];
+  /// The track's artists in line order. Also the mark of the request: a new
+  /// list on every track change tells a late answer it is for a gone track.
+  List<ArtistLink> _links = const [];
 
-  /// Имя → ссылка на аватарку. Чего в карте нет — либо ещё ищем, либо не нашли;
-  /// показываем мы в обоих случаях одинаково (никак), различать незачем.
+  /// Name → avatar URL. Missing: still looking or not found, shown the same.
   Map<String, String> _urls = {};
 
   @override
@@ -75,8 +61,7 @@ class _TrackArtistAvatarsState extends ConsumerState<TrackArtistAvatars> {
   @override
   void didUpdateWidget(TrackArtistAvatars old) {
     super.didUpdateWidget(old);
-    // Тот же трек с той же строкой артистов — уже найденное на месте, заново
-    // ходить в сеть незачем.
+    // Same track, same line: what was found still stands.
     if (old.track.id == widget.track.id &&
         old.track.artist == widget.track.artist) {
       return;
@@ -85,69 +70,73 @@ class _TrackArtistAvatarsState extends ConsumerState<TrackArtistAvatars> {
   }
 
   void _sync() {
-    // Кружок на КАЖДОЕ имя, без потолка, как на десктопе: обрезанная на трёх
-    // стопка врала, что артистов трое.
-    final artist = widget.track.artist.trim();
-    final names = _unknownArtist.contains(artist)
-        ? const <String>[]
-        : parseArtists(artist);
-    _names = names;
+    // A circle for EVERY name, no cap: a stack cut at three would say three.
+    // A fresh list: its identity marks this request.
+    final links = List.of(artistLinks(widget.track));
+    _links = links;
     _urls = {};
 
-    // Артист один — значит строка трека и есть имя аккаунта, который его залил,
-    // а его аватарку трек уже везёт с собой — искать не надо, только догрузить.
-    final own = widget.track.artistAvatar;
-    if (names.length == 1 && own != null && own.isNotEmpty) {
-      unawaited(_accept(names, names.first, own));
+    // The uploader's own avatar comes with the track: only load it.
+    if (ownArtistAvatar(widget.track) case final own?) {
+      unawaited(_accept(links, links.first.name, own));
       return;
     }
-    if (names.isEmpty) return;
-    unawaited(_resolve(names));
+    if (links.isEmpty) return;
+    unawaited(_resolve(links));
   }
 
   /// Ставит картинку в стопку, только когда она ДОГРУЗИЛАСЬ. Битая ссылка
   /// выпадает из стопки целиком, как на десктопе: заглушка [Cover] на её месте
   /// читалась бы чужой аватаркой, и пока грузится — тоже.
-  Future<void> _accept(List<String> forNames, String name, String url) async {
+  Future<void> _accept(
+    List<ArtistLink> forLinks,
+    String name,
+    String url,
+  ) async {
     if (!await _loads(url)) return;
-    // Трек мог смениться, пока грузили: тогда ответ уже не про то, что на
-    // экране.
-    if (!mounted || !identical(_names, forNames)) return;
+    // The track may have changed while loading.
+    if (!mounted || !identical(_links, forLinks)) return;
     setState(() => _urls[name] = url);
   }
 
-  Future<void> _resolve(List<String> names) async {
+  Future<void> _resolve(List<ArtistLink> links) async {
     final provider = ref.read(registryProvider).byId(widget.track.source.id);
-    // Площадки нет (трек из библиотеки, провайдер выключен) — искать негде:
-    // у имени просто не будет картинки.
+    // No platform to ask: the names go without pictures.
     if (provider == null) return;
-    // Одинаковые имена в строке («A & A») ищем один раз.
+    // The same name twice in a line ("A & A") is looked up once.
     await Future.wait([
-      for (final name in names.toSet()) _one(provider, names, name),
+      for (final l in {for (final l in links) l.name: l}.values)
+        _one(provider, links, l),
     ]);
   }
 
   Future<void> _one(
     MusicProvider provider,
-    List<String> forNames,
-    String name,
+    List<ArtistLink> forLinks,
+    ArtistLink link,
   ) async {
-    String? url;
+    Artist? found;
     try {
-      url = (await findArtistCached(provider, name))?.avatar;
+      found = await findArtistCached(provider, link.name);
     } catch (_) {
-      // Сети нет или площадка отказала — имя останется без картинки.
+      // No network: the name stays without a picture.
     }
-    if (!mounted || !identical(_names, forNames)) return;
+    if (!mounted || !identical(_links, forLinks)) return;
+    final url = found?.avatar;
     if (url == null || url.isEmpty) return;
-    await _accept(forNames, name, url);
+    // Someone else's avatar is worse than none: the known page, else the name.
+    final same = link.id != null
+        ? found!.id == link.id
+        : found!.name.trim().toLowerCase() == link.name.trim().toLowerCase();
+    if (!same) return;
+    await _accept(forLinks, link.name, url);
   }
 
   @override
   Widget build(BuildContext context) {
     final urls = [
-      for (final name in _names)
-        if (_urls[name] != null) _urls[name]!,
+      for (final l in _links)
+        if (_urls[l.name] != null) _urls[l.name]!,
     ];
     if (urls.isEmpty) return const SizedBox.shrink();
 

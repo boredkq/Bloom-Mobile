@@ -57,6 +57,9 @@ enum MusicSource {
   }
 }
 
+/// An artist's name and their page, if it is known.
+typedef ArtistLink = ({String name, String? id});
+
 class Track {
   /// Сквозной id с префиксом источника («sc:123»).
   final String id;
@@ -94,6 +97,13 @@ class Track {
   /// Артист из `publisher_metadata` — иногда точнее имени аккаунта.
   final String? creditedArtist;
 
+  /// Every artist with their page, as the platform lists them; empty when it
+  /// gives only the line.
+  final List<ArtistLink> artists;
+
+  /// Tags edited by hand: the platform's ids may be someone else's now.
+  final bool edited;
+
   /// Сырьё площадки для [MusicProvider.resolveStream] и скачивания.
   final Map<String, dynamic>? sourceData;
 
@@ -129,6 +139,8 @@ class Track {
     this.artistAvatar,
     this.artistVerified = false,
     this.creditedArtist,
+    this.artists = const [],
+    this.edited = false,
     this.sourceData,
     this.chartPos,
     this.chartShift = 0,
@@ -160,11 +172,13 @@ class Track {
     final bare = id.startsWith(source.prefix)
         ? id.substring(source.prefix.length)
         : id;
-    final rawArtist = artistId == null
+    final page = '${source.prefix}artist:';
+    String? raw(String? id) => id == null
         ? null
-        : artistId!.startsWith('${source.prefix}artist:')
-        ? artistId!.substring('${source.prefix}artist:'.length)
-        : artistId;
+        : id.startsWith(page)
+        ? id.substring(page.length)
+        : id;
+    final rawArtist = raw(artistId);
     return {
       ...switch (source) {
         MusicSource.soundcloud => {
@@ -192,6 +206,11 @@ class Track {
       if (artistAvatar != null) 'artistAvatar': artistAvatar,
       if (artistVerified) 'verified': true,
       if (creditedArtist != null) 'creditedArtist': creditedArtist,
+      if (artists.isNotEmpty)
+        'artists': [
+          for (final a in artists) {'id': raw(a.id) ?? '', 'name': a.name},
+        ],
+      if (edited) 'edited': true,
     };
   }
 
@@ -205,11 +224,14 @@ class Track {
         : MusicSource.fromId(id);
     final x = (json['extra'] as Map?)?.cast<String, dynamic>() ?? const {};
     String? text(Object? v) => v is String && v.isNotEmpty ? v : null;
-    final rawArtist = switch (x['artistId']) {
-      final num n when n > 0 => '${n.toInt()}',
-      final String s when s.isNotEmpty => s,
-      _ => null,
-    };
+    String? page(Object? raw) => source == MusicSource.local
+        ? null
+        : switch (raw) {
+            final num n when n > 0 => '${source.prefix}artist:${n.toInt()}',
+            final String s when s.isNotEmpty && s != '0' =>
+              '${source.prefix}artist:$s',
+            _ => null,
+          };
     final genre = text(x['genre']);
     return Track(
       id: id,
@@ -230,14 +252,17 @@ class Track {
           (x['genres'] as List?)?.whereType<String>().toList() ??
           (genre == null ? const [] : [genre.toLowerCase()]),
       url: text(x['permalink']) ?? _linkOf(source, id),
-      artistId: rawArtist == null
-          ? null
-          : source == MusicSource.local
-          ? null
-          : '${source.prefix}artist:$rawArtist',
+      artistId: page(x['artistId']),
       artistAvatar: text(x['artistAvatar']),
       artistVerified: x['verified'] == true,
       creditedArtist: text(x['creditedArtist']),
+      artists: [
+        for (final a in (x['artists'] as List?) ?? const [])
+          if (a is Map)
+            if (text(a['name']) case final name?)
+              (name: name, id: page(a['id'])),
+      ],
+      edited: x['edited'] == true,
       sourceData: switch (source) {
         MusicSource.soundcloud => (x['media'] as Map?)?.cast<String, dynamic>(),
         MusicSource.yandex => {'available': x['available'] != false},

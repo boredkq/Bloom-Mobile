@@ -26,6 +26,9 @@ class YmRawTrack {
   /// id первого артиста (для перехода на страницу артиста).
   final String artistId;
 
+  /// Every artist with their id, for the artist links.
+  final List<({String id, String name})> artists;
+
   /// Полный https-URL обложки 400x400 (или пусто).
   final String cover;
   final Duration duration;
@@ -56,6 +59,7 @@ class YmRawTrack {
     required this.duration,
     required this.year,
     required this.available,
+    this.artists = const [],
     this.releaseDate = '',
     this.chartPos = 0,
     this.chartShift = 0,
@@ -73,6 +77,7 @@ class YmRawTrack {
     title: title,
     artist: artist,
     artistId: artistId,
+    artists: artists,
     cover: cover,
     duration: duration,
     year: year,

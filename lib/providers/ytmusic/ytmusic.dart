@@ -467,25 +467,9 @@ int? parseClock(String s) {
 /// («Song»/«Video»), поэтому [firstRun] бесполезен. Берём runs со ссылкой на
 /// артиста (pageType ARTIST); если их нет — первый смысловой run.
 String col1Artist(Object? col1) {
-  final runs = at(col1, ['runs']);
-  if (runs is! List) return '';
-  bool isArtist(Object? r) =>
-      at(r, [
-        'navigationEndpoint',
-        'browseEndpoint',
-        'browseEndpointContextSupportedConfigs',
-        'browseEndpointContextMusicConfig',
-        'pageType',
-      ]) ==
-      'MUSIC_PAGE_TYPE_ARTIST';
-
   // Артисты-ссылки (может быть несколько — джойним).
-  final names = runs
-      .where(isArtist)
-      .map((r) => str(at(r, ['text'])))
-      .where((s) => s.isNotEmpty)
-      .toList();
-  if (names.isNotEmpty) return names.join(', ');
+  final names = col1Artists(col1);
+  if (names.isNotEmpty) return names.map((a) => a.name).join(', ');
 
   // Фолбэк — первый смысловой кусок подписи. Безусловно пропускать нулевой run
   // нельзя: в строках плейлиста артист как раз в нулевом (у чарт-плейлистов
@@ -495,6 +479,23 @@ String col1Artist(Object? col1) {
   }
   return '';
 }
+
+/// Every run that links an artist's page, in order.
+List<({String id, String name})> col1Artists(Object? col1) {
+  final runs = at(col1, ['runs']);
+  if (runs is! List) return const [];
+  return [
+    for (final r in runs)
+      if (pageType(r) == 'MUSIC_PAGE_TYPE_ARTIST' &&
+          str(at(r, ['text'])).isNotEmpty)
+        (id: itemBrowseId(r) ?? '', name: str(at(r, ['text']))),
+  ];
+}
+
+/// The first of them whose page is known.
+String _firstPage(List<({String id, String name})> artists) => artists
+    .map((a) => a.id)
+    .firstWhere((id) => id.isNotEmpty, orElse: () => '');
 
 /// Длительность из последнего run col1 формата «m:ss» → секунды.
 int col1Duration(Object? col1) {
@@ -531,26 +532,7 @@ YtmRawTrack? parseTrack(Object? it) {
   if (title.isEmpty) return null;
   final col1 = flexText(it, 1);
 
-  // browseId артиста: первый run в col1 с переходом на страницу артиста.
-  var artistId = '';
-  final runs = at(col1, ['runs']);
-  if (runs is List) {
-    for (final r in runs) {
-      final pt = at(r, [
-        'navigationEndpoint',
-        'browseEndpoint',
-        'browseEndpointContextSupportedConfigs',
-        'browseEndpointContextMusicConfig',
-        'pageType',
-      ]);
-      if (pt == 'MUSIC_PAGE_TYPE_ARTIST') {
-        artistId = str(
-          at(r, ['navigationEndpoint', 'browseEndpoint', 'browseId']),
-        );
-        if (artistId.isNotEmpty) break;
-      }
-    }
-  }
+  final artists = col1Artists(col1);
 
   // Длительность: в строках поиска — в col1; в строках альбома — в fixedColumns.
   final d = col1Duration(col1);
@@ -558,7 +540,8 @@ YtmRawTrack? parseTrack(Object? it) {
     id: id,
     title: title,
     artist: col1Artist(col1),
-    artistId: artistId,
+    artistId: _firstPage(artists),
+    artists: artists,
     cover: thumb(it),
     duration: Duration(seconds: d > 0 ? d : fixedDuration(it)),
   );
@@ -1030,10 +1013,7 @@ Future<({List<YtmRawTrack> tracks, String cursor})> radio(
       }
     }
     final byline = {'runs': first};
-    final linked = [
-      for (final r in first)
-        if (pageType(r) == 'MUSIC_PAGE_TYPE_ARTIST') r,
-    ];
+    final linked = col1Artists(byline);
     tracks.add(
       YtmRawTrack(
         id: vid,
@@ -1041,7 +1021,8 @@ Future<({List<YtmRawTrack> tracks, String cursor})> radio(
         artist: linked.isEmpty
             ? meaningfulRuns(byline).join(', ')
             : col1Artist(byline),
-        artistId: linked.isEmpty ? '' : itemBrowseId(linked.first) ?? '',
+        artistId: _firstPage(linked),
+        artists: linked,
         cover: biggestThumb(at(it, ['thumbnail'])),
         duration: Duration(
           seconds: parseClock(firstRun(at(it, ['lengthText']))) ?? 0,

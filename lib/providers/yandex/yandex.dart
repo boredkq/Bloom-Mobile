@@ -242,6 +242,12 @@ YmRawTrack? parseTrack(Object? node) {
     title: node['title'] as String? ?? kYmUntitled,
     artist: names.isEmpty ? kYmUnknownArtist : names.join(', '),
     artistId: (firstArtist is Map ? idStr(firstArtist['id']) : null) ?? '',
+    artists: [
+      if (artists is List)
+        for (final a in artists)
+          if (a is Map && a['name'] is String && (a['name'] as String) != '')
+            (id: idStr(a['id']) ?? '', name: a['name'] as String),
+    ],
     cover: coverUrl(node['coverUri']),
     duration: Duration(
       milliseconds: (node['durationMs'] as num?)?.toInt() ?? 0,

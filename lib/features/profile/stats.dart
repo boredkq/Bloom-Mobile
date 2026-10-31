@@ -176,14 +176,9 @@ class ProfileStats {
         topTs = entry.lastTs;
       }
 
-      // Строка артиста бывает мультиартистной («reidenshi, Øneheart») —
-      // считаем каждого отдельно, иначе в топе стоит склеенное имя, по
-      // которому не найдётся ни аватар, ни страница артиста. Совместный трек
-      // идёт в зачёт обоим.
-      final names = track.artist.isEmpty
-          ? const ['Unknown Artist']
-          : parseArtists(track.artist);
-      for (final name in names) {
+      // Each artist of a line counts on their own, a joint track for both;
+      // no name counts for no one.
+      for (final name in parseArtists(track.artist)) {
         final artist =
             artists[name] ??
             (plays: 0, cover: null, best: -1, sources: <MusicSource, int>{});

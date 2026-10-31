@@ -29,6 +29,8 @@ void main() {
       expect(t.id, '42');
       expect(t.artist, 'Первый, Второй');
       expect(t.artistId, '7');
+      expect(t.artists, [(id: '7', name: 'Первый'), (id: '8', name: 'Второй')]);
+      expect(trackFromYm(t).artists.last, (name: 'Второй', id: 'ym:artist:8'));
       expect(t.cover, 'https://avatars.yandex.net/get-music/1/400x400');
       expect(t.duration, const Duration(milliseconds: 185000));
       expect(t.year, '2019');

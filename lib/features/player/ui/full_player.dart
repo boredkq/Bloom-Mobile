@@ -26,7 +26,6 @@ import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/track_actions.dart';
 import '../../../shared/ui/track_flick.dart';
 import '../../../shared/ui/track_swipes.dart';
-import '../../../shared/util/artists.dart';
 import '../../../shared/util/format.dart';
 import '../../detail/artists_sheet.dart';
 import '../../lyrics/lyrics_store.dart';
@@ -488,9 +487,7 @@ class _TitleBlock extends ConsumerWidget {
     // строке несколько — сперва шторка с выбором. На месте имени может стоять
     // ошибка воспроизведения: тогда строка просто текст. Одиночного артиста
     // без точного id открывать тоже нечем.
-    final canOpen =
-        state.error == null &&
-        (track.artistId != null || parseArtists(track.artist).length > 1);
+    final canOpen = state.error == null && canOpenTrackArtist(track);
 
     // Куда прижаты название с артистом — настройка «Выравнивание заголовка»
     // (порт десктопного `titleAlign`, там это классы `.title-left/.title-right`

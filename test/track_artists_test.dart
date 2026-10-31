@@ -1,5 +1,5 @@
-/// Артисты трека в плеере: один — сразу на страницу, несколько — шторкой с
-/// аватарками, и в ней ходить можно только к тем, кого площадка знает.
+/// A track's artists: one opens at once, several in a sheet with avatars,
+/// where only those with a page can be opened.
 library;
 
 import 'package:bloom/app/providers.dart';
@@ -21,6 +21,7 @@ import 'package:bloom/core/db/db.dart';
 
 import 'package:bloom/core/l10n/l10n.dart';
 import 'package:bloom/shared/ui/pressable.dart';
+import 'package:bloom/shared/util/artists.dart';
 
 Artist _artist(String name, {String? avatar}) => Artist(
   id: 'sc:artist:$name',
@@ -29,13 +30,14 @@ Artist _artist(String name, {String? avatar}) => Artist(
   source: MusicSource.soundcloud,
 );
 
-Track _track(String artist) => Track(
+// No uploader's page: the line is split into names.
+Track _track(String artist, {String? artistId}) => Track(
   id: 'sc:1',
   name: 'Песня',
   artist: artist,
   duration: const Duration(minutes: 3),
   source: MusicSource.soundcloud,
-  artistId: 'sc:artist:uploader',
+  artistId: artistId,
 );
 
 class _FakeSoundCloud extends MusicProvider {
@@ -188,5 +190,99 @@ void main() {
     // значит уводить наугад.
     expect(find.byType(SheetPanel), findsNothing);
     expect(find.byType(ArtistScreen), findsNothing);
+  });
+
+  testWidgets('a SoundCloud line with a page is one account', (tester) async {
+    final sc = _FakeSoundCloud(const {});
+    await _pump(
+      tester,
+      _track('Simon & Garfunkel', artistId: 'sc:artist:sg'),
+      sc,
+    );
+
+    await tester.tap(find.text('артист'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SheetPanel), findsNothing);
+    expect(find.byType(ArtistScreen), findsOneWidget);
+  });
+
+  testWidgets('known pages open without a search', (tester) async {
+    final sc = _FakeSoundCloud(const {});
+    final track = Track(
+      id: 'ym:1',
+      name: 'Песня',
+      artist: 'Один, Другой',
+      duration: const Duration(minutes: 3),
+      source: MusicSource.yandex,
+      artistId: 'ym:artist:1',
+      artists: const [
+        (name: 'Один', id: 'ym:artist:1'),
+        (name: 'Другой', id: null),
+      ],
+    );
+    await _pump(tester, track, sc);
+
+    await tester.tap(find.text('артист'));
+    await tester.pumpAndSettle();
+
+    // No Yandex to ask: the one with a page still opens, the other doesn't.
+    expect(_enabled(tester, 'Один'), isTrue);
+    expect(_enabled(tester, 'Другой'), isFalse);
+  });
+
+  group('artistLinks', () {
+    Track t({
+      String artist = 'A, B',
+      MusicSource source = MusicSource.yandex,
+      String? artistId = 'ym:artist:1',
+      List<ArtistLink> artists = const [
+        (name: 'A', id: 'ym:artist:1'),
+        (name: 'B', id: 'ym:artist:2'),
+      ],
+      bool edited = false,
+    }) => Track(
+      id: 'ym:9',
+      name: 'x',
+      artist: artist,
+      duration: Duration.zero,
+      source: source,
+      artistId: artistId,
+      artists: artists,
+      edited: edited,
+    );
+
+    test("the platform's list gives every page", () {
+      expect(artistLinks(t()).map((l) => l.id), ['ym:artist:1', 'ym:artist:2']);
+    });
+
+    test('a line edited away from the list falls back to names', () {
+      expect(artistLinks(t(artist: 'A, C')), [
+        (name: 'A', id: null),
+        (name: 'C', id: null),
+      ]);
+    });
+
+    test('hand-edited tags drop the ids', () {
+      expect(artistLinks(t(edited: true)).map((l) => l.id), [null, null]);
+      expect(artistLinks(t(artist: 'A', artists: const [], edited: true)), [
+        (name: 'A', id: null),
+      ]);
+    });
+
+    test('the unknown artist is no one', () {
+      expect(artistLinks(t(artist: 'Неизвестен', artists: const [])), isEmpty);
+    });
+
+    test('the list survives the round trip', () {
+      final back = Track.fromJson(t().toJson())!;
+      expect(back.artists, t().artists);
+      final m = t(edited: true).toJson();
+      expect((m['extra'] as Map)['artists'], [
+        {'id': '1', 'name': 'A'},
+        {'id': '2', 'name': 'B'},
+      ]);
+      expect(Track.fromJson(m)!.edited, isTrue);
+    });
   });
 }
