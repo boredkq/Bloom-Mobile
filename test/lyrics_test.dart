@@ -1,16 +1,12 @@
-/// Текст песни: разбор LRC, подбор строки под позицию, единицы заливки,
-/// нормализация запроса со скорингом, кеш и сам стор.
+/// Lyrics: reading LRC, the line for a position, the query cleanup and
+/// scoring, the kept lyrics in the database and the store following the track.
 ///
-/// Проверяем то, что ломается незаметно: подсветку не на той строке, деление
-/// строки на слова с неверными таймингами, ответ сети для уже сменённого трека
-/// и повторный поход в сеть за тем же треком.
-///
-/// Текст в тестах синтетический («line one») — настоящие песни тут не нужны и
-/// не должны попадать в репозиторий.
+/// The texts are synthetic ("line one"): real songs have no place here.
 library;
 
 import 'package:bloom/app/theme/bloom_theme.dart';
 import 'package:bloom/app/theme/tokens.dart';
+import 'package:bloom/core/db/db.dart';
 import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/core/l10n/l10n.dart';
 import 'package:bloom/core/store/json_store.dart';
@@ -18,13 +14,11 @@ import 'package:bloom/features/lyrics/lrc.dart';
 import 'package:bloom/features/lyrics/lyrics_api.dart';
 import 'package:bloom/features/lyrics/lyrics_cache.dart';
 import 'package:bloom/features/lyrics/lyrics_store.dart';
-import 'package:bloom/features/lyrics/lyrics_style_store.dart';
 import 'package:bloom/features/lyrics/ui/lyrics_view.dart';
 import 'package:bloom/features/player/player_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:bloom/core/db/db.dart';
 
 const _track = Track(
   id: 'sc:1',
@@ -34,111 +28,152 @@ const _track = Track(
   source: MusicSource.soundcloud,
 );
 
-/// Контейнер с подменённой сетью: [answer] — что «нашлось» в LRCLIB.
+const _other = Track(
+  id: 'sc:2',
+  name: 'Other',
+  artist: 'Band',
+  duration: Duration(seconds: 60),
+  source: MusicSource.soundcloud,
+);
+
+/// The playing track, moved by hand.
+final _playing = StateProvider<Track?>((ref) => _track);
+
+/// A container with LRCLIB swapped for [answer].
 ProviderContainer _container({
-  required Future<LyricsResult> Function() answer,
+  required Future<LyricsResult> Function(String title) answer,
   JsonStore? store,
-  void Function(String artist, String title)? onFetch,
+  BloomDb? db,
+  Duration position = Duration.zero,
+  void Function()? onFetch,
 }) {
   final c = ProviderContainer(
     overrides: [
       jsonStoreProvider.overrideWithValue(store ?? JsonStore.memory()),
-      dbProvider.overrideWithValue(BloomDb.memory()),
+      dbProvider.overrideWithValue(db ?? BloomDb.memory()),
+      lyricsTrackProvider.overrideWith((ref) => ref.watch(_playing)),
       lyricsFetcherProvider.overrideWithValue(({
         required artist,
         required title,
         durationSec,
       }) {
-        onFetch?.call(artist, title);
-        return answer();
+        onFetch?.call();
+        return answer(title);
       }),
+      playheadProvider.overrideWith(
+        (ref) => Stream.value((
+          position: position,
+          total: const Duration(minutes: 3),
+        )),
+      ),
+      playingProvider.overrideWith((ref) => Stream.value(false)),
     ],
   );
   addTearDown(c.dispose);
   return c;
 }
 
+/// Lets the store pick the track up and the fake network answer.
+Future<LyricsState> _settle(ProviderContainer c) async {
+  c.read(lyricsProvider);
+  for (var i = 0; i < 5; i++) {
+    await Future<void>.delayed(Duration.zero);
+  }
+  return c.read(lyricsProvider);
+}
+
 void main() {
   group('parseLrc', () {
-    test('разбирает тайм-коды и сортирует по времени', () {
+    test('reads the stamps and sorts by time', () {
       final lines = parseLrc('[00:12.50]second\n[00:03.00]first\n');
       expect(lines.map((l) => l.text), ['first', 'second']);
       expect(lines.first.time, 3.0);
       expect(lines.last.time, 12.5);
     });
 
-    test('минуты переводятся в секунды', () {
+    test('minutes become seconds', () {
       expect(parseLrc('[02:05.00]x').single.time, 125.0);
     });
 
-    test('строки без текста выбрасываются — это разделители куплетов', () {
+    test('a line with several stamps stands at each', () {
+      final lines = parseLrc('[00:01.00][00:20.00]chorus\n[00:10.00]verse');
+      expect(lines.map((l) => l.text), ['chorus', 'verse', 'chorus']);
+      expect(lines.map((l) => l.time), [1.0, 10.0, 20.0]);
+    });
+
+    test('a colon before the hundredths is read too', () {
+      expect(parseLrc('[00:07:50]a').single.time, 7.5);
+    });
+
+    test('stamps without text are dropped', () {
       final lines = parseLrc('[00:01.00]a\n[00:02.00]\n[00:03.00]   \n');
       expect(lines.map((l) => l.text), ['a']);
     });
 
-    test('строки без тайм-кода игнорируются', () {
+    test('rows without a stamp are ignored', () {
       expect(parseLrc('[ar:Band]\nplain row\n[00:01.00]a').length, 1);
     });
 
-    test('дробная часть необязательна', () {
+    test('the fraction is optional', () {
       expect(parseLrc('[00:07]a').single.time, 7.0);
+    });
+
+    test('equal times keep the row order', () {
+      final lines = parseLrc('[00:05.00]b\n[00:05.00]a');
+      expect(lines.map((l) => l.text), ['b', 'a']);
     });
   });
 
-  test('stripLrc убирает тайм-коды', () {
+  test('stripLrc drops the stamps', () {
     expect(stripLrc('[00:01.00]a\n[00:02.50]b'), 'a\nb');
-  });
-
-  test('looksLikeLrc отличает синхронный текст от простого', () {
-    expect(looksLikeLrc('[00:01.00]a'), isTrue);
-    expect(looksLikeLrc('just a line'), isFalse);
   });
 
   group('activeLineAt', () {
     final lines = parseLrc('[00:10.00]a\n[00:20.00]b\n[00:30.00]c');
 
-    test('до первой строки — вступление', () {
+    test('before the first line — the intro', () {
       expect(activeLineAt(lines, 0), -1);
       expect(activeLineAt(lines, 9.5), -1);
     });
 
-    test('строка загорается на четверть секунды раньше своего времени', () {
+    test('a line lights up a quarter of a second early', () {
       expect(activeLineAt(lines, 9.8), 0);
       expect(activeLineAt(lines, 19.9), 1);
     });
 
-    test('после последней остаётся последняя', () {
+    test('after the last one the last stays', () {
       expect(activeLineAt(lines, 300), 2);
     });
 
-    test('пустой текст — подсвечивать нечего', () {
+    test('no lines — nothing to light', () {
       expect(activeLineAt(const [], 10), -1);
     });
   });
 
   group('normalizeForSearch', () {
-    test('срезает (feat. …)', () {
+    test('drops (feat. …) and any brackets', () {
       expect(normalizeForSearch('Song (feat. Someone)'), 'Song');
+      expect(normalizeForSearch('Song [Remix]'), 'Song');
     });
 
-    test('срезает мусор с видеоплощадок', () {
-      expect(normalizeForSearch('Song (Official Video)'), 'Song');
+    test('drops the video junk', () {
+      expect(normalizeForSearch('Song Official Video'), 'Song');
       expect(normalizeForSearch('Song prod. by Someone'), 'Song');
     });
 
-    test('чистое название не трогает', () {
+    test('a clean title stays', () {
       expect(normalizeForSearch('Song'), 'Song');
     });
   });
 
-  test('primaryArtist берёт первого из строки', () {
+  test('primaryArtist takes the first of a line', () {
     expect(primaryArtist('A, B & C'), 'A');
     expect(primaryArtist('A feat. B'), 'A');
     expect(primaryArtist('Solo'), 'Solo');
   });
 
   group('scoreHit', () {
-    test('точное совпадение названия и артиста — максимум', () {
+    test('the same title and artist — the most', () {
       expect(
         scoreHit(
           hitTitle: 'Song',
@@ -150,7 +185,7 @@ void main() {
       );
     });
 
-    test('чужая песня не дотягивает до порога выдачи', () {
+    test('another song stays below the bar', () {
       expect(
         scoreHit(
           hitTitle: 'Totally Other',
@@ -162,7 +197,7 @@ void main() {
       );
     });
 
-    test('название с мусором всё ещё узнаётся', () {
+    test('a title with junk is still recognised', () {
       expect(
         scoreHit(
           hitTitle: 'Song',
@@ -176,204 +211,202 @@ void main() {
   });
 
   group('LyricsCache', () {
-    test('найденное отдаётся из памяти', () async {
-      final cache = LyricsCache();
-      await cache.write(
-        'Band',
-        'Song',
-        const LyricsResult(found: true, plain: 'x'),
-      );
-      expect((await cache.read('Band', 'Song'))?.plain, 'x');
+    const found = LyricsResult(plain: 'x', source: 'lrclib');
+
+    test('kept lyrics come back from the database', () {
+      final cache = LyricsCache(BloomDb.memory());
+      final key = LyricsCache.keyOf('Band', 'Song');
+      cache.remember(key, found, keep: true);
+      expect(cache.read(key)?.plain, 'x');
+      expect(cache.read(LyricsCache.keyOf('BAND', 'song'))?.plain, 'x');
+      expect(cache.stats().count, 1);
     });
 
-    test('регистр в ключе не важен', () async {
-      final cache = LyricsCache();
-      await cache.write(
-        'Band',
-        'Song',
-        const LyricsResult(found: true, plain: 'x'),
-      );
-      expect(await cache.read('band', 'song'), isNotNull);
+    test('without "keep" nothing is written', () {
+      final cache = LyricsCache(BloomDb.memory());
+      final key = LyricsCache.keyOf('Band', 'Song');
+      cache.remember(key, found, keep: false);
+      expect(cache.read(key), isNull);
     });
 
-    test('ненайденное тоже помнится — но недолго', () async {
-      final cache = LyricsCache();
-      await cache.write('Band', 'Song', const LyricsResult.notFound());
-      expect((await cache.read('Band', 'Song'))?.found, isFalse);
+    test('a miss is remembered in memory', () {
+      final cache = LyricsCache(BloomDb.memory());
+      final key = LyricsCache.keyOf('Band', 'Song');
+      cache.remember(key, LyricsResult.none, keep: true);
+      expect(cache.read(key)?.ok, isFalse);
+      expect(cache.stats().count, 0);
     });
 
-    test('имя файла детерминировано и одинаково для разного регистра', () {
-      expect(
-        LyricsCache.fileNameOf('Band', 'Song'),
-        LyricsCache.fileNameOf('BAND', 'song'),
-      );
-      expect(
-        LyricsCache.fileNameOf('Band', 'Song'),
-        isNot(LyricsCache.fileNameOf('Band', 'Other')),
-      );
+    test('a time limit drops the older ones, "until restart" all', () {
+      final db = BloomDb.memory();
+      final cache = LyricsCache(db);
+      cache.remember('a::old', found, keep: true);
+      cache.remember('a::new', found, keep: true);
+      db.exec("UPDATE lyrics SET at = at - 2 * 86400000 WHERE key = 'a::old'");
+      expect(cache.purge(LyricsKeep.day), 1);
+      expect(cache.read('a::new'), isNotNull);
+      cache.start(LyricsKeep.restart);
+      expect(cache.stats().count, 0);
+    });
+
+    test('older than 30 days is not read', () {
+      final db = BloomDb.memory();
+      final cache = LyricsCache(db)..remember('a::b', found, keep: true);
+      db.exec('UPDATE lyrics SET at = at - 31 * 86400000');
+      expect(cache.read('a::b'), isNull);
     });
   });
 
   group('LyricsController', () {
-    test('синхронный ответ разбирается в строки', () async {
+    test('timed lyrics become lines, the plain text built from them', () async {
       final c = _container(
-        answer: () async =>
-            const LyricsResult(found: true, synced: '[00:01.00]line one'),
+        answer: (_) async => const LyricsResult(synced: '[00:01.00]line one'),
       );
-      await c.read(lyricsProvider.notifier).ensureFor(_track);
-      final state = c.read(lyricsProvider);
+      final state = await _settle(c);
       expect(state.status, LyricsStatus.ready);
-      expect(state.synced, isTrue);
       expect(state.lines.single.text, 'line one');
-      // Простой текст собирается из синхронного, если своего не прислали.
       expect(state.plain, 'line one');
     });
 
-    test('несинхронный ответ остаётся простым текстом', () async {
+    test('plain lyrics stay plain', () async {
       final c = _container(
-        answer: () async => const LyricsResult(found: true, plain: 'line one'),
+        answer: (_) async => const LyricsResult(plain: 'line one'),
       );
-      await c.read(lyricsProvider.notifier).ensureFor(_track);
-      expect(c.read(lyricsProvider).lines, isEmpty);
-      expect(c.read(lyricsProvider).synced, isFalse);
+      expect((await _settle(c)).lines, isEmpty);
     });
 
-    test('не нашли — статус «пусто», а не вечная загрузка', () async {
-      final c = _container(answer: () async => const LyricsResult.notFound());
-      await c.read(lyricsProvider.notifier).ensureFor(_track);
-      expect(c.read(lyricsProvider).status, LyricsStatus.empty);
+    test('nothing found — empty, and the open lyrics close', () async {
+      final c = _container(answer: (_) async => LyricsResult.none);
+      c.read(lyricsOpenProvider.notifier).state = true;
+      expect((await _settle(c)).status, LyricsStatus.empty);
+      expect(c.read(lyricsOpenProvider), isFalse);
     });
 
-    test('за тем же треком второй раз в сеть не идём', () async {
+    test('follows the playing track', () async {
+      final c = _container(answer: (title) async => LyricsResult(plain: title));
+      expect((await _settle(c)).plain, 'Song');
+      c.read(_playing.notifier).state = _other;
+      final state = await _settle(c);
+      expect(state.trackId, 'sc:2');
+      expect(state.plain, 'Other');
+    });
+
+    test('a miss is not asked again for 5 minutes', () async {
       var calls = 0;
       final c = _container(
-        answer: () async => const LyricsResult(found: true, plain: 'x'),
-        onFetch: (_, _) => calls++,
+        answer: (_) async => LyricsResult.none,
+        onFetch: () => calls++,
       );
-      await c.read(lyricsProvider.notifier).ensureFor(_track);
-      await c.read(lyricsProvider.notifier).ensureFor(_track);
-      expect(calls, 1);
+      await _settle(c);
+      c.read(_playing.notifier).state = _other;
+      await _settle(c);
+      c.read(_playing.notifier).state = _track;
+      await _settle(c);
+      expect(calls, 2);
     });
 
-    test('ответ для уже сменённого трека отбрасывается', () async {
-      // Первый запрос отвечает медленно и не тем: к его приходу играет уже
-      // другая песня, и текст прошлой не должен встать поверх неё.
-      var first = true;
+    test('kept only while "keep lyrics" is on', () async {
+      final db = BloomDb.memory();
+      final store = JsonStore.memory();
       final c = _container(
-        answer: () async {
-          if (first) {
-            first = false;
+        answer: (_) async => const LyricsResult(plain: 'x', source: 'lrclib'),
+        db: db,
+        store: store,
+      );
+      await _settle(c);
+      expect(c.read(lyricsCacheProvider).stats().count, 0);
+
+      c.read(lyricsPrefsProvider.notifier).setCache(true);
+      c.read(_playing.notifier).state = _other;
+      await _settle(c);
+      expect(c.read(lyricsCacheProvider).stats().count, 1);
+    });
+
+    test('an answer for a track left behind is dropped', () async {
+      final c = _container(
+        answer: (title) async {
+          if (title == 'Song') {
             await Future<void>.delayed(const Duration(milliseconds: 30));
-            return const LyricsResult(found: true, plain: 'stale');
           }
-          return const LyricsResult(found: true, plain: 'fresh');
+          return LyricsResult(plain: title);
         },
       );
-      final ctrl = c.read(lyricsProvider.notifier);
-      final stale = ctrl.ensureFor(_track);
-      await ctrl.ensureFor(
-        const Track(
-          id: 'sc:2',
-          name: 'Other',
-          artist: 'Band',
-          duration: Duration(seconds: 60),
-          source: MusicSource.soundcloud,
-        ),
-      );
-      await stale;
-      expect(c.read(lyricsProvider).plain, 'fresh');
+      c.read(lyricsProvider);
+      await Future<void>.delayed(Duration.zero);
+      c.read(_playing.notifier).state = _other;
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      expect(c.read(lyricsProvider).plain, 'Other');
       expect(c.read(lyricsProvider).trackId, 'sc:2');
     });
 
-    test('трека нет — состояние сбрасывается', () async {
+    test('no track — idle', () async {
+      final c = _container(answer: (_) async => const LyricsResult(plain: 'x'));
+      await _settle(c);
+      c.read(_playing.notifier).state = null;
+      final state = await _settle(c);
+      expect(state.status, LyricsStatus.idle);
+      expect(state.plain, isEmpty);
+    });
+
+    test('the sung line follows the position', () async {
       final c = _container(
-        answer: () async => const LyricsResult(found: true, plain: 'x'),
+        answer: (_) async =>
+            const LyricsResult(synced: '[00:10.00]a\n[00:20.00]b'),
+        position: const Duration(seconds: 21),
       );
-      await c.read(lyricsProvider.notifier).ensureFor(_track);
-      await c.read(lyricsProvider.notifier).ensureFor(null);
-      expect(c.read(lyricsProvider).status, LyricsStatus.idle);
-      expect(c.read(lyricsProvider).plain, isEmpty);
+      c.listen(playheadProvider, (_, _) {});
+      await _settle(c);
+      expect(c.read(lyricsLineProvider), 1);
     });
   });
 
-  group('LyricsStyleController', () {
-    test('умолчание — поверх обложки', () {
-      final c = _container(answer: () async => const LyricsResult.notFound());
-      expect(c.read(lyricsStyleProvider).mode, LyricsMode.overlay);
+  group('LyricsPrefs', () {
+    test('defaults — over the cover, not kept', () {
+      final c = _container(answer: (_) async => LyricsResult.none);
+      final prefs = c.read(lyricsPrefsProvider);
+      expect(prefs.mode, LyricsMode.overlay);
+      expect(prefs.cache, isFalse);
+      expect(prefs.keep, LyricsKeep.never);
     });
 
-    test('выбор сохраняется и читается обратно', () {
+    test('saved and read back; unknown values fall back', () {
       final store = JsonStore.memory();
       final first = _container(
-        answer: () async => const LyricsResult.notFound(),
+        answer: (_) async => LyricsResult.none,
         store: store,
       );
-      first.read(lyricsStyleProvider.notifier).setMode(LyricsMode.replace);
-
+      first.read(lyricsPrefsProvider.notifier)
+        ..setMode(LyricsMode.replace)
+        ..setKeep(LyricsKeep.week);
       final second = _container(
-        answer: () async => const LyricsResult.notFound(),
+        answer: (_) async => LyricsResult.none,
         store: store,
       );
-      expect(second.read(lyricsStyleProvider).mode, LyricsMode.replace);
-    });
+      expect(second.read(lyricsPrefsProvider).mode, LyricsMode.replace);
+      expect(second.read(lyricsPrefsProvider).keep, LyricsKeep.week);
 
-    test('незнакомое значение в файле заменяется умолчанием', () {
-      final store = JsonStore.memory({
-        'lyricsStyle': {'mode': 'nonsense', 'fill': 'word', 'fx': 'none'},
-      });
-      final c = _container(
-        answer: () async => const LyricsResult.notFound(),
-        store: store,
+      final odd = _container(
+        answer: (_) async => LyricsResult.none,
+        store: JsonStore.memory({
+          'lyrics': {'mode': 'nonsense', 'keep': '2y'},
+        }),
       );
-      expect(c.read(lyricsStyleProvider).mode, LyricsMode.overlay);
-    });
-  });
-
-  group('LyricsLayout', () {
-    test('поверх обложки — по центру, вместо обложки — по левому краю', () {
-      expect(LyricsLayout.overlay.align, TextAlign.center);
-      expect(LyricsLayout.replace.align, TextAlign.left);
-    });
-
-    test('на всю ширину экрана кегль крупнее, чем в квадрате обложки', () {
-      expect(
-        LyricsLayout.replace.fontSize,
-        greaterThan(LyricsLayout.overlay.fontSize),
-      );
-      expect(
-        LyricsLayout.replace.activeFontSize,
-        greaterThan(LyricsLayout.replace.fontSize),
-      );
+      expect(odd.read(lyricsPrefsProvider).mode, LyricsMode.overlay);
+      expect(odd.read(lyricsPrefsProvider).keep, LyricsKeep.never);
     });
   });
 
   group('LyricsView', () {
-    /// Строки рисует художник, а не `Text`, — искать их можно только в дереве
-    /// семантики (её `_Line` навешивает как раз ради этого).
-    Future<ProviderContainer> pump(
+    Future<void> pump(
       WidgetTester tester, {
       required String synced,
       required Duration position,
     }) async {
-      final c = ProviderContainer(
-        overrides: [
-          jsonStoreProvider.overrideWithValue(JsonStore.memory()),
-          dbProvider.overrideWithValue(BloomDb.memory()),
-          lyricsFetcherProvider.overrideWithValue(
-            ({required artist, required title, durationSec}) async =>
-                LyricsResult(found: true, synced: synced),
-          ),
-          playheadProvider.overrideWith(
-            (ref) => Stream.value((
-              position: position,
-              total: const Duration(minutes: 3),
-            )),
-          ),
-          playingProvider.overrideWith((ref) => Stream.value(false)),
-        ],
+      final c = _container(
+        answer: (_) async => LyricsResult(synced: synced),
+        position: position,
       );
-      addTearDown(c.dispose);
-      await c.read(lyricsProvider.notifier).ensureFor(_track);
+      await tester.runAsync(() => _settle(c));
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: c,
@@ -387,22 +420,10 @@ void main() {
         ),
       );
       await tester.pump();
-      return c;
+      await tester.pump(const Duration(seconds: 1));
     }
 
-    testWidgets('строки видны в дереве семантики', (tester) async {
-      final handle = tester.ensureSemantics();
-      await pump(
-        tester,
-        synced: '[00:10.00]line one\n[00:20.00]line two',
-        position: const Duration(seconds: 12),
-      );
-      expect(find.bySemanticsLabel('line one'), findsOneWidget);
-      expect(find.bySemanticsLabel('line two'), findsOneWidget);
-      handle.dispose();
-    });
-
-    testWidgets('активна строка, чьё время уже наступило', (tester) async {
+    testWidgets('the sung line is the one whose time has come', (tester) async {
       final handle = tester.ensureSemantics();
       await pump(
         tester,
@@ -420,7 +441,7 @@ void main() {
       handle.dispose();
     });
 
-    testWidgets('до первой строки не активна ни одна', (tester) async {
+    testWidgets('none is sung before the first line', (tester) async {
       final handle = tester.ensureSemantics();
       await pump(
         tester,

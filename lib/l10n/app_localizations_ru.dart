@@ -2285,14 +2285,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get stManage => 'Очистка данных';
 
   @override
-  String stFiles(int count) {
+  String stItems(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count файлов',
-      many: '$count файлов',
-      few: '$count файла',
-      one: '$count файл',
+      other: '$count элементов',
+      many: '$count элементов',
+      few: '$count элемента',
+      one: '$count элемент',
     );
     return '$_temp0';
   }
@@ -2328,6 +2328,32 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get stLyricsCleared => 'Кеш текстов очищен';
+
+  @override
+  String get stLyricsKeep => 'Хранить тексты';
+
+  @override
+  String stStaleRemoved(int count) {
+    return 'Удалено устаревших: $count';
+  }
+
+  @override
+  String get stKeepNever => 'Никогда';
+
+  @override
+  String get stKeepRestart => 'До перезапуска';
+
+  @override
+  String get stKeepDay => '24 часа';
+
+  @override
+  String get stKeep3Days => '3 дня';
+
+  @override
+  String get stKeepWeek => '1 неделя';
+
+  @override
+  String get stKeepMonth => '1 месяц';
 
   @override
   String get stCustomCleared => 'Библиотека кастомизации очищена';

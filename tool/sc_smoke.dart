@@ -151,17 +151,13 @@ Future<void> main() async {
     check(album.tracks.isNotEmpty, 'альбом без треков');
   }
 
-  // Ссылка на аккаунт — это профиль, а не карточка артиста: так её понимает
-  // поиск, и через неё же переносят к себе чужие плейлисты и лайки.
+  // An account link opens the account's page, as on the PC.
   final handle = artistPage?.artist.permalink ?? artistEntity.permalink;
   if (handle != null) {
     final hit = await registry.resolveUrlAny(handle);
-    check(hit?.resolved is ResolvedProfile, 'ссылка аккаунта не дала профиль');
-    if (hit?.resolved case ResolvedProfile(:final profile)) {
-      print(
-        'resolve профиля ${profile.artist.name}: '
-        '${profile.playlists.length} плейлистов, ${profile.likes.length} лайков',
-      );
+    check(hit?.resolved is ResolvedArtist, 'ссылка аккаунта не дала артиста');
+    if (hit?.resolved case ResolvedArtist(:final artist)) {
+      print('resolve аккаунта ${artist.name}');
     }
   }
 

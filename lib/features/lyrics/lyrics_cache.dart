@@ -1,139 +1,104 @@
-/// Кеш текстов: память + диск — порт `CACHE`/`try_read_disk_cache` из
-/// `lyrics_service.rs`.
-///
-/// Зачем два уровня: за одну сессию трек переслушивают по кругу (память), а
-/// между запусками текст не меняется (диск). Файлами, а не строкой в
-/// `bloom.json`: тексты весят килобайтами, и класть их в файл библиотеки —
-/// значит переписывать его целиком на каждый найденный текст.
-///
-/// Ненайденное кешируется ТОЛЬКО в памяти и ненадолго ([notFoundTtl]): сегодня
-/// текста в LRCLIB нет, а завтра его кто-нибудь зальёт.
+/// Kept lyrics: the `lyrics` table of the database, as on the PC. Written only
+/// while "keep lyrics" is on, read always; 30 days at most whatever the
+/// policy. Nothing found is remembered in memory for 5 minutes: someone may
+/// upload them tomorrow.
 library;
 
-import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
-
-import 'package:crypto/crypto.dart';
-
-import '../../core/store/app_dirs.dart';
+import '../../core/db/db.dart';
 import 'lyrics_api.dart';
 
-/// Сколько живёт запись «текста нет» в памяти.
-const Duration notFoundTtl = Duration(minutes: 5);
+const int _missedMs = 5 * 60 * 1000;
+const int _keptMs = 30 * 24 * 3600 * 1000;
 
-/// Сколько живёт найденный текст на диске.
-const Duration diskTtl = Duration(days: 30);
+/// How long kept lyrics live: the PC's `lyricsKeep`.
+enum LyricsKeep {
+  never('never', _keptMs),
+  restart('restart', _keptMs),
+  day('24h', 24 * 3600 * 1000),
+  days3('3d', 3 * 24 * 3600 * 1000),
+  week('1w', 7 * 24 * 3600 * 1000),
+  month('1m', _keptMs);
+
+  const LyricsKeep(this.id, this.ms);
+
+  final String id;
+  final int ms;
+
+  static LyricsKeep of(Object? id) =>
+      values.firstWhere((k) => k.id == id, orElse: () => never);
+}
 
 class LyricsCache {
-  LyricsCache({this.dir});
+  LyricsCache(this._db);
 
-  /// Каталог кеша. `null` — только память (тесты, первый запуск до готовности
-  /// файловой системы).
-  final Directory? dir;
-
-  final Map<String, ({LyricsResult result, DateTime at})> _mem = {};
+  final BloomDb _db;
+  final Map<String, int> _missed = {};
 
   static String keyOf(String artist, String title) =>
       '${artist.toLowerCase()}::${title.toLowerCase()}';
 
-  /// Имя файла — первые 16 hex-символов sha256 от ключа, как на ПК: артист и
-  /// название бывают с любыми символами, именем файла их не сделать.
-  static String fileNameOf(String artist, String title) =>
-      '${sha256.convert(utf8.encode(keyOf(artist, title))).toString().substring(0, 16)}.json';
-
-  /// Готовый ответ или `null` — надо идти в сеть.
-  Future<LyricsResult?> read(String artist, String title) async {
-    final key = keyOf(artist, title);
-    final hit = _mem[key];
-    if (hit != null) {
-      if (hit.result.found || DateTime.now().difference(hit.at) < notFoundTtl) {
-        return hit.result;
-      }
-      _mem.remove(key);
+  /// Known lyrics, [LyricsResult.none] for ones missed just now, `null` to
+  /// ask the network.
+  LyricsResult? read(String key) {
+    final missed = _missed[key];
+    if (missed != null && BloomDb.now() - missed < _missedMs) {
+      return LyricsResult.none;
     }
-
-    final file = _fileOf(artist, title);
-    if (file == null || !file.existsSync()) return null;
-    try {
-      final raw = jsonDecode(await file.readAsString());
-      if (raw is! Map) return null;
-      final at = DateTime.tryParse(raw['cachedAt'] as String? ?? '');
-      if (at == null || DateTime.now().difference(at) > diskTtl) return null;
-      final result = LyricsResult.fromJson(raw);
-      if (result == null) return null;
-      _mem[key] = (result: result, at: DateTime.now());
-      return result;
-    } catch (_) {
+    final row = _db.select(
+      'SELECT synced, plain, source, at FROM lyrics WHERE key = ?',
+      [key],
+    );
+    if (row.isEmpty || BloomDb.now() - (row.first['at'] as int) > _keptMs) {
       return null;
     }
+    final found = LyricsResult(
+      synced: row.first['synced'] as String,
+      plain: row.first['plain'] as String,
+      source: row.first['source'] as String,
+    );
+    return found.ok ? found : null;
   }
 
-  /// Запомнить ответ. Ненайденное на диск не пишем.
-  Future<void> write(String artist, String title, LyricsResult result) async {
-    _mem[keyOf(artist, title)] = (result: result, at: DateTime.now());
-    if (!result.found) return;
-    final file = _fileOf(artist, title);
-    if (file == null) return;
-    try {
-      await file.parent.create(recursive: true);
-      await file.writeAsString(
-        jsonEncode({
-          ...result.toJson(),
-          'cachedAt': DateTime.now().toUtc().toIso8601String(),
-        }),
-      );
-    } catch (_) {
-      // Нет места/прав — текст остаётся в памяти на эту сессию.
+  void remember(String key, LyricsResult found, {required bool keep}) {
+    if (!found.ok) {
+      _missed[key] = BloomDb.now();
+      return;
     }
+    _missed.remove(key);
+    if (!keep) return;
+    _db.exec(
+      'INSERT INTO lyrics (key, synced, plain, source, at) VALUES (?, ?, ?, ?, ?) '
+      'ON CONFLICT(key) DO UPDATE SET synced = excluded.synced, plain = excluded.plain, '
+      'source = excluded.source, at = excluded.at',
+      [key, found.synced, found.plain, found.source, BloomDb.now()],
+    );
   }
 
-  /// Сколько текстов и байт лежит на диске — для раздела «Хранилище».
-  ///
-  /// Память не считаем: в разделе речь про место на телефоне, а её содержимое
-  /// исчезнет само с закрытием приложения.
-  Future<({int count, int bytes})> stats() async {
-    final d = dir;
-    if (d == null || !d.existsSync()) return (count: 0, bytes: 0);
-    var count = 0;
-    var bytes = 0;
-    for (final e in d.listSync()) {
-      if (e is! File || !e.path.endsWith('.json')) continue;
-      count++;
-      try {
-        bytes += await e.length();
-      } catch (_) {
-        // Файл исчез между обходом и чтением — просто не считаем его.
-      }
-    }
-    return (count: count, bytes: bytes);
+  /// At launch: "until restart" empties the table, a time limit trims it.
+  void start(LyricsKeep keep) {
+    keep == LyricsKeep.restart ? clear() : purge(keep);
   }
 
-  /// Стереть кеш целиком. Возвращает число удалённых файлов.
-  Future<int> clear() async {
-    _mem.clear();
-    final d = dir;
-    if (d == null || !d.existsSync()) return 0;
-    var n = 0;
-    for (final e in d.listSync()) {
-      if (e is File && e.path.endsWith('.json')) {
-        try {
-          e.deleteSync();
-          n++;
-        } catch (_) {
-          // Занят другим процессом — не беда, срок жизни его всё равно добьёт.
-        }
-      }
-    }
-    return n;
+  ({int count, int bytes}) stats() {
+    final r = _db.select(
+      'SELECT count(*) AS n, coalesce(sum(length(CAST(synced AS BLOB)) + '
+      'length(CAST(plain AS BLOB))), 0) AS b FROM lyrics',
+    );
+    return r.isEmpty
+        ? (count: 0, bytes: 0)
+        : (count: r.first['n'] as int, bytes: r.first['b'] as int);
   }
 
-  File? _fileOf(String artist, String title) {
-    final d = dir;
-    return d == null ? null : File('${d.path}/${fileNameOf(artist, title)}');
+  /// Returns how many were dropped.
+  int clear() {
+    _missed.clear();
+    _db.exec('DELETE FROM lyrics');
+    return _db.changes;
+  }
+
+  /// Drops the ones older than [keep] allows; returns how many.
+  int purge(LyricsKeep keep) {
+    _db.exec('DELETE FROM lyrics WHERE at < ?', [BloomDb.now() - keep.ms]);
+    return _db.changes;
   }
 }
-
-/// Кеш поверх служебного каталога приложения.
-Future<LyricsCache> openLyricsCache() async =>
-    LyricsCache(dir: Directory('${(await appPrivateDir()).path}/lyrics'));

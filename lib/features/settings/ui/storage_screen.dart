@@ -17,6 +17,8 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/settings_store.dart';
+import '../../../features/lyrics/lyrics_store.dart';
+import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
@@ -110,7 +112,7 @@ class _UsageCard extends StatelessWidget {
               stats == null
                   ? l.stCounting
                   : [
-                      l.stFiles(stats!.count),
+                      l.stItems(stats!.count),
                       // Доля есть только там, где нативная сторона сказала
                       // объём памяти телефона.
                       if (fraction != null && stats!.deviceTotal != null)
@@ -276,21 +278,26 @@ Future<void> _openCacheSheet(
 ) async {
   final l = context.l;
   final messenger = ScaffoldMessenger.of(context);
-  final stats = ref.read(storageStatsProvider).valueOrNull;
-  final stat = stats?.of(kind);
 
   final yes = await showBloomSheetChild<bool>(
     context: context,
-    child: _ClearBody(
-      icon: _icon(kind),
-      title: _title(l, kind),
-      subtitle: stat == null ? l.stCounting : l.stFiles(stat.count),
-      body: _clearBody(l, kind),
-      bytes: stat?.bytes ?? 0,
-      // Доля этой категории в занятом — кольцо показывает, какой кусок круга
-      // со страницы уйдёт.
-      fraction: _share(stat?.bytes ?? 0, stats?.bytes ?? 0),
-      enabled: stat != null && !stat.isEmpty,
+    // Live numbers: a new time limit for the lyrics drops some at once.
+    child: Consumer(
+      builder: (context, ref, _) {
+        final stats = ref.watch(storageStatsProvider).valueOrNull;
+        final stat = stats?.of(kind);
+        return _ClearBody(
+          icon: _icon(kind),
+          title: _title(l, kind),
+          subtitle: stat == null ? l.stCounting : l.stItems(stat.count),
+          body: _clearBody(l, kind),
+          bytes: stat?.bytes ?? 0,
+          // The ring shows this kind's share of what is used.
+          fraction: _share(stat?.bytes ?? 0, stats?.bytes ?? 0),
+          enabled: stat != null && !stat.isEmpty,
+          extra: kind == CacheKind.lyrics ? const _LyricsKeeping() : null,
+        );
+      },
     ),
   );
   if (yes != true) return;
@@ -312,7 +319,7 @@ Future<void> _openClearAllSheet(
     child: _ClearBody(
       icon: Bi.trashBinTrash,
       title: l.stClearAll,
-      subtitle: stats == null ? l.stCounting : l.stFiles(stats.count),
+      subtitle: stats == null ? l.stCounting : l.stItems(stats.count),
       body: l.stClearAllBody,
       bytes: stats?.bytes ?? 0,
       fraction: 1,
@@ -447,7 +454,11 @@ class _ClearBody extends StatelessWidget {
     required this.fraction,
     required this.enabled,
     this.danger = false,
+    this.extra,
   });
+
+  /// Settings of this kind, above the button.
+  final Widget? extra;
 
   final BloomGlyph icon;
   final String title;
@@ -499,6 +510,7 @@ class _ClearBody extends StatelessWidget {
             textAlign: TextAlign.center,
             style: theme.bodySmall?.copyWith(color: t.text2),
           ),
+          if (extra case final extra?) ...[const SizedBox(height: 18), extra],
           const SizedBox(height: 20),
           DangerSheetButton(label: l.statsClear, enabled: enabled),
         ],
@@ -506,6 +518,81 @@ class _ClearBody extends StatelessWidget {
     );
   }
 }
+
+/// Keeping lyrics on the phone and for how long — the PC's switch and
+/// dropdown on its lyrics row. Off, the periods stay in view, dimmed.
+class _LyricsKeeping extends ConsumerWidget {
+  const _LyricsKeeping();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l;
+    final theme = Theme.of(context).textTheme;
+    final prefs = ref.watch(lyricsPrefsProvider);
+    final ctrl = ref.read(lyricsPrefsProvider.notifier);
+
+    void pick(LyricsKeep keep) {
+      final gone = ctrl.setKeep(keep);
+      ref.invalidate(storageStatsProvider);
+      if (gone > 0) {
+        ScaffoldMessenger.of(context).toast(l.stStaleRemoved(gone));
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(child: Text(l.stLyricsKeep, style: theme.titleMedium)),
+            BloomSwitch(value: prefs.cache, onChanged: ctrl.setCache),
+          ],
+        ),
+        const SizedBox(height: 12),
+        IgnorePointer(
+          ignoring: !prefs.cache,
+          child: AnimatedOpacity(
+            opacity: prefs.cache ? 1 : 0.4,
+            duration: const Duration(milliseconds: 200),
+            child: GridView(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                mainAxisExtent: 48,
+              ),
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: EdgeInsets.zero,
+              children: [
+                for (final keep in LyricsKeep.values)
+                  OptionTile(
+                    active: prefs.keep == keep,
+                    onTap: () => pick(keep),
+                    builder: (ink) => Text(
+                      _keepLabel(l, keep),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.titleSmall?.copyWith(color: ink),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+String _keepLabel(AppLocalizations l, LyricsKeep keep) => switch (keep) {
+  LyricsKeep.never => l.stKeepNever,
+  LyricsKeep.restart => l.stKeepRestart,
+  LyricsKeep.day => l.stKeepDay,
+  LyricsKeep.days3 => l.stKeep3Days,
+  LyricsKeep.week => l.stKeepWeek,
+  LyricsKeep.month => l.stKeepMonth,
+};
 
 /// Кольцо-индикатор: дорожка плюс дуга занятого. Общее у карточки страницы и
 /// шторок — размер и толщина задаются снаружи.
@@ -612,8 +699,8 @@ String _cleared(AppLocalizations l, CacheKind kind, int count) =>
 
 /// «N файлов · размер»; у пустого кеша размер не пишем — там всегда «0 Б».
 String _meta(AppLocalizations l, CacheStat stat) => stat.isEmpty
-    ? l.stFiles(0)
-    : '${l.stFiles(stat.count)} · ${formatSize(l, stat.bytes)}';
+    ? l.stItems(0)
+    : '${l.stItems(stat.count)} · ${formatSize(l, stat.bytes)}';
 
 BloomGlyph _importIcon(LocalImportMode mode) =>
     mode == LocalImportMode.inPlace ? Bi.folder : Bi.downloadMinimalistic;

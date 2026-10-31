@@ -39,7 +39,6 @@ import '../../features/library/lib_order_store.dart';
 import '../../features/library/local_tracks.dart';
 import '../../features/library/pl_auto_store.dart';
 import '../../features/lyrics/lyrics_store.dart';
-import '../../features/lyrics/lyrics_style_store.dart';
 import '../../features/offline/offline_store.dart';
 import '../../features/pc/pc_store.dart';
 import '../../features/player/mini_style_store.dart';
@@ -80,7 +79,7 @@ const List<String> kSettingsKeys = [
   'playerBg', // фон полноэкранного плеера — как `bloom_bg_prefs` на ПК
   'playerBgCoverFx', // и что делать с обложкой, когда она стоит этим фоном
   'trackAnim',
-  'lyricsStyle',
+  'lyrics', // where the lyrics go, keeping them and for how long
   'swipes',
   'transparency',
   'speed',
@@ -110,7 +109,7 @@ Future<void> resetSettings(WidgetRef ref) async {
   ref.invalidate(playerBgProvider);
   ref.invalidate(coverBgFxProvider);
   ref.invalidate(trackAnimProvider);
-  ref.invalidate(lyricsStyleProvider);
+  ref.invalidate(lyricsPrefsProvider);
   ref.invalidate(swipeProvider);
   ref.invalidate(transparencyProvider);
   ref.invalidate(speedProvider);
@@ -147,7 +146,7 @@ Future<void> hardReset(WidgetRef ref) async {
   // уже не обойти — сам индекс мы только что стёрли.
   // `fonts` — свои шрифты: на ПК полный сброс тоже сносит `bloom_fonts`, а
   // сброс настроек их не трогает.
-  await _wipeDirs(['offline', 'lyrics', 'covers', 'tracks', 'fonts']);
+  await _wipeDirs(['offline', 'covers', 'tracks', 'fonts']);
   ref.invalidate(userFontsProvider);
 
   ref.invalidate(playbackProvider);
@@ -178,8 +177,9 @@ Future<void> hardReset(WidgetRef ref) async {
   ref.invalidate(waveStoreProvider);
   ref.invalidate(lastfmProvider);
   ref.invalidate(ymAuthProvider);
+  // The kept lyrics went with the database; the missed ones live in memory.
+  ref.invalidate(lyricsCacheProvider);
   ref.invalidate(lyricsProvider);
-  await ref.read(lyricsCacheProvider).clear();
   // Тумблеры и отметки просмотра «Итогов» лежат в `bloom.json` под ключом
   // `wrapped`: сам ключ уже стёрт, гасим стор, чтобы он не висел в памяти до
   // перезапуска.

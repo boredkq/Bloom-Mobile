@@ -33,7 +33,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../features/customization/custom_store.dart';
-import '../../../features/lyrics/lyrics_style_store.dart';
+import '../../../features/lyrics/lyrics_store.dart';
 import '../../../features/player/play_button_store.dart';
 import '../../../features/player/player_bg_store.dart';
 import '../../../features/player/player_style_store.dart';
@@ -59,7 +59,7 @@ class PlayerSettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final anim = ref.watch(trackAnimProvider);
-    final lyrics = ref.watch(lyricsStyleProvider);
+    final lyricsMode = ref.watch(lyricsPrefsProvider.select((p) => p.mode));
     final style = ref.watch(playerStyleProvider);
     final playShape = ref.watch(playButtonShapeProvider);
     final align = ref.watch(titleAlignProvider);
@@ -185,7 +185,7 @@ class PlayerSettingsScreen extends ConsumerWidget {
           rows: [
             SettingsValueRow(
               title: l.pvLyricsRow,
-              value: _modeLabel(l, lyrics.mode),
+              value: _modeLabel(l, lyricsMode),
               glyph: const BloomIcon(Bi.magicStick),
               onTap: () => _openLyrics(context),
             ),
@@ -1006,8 +1006,8 @@ Future<void> _openLyrics(BuildContext context) {
     context: context,
     child: Consumer(
       builder: (context, ref, _) {
-        final style = ref.watch(lyricsStyleProvider);
-        final ctrl = ref.read(lyricsStyleProvider.notifier);
+        final current = ref.watch(lyricsPrefsProvider.select((p) => p.mode));
+        final ctrl = ref.read(lyricsPrefsProvider.notifier);
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1024,7 +1024,7 @@ Future<void> _openLyrics(BuildContext context) {
                     Expanded(
                       child: _OptionCard(
                         label: _modeLabel(l, mode),
-                        selected: style.mode == mode,
+                        selected: current == mode,
                         glyph: _ModeGlyph(mode: mode),
                         onTap: () => ctrl.setMode(mode),
                       ),

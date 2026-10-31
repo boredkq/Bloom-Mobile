@@ -29,7 +29,6 @@ import '../../../shared/ui/track_swipes.dart';
 import '../../../shared/util/format.dart';
 import '../../detail/artists_sheet.dart';
 import '../../lyrics/lyrics_store.dart';
-import '../../lyrics/lyrics_style_store.dart';
 import '../../lyrics/ui/lyrics_view.dart';
 import '../../pc/pc_remote.dart';
 import '../../pc/pc_store.dart';
@@ -95,15 +94,6 @@ class _FullPlayerBodyState extends ConsumerState<FullPlayerBody> {
     // тень обложки, анимации. Если процесс умирает молча где-то здесь, а не на
     // звуке, разобрать это можно только по тому, доехала строка или нет.
     logInfo('ui', 'открыт полноэкранный плеер', now: true);
-    // Текст просим сразу на открытии плеера, даже если панель закрыта: от
-    // того, нашёлся ли он, зависит САМА кнопка «Т» — на треке без текста её
-    // быть не должно (порт `useLyricsBtnVisible` с ПК).
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      ref
-          .read(lyricsProvider.notifier)
-          .ensureFor(ref.read(playbackProvider).track);
-    });
   }
 
   @override
@@ -112,30 +102,7 @@ class _FullPlayerBodyState extends ConsumerState<FullPlayerBody> {
     final state = ref.watch(playbackProvider);
     final track = state.track;
     final lyricsOpen = ref.watch(lyricsOpenProvider);
-    final lyricsMode = ref.watch(lyricsStyleProvider).mode;
-
-    // Опустевшую очередь ловит панель, а не мы: играть больше нечего — значит
-    // нет и карточки, из которой она растёт (см. `PlayerSheet`).
-    ref.listen(playbackProvider, (prev, next) {
-      // Текст тянем на КАЖДОЙ смене трека, как на ПК (`loadPlay` →
-      // `requestLyrics`), а не только при открытой панели: иначе неоткуда
-      // узнать, прятать ли кнопку «Т».
-      if (prev?.track?.id != next.track?.id) {
-        ref.read(lyricsProvider.notifier).ensureFor(next.track);
-      }
-    });
-
-    // У нового трека текста не нашлось — панель закрываем сами (порт
-    // `useLyricsBridge` с ПК). Ловим именно ПЕРЕХОД в «пусто»: на загрузке
-    // панель не трогаем, иначе она мигала бы на каждой смене трека.
-    ref.listen(lyricsProvider, (prev, next) {
-      if (next.status != LyricsStatus.empty ||
-          prev?.status == LyricsStatus.empty) {
-        return;
-      }
-      ref.read(lyricsOpenProvider.notifier).state = false;
-    });
-
+    final lyricsMode = ref.watch(lyricsPrefsProvider.select((p) => p.mode));
     final swipes = ref.watch(swipeProvider).of(SwipeZone.player);
 
     return Scaffold(
@@ -450,14 +417,12 @@ class _Cover extends ConsumerWidget {
                       child: ColoredBox(
                         color: context.bloom.blockColor.withValues(alpha: 0.96),
                         child: LyricsView(
-                          active: lyricsOpen,
-                          // В круге текст обязан отступить от краёв заметно
-                          // сильнее, иначе строки упираются в дугу (на ПК ровно
-                          // это и делает `.vinyl-mode #lyricsPanel` — 52 px на
-                          // диске 380, наши 14%).
+                          live: lyricsOpen,
+                          // A disc keeps the lines off its edge: the PC's 52
+                          // on a 380 disc.
                           padding: vinyl
                               ? EdgeInsets.all(side * 0.14)
-                              : const EdgeInsets.fromLTRB(14, 28, 14, 28),
+                              : const EdgeInsets.fromLTRB(14, 36, 14, 16),
                         ),
                       ),
                     ),

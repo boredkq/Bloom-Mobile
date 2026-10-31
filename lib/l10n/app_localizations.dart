@@ -3998,11 +3998,11 @@ abstract class AppLocalizations {
   /// **'Clear data'**
   String get stManage;
 
-  /// No description provided for @stFiles.
+  /// desktop: settings.storage.items
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, one{{count} file} other{{count} files}}'**
-  String stFiles(int count);
+  /// **'{count, plural, one{{count} item} other{{count} items}}'**
+  String stItems(int count);
 
   /// desktop: settings.storage.of
   ///
@@ -4051,6 +4051,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Lyrics cache cleared'**
   String get stLyricsCleared;
+
+  /// desktop: the switch on the settings.storage.lyrics row
+  ///
+  /// In en, this message translates to:
+  /// **'Keep lyrics'**
+  String get stLyricsKeep;
+
+  /// desktop: settings.storage.toast.staleRemoved
+  ///
+  /// In en, this message translates to:
+  /// **'Stale entries removed: {count}'**
+  String stStaleRemoved(int count);
+
+  /// desktop: settings.storage.ttl.never
+  ///
+  /// In en, this message translates to:
+  /// **'Never'**
+  String get stKeepNever;
+
+  /// desktop: settings.storage.ttl.restart
+  ///
+  /// In en, this message translates to:
+  /// **'Until restart'**
+  String get stKeepRestart;
+
+  /// desktop: settings.storage.ttl.24h
+  ///
+  /// In en, this message translates to:
+  /// **'24 hours'**
+  String get stKeepDay;
+
+  /// desktop: settings.storage.ttl.3d
+  ///
+  /// In en, this message translates to:
+  /// **'3 days'**
+  String get stKeep3Days;
+
+  /// desktop: settings.storage.ttl.1w
+  ///
+  /// In en, this message translates to:
+  /// **'1 week'**
+  String get stKeepWeek;
+
+  /// desktop: settings.storage.ttl.1m
+  ///
+  /// In en, this message translates to:
+  /// **'1 month'**
+  String get stKeepMonth;
 
   /// No description provided for @stCustomCleared.
   ///

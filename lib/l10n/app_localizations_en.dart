@@ -2255,12 +2255,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stManage => 'Clear data';
 
   @override
-  String stFiles(int count) {
+  String stItems(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count files',
-      one: '$count file',
+      other: '$count items',
+      one: '$count item',
     );
     return '$_temp0';
   }
@@ -2296,6 +2296,32 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get stLyricsCleared => 'Lyrics cache cleared';
+
+  @override
+  String get stLyricsKeep => 'Keep lyrics';
+
+  @override
+  String stStaleRemoved(int count) {
+    return 'Stale entries removed: $count';
+  }
+
+  @override
+  String get stKeepNever => 'Never';
+
+  @override
+  String get stKeepRestart => 'Until restart';
+
+  @override
+  String get stKeepDay => '24 hours';
+
+  @override
+  String get stKeep3Days => '3 days';
+
+  @override
+  String get stKeepWeek => '1 week';
+
+  @override
+  String get stKeepMonth => '1 month';
 
   @override
   String get stCustomCleared => 'Customization library cleared';

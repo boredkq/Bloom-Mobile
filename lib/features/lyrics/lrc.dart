@@ -1,15 +1,12 @@
-/// Разбор LRC — синхронизированного текста песни.
-///
-/// Порт десктопных `lib/parseLrc.ts` (`parseLrc`/`stripLrc`) и `strip_lrc_tags`
-/// из `lyrics_service.rs`. Формат один и тот же: строка вида `[mm:ss.xx]текст`,
-/// где дробная часть необязательна.
+/// Timed lyrics (LRC): `[mm:ss.xx]text` rows, read as the PC's `Lyrics::apply`
+/// reads them.
 library;
 
-/// Одна строка синхронного текста.
+/// One line of timed lyrics.
 class LrcLine {
   const LrcLine(this.time, this.text);
 
-  /// Секунды от начала трека.
+  /// Seconds from the start of the track.
   final double time;
   final String text;
 
@@ -24,49 +21,57 @@ class LrcLine {
   String toString() => 'LrcLine($time, $text)';
 }
 
-final RegExp _lrcRow = RegExp(r'\[(\d+):(\d+(?:\.\d+)?)\](.*)');
-final RegExp _lrcTag = RegExp(r'\[\d+:\d+(?:\.\d+)?\]');
+final RegExp _stamp = RegExp(r'^\s*\[(\d+):(\d+(?:[.:]\d+)?)\]');
+final RegExp _anyStamp = RegExp(r'\[\d+:\d+(?:[.:]\d+)?\]');
 
-/// `[mm:ss.xx]текст` построчно → строки по возрастанию времени.
-///
-/// Пустые строки (один тайм-код без текста) выбрасываем: на ПК так же — это
-/// разделители куплетов, и в списке они дали бы пустые «активные» строки, на
-/// которых подсветка просто исчезала бы.
+/// LRC rows → lines by time. "[01:02.30][02:10.00]text" stands at both
+/// times; a stamp with no text (a gap between verses) is dropped.
 List<LrcLine> parseLrc(String lrc) {
   final out = <LrcLine>[];
-  for (final row in lrc.split('\n')) {
-    final m = _lrcRow.firstMatch(row);
-    if (m == null) continue;
-    final text = m.group(3)!.trim();
+  for (final raw in lrc.split('\n')) {
+    var rest = raw;
+    final at = <double>[];
+    for (
+      var m = _stamp.firstMatch(rest);
+      m != null;
+      m = _stamp.firstMatch(rest)
+    ) {
+      final min = int.parse(m.group(1)!);
+      final sec = double.parse(m.group(2)!.replaceAll(':', '.'));
+      at.add(min * 60 + sec);
+      rest = rest.substring(m.end);
+    }
+    final text = rest.trim();
     if (text.isEmpty) continue;
-    final min = int.tryParse(m.group(1)!);
-    final sec = double.tryParse(m.group(2)!);
-    if (min == null || sec == null) continue;
-    out.add(LrcLine(min * 60 + sec, text));
-  }
-  out.sort((a, b) => a.time.compareTo(b.time));
-  return out;
-}
-
-/// Убрать тайм-коды — LRC превращается в обычный текст.
-String stripLrc(String s) => s.replaceAll(_lrcTag, '').trim();
-
-/// Есть ли в тексте тайм-коды (`RX_LRC_DETECT` с ПК).
-bool looksLikeLrc(String s) =>
-    RegExp(r'\[\d{1,2}:\d{2}\.\d{2,3}\]').hasMatch(s);
-
-/// Номер активной строки для позиции [sec]; −1 — играет вступление до первой.
-///
-/// Фора 0.25 с — как на ПК: тайм-коды LRC ставят по началу вокала, а строку
-/// хочется видеть чуть раньше, чем её запели.
-int activeLineAt(List<LrcLine> lines, double sec) {
-  var idx = -1;
-  for (var i = 0; i < lines.length; i++) {
-    if (lines[i].time <= sec + 0.25) {
-      idx = i;
-    } else {
-      break;
+    for (final t in at) {
+      out.add(LrcLine(t, text));
     }
   }
-  return idx;
+  // List.sort is not stable; the row order breaks ties, as stable_sort does.
+  final indexed = out.indexed.toList()
+    ..sort((a, b) {
+      final byTime = a.$2.time.compareTo(b.$2.time);
+      return byTime != 0 ? byTime : a.$1.compareTo(b.$1);
+    });
+  return [for (final (_, line) in indexed) line];
+}
+
+/// The text without its time stamps.
+String stripLrc(String s) => s.replaceAll(_anyStamp, '').trim();
+
+/// The line being sung at [sec]; −1 during the intro. A line lights up a
+/// quarter of a second early: stamps mark the voice, the eye wants it sooner.
+int activeLineAt(List<LrcLine> lines, double sec) {
+  final pos = sec + 0.25;
+  var lo = 0;
+  var hi = lines.length;
+  while (lo < hi) {
+    final mid = (lo + hi) >> 1;
+    if (lines[mid].time <= pos) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
+    }
+  }
+  return lo - 1;
 }

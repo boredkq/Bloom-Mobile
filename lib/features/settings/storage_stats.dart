@@ -75,14 +75,14 @@ class StorageStats {
 final storageStatsProvider = FutureProvider.autoDispose<StorageStats>((
   ref,
 ) async {
-  // Пересчёт сам собой после скачивания трека и добавления картинки — обе
-  // цифры живут в сторах. У текстов стора нет: там экран зовёт `invalidate`
-  // после очистки (см. [clearCache]).
+  // Downloads and pictures recount by themselves, their numbers live in
+  // stores; the lyrics are recounted by the screen after a clear or a new
+  // time limit.
   ref.watch(offlineProvider.select((s) => s.files.length));
   final media = ref.watch(mediaLibProvider);
 
   final offline = await ref.read(offlineProvider.notifier).stats();
-  final lyrics = await ref.read(lyricsCacheProvider).stats();
+  final lyrics = ref.read(lyricsCacheProvider).stats();
   final custom = await _mediaStats(media);
 
   return StorageStats(
@@ -111,7 +111,7 @@ final storageStatsProvider = FutureProvider.autoDispose<StorageStats>((
 Future<int> clearCache(WidgetRef ref, CacheKind kind) async {
   final deleted = switch (kind) {
     CacheKind.offline => await ref.read(offlineProvider.notifier).clearAll(),
-    CacheKind.lyrics => await ref.read(lyricsCacheProvider).clear(),
+    CacheKind.lyrics => ref.read(lyricsCacheProvider).clear(),
     // Картинку убираем каскадом: она может стоять фоном или обложкой, и
     // ссылка на удалённый файл оставила бы пустой контекст (десктопный
     // `mediaLibStore.clearAll` делает ровно это).

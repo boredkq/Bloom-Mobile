@@ -20,7 +20,6 @@ import 'core/store/days_store.dart';
 import 'features/customization/ui/app_background.dart';
 import 'features/library/local_tracks.dart';
 import 'features/library/pl_auto_store.dart';
-import 'features/lyrics/lyrics_cache.dart';
 import 'features/lyrics/lyrics_store.dart';
 import 'features/offline/offline_store.dart';
 import 'features/pc/pc_store.dart';
@@ -55,10 +54,6 @@ Future<void> main() async {
   await _step('обложки', initCoverStore);
   await _step('офлайн', initOfflineStore);
   await _step('свои треки', initLocalTracks);
-  // Кеш текстов песен — свой каталог с файлами, а не запись в `bloom.json`:
-  // текст весит килобайтами, и класть его в файл библиотеки значило бы
-  // переписывать её целиком на каждую найденную песню.
-  final lyricsCache = await _step('тексты', openLyricsCache);
 
   // Канал уведомлений заводится ДО первого кадра, поэтому `context.l` тут ещё
   // неоткуда взять — переводы грузим напрямую из делегата. Язык тот же, что
@@ -88,10 +83,13 @@ Future<void> main() async {
       jsonStoreProvider.overrideWithValue(store),
       dbProvider.overrideWithValue(db),
       audioHandlerProvider.overrideWithValue(handler),
-      lyricsCacheProvider.overrideWithValue(lyricsCache),
     ],
   );
   container.read(playbackProvider);
+  // Kept lyrics past their time go at launch, as `Lyrics::start` on the PC.
+  container
+      .read(lyricsCacheProvider)
+      .start(container.read(lyricsPrefsProvider).keep);
   // Токен Яндекса поднимаем сразу: пока стор не создан, площадка считается
   // выключенной и первый же поиск прошёл бы мимо неё.
   container.read(ymAuthProvider);

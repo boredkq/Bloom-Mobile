@@ -1,13 +1,9 @@
-/// Поиск текста песни в LRCLIB — порт `lyrics_service.rs` (c:\bloom\bloom),
-/// часть `fetch_lrclib` вместе с нормализацией запроса и скорингом попаданий.
+/// Lyrics from LRCLIB, as the PC's `Lyrics::fetch`: the exact match with the
+/// length, then with a cleaned title, then a search scored against the query;
+/// an "Artist - Title" upload title is tried as such last.
 ///
-/// Чего НЕ переносили: **локальный тег файла** — на ПК текст читается из ID3
-/// своей же библиотеки с диска. У нас локальных файлов нет: офлайн-копия
-/// скачана у площадки и тега с текстом не несёт.
-///
-/// Порядок попыток тот же, что на десктопе: точный запрос с длительностью →
-/// точный по «очищенному» названию → поиск строкой со скорингом → разбор
-/// названия вида «Артист - Трек» и повтор по нему.
+/// A file's own tags come first on the PC; my tag reading on the phone
+/// (MediaMetadataRetriever) has no lyrics, so I start at LRCLIB.
 library;
 
 import 'dart:async';
@@ -17,240 +13,178 @@ import 'package:http/http.dart' as http;
 
 import 'lrc.dart';
 
-/// Найденный текст. `synced` пуст — синхронизации нет, только plain.
+/// What was found. Both texts empty — nothing.
 class LyricsResult {
-  const LyricsResult({
-    required this.found,
-    this.plain = '',
-    this.synced = '',
-    this.source = 'none',
-  });
+  const LyricsResult({this.synced = '', this.plain = '', this.source = ''});
 
-  const LyricsResult.notFound() : this(found: false);
+  static const none = LyricsResult();
 
-  final bool found;
-  final String plain;
   final String synced;
+  final String plain;
 
-  /// Откуда взяли: `lrclib/exact`, `lrclib/exact-clean`, `lrclib/search`.
+  /// Where they came from: `lrclib`.
   final String source;
 
-  Map<String, Object?> toJson() => {
-    'plain': plain,
-    'synced': synced,
-    'source': source,
-  };
-
-  static LyricsResult? fromJson(Object? raw) {
-    if (raw is! Map) return null;
-    final plain = raw['plain'] is String ? raw['plain'] as String : '';
-    final synced = raw['synced'] is String ? raw['synced'] as String : '';
-    if (plain.trim().isEmpty && synced.trim().isEmpty) return null;
-    return LyricsResult(
-      found: true,
-      plain: plain,
-      synced: synced,
-      source: raw['source'] is String ? raw['source'] as String : '',
-    );
-  }
+  bool get ok => synced.trim().isNotEmpty || plain.trim().isNotEmpty;
 }
 
-const String _base = 'https://lrclib.net/api';
-const String _ua = 'Bloom/1.0 (github.com/bloom)';
+const String _base = 'https://lrclib.net/api/';
+// LRCLIB asks clients to say who they are.
+const String _ua = 'Bloom/1.0 (https://github.com/use-bloom/desktop)';
 const Duration _timeout = Duration(seconds: 15);
 
-/// Минимальный балл попадания в выдаче поиска — ниже него считаем, что нашли
-/// не ту песню. Число с ПК.
+/// A search hit below this is some other song.
 const int kMinSearchScore = 20;
 
-/// Запросить текст для «артист — название».
-///
-/// [durationSec] — длительность трека; с ней LRCLIB отдаёт точное совпадение
-/// (у одной песни бывает десяток версий разной длины).
 Future<LyricsResult> fetchLyrics({
   required String artist,
   required String title,
   int? durationSec,
   http.Client? client,
 }) async {
-  if (title.trim().isEmpty) return const LyricsResult.notFound();
-  final http = client ?? _sharedClient;
+  if (title.trim().isEmpty) return LyricsResult.none;
+  final c = client ?? _shared;
+  final d = durationSec ?? 0;
 
-  final direct = await _lrclib(artist, title, durationSec, http);
-  if (direct.found) return direct;
-
-  // Название вида «Артист - Трек» (обычное дело у SoundCloud и YouTube):
-  // пробуем разобрать его на части и спросить ещё раз.
-  final idx = title.indexOf(' - ');
-  if (idx > 0) {
-    final altArtist = title.substring(0, idx).trim();
-    final altTitle = title.substring(idx + 3).trim();
-    if (altTitle.isNotEmpty) {
-      final r = await _lrclib(altArtist, altTitle, durationSec, http);
-      if (r.found) return r;
-    }
-  }
-  return const LyricsResult.notFound();
+  final found = await _lrclib(c, artist, title, d);
+  if (found.ok) return found;
+  // Uploads are often titled "Artist - Title" under someone else's name.
+  final dash = title.indexOf(' - ');
+  if (dash < 0 || title.substring(dash + 3).trim().isEmpty) return found;
+  return _lrclib(
+    c,
+    title.substring(0, dash).trim(),
+    title.substring(dash + 3).trim(),
+    d,
+  );
 }
 
 Future<LyricsResult> _lrclib(
+  http.Client c,
   String artist,
   String title,
-  int? durationSec,
-  http.Client client,
+  int duration,
 ) async {
-  // 1. Точное совпадение с длительностью.
-  if (durationSec != null && durationSec > 0 && artist.isNotEmpty) {
-    final r = await _get(
-      client,
-      '$_base/get?artist_name=${Uri.encodeQueryComponent(artist)}'
-          '&track_name=${Uri.encodeQueryComponent(title)}'
-          '&duration=$durationSec',
-      'lrclib/exact',
-    );
-    if (r.found) return r;
+  if (duration > 0 && artist.isNotEmpty) {
+    final r = await _exact(c, artist, title, duration);
+    if (r.ok) return r;
   }
-
-  // 2. То же, но по очищенному от «(feat. …)», «(Official Video)» и прочего
-  //    мусора названию — иначе точный запрос почти всегда мимо.
   final cleanTitle = normalizeForSearch(title);
   final cleanArtist = normalizeForSearch(artist);
-  final changed =
-      cleanTitle.toLowerCase() != title.toLowerCase() ||
-      cleanArtist.toLowerCase() != artist.toLowerCase();
-  if (durationSec != null &&
-      durationSec > 0 &&
+  final cleaner =
       cleanArtist.isNotEmpty &&
-      changed) {
-    final r = await _get(
-      client,
-      '$_base/get?artist_name=${Uri.encodeQueryComponent(cleanArtist)}'
-          '&track_name=${Uri.encodeQueryComponent(cleanTitle)}'
-          '&duration=$durationSec',
-      'lrclib/exact-clean',
-    );
-    if (r.found) return r;
+      !(_same(cleanTitle, title) && _same(cleanArtist, artist));
+  if (cleaner && duration > 0) {
+    final r = await _exact(c, cleanArtist, cleanTitle, duration);
+    if (r.ok) return r;
   }
+  return _search(c, artist, title);
+}
 
-  // 3. Поиск строкой: берём лучшее попадание по скорингу.
-  final q = artist.isEmpty ? title : '$artist $title';
-  final body = await _json(
-    client,
-    '$_base/search?q=${Uri.encodeQueryComponent(q)}',
-  );
-  if (body is! List || body.isEmpty) return const LyricsResult.notFound();
+Future<LyricsResult> _exact(
+  http.Client c,
+  String artist,
+  String title,
+  int duration,
+) async {
+  final body = await _json(c, 'get', {
+    'artist_name': artist,
+    'track_name': title,
+    'duration': '$duration',
+  });
+  return body is Map ? _found(body.cast()) : LyricsResult.none;
+}
 
-  Map<String, Object?>? best;
-  var bestScore = -1;
+Future<LyricsResult> _search(http.Client c, String artist, String title) async {
+  final body = await _json(c, 'search', {
+    'q': artist.isEmpty ? title : '$artist $title',
+  });
+  if (body is! List) return LyricsResult.none;
+  var best = -1;
   var bestSynced = false;
+  Map<String, Object?>? hit;
   for (final raw in body) {
     if (raw is! Map) continue;
-    final item = raw.cast<String, Object?>();
-    final hasSynced = (item['syncedLyrics'] as String? ?? '').isNotEmpty;
-    final score = scoreHit(
-      hitTitle: item['trackName'] as String? ?? '',
-      hitArtist: item['artistName'] as String? ?? '',
+    final o = raw.cast<String, Object?>();
+    final synced = (o['syncedLyrics'] as String? ?? '').isNotEmpty;
+    final s = scoreHit(
+      hitTitle: o['trackName'] as String? ?? '',
+      hitArtist: o['artistName'] as String? ?? '',
       queryTitle: title,
       queryArtist: artist,
     );
-    // Синхронный текст ценнее чуть более точного совпадения названия: ради
-    // подсветки строк мы всё это и затевали. Порог форы — с ПК.
-    if (score > bestScore ||
-        (score >= bestScore - 10 && hasSynced && !bestSynced)) {
-      best = item;
-      bestScore = score;
-      bestSynced = hasSynced;
+    // Timed lyrics win over a slightly better plain match.
+    if (s > best || (s >= best - 10 && synced && !bestSynced)) {
+      best = s;
+      bestSynced = synced;
+      hit = o;
     }
   }
-  if (best == null || bestScore < kMinSearchScore) {
-    return const LyricsResult.notFound();
-  }
-  return _parseItem(best, 'lrclib/search');
+  return hit != null && best >= kMinSearchScore
+      ? _found(hit)
+      : LyricsResult.none;
 }
 
-Future<LyricsResult> _get(http.Client client, String url, String source) async {
-  final body = await _json(client, url);
-  if (body is! Map) return const LyricsResult.notFound();
-  return _parseItem(body.cast<String, Object?>(), source);
-}
-
-Future<Object?> _json(http.Client client, String url) async {
+Future<Object?> _json(http.Client c, String path, Map<String, String> q) async {
   try {
-    final res = await client
-        .get(Uri.parse(url), headers: const {'User-Agent': _ua})
+    final res = await c
+        .get(
+          Uri.parse(_base + path).replace(queryParameters: q),
+          headers: const {'User-Agent': _ua},
+        )
         .timeout(_timeout);
     if (res.statusCode != 200) return null;
     return jsonDecode(utf8.decode(res.bodyBytes));
   } catch (_) {
-    // Нет сети, таймаут, мусор вместо JSON — текста просто нет.
+    // No network, a timeout, not JSON: no lyrics this time.
     return null;
   }
 }
 
-LyricsResult _parseItem(Map<String, Object?> item, String source) {
-  final plain = item['plainLyrics'] as String? ?? '';
-  final synced = item['syncedLyrics'] as String? ?? '';
-  if (plain.trim().isEmpty && synced.trim().isEmpty) {
-    return const LyricsResult.notFound();
-  }
+LyricsResult _found(Map<String, Object?> o) {
+  final synced = o['syncedLyrics'] as String? ?? '';
+  final plain = o['plainLyrics'] as String? ?? '';
   return LyricsResult(
-    found: true,
-    plain: plain.isEmpty && synced.isNotEmpty ? stripLrc(synced) : plain,
     synced: synced,
-    source: source,
+    plain: plain.trim().isEmpty && synced.trim().isNotEmpty
+        ? stripLrc(synced)
+        : plain,
+    source: 'lrclib',
   );
 }
 
-final http.Client _sharedClient = http.Client();
+final http.Client _shared = http.Client();
 
-// ---------------- Нормализация и скоринг ----------------
+RegExp _rx(String pattern) => RegExp(pattern, caseSensitive: false);
 
-/// Скобочный мусор: «(feat. …)», «(Remix)», да и любые скобки вообще.
-final RegExp _noise = RegExp(
-  r'[\(\[](feat\.?|ft\.?|featuring)[^\)\]]*[\)\]]'
-  r'|[\(\[](remix|edit|version|deluxe|remaster|live|acoustic|bonus|original\s*mix)[^\)\]]*[\)\]]'
-  r'|[\(\[][^\)\]]*[\)\]]',
-  caseSensitive: false,
-);
-
-/// Мусор из названий с YouTube и SoundCloud: «Official Video», «prod. by …».
-final RegExp _titleJunk = RegExp(
+final RegExp _brackets = _rx(r'[\(\[][^\)\]]*[\)\]]');
+final RegExp _junk = _rx(
   r'\b(?:official\s+(?:music\s+)?(?:video|audio|clip|lyric(?:s\s+)?video))'
   r'|\b(?:lyric(?:s)?\s+video|audio|visuali[sz]er)'
-  r'|[\(\[]\s*prod\.?(?:\s+by)?\s+[^\)\]]*[\)\]]'
   r'|\s*\bprod\.?(?:\s+by)?\s+.+$'
-  r'|\b(?:type\s+beat)'
-  r'|[\(\[]\s*(?:HD|HQ|4K|lyrics?|audio|official)\s*[\)\]]',
-  caseSensitive: false,
+  r'|\b(?:type\s+beat)',
 );
-
-final RegExp _multiSpace = RegExp(r'\s{2,}');
-
-/// Разделители в строке артистов — по ним берётся первый, «главный».
-final RegExp _artistSep = RegExp(
+final RegExp _spaces = RegExp(r'\s{2,}');
+final RegExp _artistSep = _rx(
   r'\s*[,&/]\s*|\s+(?:feat\.?|ft\.?|featuring|and|x)\s+',
-  caseSensitive: false,
 );
 
-/// Очистка названия/артиста перед запросом (`normalize_for_search` с ПК).
-String normalizeForSearch(String input) {
-  if (input.trim().isEmpty) return '';
-  return input
-      .replaceAll(_noise, ' ')
-      .replaceAll(_titleJunk, ' ')
-      .replaceAll(_multiSpace, ' ')
+/// Brackets of any kind ("(feat. X)", "[Remix]") and the video junk of
+/// upload titles, gone.
+String normalizeForSearch(String s) {
+  if (s.trim().isEmpty) return '';
+  return s
+      .replaceAll(_brackets, ' ')
+      .replaceAll(_junk, ' ')
+      .replaceAll(_spaces, ' ')
       .trim();
 }
 
-/// Первый артист из строки («A, B & C» → «A»).
-String primaryArtist(String artist) {
-  if (artist.trim().isEmpty) return '';
-  return artist.split(_artistSep).first.trim();
-}
+/// The first artist of a line ("A, B & C" → "A").
+String primaryArtist(String artist) => artist.split(_artistSep).first.trim();
 
-/// Насколько попадание похоже на то, что искали: 0..100.
-///
-/// Название даёт до 60, артист — до 40; числа и ступени с ПК (`score_hit`).
+/// How well a search hit is the song asked for: the title up to 60, the
+/// artist up to 40.
 int scoreHit({
   required String hitTitle,
   required String hitArtist,
@@ -261,41 +195,39 @@ int scoreHit({
   final ha = hitArtist.trim();
   final qt = queryTitle.trim();
   final qa = queryArtist.trim();
-  var score = 0;
-
-  if (_eq(ht, qt)) {
-    score += 60;
+  var s = 0;
+  if (_same(ht, qt)) {
+    s += 60;
   } else if (_contains(ht, qt) || _contains(qt, ht)) {
-    score += 40;
+    s += 40;
   } else {
-    final nht = normalizeForSearch(ht);
-    final nqt = normalizeForSearch(qt);
-    if (_eq(nht, nqt)) {
-      score += 50;
-    } else if (_contains(nht, nqt) || _contains(nqt, nht)) {
-      score += 30;
+    final nh = normalizeForSearch(ht);
+    final nq = normalizeForSearch(qt);
+    if (_same(nh, nq)) {
+      s += 50;
+    } else if (_contains(nh, nq) || _contains(nq, nh)) {
+      s += 30;
     }
   }
-
   if (qa.isNotEmpty && ha.isNotEmpty) {
-    if (_eq(ha, qa)) {
-      score += 40;
+    if (_same(ha, qa)) {
+      s += 40;
     } else if (_contains(ha, qa) || _contains(qa, ha)) {
-      score += 30;
+      s += 30;
     } else {
-      final pha = primaryArtist(ha);
-      final pqa = primaryArtist(qa);
-      if (_eq(pha, pqa)) {
-        score += 35;
-      } else if (_contains(pha, pqa) || _contains(pqa, pha)) {
-        score += 20;
+      final ph = primaryArtist(ha);
+      final pq = primaryArtist(qa);
+      if (_same(ph, pq)) {
+        s += 35;
+      } else if (_contains(ph, pq) || _contains(pq, ph)) {
+        s += 20;
       }
     }
   }
-  return score;
+  return s;
 }
 
-bool _eq(String a, String b) => a.toLowerCase() == b.toLowerCase();
+bool _same(String a, String b) => a.toLowerCase() == b.toLowerCase();
 
 bool _contains(String hay, String needle) =>
     needle.isNotEmpty && hay.toLowerCase().contains(needle.toLowerCase());
