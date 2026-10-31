@@ -28,6 +28,7 @@ import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/marquee_text.dart';
 import '../../../shared/ui/pressable.dart';
 import '../../detail/detail_nav.dart';
+import '../../library/ui/list_hero.dart';
 import '../../profile/ui/history_sheet.dart';
 import '../play_source.dart';
 import 'player_sheet.dart';
@@ -279,20 +280,8 @@ class _SourceIcon extends ConsumerWidget {
       case null:
         return _tint(t, radius, t.ovlBg, t.muted, Bi.musicNoteBold);
       case LibSource(:final listId):
-        switch (listId) {
-          case 'all':
-            return _tint(t, radius, t.sysAllTint, t.sysAllIco, Bi.musicNote);
-          case 'fav':
-            return _tint(t, radius, t.sysFavTint, t.sysFavIco, Bi.heartBold);
-          case 'history':
-            return _tint(
-              t,
-              radius,
-              t.sysHistTint,
-              t.sysHistIco,
-              Bi.clockCircle,
-            );
-        }
+        final glyph = systemListGlyph(listId);
+        if (glyph != null) return _outline(t, radius, glyph);
         // Плейлист: своя обложка → коллаж из первых треков, как на его плитке.
         final lib = ref.watch(libraryProvider);
         final playlist = _playlist(ref, listId);
@@ -324,13 +313,7 @@ class _SourceIcon extends ConsumerWidget {
             t.text2,
             Bi.magnifier,
           ),
-          PlainSourceIcon.clock => _tint(
-            t,
-            radius,
-            t.sysHistTint,
-            t.sysHistIco,
-            Bi.clockCircle,
-          ),
+          PlainSourceIcon.clock => _outline(t, radius, Bi.clockCircle),
           PlainSourceIcon.chart => _tint(
             t,
             radius,
@@ -348,6 +331,17 @@ class _SourceIcon extends ConsumerWidget {
         };
     }
   }
+
+  /// The library's own lists and history: their icon on an outline.
+  Widget _outline(BloomTokens t, double radius, BloomGlyph icon) =>
+      SizedBox.square(
+        dimension: _iconSize,
+        child: OutlineArt(
+          icon: icon,
+          iconSize: (_iconSize * 0.5).roundToDouble(),
+          borderRadius: BorderRadius.circular(radius),
+        ),
+      );
 
   Widget _tint(
     BloomTokens t,

@@ -1005,7 +1005,7 @@ class _ResultsView extends ConsumerWidget {
     // Порядок секций — из референса: треки, артисты, плейлисты, альбомы.
     final sections = <Widget>[
       if (_shows(SearchFilter.tracks) && tracks.isNotEmpty) ...[
-        if (titled) SectionTitle(context.l.commonTracks),
+        if (titled) SectionTitle(context.l.commonTracks, side: 8),
         for (var i = 0; i < shownTracks; i++)
           // Очередь — весь список, а не превью: с четвёртой строки
           // проигрывание должно ехать дальше по выдаче.
@@ -1021,7 +1021,7 @@ class _ResultsView extends ConsumerWidget {
           ),
       ],
       if (_shows(SearchFilter.artists) && results.artists.isNotEmpty) ...[
-        if (titled) SectionTitle(context.l.commonArtists),
+        if (titled) SectionTitle(context.l.commonArtists, side: 8),
         EntityCarousel(
           height: 168,
           itemCount: results.artists.length,
@@ -1033,7 +1033,7 @@ class _ResultsView extends ConsumerWidget {
         ),
       ],
       if (_shows(SearchFilter.playlists) && results.playlists.isNotEmpty) ...[
-        if (titled) SectionTitle(context.l.commonPlaylists),
+        if (titled) SectionTitle(context.l.commonPlaylists, side: 8),
         EntityCarousel(
           height: 194,
           itemCount: results.playlists.length,
@@ -1044,7 +1044,7 @@ class _ResultsView extends ConsumerWidget {
         ),
       ],
       if (_shows(SearchFilter.albums) && results.albums.isNotEmpty) ...[
-        if (titled) SectionTitle(context.l.commonAlbums),
+        if (titled) SectionTitle(context.l.commonAlbums, side: 8),
         EntityCarousel(
           height: 194,
           itemCount: results.albums.length,

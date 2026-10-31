@@ -4,56 +4,13 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
-import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
-import '../../../shared/ui/pressable.dart';
 import '../../player/play_source.dart';
 import '../discover_store.dart';
 import 'chart_screen.dart';
 import 'releases_screen.dart';
-
-/// A home section title. With [onTap] it's a link to the whole of it, an arrow
-/// after the words.
-class HomeSectionHeader extends StatelessWidget {
-  const HomeSectionHeader(this.title, {super.key, this.onTap});
-
-  final String title;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final row = Row(
-      children: [
-        Flexible(
-          child: Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-        ),
-        if (onTap != null)
-          Padding(
-            padding: const EdgeInsets.only(left: 2, top: 2),
-            child: BloomIcon(
-              Bi.arrowRight,
-              size: 22,
-              color: context.bloom.text.withValues(alpha: 0.55),
-            ),
-          ),
-      ],
-    );
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 10),
-      child: onTap == null
-          ? row
-          : Pressable(onTap: onTap, scale: 0.98, child: row),
-    );
-  }
-}
 
 /// Places of the chart on home; the whole chart is on its page.
 const int _homeChartMax = 10;
@@ -86,7 +43,7 @@ class DiscoverSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        HomeSectionHeader(
+        SectionTitle(
           title,
           onTap: page == null
               ? null

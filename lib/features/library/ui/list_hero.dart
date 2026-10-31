@@ -1,8 +1,5 @@
-/// Фон hero-шапки списка библиотеки — общий у обычного экрана и режима правки.
-///
-/// У встроенных разделов всегда плоский тинт с цветной иконкой; у плейлистов —
-/// своя обложка → коллаж из первых треков (`CoverCollage`, он же на плитке
-/// библиотеки) → заглушка пустой обложки со знаком bloom.
+/// The pictures of the library's lists: a playlist's cover, the collage of its
+/// tracks or the empty cover; the built-in lists' icon on an outline.
 library;
 
 import 'package:flutter/material.dart';
@@ -14,6 +11,48 @@ import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_mark.dart';
 import '../../../shared/ui/cover_collage.dart';
 
+/// The icon of a built-in list ("all", "fav", "history"); null for a playlist.
+BloomGlyph? systemListGlyph(String id) => switch (id) {
+  'all' => Bi.musicNote,
+  'fav' => Bi.heartBold,
+  'history' => Bi.clockCircle,
+  _ => null,
+};
+
+/// A built-in list's picture: its icon in the accent on an outline.
+class OutlineArt extends StatelessWidget {
+  const OutlineArt({
+    super.key,
+    required this.icon,
+    required this.iconSize,
+    required this.borderRadius,
+    this.fill,
+  });
+
+  final BloomGlyph icon;
+  final double iconSize;
+  final BorderRadius borderRadius;
+
+  /// Under a header that content scrolls beneath, the page's color.
+  final Color? fill;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: fill,
+        borderRadius: borderRadius,
+        border: Border.all(color: t.ovlLine),
+      ),
+      child: Center(
+        child: BloomIcon(icon, size: iconSize, color: t.accent),
+      ),
+    );
+  }
+}
+
+/// A list page's header picture, also in the editor.
 class ListHeroBackground extends StatelessWidget {
   const ListHeroBackground({
     super.key,
@@ -22,60 +61,45 @@ class ListHeroBackground extends StatelessWidget {
     required this.tracks,
   });
 
-  /// `all` / `fav` либо id пользовательского плейлиста.
+  /// `all` / `fav` or a playlist's id.
   final String listId;
 
-  /// Своя обложка плейлиста; у встроенных разделов её нет.
+  /// A playlist's own cover; the built-in lists have none.
   final String? cover;
 
   final List<Track> tracks;
 
-  /// У `all` / `fav` своей обложки нет и коллаж не собираем — шапка всегда
-  /// остаётся фирменным тинтом раздела.
-  bool get _system => listId == 'all' || listId == 'fav';
-
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-
-    if (_system) return _tint(t);
+    final glyph = systemListGlyph(listId);
+    if (glyph != null) {
+      return OutlineArt(
+        icon: glyph,
+        iconSize: 64,
+        fill: t.bg,
+        borderRadius: BorderRadius.vertical(
+          bottom: Radius.circular(t.radius * 1.5),
+        ),
+      );
+    }
 
     final image = coverImage(cover);
     if (image != null) {
       return Image(
         image: image,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _tint(t),
+        errorBuilder: (_, _, _) => _empty(t),
       );
     }
-
     return CoverCollage(
       covers: tracks.map((track) => track.cover),
-      fallback: _tint(t),
+      fallback: _empty(t),
     );
   }
 
-  Widget _tint(BloomTokens t) {
-    // У плейлиста без обложки и без треков заглушка та же, что у пустой
-    // обложки везде (`Cover`, шапка карточки площадки), — приглушённый знак
-    // bloom: своего фирменного цвета, в отличие от встроенных разделов, у него
-    // нет, и нотка тут читалась бы как ещё один раздел.
-    if (!_system) {
-      return ColoredBox(
-        color: t.coverEmpty,
-        child: Center(child: BloomMark(size: 96, color: t.text, opacity: 0.16)),
-      );
-    }
-
-    final (Color tint, Color color, BloomGlyph icon) = switch (listId) {
-      'fav' => (t.sysFavTint, t.sysFavIco, Bi.heartBold),
-      _ => (t.sysAllTint, t.sysAllIco, Bi.musicNote),
-    };
-    return ColoredBox(
-      // Тинт раздела мешаем с поверхностью темы: как плёнка он показывал бы
-      // сквозь шапку картинку-фон, а шапка обязана быть своего цвета.
-      color: Color.alphaBlend(tint, t.blockColor),
-      child: Center(child: BloomIcon(icon, size: 64, color: color)),
-    );
-  }
+  Widget _empty(BloomTokens t) => ColoredBox(
+    color: t.coverEmpty,
+    child: Center(child: BloomMark(size: 96, color: t.text, opacity: 0.16)),
+  );
 }

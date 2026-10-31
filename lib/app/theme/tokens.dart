@@ -83,10 +83,7 @@ class BloomTokens extends ThemeExtension<BloomTokens> {
 
   // Системные разделы.
   final Color folderTint;
-  final Color sysFavTint;
   final Color sysFavIco;
-  final Color sysHistTint;
-  final Color sysHistIco;
   final Color sysAllTint;
   final Color sysAllIco;
 
@@ -127,10 +124,7 @@ class BloomTokens extends ThemeExtension<BloomTokens> {
     required this.danger,
     required this.dangerTint,
     required this.folderTint,
-    required this.sysFavTint,
     required this.sysFavIco,
-    required this.sysHistTint,
-    required this.sysHistIco,
     required this.sysAllTint,
     required this.sysAllIco,
     required this.coverEmpty,
@@ -190,12 +184,9 @@ class BloomTokens extends ThemeExtension<BloomTokens> {
       danger: kBloomDanger,
       dangerTint: kBloomDanger.withValues(alpha: 0.16),
       folderTint: accent.withValues(alpha: 0.12),
-      sysFavTint: const Color(0xFFE03030).withValues(alpha: 0.16),
       // Один красный «избранного» на всё приложение — `--sys-fav-ico` с ПК.
       // Все активные сердечки берут его отсюда, своих копий цвета не держат.
       sysFavIco: const Color(0xFFE03030),
-      sysHistTint: const Color(0xFFFFB400).withValues(alpha: 0.15),
-      sysHistIco: const Color(0xFFFFB400),
       sysAllTint: const Color(0xFF2D83A8).withValues(alpha: 0.16),
       sysAllIco: const Color(0xFF4FB2D8),
       coverEmpty: _mix(blockColor, ovl, 0.03),

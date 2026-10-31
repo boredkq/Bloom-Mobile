@@ -728,29 +728,41 @@ abstract class AppLocalizations {
   /// **'Save to library'**
   String get setSaveToLibrary;
 
-  /// No description provided for @libFilterAll.
+  /// No description provided for @libTabAll.
   ///
   /// In en, this message translates to:
   /// **'All'**
-  String get libFilterAll;
+  String get libTabAll;
 
-  /// No description provided for @libEmptyArtists.
+  /// No description provided for @libTabArtists.
   ///
   /// In en, this message translates to:
-  /// **'No subscriptions yet'**
-  String get libEmptyArtists;
+  /// **'Artists'**
+  String get libTabArtists;
 
-  /// No description provided for @libEmptyPlaylists.
+  /// No description provided for @libSystem.
   ///
   /// In en, this message translates to:
-  /// **'No playlists yet'**
-  String get libEmptyPlaylists;
+  /// **'System'**
+  String get libSystem;
 
-  /// No description provided for @libEmptyAll.
+  /// No description provided for @libAllTracksSub.
   ///
   /// In en, this message translates to:
-  /// **'Create a playlist or paste a link into search'**
-  String get libEmptyAll;
+  /// **'The whole library'**
+  String get libAllTracksSub;
+
+  /// No description provided for @libLikedSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Liked tracks'**
+  String get libLikedSub;
+
+  /// No description provided for @libNoTracks.
+  ///
+  /// In en, this message translates to:
+  /// **'No tracks'**
+  String get libNoTracks;
 
   /// No description provided for @libAutoRefreshTooltip.
   ///
@@ -775,12 +787,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'By name Z–A'**
   String get libSortNameDesc;
-
-  /// No description provided for @libSortType.
-  ///
-  /// In en, this message translates to:
-  /// **'By type'**
-  String get libSortType;
 
   /// No description provided for @tlSortManual.
   ///

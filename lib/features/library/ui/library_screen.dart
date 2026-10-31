@@ -1,24 +1,10 @@
-/// Библиотека. Раскладка из референса: лента системных плиток, ряд чипов
-/// (`+`, `↻`, фильтры) и сетка в две колонки. Первые два ряда прибиты, а
-/// листается только сетка под ними.
+/// The library: a header (view and sort on the left, auto-refresh and create on
+/// the right), big tabs (all, playlists, artists) and the cards as rows or a
+/// grid. "All" stacks a section per kind; in the grid each is a row of cards
+/// that scrolls sideways, its title leading to the kind's tab.
 ///
-/// Своей кнопки импорта здесь нет: как и на десктопе, ссылка вставляется в
-/// поле поиска — он же и разбирает её (плейлист, альбом, трек, аккаунт).
-/// Кнопка `↻` рядом с `+` — не импорт, а обновление уже импортированного.
-///
-/// Состав — как в десктопном Bloom: три встроенных раздела (Все треки /
-/// Любимые / История) плюс плейлисты и подписки. Отдельных «Альбомов» нет и на
-/// десктопе — импортированный альбом лежит среди плейлистов. Папок тоже нет:
-/// они приходят от folder_watcher'а, локальных файлов на мобилке пока не бывает.
-///
-/// Вид системных плиток тоже десктопный — плоский тинт и цветная иконка
-/// (`--sys-*-tint` / `--sys-*-ico`), а не заливка в полный цвет.
-///
-/// Порядок плиток: место и закрепление — в строках базы, как на ПК; четыре
-/// режима сортировки, закреплённые сверху, а в режиме «По умолчанию» плитки
-/// таскаются пальцем.
-/// Долгий тап при этом делит работу: отпустил на месте — меню, потянул —
-/// перестановка (см. `_DragCell`).
+/// Long press opens a card's menu; with the default sort, pulling it moves it
+/// among its kind (the pinned among the pinned).
 library;
 
 import 'package:flutter/material.dart';
@@ -26,10 +12,12 @@ import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/theme/bloom_theme.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/big_tabs.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
@@ -38,132 +26,124 @@ import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/pressable.dart';
 import '../../detail/detail_nav.dart';
+import '../../offline/offline_actions.dart';
+import '../../offline/offline_store.dart';
 import '../lib_order_store.dart';
 import '../pl_auto_store.dart';
 import 'create_playlist_sheet.dart';
-import 'list_meta.dart';
+import 'list_hero.dart';
 import 'pl_auto_sheet.dart';
 import 'tracklist_screen.dart';
 
+const double _kGap = 12;
+const double _kSide = 16;
+const double _kRowCover = 62;
+
+/// What a card adds under its square: a title and a line, and one more line
+/// for the built-in lists.
+const double _kCaption = 48;
+const double _kLine = 17;
+
+double _captionOf(List<_Entry> entries) =>
+    entries.any((e) => e.system != null) ? _kCaption + _kLine : _kCaption;
+
+/// Cards stand three to the screen, in a row and in a grid alike.
+double _cardWidth(BuildContext context) =>
+    (MediaQuery.sizeOf(context).width - 2 * _kSide - 2 * _kGap) / 3;
+
 class LibraryScreen extends ConsumerWidget {
   const LibraryScreen({super.key});
-
-  /// Переставить плитку и запомнить новый порядок целиком.
-  void _move(WidgetRef ref, List<_Entry> entries, int from, int to) {
-    final keys = entries.map((e) => e.key).toList();
-    keys.insert(to, keys.removeAt(from));
-    ref.read(libraryProvider.notifier).reorderCards(keys);
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final lib = ref.watch(libraryProvider);
     final order = ref.watch(libOrderProvider);
-    final filter = order.filter;
+    final l = context.l;
 
-    final showPlaylists =
-        filter == LibFilter.all || filter == LibFilter.playlists;
-    final showArtists = filter == LibFilter.all || filter == LibFilter.artists;
+    final system = [_Entry.system('all'), _Entry.system('fav')];
+    final playlists = order
+        .arrangePlaylists(lib.playlists)
+        .map(_Entry.playlist)
+        .toList();
+    final artists = order
+        .arrange(
+          lib.follows,
+          name: (f) => f.artist.name,
+          sidePos: (f) => f.sidePos,
+          pinned: (f) => f.pinned,
+        )
+        .map(_Entry.artist)
+        .toList();
 
-    // Импортированный альбом — такой же плейлист и стоит в общем ряду.
-    final entries = order.arrange(
-      [
-        if (showPlaylists) ...lib.playlists.map(_Entry.playlist),
-        if (showArtists) ...lib.follows.map(_Entry.artist),
-      ],
-      name: (e) => e.name,
-      rank: (e) => e.rank,
-      sidePos: (e) => e.sidePos,
-      pinned: (e) => e.pinned,
+    // A tab that emptied falls back to "all".
+    final tab = order.tab == LibTab.artists && artists.isEmpty
+        ? LibTab.all
+        : order.tab;
+    void go(LibTab t) => ref.read(libOrderProvider.notifier).setTab(t);
+
+    final draggable = order.sort == LibSort.manual;
+    List<Widget> kind(List<_Entry> entries) => order.grid
+        ? [_GridSliver(entries: entries, draggable: draggable)]
+        : [_RowsSliver(entries: entries, draggable: draggable)];
+    Widget row(List<_Entry> entries) => SliverToBoxAdapter(
+      child: _CardRow(entries: entries, draggable: draggable),
     );
 
-    // Таскать плитки можно только там, где порядок и правда пользовательский:
-    // в отфильтрованном списке видно не всё, и записать его как порядок целиком
-    // нельзя. Ровно та же оговорка стоит у `useSortable` на десктопе.
-    final draggable = order.sort == LibSort.manual && filter == LibFilter.all;
-    final tileWidth =
-        (MediaQuery.sizeOf(context).width - _gridPad * 2 - _gridGap) / 2;
+    final slivers = switch (tab) {
+      LibTab.all => [
+        SliverToBoxAdapter(child: _Label(l.libSystem)),
+        order.grid ? row(system) : _RowsSliver(entries: system),
+        if (playlists.isNotEmpty) ...[
+          SliverToBoxAdapter(
+            child: _Label(l.commonPlaylists, onTap: () => go(LibTab.playlists)),
+          ),
+          order.grid
+              ? row(playlists)
+              : _RowsSliver(entries: playlists, draggable: draggable),
+        ],
+        if (artists.isNotEmpty) ...[
+          SliverToBoxAdapter(
+            child: _Label(l.libTabArtists, onTap: () => go(LibTab.artists)),
+          ),
+          order.grid
+              ? row(artists)
+              : _RowsSliver(entries: artists, draggable: draggable),
+        ],
+      ],
+      LibTab.playlists => [
+        const SliverToBoxAdapter(child: SizedBox(height: 18)),
+        ...kind([...system, ...playlists]),
+      ],
+      LibTab.artists => [
+        const SliverToBoxAdapter(child: SizedBox(height: 18)),
+        ...kind(artists),
+      ],
+    };
 
     return SafeArea(
       bottom: false,
       child: Column(
         children: [
-          _SystemTiles(lib: lib),
-          // Просвет вместо снятой строки импорта: чипы иначе липнут к плиткам.
-          const SizedBox(height: 8),
-          _Chips(
-            active: filter,
-            onPick: (f) => ref.read(libOrderProvider.notifier).setFilter(f),
+          const _TopBar(),
+          BigTabs<LibTab>(
+            tabs: [
+              for (final t in LibTab.values)
+                BigTab(
+                  t,
+                  t.label(l),
+                  has: t != LibTab.artists || artists.isNotEmpty,
+                ),
+            ],
+            current: tab,
+            onPick: go,
           ),
-          // Листается только сетка: системные плитки и чипы прибиты сверху,
-          // иначе фильтр, которым только что переключили список, уезжает за
-          // край вместе с ним.
           Expanded(
             child: _FadeSwap(
-              value: filter,
+              value: (tab, order.grid),
               child: CustomScrollView(
                 slivers: [
-                  if (entries.isEmpty)
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: _Empty(filter: filter),
-                    )
-                  else
-                    SliverPadding(
-                      // Снизу к полю сетки добавлены бары каркаса: они плавают
-                      // над списком, и последний ряд плиток иначе не выкрутить
-                      // из-под миниплеера.
-                      padding: EdgeInsets.fromLTRB(
-                        _gridPad,
-                        4,
-                        _gridPad,
-                        _gridPad + bottomBarsInset(context),
-                      ),
-                      sliver: SliverGrid(
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: _gridGap,
-                              mainAxisSpacing: 10,
-                              childAspectRatio: 0.78,
-                            ),
-                        delegate: SliverChildBuilderDelegate((context, i) {
-                          final entry = entries[i];
-                          final pinned = entry.pinned;
-                          final playlist = entry.playlist;
-                          final tile = playlist != null
-                              ? _SetTile(
-                                  playlist: playlist,
-                                  lib: lib,
-                                  pinned: pinned,
-                                )
-                              : _ArtistTile(
-                                  followed: entry.follow!,
-                                  pinned: pinned,
-                                );
-                          return _DragCell(
-                            key: ValueKey(entry.key),
-                            index: i,
-                            width: tileWidth,
-                            enabled: draggable,
-                            // Закреплённые живут отдельной группой наверху — как
-                            // `getGroupRank` на ПК: перемешать их с остальными значило
-                            // бы уронить плитку туда, откуда её тут же вынесет вверх.
-                            accepts: (from) => entries[from].pinned == pinned,
-                            onMove: (from, to) => _move(ref, entries, from, to),
-                            onMenu: () => playlist != null
-                                ? showPlaylistMenu(
-                                    context,
-                                    ref,
-                                    playlist,
-                                    lib.tracksOf(playlist),
-                                  )
-                                : _showArtistMenu(context, ref, entry.follow!),
-                            child: tile,
-                          );
-                        }, childCount: entries.length),
-                      ),
-                    ),
+                  ...slivers,
+                  const SliverBottomBarsInset(extra: _kSide),
                 ],
               ),
             ),
@@ -174,22 +154,529 @@ class LibraryScreen extends ConsumerWidget {
   }
 }
 
-/// Смена содержимого без сдвига: старое гаснет, и только потом проявляется
-/// новое (его слово — «просто плавно исчезать и появляться»).
-///
-/// Не `AnimatedSwitcher`: тот держит обе версии сетки разом и проявляет новую
-/// поверх ещё видимой старой — обложки при этом просвечивают друг сквозь
-/// друга. Здесь на экране всегда ровно одна.
+/// View and sort in one capsule on the left; auto-refresh and create on the
+/// right. A button is in the accent while its setting is on.
+class _TopBar extends ConsumerWidget {
+  const _TopBar();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.bloom;
+    final order = ref.watch(libOrderProvider);
+    final autoOn = ref.watch(plAutoProvider).enabled;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(_kSide, 10, _kSide, 14),
+      child: Row(
+        children: [
+          GlassBox(
+            borderRadius: BorderRadius.circular(999),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _CapsuleButton(
+                  icon: order.grid ? Bi.list : Bi.widget2,
+                  onTap: () =>
+                      ref.read(libOrderProvider.notifier).setGrid(!order.grid),
+                ),
+                _CapsuleButton(
+                  icon: Bi.sort,
+                  color: order.sort != LibSort.manual ? t.accent : null,
+                  onTap: () => _showSortSheet(context, ref),
+                ),
+              ],
+            ),
+          ),
+          const Spacer(),
+          CircleIconButton(
+            icon: Bi.clockCircle,
+            color: autoOn ? t.accent : null,
+            tooltip: context.l.libAutoRefreshTooltip,
+            onTap: () => showPlAutoSheet(context, ref),
+          ),
+          const SizedBox(width: 10),
+          CircleIconButton(
+            icon: Bi.add,
+            tooltip: context.l.commonCreatePlaylist,
+            onTap: () => showCreatePlaylistSheet(context, ref),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CapsuleButton extends StatelessWidget {
+  const _CapsuleButton({required this.icon, required this.onTap, this.color});
+
+  final BloomGlyph icon;
+  final VoidCallback onTap;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) => Pressable(
+    onTap: onTap,
+    child: SizedBox(
+      width: kHeaderControl - 4,
+      height: kHeaderControl,
+      child: BloomIcon(icon, size: 22, color: color ?? context.bloom.iconFg),
+    ),
+  );
+}
+
+/// One card of the library: a built-in list ("all" / "fav"), a playlist or a
+/// followed artist.
+class _Entry {
+  _Entry.system(String this.system) : playlist = null, follow = null;
+  _Entry.playlist(UserPlaylist this.playlist) : system = null, follow = null;
+  _Entry.artist(FollowedArtist this.follow) : system = null, playlist = null;
+
+  final String? system;
+  final UserPlaylist? playlist;
+  final FollowedArtist? follow;
+
+  String get key => switch (this) {
+    _Entry(:final String system) => system,
+    _Entry(:final UserPlaylist playlist) => libKeyOfPlaylist(playlist.id),
+    _ => libKeyOfArtist(follow!.artist.id),
+  };
+
+  bool get pinned => playlist?.pinned ?? follow?.pinned ?? false;
+
+  /// The built-in lists keep their places.
+  bool get movable => system == null;
+}
+
+/// Moves a card and writes its kind's new order whole.
+void _move(WidgetRef ref, List<_Entry> entries, int from, int to) {
+  final moved = [...entries];
+  moved.insert(to, moved.removeAt(from));
+  ref.read(libraryProvider.notifier).reorderCards([
+    for (final e in moved)
+      if (e.movable) e.key,
+  ]);
+}
+
+/// Wraps the card at [i] of [entries] for the menu and dragging.
+Widget _cell(
+  BuildContext context,
+  WidgetRef ref,
+  List<_Entry> entries,
+  int i, {
+  required bool draggable,
+  required double width,
+  required Widget child,
+}) {
+  final e = entries[i];
+  final playlist = e.playlist;
+  final follow = e.follow;
+  return _DragCell(
+    key: ValueKey(e.key),
+    index: i,
+    width: width,
+    enabled: draggable && e.movable,
+    accepts: (from) =>
+        entries[from].movable && entries[from].pinned == e.pinned,
+    onMove: (from, to) => _move(ref, entries, from, to),
+    onMenu: playlist != null
+        ? () => showPlaylistMenu(
+            context,
+            ref,
+            playlist,
+            ref.read(libraryProvider).tracksOf(playlist),
+          )
+        : follow != null
+        ? () => _showArtistMenu(context, ref, follow)
+        : null,
+    child: child,
+  );
+}
+
+class _RowsSliver extends ConsumerWidget {
+  const _RowsSliver({required this.entries, this.draggable = false});
+
+  final List<_Entry> entries;
+  final bool draggable;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final width = MediaQuery.sizeOf(context).width;
+    return SliverList.builder(
+      itemCount: entries.length,
+      itemBuilder: (context, i) => _cell(
+        context,
+        ref,
+        entries,
+        i,
+        draggable: draggable,
+        width: width,
+        child: _LibRow(entry: entries[i]),
+      ),
+    );
+  }
+}
+
+/// A kind in "all" with the grid on: one row of cards scrolling sideways.
+class _CardRow extends ConsumerWidget {
+  const _CardRow({required this.entries, required this.draggable});
+
+  final List<_Entry> entries;
+  final bool draggable;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final width = _cardWidth(context);
+    return SizedBox(
+      height: width + _captionOf(entries),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: _kSide),
+        itemCount: entries.length,
+        separatorBuilder: (_, _) => const SizedBox(width: _kGap),
+        itemBuilder: (context, i) => SizedBox(
+          width: width,
+          child: _cell(
+            context,
+            ref,
+            entries,
+            i,
+            draggable: draggable,
+            width: width,
+            child: _LibCard(entry: entries[i]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A kind's tab with the grid on: three columns.
+class _GridSliver extends ConsumerWidget {
+  const _GridSliver({required this.entries, required this.draggable});
+
+  final List<_Entry> entries;
+  final bool draggable;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cell = _cardWidth(context);
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: _kSide),
+      sliver: SliverGrid(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          crossAxisSpacing: _kGap,
+          mainAxisSpacing: 14,
+          mainAxisExtent: cell + _captionOf(entries),
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (context, i) => _cell(
+            context,
+            ref,
+            entries,
+            i,
+            draggable: draggable,
+            width: cell,
+            child: _LibCard(entry: entries[i]),
+          ),
+          childCount: entries.length,
+        ),
+      ),
+    );
+  }
+}
+
+/// Where a card leads, and what flies into the page's header.
+void _open(BuildContext context, _Entry e, CoverFlight? flight) {
+  final system = e.system;
+  final playlist = e.playlist;
+  if (system != null) {
+    context.go('/library/list/$system');
+  } else if (playlist != null) {
+    context.go('/library/list/${playlist.id}', extra: flight);
+  } else {
+    final artist = e.follow!.artist;
+    openArtist(context, artist.id, initial: artist, flight: flight);
+  }
+}
+
+CoverFlight? _flightOf(_Entry e, Object tag) {
+  final image = e.playlist?.cover ?? e.follow?.artist.avatar;
+  return image == null || image.isEmpty
+      ? null
+      : CoverFlight(tag: tag, image: image);
+}
+
+/// A card's square: the built-in list's tint, a playlist's cover (or the
+/// collage of its tracks), an artist's round avatar.
+Widget _art(
+  BuildContext context,
+  LibraryState lib,
+  _Entry e,
+  double size,
+  CoverFlight? flight,
+) {
+  final system = e.system;
+  final playlist = e.playlist;
+  if (system != null) return _SystemArt(id: system, size: size);
+  if (playlist != null) {
+    return Cover(
+      url: playlist.cover,
+      size: size,
+      flight: flight,
+      overlay: SetEqualizer(setId: playlist.id),
+      covers: lib.tracksOf(playlist).map((track) => track.cover),
+    );
+  }
+  return Cover(
+    url: e.follow!.artist.avatar,
+    size: size,
+    circle: true,
+    flight: flight,
+  );
+}
+
+/// The title: the pin after it, and before it the arrow of a playlist kept
+/// offline whole.
+Widget _title(
+  BuildContext context,
+  _Entry e,
+  TextStyle? style, {
+  bool kept = false,
+}) {
+  final t = context.bloom;
+  final name = switch (e.system) {
+    'all' => context.l.commonAllTracks,
+    'fav' => context.l.commonFavorites,
+    _ => e.playlist?.name ?? e.follow!.artist.name,
+  };
+  return Row(
+    children: [
+      if (kept) ...[
+        BloomIcon(Bi.downloadMinimalistic, size: 13, color: t.text2),
+        const SizedBox(width: 4),
+      ],
+      Flexible(
+        child: Text(
+          name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: style,
+        ),
+      ),
+      if (e.pinned) ...[
+        const SizedBox(width: 4),
+        BloomIcon(Bi.pin, size: 13, color: t.text2),
+      ],
+    ],
+  );
+}
+
+/// The lines under the title. The built-in lists say what they are, then the
+/// count; a playlist only its count, with how much of it is kept offline when
+/// that's only part of it. [kept]: all of it is.
+({bool kept, List<String> lines}) _lines(
+  BuildContext context,
+  WidgetRef ref,
+  _Entry e,
+) {
+  final l = context.l;
+  if (e.follow != null) return (kept: false, lines: const <String>[]);
+  final lib = ref.watch(libraryProvider);
+  String count(int n) => n > 0 ? l.tracksCount(n) : l.libNoTracks;
+  final playlist = e.playlist;
+  if (playlist == null) {
+    final fav = e.system == 'fav';
+    return (
+      kept: false,
+      lines: [
+        fav ? l.libLikedSub : l.libAllTracksSub,
+        count(fav ? lib.favs.length : lib.inLib.length),
+      ],
+    );
+  }
+  final off = listOfflineState(
+    ref.watch(offlineProvider),
+    ref.read(offlineProvider.notifier),
+    lib.tracksOf(playlist),
+  );
+  final n = count(playlist.trackIds.length);
+  return (
+    kept: off.all,
+    lines: [off.any && !off.all ? '$n · ${off.cached}/${off.total}' : n],
+  );
+}
+
+Widget _line(String text, TextStyle? style) =>
+    Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: style);
+
+/// A section's caption in "all"; a kind's one leads to its tab.
+class _Label extends StatelessWidget {
+  const _Label(this.text, {this.onTap});
+
+  final String text;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(_kSide, 22, _kSide, 10),
+    child: Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: Pressable(
+        onTap: onTap,
+        scale: 0.98,
+        child: Text(
+          text,
+          style: bloomText(size: 14, weight: 600, color: context.bloom.text2),
+        ),
+      ),
+    ),
+  );
+}
+
+/// "All tracks" and liked, with the bars while one is the queue.
+class _SystemArt extends StatelessWidget {
+  const _SystemArt({required this.id, required this.size});
+
+  final String id;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final radius = BorderRadius.circular(Cover.defaultRadius(t));
+    return SizedBox.square(
+      dimension: size,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          OutlineArt(
+            icon: systemListGlyph(id)!,
+            iconSize: (size * 0.3).roundToDouble(),
+            borderRadius: radius,
+          ),
+          ClipRRect(
+            borderRadius: radius,
+            child: SetEqualizer(setId: id),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LibRow extends ConsumerStatefulWidget {
+  const _LibRow({required this.entry});
+
+  final _Entry entry;
+
+  @override
+  ConsumerState<_LibRow> createState() => _LibRowState();
+}
+
+class _LibRowState extends ConsumerState<_LibRow> {
+  final _tag = UniqueKey();
+
+  @override
+  Widget build(BuildContext context) {
+    final e = widget.entry;
+    final theme = Theme.of(context).textTheme;
+    final flight = _flightOf(e, _tag);
+    final sub = theme.bodySmall?.copyWith(fontSize: 13);
+    final (:kept, :lines) = _lines(context, ref, e);
+    return InkWell(
+      onTap: () => _open(context, e, flight),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: _kSide, vertical: 8),
+        child: Row(
+          children: [
+            _art(context, ref.watch(libraryProvider), e, _kRowCover, flight),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _title(
+                    context,
+                    e,
+                    theme.titleMedium?.copyWith(fontSize: 16),
+                    kept: kept,
+                  ),
+                  const SizedBox(height: 2),
+                  if (e.follow != null)
+                    _line(context.l.commonArtist, sub)
+                  else
+                    for (final line in lines) _line(line, sub),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LibCard extends ConsumerStatefulWidget {
+  const _LibCard({required this.entry});
+
+  final _Entry entry;
+
+  @override
+  ConsumerState<_LibCard> createState() => _LibCardState();
+}
+
+class _LibCardState extends ConsumerState<_LibCard> {
+  final _tag = UniqueKey();
+
+  @override
+  Widget build(BuildContext context) {
+    final e = widget.entry;
+    final follow = e.follow;
+    if (follow != null) {
+      return ArtistCard(
+        artist: follow.artist,
+        size: null,
+        centerLabel: true,
+        pinned: follow.pinned,
+      );
+    }
+    final theme = Theme.of(context).textTheme;
+    final flight = _flightOf(e, _tag);
+    final (:kept, :lines) = _lines(context, ref, e);
+    return LayoutBuilder(
+      builder: (context, box) => Pressable(
+        onTap: () => _open(context, e, flight),
+        scale: 0.97,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _art(context, ref.watch(libraryProvider), e, box.maxWidth, flight),
+            const SizedBox(height: 8),
+            _title(
+              context,
+              e,
+              theme.titleSmall?.copyWith(fontSize: 14),
+              kept: kept,
+            ),
+            const SizedBox(height: 2),
+            for (final line in lines) _line(line, theme.bodySmall),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Swaps the content without a shift: the old fades out, only then the new
+/// fades in, so their covers never show through each other.
 class _FadeSwap extends StatefulWidget {
   const _FadeSwap({required this.value, required this.child});
 
-  /// Что считать сменой содержимого. Пока значение то же, ребёнок обновляется
-  /// на месте (список пополнился, плитку переставили) и ничего не мигает.
+  /// What counts as new content; while it holds, the child updates in place.
   final Object value;
 
   final Widget child;
 
-  /// Половина перехода: столько гаснет старое и столько же проявляется новое.
   static const Duration half = Duration(milliseconds: 90);
 
   @override
@@ -198,7 +685,6 @@ class _FadeSwap extends StatefulWidget {
 
 class _FadeSwapState extends State<_FadeSwap>
     with SingleTickerProviderStateMixin {
-  // Стартует «зажжённым»: первый кадр экрана — содержимое уже на месте.
   late final AnimationController _fade = AnimationController(
     vsync: this,
     duration: _FadeSwap.half,
@@ -207,8 +693,7 @@ class _FadeSwapState extends State<_FadeSwap>
 
   late Widget _shown = widget.child;
 
-  /// Содержимое, которое встанет на место [_shown], когда старое догорит.
-  /// `null` — смены нет, идёт обычная жизнь экрана.
+  /// What replaces [_shown] once the old has faded.
   Widget? _pending;
 
   @override
@@ -216,24 +701,18 @@ class _FadeSwapState extends State<_FadeSwap>
     super.initState();
     _fade.addStatusListener((status) {
       if (status != AnimationStatus.dismissed || _pending == null) return;
-      _swap();
+      setState(() {
+        _shown = _pending!;
+        _pending = null;
+      });
+      _fade.forward();
     });
-  }
-
-  void _swap() {
-    setState(() {
-      _shown = _pending!;
-      _pending = null;
-    });
-    _fade.forward();
   }
 
   @override
   void didUpdateWidget(_FadeSwap old) {
     super.didUpdateWidget(old);
     if (widget.value == old.value) {
-      // Тот же фильтр: свежий ребёнок идёт в дело сразу — либо на экран, либо
-      // в очередь, если прямо сейчас гаснет старое.
       if (_pending == null) {
         _shown = widget.child;
       } else {
@@ -242,8 +721,7 @@ class _FadeSwapState extends State<_FadeSwap>
       return;
     }
     _pending = widget.child;
-    // Второе переключение подряд — переход уже идёт, и гасить нечего: сменится
-    // только то, что проявится после.
+    // A second switch in a row: nothing is left to fade out.
     if (_fade.isDismissed) {
       _shown = widget.child;
       _pending = null;
@@ -264,48 +742,8 @@ class _FadeSwapState extends State<_FadeSwap>
       FadeTransition(opacity: _fade, child: _shown);
 }
 
-/// Запись общего списка библиотеки — плейлист или артист. Порядок и сортировка
-/// работают с ними одинаково, как с `UnifiedEntry` на десктопе.
-class _Entry {
-  _Entry.playlist(UserPlaylist this.playlist)
-    : follow = null,
-      key = libKeyOfPlaylist(playlist.id),
-      name = playlist.name,
-      rank = kLibRankPlaylist,
-      sidePos = playlist.sidePos,
-      pinned = playlist.pinned;
-
-  _Entry.artist(FollowedArtist this.follow)
-    : playlist = null,
-      key = libKeyOfArtist(follow.artist.id),
-      name = follow.artist.name,
-      rank = kLibRankArtist,
-      sidePos = follow.sidePos,
-      pinned = follow.pinned;
-
-  final UserPlaylist? playlist;
-  final FollowedArtist? follow;
-  final String key;
-  final String name;
-  final int rank;
-  final int sidePos;
-  final bool pinned;
-}
-
-/// Отступы сетки — по ним же считается ширина плитки для «летящей» копии.
-const double _gridPad = 16;
-const double _gridGap = 14;
-
-/// Ячейка сетки, которую можно взять пальцем и переставить.
-///
-/// Своя, а не `ReorderableListView`: тот умеет только список, а библиотека —
-/// сетка в две колонки. Достаточно пары `LongPressDraggable` + `DragTarget`:
-/// плитка уезжает на место той, над которой её отпустили.
-///
-/// Долгий тап делает две вещи сразу, как на рабочем столе iOS: плитка
-/// приподнимается под пальцем, но если её отпустить на месте — открывается
-/// меню, а не перестановка. Иначе меню было бы негде держать: своей кнопки на
-/// плитке нет, а долгий тап занят.
+/// A card that can be picked up and dropped on another's place. A long press
+/// held still opens the menu instead, since the long press is all a card has.
 class _DragCell extends StatefulWidget {
   const _DragCell({
     super.key,
@@ -319,11 +757,13 @@ class _DragCell extends StatefulWidget {
   });
 
   final int index;
+
+  /// The picture under the finger has no cell to size it.
   final double width;
   final bool enabled;
   final bool Function(int from) accepts;
   final void Function(int from, int to) onMove;
-  final VoidCallback onMenu;
+  final VoidCallback? onMenu;
   final Widget child;
 
   @override
@@ -331,8 +771,7 @@ class _DragCell extends StatefulWidget {
 }
 
 class _DragCellState extends State<_DragCell> {
-  /// Сколько палец прошёл за перетаскивание. Меньше порога — это был не
-  /// перенос, а удержание, и вместо перестановки открывается меню.
+  /// How far the finger went; under [_slop] it was a hold, not a move.
   double _travel = 0;
 
   static const double _slop = 12;
@@ -342,8 +781,6 @@ class _DragCellState extends State<_DragCell> {
     if (!widget.enabled) {
       return GestureDetector(
         onLongPress: widget.onMenu,
-        // Плитка сама ловит тап; удержание должно доходить сюда даже мимо
-        // её собственных жестов.
         behavior: HitTestBehavior.translucent,
         child: widget.child,
       );
@@ -362,10 +799,8 @@ class _DragCellState extends State<_DragCell> {
           },
           onDragUpdate: (d) => _travel += d.delta.distance,
           onDragEnd: (d) {
-            if (!d.wasAccepted && _travel < _slop) widget.onMenu();
+            if (!d.wasAccepted && _travel < _slop) widget.onMenu?.call();
           },
-          // Копия под пальцем берёт ширину ячейки: в оверлее сетки нет и
-          // размер плитке задать больше нечем.
           feedback: Material(
             type: MaterialType.transparency,
             child: Opacity(
@@ -374,8 +809,7 @@ class _DragCellState extends State<_DragCell> {
             ),
           ),
           childWhenDragging: Opacity(opacity: 0.25, child: widget.child),
-          // Цель перетаскивания подсказывается только сжатием плитки: рамка
-          // вокруг обложки читалась как чужой элемент.
+          // The target only shrinks: a frame read as a foreign element.
           child: AnimatedScale(
             duration: const Duration(milliseconds: 140),
             scale: hovered ? 0.94 : 1,
@@ -387,253 +821,6 @@ class _DragCellState extends State<_DragCell> {
   }
 }
 
-/// Три встроенных раздела лентой — как на десктопе.
-class _SystemTiles extends ConsumerWidget {
-  const _SystemTiles({required this.lib});
-
-  final LibraryState lib;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
-    return SizedBox(
-      height: 130,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-        children: [
-          // Иконки — те же, что в десктопном сайдбаре: нота, сердце.
-          // Заливка — чистый цвет раздела, без смешивания с поверхностью: так
-          // плитки читаются издалека, а белый значок на них не теряется.
-          _SystemTile(
-            title: context.l.commonAllTracks,
-            count: lib.inLib.length,
-            icon: Bi.musicNote,
-            color: t.sysAllTint.withValues(alpha: 1),
-            onTap: () => context.go('/library/list/all'),
-          ),
-          const SizedBox(width: 12),
-          _SystemTile(
-            title: context.l.commonFavorites,
-            count: lib.favs.length,
-            icon: Bi.heartBold,
-            color: t.sysFavIco,
-            onTap: () => context.go('/library/list/fav'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SystemTile extends StatelessWidget {
-  const _SystemTile({
-    required this.title,
-    required this.count,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
-
-  final String title;
-
-  /// Сколько треков в разделе; `null` — не показывать (см. «Историю»).
-  final int? count;
-  final BloomGlyph icon;
-
-  /// Сплошной цвет раздела. Значок и текст на нём — белые.
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    // Плитка ВСЕГДА своего цвета и всегда сплошная — ни фон, ни стекло сквозь
-    // неё не идут (его слово). К правому краю цвет слегка темнеет — плитка
-    // остаётся одноцветной, но не выглядит плоской заливкой. Чистый цвет
-    // раздела на тёмной теме слепил («слишком ярко») — берём его глубокий
-    // тёмный оттенок.
-    final base = Color.alphaBlend(Colors.black.withValues(alpha: 0.55), color);
-    return Pressable(
-      onTap: onTap,
-      scale: 0.97,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-            colors: [
-              base,
-              Color.alphaBlend(Colors.black.withValues(alpha: 0.3), base),
-            ],
-            stops: const [0.3, 1],
-          ),
-          borderRadius: BorderRadius.circular(t.radius),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            width: 300,
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-            alignment: Alignment.bottomLeft,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                BloomIcon(icon, size: 28, color: Colors.white),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Кегль на пару пунктов выше строки списка: плитка крупная,
-                    // и `titleMedium` на ней теряется.
-                    Text(
-                      title,
-                      style: theme.titleMedium?.copyWith(
-                        fontSize: 19,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    // Строку держим пустой, а не выбрасываем: плитки стоят в
-                    // ряду, и без неё название «Истории» съехало бы ниже, чем у
-                    // соседей.
-                    Text(
-                      count == null ? '' : context.l.tracksCount(count!),
-                      style: theme.bodySmall?.copyWith(
-                        fontSize: 13,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Ряд фильтров библиотеки мельче общего [kChipHeight] — плашки уменьшены
-/// целиком, а не приплюснуты: вместе с высотой едут поля, кегль надписи и
-/// иконки (см. [_kLibChipPad], [_kLibChipText], [_kLibIcon]).
-const double _kLibChipHeight = 46;
-const double _kLibChipPad = 17;
-const double _kLibChipText = 14;
-const double _kLibIcon = 21;
-
-/// Заливка плашек ряда: плёнка ТОНЬШЕ, чем у `pill`. Его число с пипетки —
-/// #0f0f0f на фоне #0a0a0a, то есть пять пунктов из 255; `pill` (16/245) даёт
-/// #1a1a1a, а 0.09 и 0.14 уводили ряд в откровенно серый.
-const double _kLibChipFilm = 0.02;
-
-Color _libChipFill(BloomTokens t) => Color.alphaBlend(
-  (t.isLight ? const Color(0xFF000000) : const Color(0xFFFFFFFF)).withValues(
-    alpha: _kLibChipFilm,
-  ),
-  t.blockColor,
-);
-
-/// Кромка ряда — доля от `ovlLine2`, а не своя альфа: плотность рамок у него
-/// настраивается ползунком (`wb2`), и жёсткое число вырезало бы ряд из этой
-/// настройки. 0.7 от 13 % ≈ 9 %.
-const double _kLibChipLine = 0.7;
-
-Color _libChipLine(BloomTokens t) =>
-    t.ovlLine2.withValues(alpha: t.ovlLine2.a * _kLibChipLine);
-
-class _Chips extends ConsumerWidget {
-  const _Chips({required this.active, required this.onPick});
-
-  final LibFilter active;
-  final ValueChanged<LibFilter> onPick;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
-    // Подсветка кнопок — десктопный `sort-active`: расписание включено,
-    // сортировка не «по умолчанию».
-    final autoOn = ref.watch(plAutoProvider).enabled;
-    final sort = ref.watch(libOrderProvider).sort;
-
-    // Обводка одинаковая в обоих состояниях (его слово): кнопка, залитая
-    // акцентом, не должна отличаться от соседних ещё и кромкой.
-    final autoAccent = autoOn;
-    final sortAccent = sort != LibSort.manual;
-    final fill = _libChipFill(t);
-    final line = _libChipLine(t);
-
-    return SizedBox(
-      height: 66,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        children: [
-          // Кнопки в `Center`: в горизонтальном списке высота приходит жёсткой,
-          // и без него круг растянулся бы в овал на всю высоту ряда.
-          Center(
-            child: CircleIconButton(
-              icon: Bi.addCircle,
-              size: _kLibChipHeight,
-              iconSize: _kLibIcon + 2,
-              background: fill,
-              // Стекло, как у чипов: своя заливка тут — поверхность ряда, а не
-              // состояние кнопки, и настройка прозрачности на неё действует.
-              glass: true,
-              color: t.text,
-              borderColor: line,
-              tooltip: context.l.commonCreatePlaylist,
-              onTap: () => showCreatePlaylistSheet(context, ref),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Center(
-            child: CircleIconButton(
-              icon: Bi.refresh,
-              size: _kLibChipHeight,
-              iconSize: _kLibIcon,
-              tooltip: context.l.libAutoRefreshTooltip,
-              background: autoAccent ? t.accent : fill,
-              glass: !autoAccent,
-              color: autoAccent ? t.accentText : t.text,
-              borderColor: line,
-              onTap: () => showPlAutoSheet(context, ref),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Center(
-            child: CircleIconButton(
-              icon: Bi.sort,
-              size: _kLibChipHeight,
-              iconSize: _kLibIcon,
-              tooltip: context.l.commonSort,
-              background: sortAccent ? t.accent : fill,
-              glass: !sortAccent,
-              color: sortAccent ? t.accentText : t.text,
-              borderColor: line,
-              onTap: () => _showSortSheet(context, ref),
-            ),
-          ),
-          const SizedBox(width: 12),
-          for (final f in LibFilter.values) ...[
-            _FilterChip(
-              label: f.label(context.l),
-              active: f == active,
-              onTap: () => onPick(f),
-            ),
-            const SizedBox(width: 8),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// Выбор сортировки библиотеки — та же нижняя шторка, что у сортировки списка
-/// треков (десктопное `LibSortMenu`).
 Future<void> _showSortSheet(BuildContext context, WidgetRef ref) {
   final t = context.bloom;
   final active = ref.read(libOrderProvider).sort;
@@ -655,7 +842,6 @@ Future<void> _showSortSheet(BuildContext context, WidgetRef ref) {
   );
 }
 
-/// Меню плитки артиста — у плейлиста для этого есть свой `showPlaylistMenu`.
 Future<void> _showArtistMenu(
   BuildContext context,
   WidgetRef ref,
@@ -698,238 +884,4 @@ Future<void> _showArtistMenu(
       ],
     ],
   );
-}
-
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({
-    required this.label,
-    required this.active,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-
-  /// Сколько заливается выбранный чип. Столько же переезжает цвет надписи —
-  /// иначе текст белеет раньше, чем под ним появляется акцент.
-  static const Duration _fill = Duration(milliseconds: 200);
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final fg = active ? t.accentText : t.text;
-    return Center(
-      child: SizedBox(
-        height: _kLibChipHeight,
-        child: Pressable(
-          onTap: onTap,
-          child: GlassBox(
-            color: _libChipFill(t),
-            // Стекло у чипа включено всегда, даже у выбранного: акцент наливается
-            // ВНУТРИ плашки и, пока он не сплошной, под ним должна оставаться та
-            // же поверхность, что у соседей. Сплошной он стекло всё равно
-            // закрывает, так что в покое выбранный чип выглядит как и раньше —
-            // заливкой состояния, а не поверхностью темы.
-            borderRadius: BorderRadius.circular(999),
-            borderSide: BorderSide(color: _libChipLine(t)),
-            child: AnimatedContainer(
-              duration: _fill,
-              curve: Curves.easeOut,
-              color: active ? t.accent : t.accent.withValues(alpha: 0),
-              padding: const EdgeInsets.symmetric(horizontal: _kLibChipPad),
-              child: Center(
-                widthFactor: 1,
-                child: AnimatedDefaultTextStyle(
-                  duration: _fill,
-                  curve: Curves.easeOut,
-                  style:
-                      Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: fg,
-                        fontSize: _kLibChipText,
-                      ) ??
-                      TextStyle(color: fg),
-                  child: Text(label),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SetTile extends ConsumerStatefulWidget {
-  const _SetTile({
-    required this.playlist,
-    required this.lib,
-    required this.pinned,
-  });
-
-  final UserPlaylist playlist;
-  final LibraryState lib;
-  final bool pinned;
-
-  @override
-  ConsumerState<_SetTile> createState() => _SetTileState();
-}
-
-class _SetTileState extends ConsumerState<_SetTile> {
-  /// Метка перелёта обложки в шапку плейлиста — своя у каждой плитки.
-  final _tag = UniqueKey();
-
-  @override
-  Widget build(BuildContext context) {
-    final playlist = widget.playlist;
-    final lib = widget.lib;
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    final tracks = lib.tracksOf(playlist);
-    // Своей обложки нет — и на плитке, и в шапке списка стоит один и тот же
-    // коллаж из треков. Лететь ему незачем: перелёт возит одну картинку, а
-    // коллаж на концах разной формы всё равно собирался бы заново.
-    final cover = playlist.cover;
-    final flight = cover == null || cover.isEmpty
-        ? null
-        : CoverFlight(tag: _tag, image: cover);
-
-    return LayoutBuilder(
-      builder: (context, box) => Pressable(
-        onTap: () => context.go('/library/list/${playlist.id}', extra: flight),
-        scale: 0.97,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Плитки библиотеки крупные — на них скругление обложки заметно
-            // острее, чем в каруселях, поэтому радиус здесь свой, побольше.
-            Cover(
-              url: playlist.cover,
-              size: box.maxWidth,
-              radius: t.radius * 1.3,
-              flight: flight,
-              overlay: SetEqualizer(setId: playlist.id),
-              covers: tracks.map((track) => track.cover),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                if (widget.pinned) ...[
-                  BloomIcon(Bi.pinBold, size: 13, color: t.accent),
-                  const SizedBox(width: 4),
-                ],
-                Expanded(
-                  child: Text(
-                    playlist.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.titleSmall,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 2),
-            // Счётчик по составу плейлиста, а не по поднятым трекам: плитка
-            // рисуется и до того, как библиотека их резолвит.
-            ListMeta(
-              tracks: tracks,
-              count: playlist.trackIds.length,
-              style: theme.bodySmall,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ArtistTile extends ConsumerStatefulWidget {
-  const _ArtistTile({required this.followed, required this.pinned});
-
-  final FollowedArtist followed;
-  final bool pinned;
-
-  @override
-  ConsumerState<_ArtistTile> createState() => _ArtistTileState();
-}
-
-class _ArtistTileState extends ConsumerState<_ArtistTile> {
-  final _tag = UniqueKey();
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    final artist = widget.followed.artist;
-    final avatar = artist.avatar;
-    final flight = avatar == null || avatar.isEmpty
-        ? null
-        : CoverFlight(tag: _tag, image: avatar);
-
-    return Pressable(
-      onTap: () =>
-          openArtist(context, artist.id, initial: artist, flight: flight),
-      scale: 0.97,
-      child: LayoutBuilder(
-        builder: (context, box) => Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Cover(
-              url: artist.avatar,
-              size: box.maxWidth,
-              circle: true,
-              flight: flight,
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (widget.pinned) ...[
-                  BloomIcon(Bi.pinBold, size: 13, color: t.accent),
-                  const SizedBox(width: 4),
-                ],
-                Flexible(
-                  child: Text(
-                    artist.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: theme.titleSmall,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Empty extends StatelessWidget {
-  const _Empty({required this.filter});
-
-  final LibFilter filter;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final text = switch (filter) {
-      LibFilter.artists => context.l.libEmptyArtists,
-      LibFilter.playlists => context.l.libEmptyPlaylists,
-      LibFilter.all => context.l.libEmptyAll,
-    };
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
-      child: Center(
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: t.muted),
-        ),
-      ),
-    );
-  }
 }

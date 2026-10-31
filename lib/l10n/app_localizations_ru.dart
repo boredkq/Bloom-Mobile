@@ -366,16 +366,22 @@ class AppLocalizationsRu extends AppLocalizations {
   String get setSaveToLibrary => 'Сохранить в библиотеку';
 
   @override
-  String get libFilterAll => 'Все';
+  String get libTabAll => 'Все';
 
   @override
-  String get libEmptyArtists => 'Подписок пока нет';
+  String get libTabArtists => 'Исполнители';
 
   @override
-  String get libEmptyPlaylists => 'Плейлистов пока нет';
+  String get libSystem => 'Системные';
 
   @override
-  String get libEmptyAll => 'Создай плейлист или вставь ссылку в поиск';
+  String get libAllTracksSub => 'Вся библиотека';
+
+  @override
+  String get libLikedSub => 'Лайкнутые треки';
+
+  @override
+  String get libNoTracks => 'Нет треков';
 
   @override
   String get libAutoRefreshTooltip => 'Авто-обновление плейлистов';
@@ -388,9 +394,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get libSortNameDesc => 'По имени Z–A';
-
-  @override
-  String get libSortType => 'По типу';
 
   @override
   String get tlSortManual => 'По порядку';

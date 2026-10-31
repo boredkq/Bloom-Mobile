@@ -264,7 +264,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
 
     return [
       if (top.isNotEmpty) ...[
-        SectionTitle(context.l.artistPopular),
+        SectionTitle(context.l.artistPopular, side: 8),
         EntityCarousel(
           height: 194,
           itemCount: top.length,
@@ -273,7 +273,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
         ),
       ],
       if (albums.isNotEmpty) ...[
-        SectionTitle(context.l.commonAlbums),
+        SectionTitle(context.l.commonAlbums, side: 8),
         EntityCarousel(
           height: 194,
           itemCount: albums.length,
@@ -281,7 +281,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
         ),
       ],
       if (similar.isNotEmpty) ...[
-        SectionTitle(context.l.artistSimilar),
+        SectionTitle(context.l.artistSimilar, side: 8),
         EntityCarousel(
           height: 168,
           itemCount: similar.length,
@@ -289,7 +289,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
         ),
       ],
       if (_tracks.isNotEmpty) ...[
-        SectionTitle(context.l.commonTracks),
+        SectionTitle(context.l.commonTracks, side: 8),
         _tracksZone(),
       ],
       if (top.isEmpty && albums.isEmpty && _tracks.isEmpty)

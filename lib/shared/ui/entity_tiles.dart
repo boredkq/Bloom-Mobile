@@ -720,11 +720,15 @@ class ArtistCard extends StatefulWidget {
     required this.artist,
     this.size = 104,
     this.centerLabel = false,
+    this.pinned = false,
     this.onOpen,
   });
 
   final Artist artist;
   final double? size;
+
+  /// A pin after the name.
+  final bool pinned;
 
   /// См. [TrackRow.onOpen].
   final VoidCallback? onOpen;
@@ -761,12 +765,30 @@ class _ArtistCardState extends State<ArtistCard> {
             flight: flight,
           ),
           const SizedBox(height: 8),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  artist.name,
+                  maxLines: 1,
+                  textAlign: align,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.titleSmall,
+                ),
+              ),
+              if (widget.pinned) ...[
+                const SizedBox(width: 4),
+                BloomIcon(Bi.pin, size: 13, color: context.bloom.text2),
+              ],
+            ],
+          ),
+          const SizedBox(height: 2),
           Text(
-            artist.name,
+            context.l.commonArtist,
             maxLines: 1,
             textAlign: align,
-            overflow: TextOverflow.ellipsis,
-            style: theme.titleSmall,
+            style: theme.bodySmall,
           ),
         ],
       ),
@@ -914,17 +936,45 @@ class EntityCarousel extends StatelessWidget {
   }
 }
 
-/// Заголовок секции выдачи.
+/// A section title. With [onTap] it's a link to the whole of it, an arrow
+/// after the words.
 class SectionTitle extends StatelessWidget {
-  const SectionTitle(this.title, {super.key});
+  const SectionTitle(this.title, {super.key, this.onTap, this.side = 16});
 
   final String title;
+  final VoidCallback? onTap;
+
+  /// Off the screen's edges; 8 where the rows below pad themselves.
+  final double side;
 
   @override
   Widget build(BuildContext context) {
+    final row = Row(
+      children: [
+        Flexible(
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+        ),
+        if (onTap != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 2, top: 2),
+            child: BloomIcon(
+              Bi.arrowRight,
+              size: 22,
+              color: context.bloom.text.withValues(alpha: 0.55),
+            ),
+          ),
+      ],
+    );
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 18, 8, 10),
-      child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+      padding: EdgeInsets.fromLTRB(side, 18, side, 10),
+      child: onTap == null
+          ? row
+          : Pressable(onTap: onTap, scale: 0.98, child: row),
     );
   }
 }

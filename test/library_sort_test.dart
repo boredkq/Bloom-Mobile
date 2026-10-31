@@ -1,6 +1,5 @@
-/// Сортировка и порядок библиотеки: четыре режима, ручной порядок и
-/// закреплённые. Место и закрепление — в строках базы, как на ПК; режим и
-/// фильтр — настройки вида.
+/// Library order: three sorts, the dragged order and the pinned. Place and pin
+/// live in the rows; sort, tab and view are settings.
 library;
 
 import 'package:bloom/core/entities/entities.dart';
@@ -12,12 +11,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bloom/core/db/db.dart';
 import 'support/test_db.dart';
 
-/// Карточка библиотеки в том виде, в каком её видит сортировка.
+/// A library card as the sort sees it.
 class _Card {
-  const _Card(this.key, this.name, this.rank, this.sidePos, this.pinned);
-  final String key;
+  const _Card(this.name, this.sidePos, this.pinned);
   final String name;
-  final int rank;
   final int sidePos;
   final bool pinned;
 }
@@ -33,7 +30,7 @@ ProviderContainer _container(JsonStore store) {
   return c;
 }
 
-/// Два плейлиста и подписка — в таком порядке и заведены.
+/// Two playlists and a follow, made in this order.
 ({String beta, String alpha}) _seed(ProviderContainer c) {
   final lib = c.read(libraryProvider.notifier);
   final beta = lib.createPlaylist('Бета').id;
@@ -48,64 +45,52 @@ ProviderContainer _container(JsonStore store) {
   return (beta: beta, alpha: alpha);
 }
 
-/// Раскладка, как на экране библиотеки, — именами.
+/// Each kind laid out as on the library screen, by names.
 List<String> _names(ProviderContainer c) {
   final lib = c.read(libraryProvider);
-  final cards = [
-    for (final p in lib.playlists)
-      _Card(
-        libKeyOfPlaylist(p.id),
-        p.name,
-        kLibRankPlaylist,
-        p.sidePos,
-        p.pinned,
-      ),
-    for (final f in lib.follows)
-      _Card(
-        libKeyOfArtist(f.artist.id),
-        f.artist.name,
-        kLibRankArtist,
-        f.sidePos,
-        f.pinned,
-      ),
-  ];
-  return c
-      .read(libOrderProvider)
+  final order = c.read(libOrderProvider);
+  List<String> arrange(List<_Card> cards) => order
       .arrange(
         cards,
         name: (e) => e.name,
-        rank: (e) => e.rank,
         sidePos: (e) => e.sidePos,
         pinned: (e) => e.pinned,
       )
       .map((e) => e.name)
       .toList();
+  return [
+    ...arrange([
+      for (final p in lib.playlists) _Card(p.name, p.sidePos, p.pinned),
+    ]),
+    ...arrange([
+      for (final f in lib.follows) _Card(f.artist.name, f.sidePos, f.pinned),
+    ]),
+  ];
 }
 
 const _artistKey = 'artist:sc:artist:1';
 
 void main() {
-  test('«По умолчанию» новые карточки встают по порядку заведения', () {
+  test('by default new cards stand in the order they were made', () {
     final c = _container(JsonStore.memory());
     _seed(c);
     expect(_names(c), ['Бета', 'Альфа', 'Гамма']);
   });
 
-  test('перетаскивание пишет места в базу и переживает перезапуск', () {
+  test('dragging writes the places and survives a restart', () {
     final store = JsonStore.memory();
     final first = _container(store);
     final ids = _seed(first);
     first.read(libraryProvider.notifier).reorderCards([
-      _artistKey,
       libKeyOfPlaylist(ids.alpha),
       libKeyOfPlaylist(ids.beta),
     ]);
-    expect(_names(first), ['Гамма', 'Альфа', 'Бета']);
+    expect(_names(first), ['Альфа', 'Бета', 'Гамма']);
 
-    expect(_names(_container(store)), ['Гамма', 'Альфа', 'Бета']);
+    expect(_names(_container(store)), ['Альфа', 'Бета', 'Гамма']);
   });
 
-  test('сортировка по имени идёт в обе стороны', () {
+  test('the name sort goes both ways', () {
     final c = _container(JsonStore.memory());
     _seed(c);
     final order = c.read(libOrderProvider.notifier);
@@ -114,53 +99,51 @@ void main() {
     expect(_names(c), ['Альфа', 'Бета', 'Гамма']);
 
     order.setSort(LibSort.nameDesc);
-    expect(_names(c), ['Гамма', 'Бета', 'Альфа']);
-  });
-
-  test('«По типу» держит плейлисты выше артистов, не трогая их порядок', () {
-    final c = _container(JsonStore.memory());
-    final ids = _seed(c);
-    c.read(libraryProvider.notifier).reorderCards([
-      _artistKey,
-      libKeyOfPlaylist(ids.beta),
-      libKeyOfPlaylist(ids.alpha),
-    ]);
-    c.read(libOrderProvider.notifier).setSort(LibSort.type);
     expect(_names(c), ['Бета', 'Альфа', 'Гамма']);
   });
 
-  test('закреплённое всплывает наверх в ЛЮБОМ режиме и хранится в базе', () {
+  test('the pinned lead in any sort and are kept in the rows', () {
     final store = JsonStore.memory();
     final c = _container(store);
-    _seed(c);
+    final ids = _seed(c);
     final lib = c.read(libraryProvider.notifier);
-    lib.setPinned(_artistKey, true);
+    final alpha = libKeyOfPlaylist(ids.alpha);
+    lib.setPinned(alpha, true);
 
-    expect(_names(c).first, 'Гамма');
-    expect(c.read(libraryProvider).follows.single.pinned, isTrue);
+    expect(_names(c).first, 'Альфа');
 
-    c.read(libOrderProvider.notifier).setSort(LibSort.nameAsc);
-    expect(_names(c).first, 'Гамма');
-    expect(_names(_container(store)).first, 'Гамма');
+    c.read(libOrderProvider.notifier).setSort(LibSort.nameDesc);
+    expect(_names(c).first, 'Альфа');
+    expect(_names(_container(store)).first, 'Альфа');
 
-    // Открепление возвращает карточку на её место.
-    lib.setPinned(_artistKey, false);
-    expect(_names(c).last, 'Гамма');
+    // Unpinned, it goes back to its place.
+    lib.setPinned(alpha, false);
+    expect(_names(c), ['Бета', 'Альфа', 'Гамма']);
   });
 
-  test('режим и фильтр переживают перезапуск', () {
+  test('pinning an artist goes through its row too', () {
+    final c = _container(JsonStore.memory());
+    _seed(c);
+    c.read(libraryProvider.notifier).setPinned(_artistKey, true);
+    expect(c.read(libraryProvider).follows.single.pinned, isTrue);
+  });
+
+  test('sort, tab and view survive a restart', () {
     final store = JsonStore.memory();
     _container(store).read(libOrderProvider.notifier)
       ..setSort(LibSort.nameDesc)
-      ..setFilter(LibFilter.artists);
+      ..setTab(LibTab.artists)
+      ..setGrid(true);
 
     final state = _container(store).read(libOrderProvider);
     expect(state.sort, LibSort.nameDesc);
-    expect(state.filter, LibFilter.artists);
+    expect(state.tab, LibTab.artists);
+    expect(state.grid, isTrue);
   });
 
-  test('без записи на диске фильтр — «Все»', () {
-    final c = _container(JsonStore.memory());
-    expect(c.read(libOrderProvider).filter, LibFilter.all);
+  test('with nothing saved: "all" as rows', () {
+    final state = _container(JsonStore.memory()).read(libOrderProvider);
+    expect(state.tab, LibTab.all);
+    expect(state.grid, isFalse);
   });
 }

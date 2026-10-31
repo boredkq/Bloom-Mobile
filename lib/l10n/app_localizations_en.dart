@@ -362,16 +362,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setSaveToLibrary => 'Save to library';
 
   @override
-  String get libFilterAll => 'All';
+  String get libTabAll => 'All';
 
   @override
-  String get libEmptyArtists => 'No subscriptions yet';
+  String get libTabArtists => 'Artists';
 
   @override
-  String get libEmptyPlaylists => 'No playlists yet';
+  String get libSystem => 'System';
 
   @override
-  String get libEmptyAll => 'Create a playlist or paste a link into search';
+  String get libAllTracksSub => 'The whole library';
+
+  @override
+  String get libLikedSub => 'Liked tracks';
+
+  @override
+  String get libNoTracks => 'No tracks';
 
   @override
   String get libAutoRefreshTooltip => 'Playlist auto-refresh';
@@ -384,9 +390,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get libSortNameDesc => 'By name Z–A';
-
-  @override
-  String get libSortType => 'By type';
 
   @override
   String get tlSortManual => 'In order';

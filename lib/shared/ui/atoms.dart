@@ -684,12 +684,14 @@ class Cover extends StatelessWidget {
   /// её место занимает коллаж или тинт раздела.
   final CoverFlight? flight;
 
+  static double defaultRadius(BloomTokens t) => t.radius * 0.72;
+
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
     final shape = circle
         ? BorderRadius.circular(size / 2)
-        : BorderRadius.circular(radius ?? t.radius * 0.72);
+        : BorderRadius.circular(radius ?? defaultRadius(t));
 
     // Пустая обложка — приглушённый знак bloom, как `.ps-cover-empty` на
     // десктопе (там глиф с opacity .12).

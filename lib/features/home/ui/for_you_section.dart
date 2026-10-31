@@ -15,7 +15,6 @@ import '../../player/play_source.dart';
 import '../../player/player_controller.dart';
 import '../for_you.dart';
 import 'cover_fan.dart';
-import 'home_sections.dart';
 
 /// Геометрия стопки — десктопные ручки `--fy-*`, ужатые под наши карточки:
 /// верхняя обложка стопки ровно с обложкой соседней карточки (132), а не
@@ -46,7 +45,7 @@ class ForYouSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        HomeSectionHeader(l.homeForYou),
+        SectionTitle(l.homeForYou),
         EntityCarousel(
           height: 194,
           padding: 16,
