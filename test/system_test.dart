@@ -539,7 +539,6 @@ void main() {
         'profile',
         'stats',
         'follows',
-        'onboarded',
         'yandex',
         'lastfm',
       ]) {

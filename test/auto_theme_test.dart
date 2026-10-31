@@ -66,10 +66,37 @@ void main() {
   });
 
   group('переключение', () {
+    test('a theme that is gone falls back to Dark, a custom one stays', () {
+      final gone = _container(
+        JsonStore.memory({
+          'settings': {'themeId': 'midnight'},
+        }),
+      );
+      expect(gone.read(settingsProvider).themeId, 'dark');
+
+      final mine = const ThemePreset(
+        id: 'custom_1',
+        name: 'Mine',
+        bg: Color(0xFF101828),
+        blockColor: Color(0xFF101828),
+        accent: Color(0xFF4D9FFF),
+        custom: true,
+      );
+      final kept = _container(
+        JsonStore.memory({
+          'settings': {
+            'themeId': 'custom_1',
+            'customThemes': [mine.toJson()],
+          },
+        }),
+      );
+      expect(kept.read(settingsProvider).themeId, 'custom_1');
+    });
+
     test('включение затравливает тему текущими цветами', () {
       final c = _container();
       final settings = c.read(settingsProvider.notifier);
-      settings.setTheme('midnight');
+      settings.setTheme('light');
       final before = c.read(settingsProvider).tokens;
 
       settings.setTheme(kAutoThemeId);
@@ -119,12 +146,12 @@ void main() {
       final c = _container();
       final settings = c.read(settingsProvider.notifier);
       settings.setTheme(kAutoThemeId);
-      settings.setTheme('warm');
+      settings.setTheme('light');
 
       settings.applyAutoTheme(const Color(0xFF141018), const Color(0xFF9B5DE5));
       final state = c.read(settingsProvider);
-      expect(state.tokens.bg, const Color(0xFF1C1610));
-      expect(state.tokens.accent, const Color(0xFFD4875A));
+      expect(state.tokens.bg, const Color(0xFFF0F0F0));
+      expect(state.tokens.accent, const Color(0xFF000000));
     });
 
     test('уход на пресет сбрасывает акцент обложки', () {
@@ -133,8 +160,8 @@ void main() {
       settings.setTheme(kAutoThemeId);
       settings.applyAutoTheme(const Color(0xFF141018), const Color(0xFF9B5DE5));
 
-      settings.setTheme('nord');
-      expect(c.read(settingsProvider).tokens.accent, const Color(0xFF88C0D0));
+      settings.setTheme('light');
+      expect(c.read(settingsProvider).tokens.accent, const Color(0xFF000000));
     });
   });
 

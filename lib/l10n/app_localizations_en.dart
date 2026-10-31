@@ -102,9 +102,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonHistory => 'History';
 
   @override
-  String get commonSort => 'Sort';
-
-  @override
   String get commonNewPlaylist => 'New playlist';
 
   @override
@@ -2169,10 +2166,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ymPlusUnknown => 'Subscription status unknown.';
 
   @override
-  String get ymLoginHint =>
-      'Sign in with your Yandex ID. A confirmation page will open — enter the code there.';
-
-  @override
   String get ymConnect => 'Connect Yandex Music';
 
   @override
@@ -2570,72 +2563,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apTrOverlaysSub => 'Glass for sheets, menus and dialogs';
 
   @override
-  String get onbTagline => 'your personal player';
-
-  @override
-  String get onbHelloSub => 'A few quick steps and the player is yours';
-
-  @override
-  String get onbHelloCta => 'Let\'s go';
-
-  @override
-  String get onbNext => 'Next';
-
-  @override
-  String get onbDone => 'Done';
-
-  @override
-  String get onbProfileTitle => 'Tell us about yourself';
-
-  @override
-  String get onbProfileSub =>
-      'Avatar, cover and name. You can change all of it later in your profile.';
-
-  @override
-  String get onbAddCover => 'Add profile cover';
-
-  @override
-  String get onbThemeTitle => 'Pick a look';
-
-  @override
-  String get onbThemeSub => 'The theme applies instantly — see how it feels.';
-
-  @override
-  String get onbThemeHint => 'More themes live in settings';
-
-  @override
-  String get onbMusicTitle => 'Connect your music';
-
-  @override
-  String get onbMusicSub =>
-      'Sign in to your platforms — their tracks show up in search right away.';
-
-  @override
-  String get onbMusicPlatforms => 'PLATFORMS';
-
-  @override
-  String get onbMusicSkip =>
-      'None of this is required — it all lives in settings';
-
-  @override
-  String get onbPlatConnected => 'Connected';
-
-  @override
-  String get onbPlatNotConnected => 'Not connected';
-
-  @override
-  String get onbPlatCheck => 'Check';
-
-  @override
-  String onbWelcome(String name) {
-    return 'Hi, $name!';
-  }
-
-  @override
-  String get onbWelcomeSub => 'Welcome to Bloom';
-
-  @override
-  String get onbReplay => 'Show onboarding again';
+  String get welcomeTitle => 'Welcome';
 
   @override
   String get waveTitle => 'My Wave';

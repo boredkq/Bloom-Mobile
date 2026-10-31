@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/router.dart';
+import 'app/welcome.dart';
 import 'app/theme/bloom_theme.dart';
 import 'core/l10n/l10n.dart';
 import 'core/log/bloom_log.dart';
@@ -22,7 +23,6 @@ import 'features/library/pl_auto_store.dart';
 import 'features/lyrics/lyrics_cache.dart';
 import 'features/lyrics/lyrics_store.dart';
 import 'features/offline/offline_store.dart';
-import 'features/onboarding/onboarding_store.dart';
 import 'features/pc/pc_store.dart';
 import 'features/player/audio_handler.dart';
 import 'features/player/player_controller.dart';
@@ -92,10 +92,6 @@ Future<void> main() async {
     ],
   );
   container.read(playbackProvider);
-  // Пройден ли онбординг — ДО первого маршрута: `redirect` роутера смотрит на
-  // флаг, который выставляет этот провайдер, и опоздание показало бы главную
-  // на долю секунды раньше мастера.
-  container.read(onboardedProvider);
   // Токен Яндекса поднимаем сразу: пока стор не создан, площадка считается
   // выключенной и первый же поиск прошёл бы мимо неё.
   container.read(ymAuthProvider);
@@ -127,7 +123,10 @@ Future<void> main() async {
   };
 
   runApp(
-    UncontrolledProviderScope(container: container, child: const BloomApp()),
+    UncontrolledProviderScope(
+      container: container,
+      child: BloomApp(firstRun: takeFirstRun(db)),
+    ),
   );
 
   // Восстановление прошлой сессии — после первого кадра: резолв стрима идёт в
@@ -258,7 +257,10 @@ void _restoreSession(ProviderContainer container) {
 }
 
 class BloomApp extends ConsumerWidget {
-  const BloomApp({super.key});
+  const BloomApp({super.key, this.firstRun = false});
+
+  /// Show the word of welcome over the app.
+  final bool firstRun;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -303,7 +305,10 @@ class BloomApp extends ConsumerWidget {
       ),
       // Фон — под навигатором: он один на всё приложение и не должен ни
       // перерисовываться на каждом переходе, ни ехать вместе со страницей.
-      builder: (_, child) => AppBackground(child: child ?? const SizedBox()),
+      builder: (_, child) => Welcome(
+        show: firstRun,
+        child: AppBackground(child: child ?? const SizedBox()),
+      ),
       routerConfig: bloomRouter,
     );
   }

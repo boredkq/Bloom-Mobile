@@ -102,9 +102,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get commonHistory => 'История';
 
   @override
-  String get commonSort => 'Сортировка';
-
-  @override
   String get commonNewPlaylist => 'Новый плейлист';
 
   @override
@@ -2198,10 +2195,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get ymPlusUnknown => 'Статус подписки неизвестен.';
 
   @override
-  String get ymLoginHint =>
-      'Войди через Яндекс ID. Откроется страница подтверждения — введи там код.';
-
-  @override
   String get ymConnect => 'Подключить Яндекс.Музыку';
 
   @override
@@ -2607,73 +2600,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get apTrOverlaysSub => 'Стекло для шторок, меню и диалогов';
 
   @override
-  String get onbTagline => 'твой личный плеер';
-
-  @override
-  String get onbHelloSub => 'Пара шагов — и плеер будет настроен под тебя';
-
-  @override
-  String get onbHelloCta => 'Поехали';
-
-  @override
-  String get onbNext => 'Далее';
-
-  @override
-  String get onbDone => 'Готово';
-
-  @override
-  String get onbProfileTitle => 'Расскажи о себе';
-
-  @override
-  String get onbProfileSub =>
-      'Аватар, обложка и имя. Всё это можно поменять позже в профиле.';
-
-  @override
-  String get onbAddCover => 'Добавить обложку профиля';
-
-  @override
-  String get onbThemeTitle => 'Выбери оформление';
-
-  @override
-  String get onbThemeSub =>
-      'Тема применяется сразу — посмотри, как она выглядит.';
-
-  @override
-  String get onbThemeHint => 'Больше тем — в настройках';
-
-  @override
-  String get onbMusicTitle => 'Подключи музыку';
-
-  @override
-  String get onbMusicSub =>
-      'Войди в свои площадки — их треки сразу появятся в поиске.';
-
-  @override
-  String get onbMusicPlatforms => 'ПЛОЩАДКИ';
-
-  @override
-  String get onbMusicSkip =>
-      'Ничего из этого не обязательно — всё есть в настройках';
-
-  @override
-  String get onbPlatConnected => 'Подключено';
-
-  @override
-  String get onbPlatNotConnected => 'Не подключено';
-
-  @override
-  String get onbPlatCheck => 'Проверить';
-
-  @override
-  String onbWelcome(String name) {
-    return 'Привет, $name!';
-  }
-
-  @override
-  String get onbWelcomeSub => 'Добро пожаловать в Bloom';
-
-  @override
-  String get onbReplay => 'Показать онбординг снова';
+  String get welcomeTitle => 'Добро пожаловать';
 
   @override
   String get waveTitle => 'Моя волна';

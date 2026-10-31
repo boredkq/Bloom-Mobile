@@ -1400,26 +1400,30 @@ Future<void> _pickTheme(BuildContext context, WidgetRef ref) async {
 
   await showBloomSheetChild<void>(
     context: context,
-    header: Padding(
-      padding: const EdgeInsets.fromLTRB(kSheetEdge, 6, kSheetEdge, 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              context.l.apThemeRow,
-              style: Theme.of(context).textTheme.titleLarge,
+    // The theme changes live under the sheet, so the header reads its colours
+    // in its own context, not in the screen's at the time it opened.
+    header: Builder(
+      builder: (context) => Padding(
+        padding: const EdgeInsets.fromLTRB(kSheetEdge, 6, kSheetEdge, 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                context.l.apThemeRow,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
             ),
-          ),
-          // «+» — как кнопка `tp-add` рядом со строкой темы на ПК.
-          CircleIconButton(
-            icon: Bi.addCircle,
-            size: 40,
-            iconSize: 22,
-            background: Colors.white.withValues(alpha: 0.08),
-            color: context.bloom.text,
-            onTap: () => _createTheme(context, ref),
-          ),
-        ],
+            // «+» — как кнопка `tp-add` рядом со строкой темы на ПК.
+            CircleIconButton(
+              icon: Bi.addCircle,
+              size: 40,
+              iconSize: 22,
+              background: sheetPanelColor(context),
+              color: context.bloom.text,
+              onTap: () => _createTheme(context, ref),
+            ),
+          ],
+        ),
       ),
     ),
     child: Consumer(
@@ -1464,9 +1468,9 @@ Future<void> _pickTheme(BuildContext context, WidgetRef ref) async {
                 children: [for (final p in kThemePresets) card(p)],
               ),
               if (settings.customThemes.isNotEmpty) ...[
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 14),
-                  child: Divider(height: 1, color: Colors.white24),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  child: Divider(height: 1, color: sheetLineColor(context)),
                 ),
                 Wrap(
                   spacing: 12,

@@ -284,12 +284,6 @@ abstract class AppLocalizations {
   /// **'History'**
   String get commonHistory;
 
-  /// desktop: lib.plmenu.sort
-  ///
-  /// In en, this message translates to:
-  /// **'Sort'**
-  String get commonSort;
-
   /// desktop: player.add.newPlaylist
   ///
   /// In en, this message translates to:
@@ -3830,12 +3824,6 @@ abstract class AppLocalizations {
   /// **'Subscription status unknown.'**
   String get ymPlusUnknown;
 
-  /// desktop: settings.ym.loginHint
-  ///
-  /// In en, this message translates to:
-  /// **'Sign in with your Yandex ID. A confirmation page will open — enter the code there.'**
-  String get ymLoginHint;
-
   /// desktop: settings.ym.connect
   ///
   /// In en, this message translates to:
@@ -4490,131 +4478,11 @@ abstract class AppLocalizations {
   /// **'Glass for sheets, menus and dialogs'**
   String get apTrOverlaysSub;
 
-  /// desktop: onb.tagline
+  /// desktop: welcome.title
   ///
   /// In en, this message translates to:
-  /// **'your personal player'**
-  String get onbTagline;
-
-  /// desktop: onb.hello.sub
-  ///
-  /// In en, this message translates to:
-  /// **'A few quick steps and the player is yours'**
-  String get onbHelloSub;
-
-  /// desktop: onb.hello.cta
-  ///
-  /// In en, this message translates to:
-  /// **'Let\'s go'**
-  String get onbHelloCta;
-
-  /// desktop: onb.next
-  ///
-  /// In en, this message translates to:
-  /// **'Next'**
-  String get onbNext;
-
-  /// desktop: onb.done
-  ///
-  /// In en, this message translates to:
-  /// **'Done'**
-  String get onbDone;
-
-  /// desktop: onb.profile.title
-  ///
-  /// In en, this message translates to:
-  /// **'Tell us about yourself'**
-  String get onbProfileTitle;
-
-  /// desktop: onb.profile.sub
-  ///
-  /// In en, this message translates to:
-  /// **'Avatar, cover and name. You can change all of it later in your profile.'**
-  String get onbProfileSub;
-
-  /// desktop: onb.addCover
-  ///
-  /// In en, this message translates to:
-  /// **'Add profile cover'**
-  String get onbAddCover;
-
-  /// desktop: onb.theme.title
-  ///
-  /// In en, this message translates to:
-  /// **'Pick a look'**
-  String get onbThemeTitle;
-
-  /// desktop: onb.theme.sub
-  ///
-  /// In en, this message translates to:
-  /// **'The theme applies instantly — see how it feels.'**
-  String get onbThemeSub;
-
-  /// desktop: onb.theme.hint
-  ///
-  /// In en, this message translates to:
-  /// **'More themes live in settings'**
-  String get onbThemeHint;
-
-  /// desktop: onb.library.title
-  ///
-  /// In en, this message translates to:
-  /// **'Connect your music'**
-  String get onbMusicTitle;
-
-  /// desktop: onb.library.sub, rewritten: there are no local folders on the phone
-  ///
-  /// In en, this message translates to:
-  /// **'Sign in to your platforms — their tracks show up in search right away.'**
-  String get onbMusicSub;
-
-  /// desktop: onb.music.platforms
-  ///
-  /// In en, this message translates to:
-  /// **'PLATFORMS'**
-  String get onbMusicPlatforms;
-
-  /// desktop: onb.library.skip
-  ///
-  /// In en, this message translates to:
-  /// **'None of this is required — it all lives in settings'**
-  String get onbMusicSkip;
-
-  /// desktop: onb.plat.connected
-  ///
-  /// In en, this message translates to:
-  /// **'Connected'**
-  String get onbPlatConnected;
-
-  /// desktop: onb.plat.notConnected
-  ///
-  /// In en, this message translates to:
-  /// **'Not connected'**
-  String get onbPlatNotConnected;
-
-  /// desktop: onb.plat.autoCheck
-  ///
-  /// In en, this message translates to:
-  /// **'Check'**
-  String get onbPlatCheck;
-
-  /// desktop: onb.welcome
-  ///
-  /// In en, this message translates to:
-  /// **'Hi, {name}!'**
-  String onbWelcome(String name);
-
-  /// desktop: onb.welcomeSub
-  ///
-  /// In en, this message translates to:
-  /// **'Welcome to Bloom'**
-  String get onbWelcomeSub;
-
-  /// debug builds only: the desktop has showOnboarding() in the console
-  ///
-  /// In en, this message translates to:
-  /// **'Show onboarding again'**
-  String get onbReplay;
+  /// **'Welcome'**
+  String get welcomeTitle;
 
   /// desktop: wave.title
   ///

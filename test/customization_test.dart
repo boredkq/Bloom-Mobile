@@ -201,7 +201,7 @@ void main() {
       final a = _add(c, 'https://e.com/a.jpg');
       c.read(customProvider.notifier).toggle(CustomCtx.bg, a, true);
       final settings = c.read(settingsProvider.notifier);
-      settings.setTheme('midnight');
+      settings.setTheme('light');
       settings.setFontFamily('Inter');
       c.read(transparencyProvider.notifier).setOn(true);
 
@@ -222,7 +222,7 @@ void main() {
       // Круг через хранилище: пресет читается заново с тем же видом.
       final fresh = _container(store);
       fresh.read(presetsProvider.notifier).apply(full.id);
-      expect(fresh.read(settingsProvider).themeId, 'midnight');
+      expect(fresh.read(settingsProvider).themeId, 'light');
       expect(fresh.read(settingsProvider).fontFamily, 'Inter');
       expect(fresh.read(transparencyProvider).on, isTrue);
     });

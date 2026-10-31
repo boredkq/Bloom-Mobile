@@ -135,11 +135,9 @@ final coverAccentProvider = FutureProvider.autoDispose.family<Color?, String?>((
 const double _autoThemeBgL = 0.075;
 const double _autoThemeBgSMax = 0.5;
 
-/// Доминантный HSL → поверхность авто-темы: фон и блоки одним цветом.
-///
-/// Поверхность плоская, как у встроенных пресетов, и цвет обложки входит в неё
-/// лишь оттенком — иначе интерфейс превращается в цветное пятно. Светлота
-/// 0.075 сидит между Dark (#0a0a0a) и Midnight (#101828).
+/// The auto theme's surface, background and blocks alike: the cover only as a
+/// hue, a little above Dark in lightness, or the whole UI becomes a coloured
+/// patch.
 Color autoThemeSurfaceFromHsl(CoverHsl hsl) => HSLColor.fromAHSL(
   1,
   hsl.h % 360,

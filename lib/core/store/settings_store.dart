@@ -13,108 +13,7 @@ import '../../app/theme/tokens.dart';
 import '../../providers/soundcloud/soundcloud.dart' as sc;
 import 'json_store.dart' show jsonStoreProvider;
 
-/// Встроенные пресеты в порядке показа — те же три цвета, что в
-/// `THEME_PRESETS` на десктопе.
-class ThemePreset {
-  final String id;
-  final String name;
-  final Color bg;
-  final Color blockColor;
-  final Color accent;
-
-  /// Своя тема — её можно удалить, встроенную нельзя.
-  final bool custom;
-
-  const ThemePreset({
-    required this.id,
-    required this.name,
-    required this.bg,
-    required this.blockColor,
-    required this.accent,
-    this.custom = false,
-  });
-
-  BloomTokens tokens({Color? accentOverride}) => BloomTokens.from(
-    bg: bg,
-    blockColor: blockColor,
-    accent: accentOverride ?? accent,
-  );
-
-  /// Своя тема в хранилище — те же три цвета, что на десктопе: вторичные всё
-  /// равно считаются формулами (`DERIVED_SECONDARY`), хранить их незачем.
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
-    'bg': bg.toARGB32(),
-    'blockColor': blockColor.toARGB32(),
-    'accent': accent.toARGB32(),
-  };
-
-  /// Тема из хранилища; `null` — запись битая (руками правили файл).
-  static ThemePreset? fromJson(Object? raw) {
-    if (raw is! Map) return null;
-    final id = raw['id'];
-    final name = raw['name'];
-    final bg = raw['bg'];
-    final blockColor = raw['blockColor'];
-    final accent = raw['accent'];
-    if (id is! String || name is! String) return null;
-    if (bg is! num || blockColor is! num || accent is! num) return null;
-    return ThemePreset(
-      id: id,
-      name: name,
-      bg: Color(bg.toInt()),
-      blockColor: Color(blockColor.toInt()),
-      accent: Color(accent.toInt()),
-      custom: true,
-    );
-  }
-}
-
-const List<ThemePreset> kThemePresets = [
-  ThemePreset(
-    id: 'dark',
-    name: 'Dark',
-    bg: Color(0xFF0A0A0A),
-    blockColor: Color(0xFF0A0A0A),
-    accent: Color(0xFFFFFFFF),
-  ),
-  ThemePreset(
-    id: 'amoled',
-    name: 'AMOLED',
-    bg: Color(0xFF000000),
-    blockColor: Color(0xFF000000),
-    accent: Color(0xFFFFFFFF),
-  ),
-  ThemePreset(
-    id: 'midnight',
-    name: 'Midnight',
-    bg: Color(0xFF101828),
-    blockColor: Color(0xFF101828),
-    accent: Color(0xFF4D9FFF),
-  ),
-  ThemePreset(
-    id: 'nord',
-    name: 'Nord',
-    bg: Color(0xFF3B4252),
-    blockColor: Color(0xFF3B4252),
-    accent: Color(0xFF88C0D0),
-  ),
-  ThemePreset(
-    id: 'warm',
-    name: 'Warm',
-    bg: Color(0xFF1C1610),
-    blockColor: Color(0xFF1C1610),
-    accent: Color(0xFFD4875A),
-  ),
-  ThemePreset(
-    id: 'light',
-    name: 'Light',
-    bg: Color(0xFFE8E8E8),
-    blockColor: Color(0xFFE8E8E8),
-    accent: Color(0xFF333333),
-  ),
-];
+export '../../app/theme/tokens.dart' show ThemePreset, kThemePresets;
 
 /// id авто-темы. В [kThemePresets] её нет намеренно: это РЕЖИМ, а не набор
 /// цветов — три цвета ей приносит обложка играющего трека (см.
@@ -466,6 +365,16 @@ class SettingsState {
   );
 }
 
+/// The saved theme id, or Dark when that theme is gone (a preset dropped in
+/// an update), as the PC's `syncPreset` does.
+String _knownTheme(Object? id, List<ThemePreset> custom) {
+  final known =
+      id == kAutoThemeId ||
+      kThemePresets.any((p) => p.id == id) ||
+      custom.any((p) => p.id == id);
+  return known ? id! as String : kThemePresets.first.id;
+}
+
 final settingsProvider = NotifierProvider<SettingsController, SettingsState>(
   SettingsController.new,
 );
@@ -477,8 +386,12 @@ class SettingsController extends Notifier<SettingsState> {
     final accent = raw['accent'];
     final autoSurface = raw['autoSurface'];
     final clientId = raw['scClientId'];
+    final customThemes = [
+      for (final item in (raw['customThemes'] as List?) ?? const [])
+        ?ThemePreset.fromJson(item),
+    ];
     final state = SettingsState(
-      themeId: raw['themeId'] as String? ?? 'dark',
+      themeId: _knownTheme(raw['themeId'], customThemes),
       locale: readSavedLocale(raw),
       accent: accent is num ? Color(accent.toInt()) : null,
       autoAccent: raw['autoAccent'] as bool? ?? false,
@@ -499,10 +412,7 @@ class SettingsController extends Notifier<SettingsState> {
       restoreQueue: raw['restoreQueue'] as bool? ?? false,
       autoplay: raw['autoplay'] as bool? ?? false,
       autoSimilar: raw['autoSimilar'] as bool? ?? false,
-      customThemes: [
-        for (final item in (raw['customThemes'] as List?) ?? const [])
-          ?ThemePreset.fromJson(item),
-      ],
+      customThemes: customThemes,
     );
     // Провайдер SoundCloud держит client_id в модульном состоянии — при старте
     // ему надо отдать сохранённый, иначе ручной ключ забудется до перезапуска.

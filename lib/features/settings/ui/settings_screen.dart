@@ -17,7 +17,6 @@
 /// кастомизация, все три площадки и «Last.fm».
 library;
 
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -30,7 +29,6 @@ import '../../../providers/yandex/ym_auth.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/pressable.dart';
 import '../../lastfm/lastfm_store.dart';
-import '../../onboarding/onboarding_store.dart';
 import '../../pc/pc_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
@@ -115,24 +113,6 @@ class SettingsScreen extends StatelessWidget {
             ],
           ),
           const _IntegrationsGroup(),
-          // Повтор онбординга — только в отладочной сборке, как `showOnboarding()`
-          // в консоли на ПК: в релизе мастер показывается один раз за установку.
-          if (kDebugMode)
-            Consumer(
-              builder: (context, ref, _) => SettingsGroup(
-                title: 'DEBUG',
-                rows: [
-                  SettingsRow(
-                    icon: Bi.magicStick,
-                    title: context.l.onbReplay,
-                    onTap: () {
-                      ref.read(onboardedProvider.notifier).reset();
-                      context.go('/onboarding');
-                    },
-                  ),
-                ],
-              ),
-            ),
         ],
       ),
     );

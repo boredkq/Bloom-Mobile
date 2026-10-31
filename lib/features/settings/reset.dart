@@ -92,10 +92,6 @@ const List<String> kSettingsKeys = [
   'plAuto',
 ];
 
-/// Флаг «мастер пройден» переживает даже полный сброс: на десктопе
-/// `hardReset` его тоже бережёт.
-const String _onboardedKey = 'onboarded';
-
 /// Вернуть настройки к умолчаниям. Библиотеку, историю, профиль и авторизации
 /// не трогает.
 Future<void> resetSettings(WidgetRef ref) async {
@@ -143,10 +139,7 @@ Future<void> hardReset(WidgetRef ref) async {
   await forgetLocalTracks(lib.tracks.values);
 
   final store = ref.read(jsonStoreProvider);
-  store.removeAll([
-    for (final key in store.keys)
-      if (key != _onboardedKey) key,
-  ]);
+  store.removeAll([...store.keys]);
   await store.flush();
   ref.read(dbProvider).wipe();
 

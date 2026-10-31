@@ -174,8 +174,9 @@ class BloomTokens extends ThemeExtension<BloomTokens> {
       ovlLine2: ovl.withValues(alpha: wb2),
       ovlBg: ovl.withValues(alpha: 0.03),
       iconBg: ovl.withValues(alpha: 0.06),
-      // 16/245 — доля, при которой #0a0a0a уезжает ровно в #1a1a1a.
-      pill: _mix(blockColor, ovl, 16 / 245),
+      // Pills sit on the page, which is bg: 16/245 takes #0a0a0a exactly to
+      // #1a1a1a.
+      pill: _mix(bg, ovl, 16 / 245),
       // Чёрная плёнка «весит» больше белой при той же альфе — на светлой теме
       // дорожку слегка ослабляем.
       track: ovl.withValues(alpha: light ? 0.07 : 0.04),
@@ -213,45 +214,85 @@ class BloomTokens extends ThemeExtension<BloomTokens> {
   }
 }
 
-/// Встроенные пресеты — та же тройка цветов, что в `THEME_PRESETS`.
-/// Пока приложение живёт на одной теме `dark`; остальные заведены, чтобы
-/// формулы сразу проверялись на них же.
+/// A theme: three colours, the rest is derived ([BloomTokens.from]).
+class ThemePreset {
+  final String id;
+  final String name;
+  final Color bg;
+  final Color blockColor;
+  final Color accent;
+
+  /// My own theme: it can be deleted, a built-in one can't.
+  final bool custom;
+
+  const ThemePreset({
+    required this.id,
+    required this.name,
+    required this.bg,
+    required this.blockColor,
+    required this.accent,
+    this.custom = false,
+  });
+
+  BloomTokens tokens({Color? accentOverride}) => BloomTokens.from(
+    bg: bg,
+    blockColor: blockColor,
+    accent: accentOverride ?? accent,
+  );
+
+  /// I store only the three colours: the rest is derived anyway.
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'bg': bg.toARGB32(),
+    'blockColor': blockColor.toARGB32(),
+    'accent': accent.toARGB32(),
+  };
+
+  /// A stored custom theme; `null` for a broken entry.
+  static ThemePreset? fromJson(Object? raw) {
+    if (raw is! Map) return null;
+    final id = raw['id'];
+    final name = raw['name'];
+    final bg = raw['bg'];
+    final blockColor = raw['blockColor'];
+    final accent = raw['accent'];
+    if (id is! String || name is! String) return null;
+    if (bg is! num || blockColor is! num || accent is! num) return null;
+    return ThemePreset(
+      id: id,
+      name: name,
+      bg: Color(bg.toInt()),
+      blockColor: Color(blockColor.toInt()),
+      accent: Color(accent.toInt()),
+      custom: true,
+    );
+  }
+}
+
+/// The built-in themes, the PC's two. Dark comes first: a theme that's gone
+/// falls back to it.
+const List<ThemePreset> kThemePresets = [
+  ThemePreset(
+    id: 'dark',
+    name: 'Dark',
+    bg: Color(0xFF0A0A0A),
+    blockColor: Color(0xFF0D0D0D),
+    accent: Color(0xFFFFFFFF),
+  ),
+  ThemePreset(
+    id: 'light',
+    name: 'Light',
+    bg: Color(0xFFF0F0F0),
+    blockColor: Color(0xFFF5F5F5),
+    accent: Color(0xFF000000),
+  ),
+];
+
+/// The built-in themes' tokens, for tests.
 class BloomThemes {
-  static final dark = BloomTokens.from(
-    bg: const Color(0xFF0A0A0A),
-    blockColor: const Color(0xFF0A0A0A),
-    accent: const Color(0xFFFFFFFF),
-  );
-
-  static final amoled = BloomTokens.from(
-    bg: const Color(0xFF000000),
-    blockColor: const Color(0xFF000000),
-    accent: const Color(0xFFFFFFFF),
-  );
-
-  static final midnight = BloomTokens.from(
-    bg: const Color(0xFF101828),
-    blockColor: const Color(0xFF101828),
-    accent: const Color(0xFF4D9FFF),
-  );
-
-  static final nord = BloomTokens.from(
-    bg: const Color(0xFF3B4252),
-    blockColor: const Color(0xFF3B4252),
-    accent: const Color(0xFF88C0D0),
-  );
-
-  static final warm = BloomTokens.from(
-    bg: const Color(0xFF1C1610),
-    blockColor: const Color(0xFF1C1610),
-    accent: const Color(0xFFD4875A),
-  );
-
-  static final light = BloomTokens.from(
-    bg: const Color(0xFFE8E8E8),
-    blockColor: const Color(0xFFE8E8E8),
-    accent: const Color(0xFF333333),
-  );
+  static final dark = kThemePresets.first.tokens();
+  static final light = kThemePresets.last.tokens();
 }
 
 /// Быстрый доступ к токенам из виджета.

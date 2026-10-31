@@ -18,8 +18,6 @@ import '../features/customization/ui/customization_screen.dart';
 import '../features/home/ui/home_screen.dart';
 import '../features/library/ui/library_screen.dart';
 import '../features/library/ui/tracklist_screen.dart';
-import '../features/onboarding/onboarding_store.dart';
-import '../features/onboarding/ui/onboarding_screen.dart';
 import '../features/profile/ui/profile_edit_screen.dart';
 import '../features/pc/ui/pc_screen.dart';
 import '../features/profile/ui/profile_screen.dart';
@@ -123,18 +121,7 @@ GoRoute get _profileEditRoute => GoRoute(
 final GoRouter bloomRouter = GoRouter(
   navigatorKey: _rootKey,
   initialLocation: '/home',
-  // Первый запуск уводит куда угодно на онбординг — то же, что оверлей поверх
-  // всего на десктопе. Флаг голый, а не провайдер: `redirect` контейнера
-  // Riverpod не видит, а ответ нужен ещё до сборки первого маршрута
-  // (`main()` читает стор до первого кадра).
-  redirect: (context, state) {
-    if (!onboardingPending) return null;
-    return state.matchedLocation == '/onboarding' ? null : '/onboarding';
-  },
   routes: [
-    // Своя страница, а не оверлей: иначе системное «назад» уходило бы мимо
-    // мастера в навигатор под ним, а `PopScope` без маршрута-предка молчит.
-    GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
     StatefulShellRoute(
       builder: (context, state, shell) => BloomShell(shell: shell),
       navigatorContainerBuilder: (context, shell, children) =>

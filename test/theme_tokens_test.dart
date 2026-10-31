@@ -27,26 +27,24 @@ String _over(Color top, Color bottom) {
 }
 
 void main() {
-  test('Dark: производные тона от #0a0a0a + белый акцент', () {
+  test('Dark: tones derived from #0a0a0a / #0d0d0d and a white accent', () {
     final t = BloomThemes.dark;
 
     expect(t.isLight, isFalse);
-    // Плоская поверхность: блоки не выделяются своим цветом.
-    expect(_hex(t.card), '#0a0a0a');
-    // color-mix(block, ovl 12%) — на десктопе тут раньше стояло #262626.
-    expect(_hex(t.border), '#272727');
+    expect(_hex(t.card), '#0d0d0d');
+    // color-mix(block, ovl 12%).
+    expect(_hex(t.border), '#2a2a2a');
     expect(_hex(t.text), '#ffffff');
-    // mix(text, block 40%) / 68% — было #999 и #555.
-    expect(_hex(t.text2), '#9d9d9d');
-    expect(_hex(t.muted), '#585858');
+    // mix(text, block 40%) / 68%.
+    expect(_hex(t.text2), '#9e9e9e');
+    expect(_hex(t.muted), '#5a5a5a');
     // mix(accent, block 22%).
-    expect(_hex(t.accent2), '#c9c9c9');
+    expect(_hex(t.accent2), '#cacaca');
     // Белый акцент — надпись на нём чёрная, ховер темнеет (осветлять некуда).
     expect(_hex(t.accentText), '#000000');
     expect(_hex(t.accentHover), '#e0e0e0');
-    // mix(border, ovl 20%) считается от НЕокруглённой рамки (39.4), как
-    // color-mix в CSS — отсюда 83, а не 82.
-    expect(_hex(t.borderFocus), '#535353');
+    // mix(border, ovl 20%) from the unrounded border, as CSS color-mix.
+    expect(_hex(t.borderFocus), '#555555');
     // Пилюли и круглые кнопки шапки — ровно #1a1a1a, и именно сплошным
     // цветом: плёнка тех же 6% даёт 24.7 и на устройстве садится в #181818.
     expect(_hex(t.pill), '#1a1a1a');
@@ -62,15 +60,22 @@ void main() {
     expect(t.isLight, isTrue);
     expect(_hex(t.text), '#111111');
     // ovl теперь чёрный → рамка ТЕМНЕЕ поверхности, а не светлее.
-    expect(_hex(t.border), '#cccccc');
-    // Тёмный акцент #333333 → надпись на нём белая.
+    expect(_hex(t.border), '#d8d8d8');
+    // The black accent takes white text.
+    expect(_hex(t.pill), '#e0e0e0');
     expect(_hex(t.accentText), '#ffffff');
     // Чёрная плёнка «весит» больше — дорожка ослаблена до .07.
     expect(t.track.a, closeTo(0.07, 0.001));
   });
 
   test('Акцентная тема: glow и folderTint идут от акцента', () {
-    final t = BloomThemes.midnight;
+    final t = const ThemePreset(
+      id: 'blue',
+      name: 'Blue',
+      bg: Color(0xFF101828),
+      blockColor: Color(0xFF101828),
+      accent: Color(0xFF4D9FFF),
+    ).tokens();
     expect(_hex(t.glow), '#4d9fff');
     expect(t.glow.a, closeTo(0.2, 0.001));
     expect(_hex(t.folderTint), '#4d9fff');
