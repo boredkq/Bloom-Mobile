@@ -33,8 +33,7 @@ String totalDur(AppLocalizations l, Duration d) {
 /// прицеплено время с часовым поясом, и перевод его в местный сдвинул бы день
 /// на сутки — релиз «13 мая 00:00 +03» в Лондоне стал бы двенадцатым.
 String? releaseDateLabel(String? raw, String locale) {
-  if (raw == null) return null;
-  final day = DateTime.tryParse(raw.length > 10 ? raw.substring(0, 10) : raw);
+  final day = _releaseDay(raw);
   if (day == null) return null;
   // Русский `yMMMMd` кончается на «г.» — в подписи из трёх кусков через точку
   // это лишний шум, а сам порядок слов («13 мая» против «May 13») нужен родной.
@@ -42,6 +41,17 @@ String? releaseDateLabel(String? raw, String locale) {
     locale,
   ).format(day).replaceFirst(RegExp(r'\s*г\.$'), '');
 }
+
+/// An album card's date line: "13 мая 2024 г." / "May 13, 2024", short and
+/// standing alone, so the Russian "г." stays. Only a year → null, as above.
+String? releaseDayShort(String? raw, String locale) {
+  final day = _releaseDay(raw);
+  return day == null ? null : DateFormat.yMMMd(locale).format(day);
+}
+
+DateTime? _releaseDay(String? raw) => raw == null
+    ? null
+    : DateTime.tryParse(raw.length > 10 ? raw.substring(0, 10) : raw);
 
 /// Короткая дата события из метки времени: «2 сент. 2026 г.» / «Sep 2, 2026».
 /// Ею подписаны шапки шторок («Добавлен …», «Создан …»).

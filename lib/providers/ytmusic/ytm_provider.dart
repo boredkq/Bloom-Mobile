@@ -69,6 +69,7 @@ Playlist albumFromYtm(YtmRawAlbum a) => Playlist(
   cover: _blankToNull(a.cover),
   ownerName: _blankToNull(a.artist),
   year: _blankToNull(a.year),
+  albumType: a.kind,
   sourceUrl: 'https://music.youtube.com/browse/${a.id}',
   isAlbum: true,
   source: MusicSource.ytmusic,

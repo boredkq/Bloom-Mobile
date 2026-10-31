@@ -1,7 +1,7 @@
 /// Страница «Релизы» — все новинки площадки сеткой. Порт ветки `releases`
 /// десктопного `DetailView` (`ReleasesBody`).
 ///
-/// Карточки те же, что в выдаче поиска; подпись — «артист · сингл», тап
+/// Карточки те же, что в выдаче поиска («артист · сингл» над датой), тап
 /// открывает альбом. Шапки с обложкой нет — как и у чарта, это не сущность
 /// площадки, а список.
 library;
@@ -18,23 +18,8 @@ import '../../../shared/ui/subpage_header.dart';
 import '../../customization/ui/app_background.dart';
 import '../discover_store.dart';
 
-/// A release's caption: "artist · single". An album unless the platform says
-/// otherwise.
-String releaseSubtitle(AppLocalizations l, Playlist album) => [
-  album.ownerName ?? '',
-  switch (album.albumType) {
-    'single' => l.relSingle,
-    'compilation' => l.relCompilation,
-    'podcast' => l.relPodcast,
-    _ => l.relAlbum,
-  },
-].where((s) => s.isNotEmpty).join(' · ');
-
 const double _gap = 12;
 const double _side = 16;
-
-/// Высота подписи под обложкой карточки: отступ и две строки.
-const double _captionHeight = 52;
 
 class ReleasesScreen extends ConsumerWidget {
   const ReleasesScreen({super.key});
@@ -96,16 +81,11 @@ class ReleasesScreen extends ConsumerWidget {
                         crossAxisCount: 2,
                         crossAxisSpacing: _gap,
                         mainAxisSpacing: 16,
-                        mainAxisExtent: cell + _captionHeight,
+                        mainAxisExtent: cell + setCaption(albums),
                       ),
                       itemCount: albums.length,
-                      itemBuilder: (context, i) {
-                        return SetCard(
-                          set: albums[i],
-                          size: null,
-                          subtitle: releaseSubtitle(l, albums[i]),
-                        );
-                      },
+                      itemBuilder: (context, i) =>
+                          SetCard(set: albums[i], size: null),
                     ),
             ),
           ],

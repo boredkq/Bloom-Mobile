@@ -81,6 +81,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonArtist => 'Artist';
 
   @override
+  String get commonProfile => 'Profile';
+
+  @override
   String get commonTracks => 'Tracks';
 
   @override
@@ -211,6 +214,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get relPodcast => 'podcast';
+
+  @override
+  String get relEp => 'EP';
 
   @override
   String get homeForYou => 'For you';

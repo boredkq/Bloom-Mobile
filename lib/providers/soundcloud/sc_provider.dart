@@ -53,8 +53,13 @@ Artist artistFromSc(ScRawArtist a) => Artist(
   fullName: _blankToNull(a.artist),
   avatar: a.artwork,
   permalink: a.permalink,
+  profile: a.trackCount == 0,
   source: MusicSource.soundcloud,
 );
+
+/// A set's release type in [Playlist.albumType]'s words; a plain album is null.
+String? _setKind(String setType) =>
+    const {'single', 'ep', 'compilation'}.contains(setType) ? setType : null;
 
 Playlist setFromSc(ScRawPlaylist p, {required bool isAlbum}) => Playlist(
   id: scSetId(p.id),
@@ -67,6 +72,7 @@ Playlist setFromSc(ScRawPlaylist p, {required bool isAlbum}) => Playlist(
   ownerAvatar: p.artistAvatar,
   year: _blankToNull(p.year),
   releaseDate: _blankToNull(p.releaseDate),
+  albumType: _setKind(p.setType),
   duration: p.duration > 0 ? Duration(milliseconds: p.duration) : null,
   sourceUrl: p.permalink,
   isAlbum: isAlbum,

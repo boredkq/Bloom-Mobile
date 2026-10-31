@@ -473,7 +473,7 @@ class _SetGrid extends StatelessWidget {
         crossAxisCount: 2,
         crossAxisSpacing: _gap,
         mainAxisSpacing: 20,
-        mainAxisExtent: cell + 48,
+        mainAxisExtent: cell + setCaption(sets),
       ),
       itemCount: sets.length,
       itemBuilder: (context, i) => SetCard(set: sets[i], size: null),

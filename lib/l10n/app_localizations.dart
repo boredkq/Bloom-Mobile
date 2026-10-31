@@ -242,6 +242,12 @@ abstract class AppLocalizations {
   /// **'Artist'**
   String get commonArtist;
 
+  /// desktop: search.kind.profile
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get commonProfile;
+
   /// desktop: search.tab.tracks
   ///
   /// In en, this message translates to:
@@ -457,6 +463,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'podcast'**
   String get relPodcast;
+
+  /// desktop: home.rel.ep
+  ///
+  /// In en, this message translates to:
+  /// **'EP'**
+  String get relEp;
 
   /// No description provided for @homeForYou.
   ///

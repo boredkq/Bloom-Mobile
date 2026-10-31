@@ -361,6 +361,7 @@ ScRawArtist mapRawArtist(Object? u) => ScRawArtist(
   artist: _vstr(u, 'full_name') ?? '',
   artwork: _t300(_vstr(u, 'avatar_url')),
   permalink: _vstr(u, 'permalink_url'),
+  trackCount: _vu64(u, 'track_count'),
 );
 
 ScRawPlaylist mapRawPlaylist(Object? p) {
@@ -378,6 +379,7 @@ ScRawPlaylist mapRawPlaylist(Object? p) {
     year: _playlistYear(p),
     releaseDate: _playlistDate(p),
     permalink: _vstr(p, 'permalink_url'),
+    setType: _vstr(p, 'set_type') ?? '',
   );
 }
 

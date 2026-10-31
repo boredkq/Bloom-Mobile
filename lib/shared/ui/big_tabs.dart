@@ -1,5 +1,6 @@
 /// Big text tabs over a page: the current one in the text color, one with
-/// something in it grey, an empty one dimmer still and not tappable.
+/// something in it grey, an empty one dimmer still and not tappable. Under
+/// them, in "all", each kind stands under a [SectionLabel] leading to its tab.
 library;
 
 import 'package:flutter/material.dart';
@@ -66,4 +67,28 @@ class BigTabs<T> extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A section's small grey caption in "all"; a kind's one leads to its tab.
+class SectionLabel extends StatelessWidget {
+  const SectionLabel(this.text, {super.key, this.onTap});
+
+  final String text;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 22, 16, 10),
+    child: Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: Pressable(
+        onTap: onTap,
+        scale: 0.98,
+        child: Text(
+          text,
+          style: bloomText(size: 14, weight: 600, color: context.bloom.text2),
+        ),
+      ),
+    ),
+  );
 }

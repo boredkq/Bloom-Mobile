@@ -69,13 +69,10 @@ class DiscoverSection extends ConsumerWidget {
             ),
           ),
           DiscoverAlbums(:final albums) => EntityCarousel(
-            height: 194,
+            height: setRowHeight(albums),
             padding: 16,
             itemCount: albums.length.clamp(0, _homeReleasesMax),
-            builder: (i) => SetCard(
-              set: albums[i],
-              subtitle: releaseSubtitle(context.l, albums[i]),
-            ),
+            builder: (i) => SetCard(set: albums[i]),
           ),
           DiscoverTracks(:final tracks) => EntityCarousel(
             height: 194,

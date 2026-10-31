@@ -592,14 +592,25 @@ YtmRawAlbum? parseAlbum(Object? it) {
       }
     }
   }
+  // The caption opens with the kind ("Album", "Single", "EP"), not the
+  // artist: the artist is the linked runs, as on the PC.
+  final artist = col1Artist(col1);
   return YtmRawAlbum(
     id: id,
     title: title,
-    artist: firstRun(col1),
+    artist: _isYear(artist) ? '' : artist,
     cover: thumb(it),
     year: year,
+    kind: releaseKindOf(firstRun(col1)),
   );
 }
+
+/// A caption's type label as [Playlist.albumType]: single, ep; else null.
+String? releaseKindOf(String label) => switch (label.trim().toLowerCase()) {
+  'single' || 'сингл' => 'single',
+  'ep' => 'ep',
+  _ => null,
+};
 
 YtmRawPlaylist? parsePlaylist(Object? it) {
   final id = itemBrowseId(it);
@@ -919,6 +930,7 @@ Object? parseTopCard(Object? v) {
         artist: parts.where((s) => s != year).join(', '),
         cover: cover,
         year: year,
+        kind: releaseKindOf(firstRun(at(card, ['subtitle']))),
       );
     case 'MUSIC_PAGE_TYPE_PLAYLIST' || 'MUSIC_PAGE_TYPE_AUDIOBOOK':
       return YtmRawPlaylist(
@@ -1290,6 +1302,7 @@ YtmRawAlbum? parseTwoRowAlbum(Object? it) {
     artist: parts.where((s) => s != year).join(', '),
     cover: biggestThumb(it),
     year: year,
+    kind: releaseKindOf(firstRun(at(it, ['subtitle']))),
   );
 }
 

@@ -709,8 +709,8 @@ class TrackCard extends ConsumerWidget {
   }
 }
 
-/// Карточка артиста: круглый аватар, имя, подписчики. Тап открывает страницу
-/// артиста — других применений у карточки нет.
+/// Карточка артиста: круглый аватар, имя, «Артист» (у слушателя SoundCloud —
+/// «Профиль»). Тап открывает страницу артиста.
 ///
 /// [size] `null` — карточка занимает всю ширину ячейки (сетка выдачи); число —
 /// фиксированная ширина (карусель).
@@ -785,7 +785,7 @@ class _ArtistCardState extends State<ArtistCard> {
           ),
           const SizedBox(height: 2),
           Text(
-            context.l.commonArtist,
+            artist.profile ? context.l.commonProfile : context.l.commonArtist,
             maxLines: 1,
             textAlign: align,
             style: theme.bodySmall,
@@ -805,25 +805,55 @@ class _ArtistCardState extends State<ArtistCard> {
   }
 }
 
-/// Карточка плейлиста или альбома: обложка, название, владелец и счётчик.
+/// A release's type as the platform says it; an album unless it says otherwise.
+String releaseKind(AppLocalizations l, String? albumType) => switch (albumType) {
+  'single' => l.relSingle,
+  'ep' => l.relEp,
+  'compilation' => l.relCompilation,
+  'podcast' => l.relPodcast,
+  _ => l.relAlbum,
+};
+
+/// The lines under an album's or a playlist's title: an album's "artist ·
+/// type" over its date (the year when that's all the platform says), a
+/// playlist's owner. The same on the PC.
+List<String> setLines(BuildContext context, Playlist set) {
+  final owner = set.ownerName ?? '';
+  if (!set.isAlbum) return [if (owner.isNotEmpty) owner];
+  final date =
+      releaseDayShort(
+        set.releaseDate,
+        Localizations.localeOf(context).toString(),
+      ) ??
+      set.year ??
+      '';
+  return [
+    [
+      owner,
+      releaseKind(context.l, set.albumType),
+    ].where((s) => s.isNotEmpty).join(' · '),
+    if (date.isNotEmpty) date,
+  ];
+}
+
+/// An album card's caption is a line taller than a playlist's: its height
+/// under the cover, for the rows and grids that size their cells.
+double setCaption(Iterable<Playlist> sets) =>
+    sets.any((s) => s.isAlbum) ? 66 : 48;
+
+/// A carousel of [SetCard]s at their default width: the cover, the caption
+/// and some air under it.
+double setRowHeight(Iterable<Playlist> sets) => 146 + setCaption(sets);
+
+/// Карточка плейлиста или альбома: обложка, название и [setLines].
 ///
 /// [size] `null` — на всю ширину ячейки сетки, число — фиксированная ширина
 /// карусели.
 class SetCard extends StatefulWidget {
-  const SetCard({
-    super.key,
-    required this.set,
-    this.size = 132,
-    this.onOpen,
-    this.subtitle,
-  });
+  const SetCard({super.key, required this.set, this.size = 132, this.onOpen});
 
   final Playlist set;
   final double? size;
-
-  /// Своя подпись вместо «владелец · год · N треков» — у сетки «Релизы» там
-  /// «артист · сингл».
-  final String? subtitle;
 
   /// См. [TrackRow.onOpen].
   final VoidCallback? onOpen;
@@ -841,15 +871,6 @@ class _SetCardState extends State<SetCard> {
     final size = widget.size;
     final theme = Theme.of(context).textTheme;
     final flight = _flightFor(set.cover, _tag);
-    // Год и счётчик есть не всегда — пустые части просто выпадают, вместо
-    // «0 треков» и пустых разделителей.
-    final sub =
-        widget.subtitle ??
-        [
-          set.ownerName,
-          set.year,
-          if (set.trackCount != null) context.l.tracksCount(set.trackCount!),
-        ].whereType<String>().where((s) => s.isNotEmpty).join(' · ');
 
     final content = LayoutBuilder(
       builder: (context, box) => Column(
@@ -880,12 +901,13 @@ class _SetCardState extends State<SetCard> {
             style: theme.titleSmall,
           ),
           const SizedBox(height: 2),
-          Text(
-            sub,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.bodySmall,
-          ),
+          for (final line in setLines(context, set))
+            Text(
+              line,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.bodySmall,
+            ),
         ],
       ),
     );

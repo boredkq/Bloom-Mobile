@@ -74,12 +74,16 @@ class ScRawArtist {
   final String? artwork;
   final String? permalink;
 
+  /// `track_count`; null when the answer leaves it out.
+  final int? trackCount;
+
   const ScRawArtist({
     required this.id,
     required this.title,
     required this.artist,
     required this.artwork,
     required this.permalink,
+    this.trackCount,
   });
 }
 
@@ -101,6 +105,9 @@ class ScRawPlaylist {
   final String releaseDate;
   final String? permalink;
 
+  /// `set_type`: album, ep, single, compilation; "" for a playlist.
+  final String setType;
+
   const ScRawPlaylist({
     required this.id,
     required this.title,
@@ -112,6 +119,7 @@ class ScRawPlaylist {
     required this.year,
     required this.permalink,
     this.releaseDate = '',
+    this.setType = '',
   });
 }
 

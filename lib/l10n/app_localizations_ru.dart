@@ -81,6 +81,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get commonArtist => 'Артист';
 
   @override
+  String get commonProfile => 'Профиль';
+
+  @override
   String get commonTracks => 'Треки';
 
   @override
@@ -215,6 +218,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get relPodcast => 'подкаст';
+
+  @override
+  String get relEp => 'EP';
 
   @override
   String get homeForYou => 'Для вас';
@@ -1147,7 +1153,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taAddedToLibrary => 'Добавлено в библиотеку';
 
   @override
-  String get searchTabAll => 'Всё';
+  String get searchTabAll => 'Все';
 
   @override
   String get searchHint => 'Поиск';

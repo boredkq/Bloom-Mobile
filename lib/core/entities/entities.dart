@@ -263,6 +263,10 @@ class Artist {
   final String? permalink;
   final MusicSource source;
 
+  /// A listener with no tracks of their own (SoundCloud): their card says
+  /// "Profile", as on the PC.
+  final bool profile;
+
   // Поля страницы артиста — заполняются провайдером в getArtist.
 
   /// Полное имя — подзаголовок профиля.
@@ -281,6 +285,7 @@ class Artist {
     this.avatar,
     this.verified = false,
     this.permalink,
+    this.profile = false,
     this.fullName,
     this.description,
     this.website,
@@ -301,6 +306,7 @@ class Artist {
     avatar: avatar ?? this.avatar,
     verified: verified,
     permalink: permalink,
+    profile: profile,
     fullName: fullName ?? this.fullName,
     description: description ?? this.description,
     website: website ?? this.website,
@@ -314,6 +320,7 @@ class Artist {
     if (avatar != null) 'avatar': avatar,
     if (verified) 'verified': true,
     if (permalink != null) 'permalink': permalink,
+    if (profile) 'profile': true,
     if (fullName != null) 'fullName': fullName,
   };
 
@@ -328,6 +335,7 @@ class Artist {
       avatar: json['avatar'] as String?,
       verified: json['verified'] == true,
       permalink: json['permalink'] as String?,
+      profile: json['profile'] == true,
       fullName: json['fullName'] as String?,
     );
   }

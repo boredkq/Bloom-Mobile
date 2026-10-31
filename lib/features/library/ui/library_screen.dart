@@ -12,7 +12,6 @@ import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../app/theme/bloom_theme.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/library_store.dart';
@@ -91,11 +90,14 @@ class LibraryScreen extends ConsumerWidget {
 
     final slivers = switch (tab) {
       LibTab.all => [
-        SliverToBoxAdapter(child: _Label(l.libSystem)),
+        SliverToBoxAdapter(child: SectionLabel(l.libSystem)),
         order.grid ? row(system) : _RowsSliver(entries: system),
         if (playlists.isNotEmpty) ...[
           SliverToBoxAdapter(
-            child: _Label(l.commonPlaylists, onTap: () => go(LibTab.playlists)),
+            child: SectionLabel(
+              l.commonPlaylists,
+              onTap: () => go(LibTab.playlists),
+            ),
           ),
           order.grid
               ? row(playlists)
@@ -103,7 +105,10 @@ class LibraryScreen extends ConsumerWidget {
         ],
         if (artists.isNotEmpty) ...[
           SliverToBoxAdapter(
-            child: _Label(l.libTabArtists, onTap: () => go(LibTab.artists)),
+            child: SectionLabel(
+              l.libTabArtists,
+              onTap: () => go(LibTab.artists),
+            ),
           ),
           order.grid
               ? row(artists)
@@ -508,30 +513,6 @@ Widget _title(
 
 Widget _line(String text, TextStyle? style) =>
     Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: style);
-
-/// A section's caption in "all"; a kind's one leads to its tab.
-class _Label extends StatelessWidget {
-  const _Label(this.text, {this.onTap});
-
-  final String text;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(_kSide, 22, _kSide, 10),
-    child: Align(
-      alignment: AlignmentDirectional.centerStart,
-      child: Pressable(
-        onTap: onTap,
-        scale: 0.98,
-        child: Text(
-          text,
-          style: bloomText(size: 14, weight: 600, color: context.bloom.text2),
-        ),
-      ),
-    ),
-  );
-}
 
 /// "All tracks" and liked, with the bars while one is the queue.
 class _SystemArt extends StatelessWidget {

@@ -1,8 +1,9 @@
-/// Страница поиска. Раскладка из референса: круглая «назад», поле-пилюля,
-/// круглая кнопка площадки; под ними чипы-фильтры, ниже — выдача секциями.
+/// Страница поиска: поле-пилюля и круглая кнопка площадки; под ними большие
+/// вкладки (все, треки, артисты, альбомы, плейлисты), как в библиотеке и в
+/// поиске на ПК, ниже — выдача.
 ///
 /// О площадках экран не знает: спрашивает [ProviderRegistry.searchAll] и
-/// рисует нейтральные сущности. Чипы фильтруют УЖЕ полученную выдачу, а не
+/// рисует нейтральные сущности. Вкладки делят УЖЕ полученную выдачу, а не
 /// ходят в сеть заново — провайдер отдаёт все разделы за один прогон.
 ///
 /// Сюда же вставляют ссылки: как на десктопе, поле поиска — единственная точка
@@ -25,6 +26,7 @@ import '../../../features/detail/detail_nav.dart';
 import '../../../features/player/play_source.dart';
 import '../../../features/player/player_controller.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/big_tabs.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/entity_tiles.dart';
@@ -34,10 +36,6 @@ import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/skeleton.dart';
 import '../recent_store.dart';
 import 'profile_view.dart';
-
-/// Просвет под чипами-фильтрами: без него ряд чипов слипался с первой строкой
-/// выдачи и читался как её часть.
-const double _chipsGap = 14;
 
 /// Похожа ли строка на ссылку. Домены ловим и без протокола — вставляют и так.
 /// Точный разбор всё равно за площадкой, здесь только выбор ветки.
@@ -60,24 +58,29 @@ SearchResults _resolvedToResults(ResolvedUrl resolved) => switch (resolved) {
   ResolvedProfile() => SearchResults.empty,
 };
 
-enum SearchFilter {
-  all(Bi.widget4),
-  tracks(Bi.musicNote),
-  playlists(Bi.musicLibrary2),
-  albums(Bi.vinyl),
-  artists(Bi.user);
-
-  const SearchFilter(this.icon);
+enum SearchTab {
+  all,
+  tracks,
+  artists,
+  albums,
+  playlists;
 
   String label(AppLocalizations l) => switch (this) {
-    SearchFilter.all => l.searchTabAll,
-    SearchFilter.tracks => l.commonTracks,
-    SearchFilter.playlists => l.commonPlaylists,
-    SearchFilter.albums => l.commonAlbums,
-    SearchFilter.artists => l.commonArtists,
+    SearchTab.all => l.searchTabAll,
+    SearchTab.tracks => l.commonTracks,
+    SearchTab.artists => l.commonArtists,
+    SearchTab.albums => l.commonAlbums,
+    SearchTab.playlists => l.commonPlaylists,
   };
 
-  final BloomGlyph icon;
+  /// How many of this kind the results hold; "all" counts as one.
+  int countIn(SearchResults r) => switch (this) {
+    SearchTab.all => 1,
+    SearchTab.tracks => r.tracks.length,
+    SearchTab.artists => r.artists.length,
+    SearchTab.albums => r.albums.length,
+    SearchTab.playlists => r.playlists.length,
+  };
 }
 
 class SearchScreen extends ConsumerStatefulWidget {
@@ -91,7 +94,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _controller = TextEditingController();
   final _focus = FocusNode();
 
-  SearchFilter _filter = SearchFilter.all;
+  SearchTab _tab = SearchTab.all;
   SearchResults _results = SearchResults.empty;
   bool _loading = false;
   String? _error;
@@ -174,6 +177,15 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     }
   }
 
+  /// A kind without results is a dim tab; while a search loads they all stay
+  /// lit.
+  bool _has(SearchTab tab) => _loading || tab.countIn(_results) > 0;
+
+  /// A tab the new results left empty falls back to "all".
+  SearchTab get _activeTab => _has(_tab) ? _tab : SearchTab.all;
+
+  void _go(SearchTab tab) => setState(() => _tab = tab);
+
   /// Тап по недавнему запросу: подставить его в поле и сразу искать.
   ///
   /// Клавиатуру убираем — она заняла бы полэкрана над свежей выдачей, а
@@ -230,14 +242,16 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               ],
             ),
           ),
-          // У профиля своих разделов нет — чипы над ним нечего фильтровать.
-          if (_profile == null) ...[
-            _FilterChips(
-              active: _filter,
-              onPick: (f) => setState(() => _filter = f),
+          // A profile has no kinds to split it into.
+          if (_profile == null)
+            BigTabs<SearchTab>(
+              tabs: [
+                for (final tab in SearchTab.values)
+                  BigTab(tab, tab.label(context.l), has: _has(tab)),
+              ],
+              current: _activeTab,
+              onPick: _go,
             ),
-            const SizedBox(height: _chipsGap),
-          ],
           Expanded(child: _body(context)),
         ],
       ),
@@ -251,7 +265,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     // Заготовка вместо полоски прогресса: она сразу занимает высоту будущей
     // выдачи, поэтому при ответе ничего не дёргается. Старые результаты при
     // новом запросе прячем — иначе непонятно, что показано.
-    if (_loading) return _SearchSkeleton(filter: _filter);
+    if (_loading) return _SearchSkeleton(tab: _activeTab);
     if (_error != null) {
       return Center(
         child: Padding(
@@ -285,7 +299,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         child: Text(text, style: theme.bodyMedium?.copyWith(color: t.muted)),
       );
     }
-    return _ResultsView(results: _results, filter: _filter, query: _lastQuery);
+    return _ResultsView(
+      results: _results,
+      tab: _activeTab,
+      query: _lastQuery,
+      onTab: _go,
+    );
   }
 }
 
@@ -794,78 +813,11 @@ class _SourceRow extends StatelessWidget {
   }
 }
 
-class _FilterChips extends StatelessWidget {
-  const _FilterChips({required this.active, required this.onPick});
-
-  final SearchFilter active;
-  final ValueChanged<SearchFilter> onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: kChipHeight,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: SearchFilter.values.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (context, i) {
-          final filter = SearchFilter.values[i];
-          return _Chip(
-            filter: filter,
-            active: filter == active,
-            onTap: () => onPick(filter),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  const _Chip({
-    required this.filter,
-    required this.active,
-    required this.onTap,
-  });
-
-  final SearchFilter filter;
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    // Активный чип — заливка акцентом с контрастной надписью, как в референсе.
-    final fg = active ? t.accentText : t.text2;
-    return Pressable(
-      onTap: onTap,
-      child: GlassBox(
-        color: active ? t.accent : null,
-        enabled: !active,
-        borderRadius: BorderRadius.circular(999),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              BloomIcon(filter.icon, size: 18, color: fg),
-              const SizedBox(width: 8),
-              Text(
-                filter.label(context.l),
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(color: fg),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Сколько строк трек-листа показывать в «Всё» — как на референсе.
+/// How many tracks "all" shows; the rest are the tab's.
 const int _tracksPreview = 4;
+
+/// The gap over a kind's own tab, as in the library.
+const double _tabTop = 18;
 
 /// Записать открытую из выдачи карточку в «недавно открытые».
 ///
@@ -879,7 +831,7 @@ void _remember(WidgetRef ref, RecentItem item) =>
 const double _gridPad = 16;
 const double _gridGap = 16;
 
-/// Сетка плейлистов/альбомов — две колонки, подпись в две строки под обложкой.
+/// Сетка плейлистов/альбомов — две колонки, под обложкой [setLines].
 class _SetGrid extends ConsumerWidget {
   const _SetGrid({required this.sets});
 
@@ -894,7 +846,7 @@ class _SetGrid extends ConsumerWidget {
       // Снизу — бары каркаса: они плавают над выдачей.
       padding: EdgeInsets.fromLTRB(
         _gridPad,
-        8,
+        _tabTop,
         _gridPad,
         16 + bottomBarsInset(context),
       ),
@@ -902,10 +854,10 @@ class _SetGrid extends ConsumerWidget {
         crossAxisCount: 2,
         crossAxisSpacing: _gridGap,
         mainAxisSpacing: 20,
-        // Высота ячейки задаётся явно: обложка квадратная плюс две строки
-        // подписи. Через childAspectRatio то же самое пришлось бы подбирать
-        // на глаз, и на узком экране подпись обрезало бы.
-        mainAxisExtent: cell + 48,
+        // Высота ячейки задаётся явно: обложка квадратная плюс подпись.
+        // Через childAspectRatio то же самое пришлось бы подбирать на глаз, и
+        // на узком экране подпись обрезало бы.
+        mainAxisExtent: cell + setCaption(sets),
       ),
       itemCount: sets.length,
       itemBuilder: (context, i) => SetCard(
@@ -932,7 +884,7 @@ class _ArtistGrid extends ConsumerWidget {
       // Снизу — бары каркаса: они плавают над выдачей.
       padding: EdgeInsets.fromLTRB(
         _gridPad,
-        8,
+        _tabTop,
         _gridPad,
         16 + bottomBarsInset(context),
       ),
@@ -956,74 +908,78 @@ class _ArtistGrid extends ConsumerWidget {
 class _ResultsView extends ConsumerWidget {
   const _ResultsView({
     required this.results,
-    required this.filter,
+    required this.tab,
     required this.query,
+    required this.onTab,
   });
 
   final SearchResults results;
-  final SearchFilter filter;
+  final SearchTab tab;
 
   /// Запрос — он же подпись источника в пилюле плеера («Поиск: …»).
   final String query;
 
-  bool _shows(SearchFilter section) =>
-      filter == SearchFilter.all || filter == section;
+  /// A section's caption in "all" leads to its kind's tab.
+  final ValueChanged<SearchTab> onTab;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
+    final l = context.l;
 
-    // Под своим чипом раздел разворачивается: сеты — в две колонки, артисты —
-    // в три, как в референсе. Карусель остаётся только в «Всё», где она нужна,
-    // чтобы раздел занимал одну строку.
-    // Пустой раздел до сетки не доходит — ниже общее «ничего не нашлось».
-    final grid = switch (filter) {
-      SearchFilter.playlists when results.playlists.isNotEmpty => _SetGrid(
-        sets: results.playlists,
-      ),
-      SearchFilter.albums when results.albums.isNotEmpty => _SetGrid(
-        sets: results.albums,
-      ),
-      SearchFilter.artists when results.artists.isNotEmpty => _ArtistGrid(
-        artists: results.artists,
-      ),
+    // A kind's own tab spreads out: sets in two columns, artists in three.
+    // A row of cards is only for "all", where a kind takes one line.
+    final grid = switch (tab) {
+      SearchTab.albums => _SetGrid(sets: results.albums),
+      SearchTab.playlists => _SetGrid(sets: results.playlists),
+      SearchTab.artists => _ArtistGrid(artists: results.artists),
       _ => null,
     };
     if (grid != null) return grid;
 
-    // Заголовки нужны только в «Всё»: у одиночного фильтра подпись повторяет
-    // имя чипа.
-    final titled = filter == SearchFilter.all;
+    final all = tab == SearchTab.all;
     final tracks = results.tracks;
-    // В «Всё» треки идут первыми, поэтому показываем только начало списка:
-    // иначе до артистов и плейлистов пришлось бы листать три десятка строк.
-    // Весь список — под своим чипом.
-    final shownTracks = titled && tracks.length > _tracksPreview
+    // "All" shows the first few tracks, or the artists and the sets would be
+    // three dozen rows down; the whole list is the tab's.
+    final shownTracks = all && tracks.length > _tracksPreview
         ? _tracksPreview
         : tracks.length;
+    final source = PlainSource.search(query, l.playerSourceSearch(query));
 
-    // Порядок секций — из референса: треки, артисты, плейлисты, альбомы.
+    Widget label(SearchTab kind) =>
+        SectionLabel(kind.label(l), onTap: () => onTab(kind));
+    Widget sets(List<Playlist> sets) => EntityCarousel(
+      height: setRowHeight(sets),
+      padding: 16,
+      itemCount: sets.length,
+      builder: (i) => SetCard(
+        set: sets[i],
+        onOpen: () => _remember(ref, RecentSet(sets[i])),
+      ),
+    );
+
+    // The order is the PC's: tracks, artists, albums, playlists.
     final sections = <Widget>[
-      if (_shows(SearchFilter.tracks) && tracks.isNotEmpty) ...[
-        if (titled) SectionTitle(context.l.commonTracks, side: 8),
+      if (tracks.isNotEmpty) ...[
+        if (all) label(SearchTab.tracks) else const SizedBox(height: 12),
         for (var i = 0; i < shownTracks; i++)
-          // Очередь — весь список, а не превью: с четвёртой строки
-          // проигрывание должно ехать дальше по выдаче.
-          TrackRow(
-            track: tracks[i],
-            queue: tracks,
-            index: i,
-            source: PlainSource.search(
-              query,
-              context.l.playerSourceSearch(query),
+          // A track plays alone, as on the PC.
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: TrackRow(
+              track: tracks[i],
+              queue: [tracks[i]],
+              index: 0,
+              source: source,
+              onOpen: () => _remember(ref, RecentTrack(tracks[i])),
             ),
-            onOpen: () => _remember(ref, RecentTrack(tracks[i])),
           ),
       ],
-      if (_shows(SearchFilter.artists) && results.artists.isNotEmpty) ...[
-        if (titled) SectionTitle(context.l.commonArtists, side: 8),
+      if (all && results.artists.isNotEmpty) ...[
+        label(SearchTab.artists),
         EntityCarousel(
           height: 168,
+          padding: 16,
           itemCount: results.artists.length,
           builder: (i) => ArtistCard(
             artist: results.artists[i],
@@ -1032,27 +988,13 @@ class _ResultsView extends ConsumerWidget {
           ),
         ),
       ],
-      if (_shows(SearchFilter.playlists) && results.playlists.isNotEmpty) ...[
-        if (titled) SectionTitle(context.l.commonPlaylists, side: 8),
-        EntityCarousel(
-          height: 194,
-          itemCount: results.playlists.length,
-          builder: (i) => SetCard(
-            set: results.playlists[i],
-            onOpen: () => _remember(ref, RecentSet(results.playlists[i])),
-          ),
-        ),
+      if (all && results.albums.isNotEmpty) ...[
+        label(SearchTab.albums),
+        sets(results.albums),
       ],
-      if (_shows(SearchFilter.albums) && results.albums.isNotEmpty) ...[
-        if (titled) SectionTitle(context.l.commonAlbums, side: 8),
-        EntityCarousel(
-          height: 194,
-          itemCount: results.albums.length,
-          builder: (i) => SetCard(
-            set: results.albums[i],
-            onOpen: () => _remember(ref, RecentSet(results.albums[i])),
-          ),
-        ),
+      if (all && results.playlists.isNotEmpty) ...[
+        label(SearchTab.playlists),
+        sets(results.playlists),
       ],
     ];
 
@@ -1068,32 +1010,33 @@ class _ResultsView extends ConsumerWidget {
     }
 
     return ListView(
-      // Снизу — бары каркаса: они плавают над выдачей.
-      padding: EdgeInsets.fromLTRB(8, 4, 8, 12 + bottomBarsInset(context)),
+      // The sections keep to the sides themselves; under them the shell's
+      // bars float over the results.
+      padding: EdgeInsets.only(bottom: 12 + bottomBarsInset(context)),
       children: sections,
     );
   }
 }
 
-/// Заготовка выдачи на время запроса: та же раскладка, что покажет активный
-/// чип, поэтому при ответе плашки просто сменяются содержимым.
+/// Заготовка выдачи на время запроса: та же раскладка, что покажет активная
+/// вкладка, поэтому при ответе плашки просто сменяются содержимым.
 ///
 /// Заготовки не листаются: их ровно столько, сколько влезает в экран, и
 /// скроллить пустые плашки незачем.
 class _SearchSkeleton extends StatelessWidget {
-  const _SearchSkeleton({required this.filter});
+  const _SearchSkeleton({required this.tab});
 
-  final SearchFilter filter;
+  final SearchTab tab;
 
   @override
   Widget build(BuildContext context) {
     return SkeletonPulse(
-      child: switch (filter) {
-        SearchFilter.all => const _AllSkeleton(),
-        SearchFilter.tracks => const _TracksSkeleton(count: 9),
-        SearchFilter.playlists ||
-        SearchFilter.albums => const _GridSkeleton(columns: 2, count: 6),
-        SearchFilter.artists => const _GridSkeleton(
+      child: switch (tab) {
+        SearchTab.all => const _AllSkeleton(),
+        SearchTab.tracks => const _TracksSkeleton(count: 9),
+        SearchTab.albums ||
+        SearchTab.playlists => const _GridSkeleton(columns: 2, count: 6),
+        SearchTab.artists => const _GridSkeleton(
           columns: 3,
           count: 9,
           circle: true,
@@ -1155,7 +1098,7 @@ class _TracksSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
+      padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
       physics: const NeverScrollableScrollPhysics(),
       itemCount: count,
       itemBuilder: (context, i) => _TrackRowSkeleton(index: i),
@@ -1218,7 +1161,7 @@ class _GridSkeleton extends StatelessWidget {
     final cell = (width - _gridPad * 2 - _gridGap * (columns - 1)) / columns;
 
     return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(_gridPad, 8, _gridPad, 16),
+      padding: const EdgeInsets.fromLTRB(_gridPad, _tabTop, _gridPad, 16),
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: columns,
@@ -1232,7 +1175,7 @@ class _GridSkeleton extends StatelessWidget {
   }
 }
 
-/// Заготовка «Всё»: заголовок и превью треков, затем ленты артистов и сетов —
+/// Заготовка «Всё»: подпись и превью треков, затем ленты артистов и альбомов —
 /// тот же порядок секций, что в [_ResultsView].
 class _AllSkeleton extends StatelessWidget {
   const _AllSkeleton();
@@ -1240,31 +1183,35 @@ class _AllSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
+      padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
       physics: const NeverScrollableScrollPhysics(),
       children: [
-        const _SectionTitleSkeleton(width: 84),
+        const _SectionLabelSkeleton(width: 48),
         for (var i = 0; i < _tracksPreview; i++) _TrackRowSkeleton(index: i),
-        const _SectionTitleSkeleton(width: 104),
+        const _SectionLabelSkeleton(width: 62),
         const _CarouselSkeleton(height: 168, card: 104, circle: true),
-        const _SectionTitleSkeleton(width: 128),
-        const _CarouselSkeleton(height: 194, card: 132),
+        const _SectionLabelSkeleton(width: 58),
+        const _CarouselSkeleton(height: 212, card: 132),
       ],
     );
   }
 }
 
-/// Плашка на месте [SectionTitle] — с его же отступами.
-class _SectionTitleSkeleton extends StatelessWidget {
-  const _SectionTitleSkeleton({required this.width});
+/// A plate in a [SectionLabel]'s place, with its margins.
+class _SectionLabelSkeleton extends StatelessWidget {
+  const _SectionLabelSkeleton({required this.width});
 
   final double width;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 18, 8, 10),
-      child: SkeletonBox(width: width, height: 18, radius: 9),
+      padding: const EdgeInsets.fromLTRB(8, 24, 8, 12),
+      // A list stretches its children: the plate keeps its width only aligned.
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: SkeletonBox(width: width, height: 14, radius: 7),
+      ),
     );
   }
 }

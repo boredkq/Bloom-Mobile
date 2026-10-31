@@ -284,6 +284,30 @@ void main() {
       expect(a.year, '2023');
       expect(a.artist, 'Артист');
     });
+
+    test('альбом: метка типа в начале — тип, а не артист', () {
+      final a = parseAlbum(
+        _row(
+          browseId: 'MPREb_2',
+          pageType: 'MUSIC_PAGE_TYPE_ALBUM',
+          columns: [
+            _col([
+              {'text': 'Magnum'},
+            ]),
+            _col([
+              {'text': 'EP'},
+              {'text': ' • '},
+              _artistRun('5opka', 'UC5'),
+              {'text': ' • '},
+              {'text': '2026'},
+            ]),
+          ],
+        )['musicResponsiveListItemRenderer'],
+      )!;
+      expect(a.artist, '5opka');
+      expect(a.year, '2026');
+      expect(albumFromYtm(a).albumType, 'ep');
+    });
   });
 
   group('сборка выдачи', () {

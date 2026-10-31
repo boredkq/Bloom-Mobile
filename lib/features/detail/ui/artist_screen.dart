@@ -275,7 +275,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
       if (albums.isNotEmpty) ...[
         SectionTitle(context.l.commonAlbums, side: 8),
         EntityCarousel(
-          height: 194,
+          height: setRowHeight(albums),
           itemCount: albums.length,
           builder: (i) => SetCard(set: albums[i]),
         ),

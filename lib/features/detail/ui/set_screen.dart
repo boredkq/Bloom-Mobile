@@ -239,12 +239,13 @@ class _SetScreenState extends ConsumerState<SetScreen> {
   /// Подпись под названием: год, число треков, общая длительность — как в
   /// шапке сета на десктопе. Полная дата выхода у альбома стоит отдельным
   /// блоком «Релиз» под треклистом (см. [_releaseLabel]), в шапке — только год.
+  /// A playlist has no date at all: when it was made says nothing.
   String _subtitle() {
     final count = _tracks.isNotEmpty ? _tracks.length : _set.trackCount;
     final total = _tracks.isEmpty
         ? _set.duration
         : _tracks.fold(Duration.zero, (sum, x) => sum + x.duration);
-    final year = _year();
+    final year = _set.isAlbum ? _year() : null;
     return [
       _kindWord(context),
       ?year,

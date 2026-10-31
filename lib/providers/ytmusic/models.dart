@@ -72,12 +72,17 @@ class YtmRawAlbum {
   final String cover;
   final String year;
 
+  /// The release's type from the caption's opening label: single, ep; null
+  /// for an album.
+  final String? kind;
+
   const YtmRawAlbum({
     required this.id,
     required this.title,
     required this.artist,
     required this.cover,
     required this.year,
+    this.kind,
   });
 }
 
