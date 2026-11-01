@@ -8,7 +8,7 @@
 
 Мобильный плеер: локальная медиатека, Yandex Music, SoundCloud и YouTube Music в одном приложении
 
-[**📦 Релизы**](https://github.com/bxzlik/Bloom/releases) · [**🖥 Десктоп**](https://github.com/bxzlik/Bloom-PC)
+[**📦 Релизы**](https://github.com/use-bloom/mobile/releases) · [**🖥 Десктоп**](https://github.com/use-bloom/desktop)
 
 [English](README.md) · **Русский**
 

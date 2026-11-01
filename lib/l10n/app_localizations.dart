@@ -122,6 +122,12 @@ abstract class AppLocalizations {
   /// **'Delete'**
   String get commonDelete;
 
+  /// No description provided for @commonClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get commonClose;
+
   /// No description provided for @commonDone.
   ///
   /// In en, this message translates to:
@@ -5197,6 +5203,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open the release page'**
   String get aboutOpenRelease;
+
+  /// No description provided for @updInThis.
+  ///
+  /// In en, this message translates to:
+  /// **'In this version'**
+  String get updInThis;
 
   /// desktop: update.whatsNew
   ///

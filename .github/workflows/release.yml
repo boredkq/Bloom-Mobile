@@ -1,26 +1,20 @@
-name: Сборки
+name: Release
 
-# Собирает Android и iOS. Запускается двумя способами:
-#   * тег вида v1.2.3 — собирает всё и выкладывает готовое в GitHub Release;
-#   * кнопка «Run workflow» на вкладке Actions
+# Builds Android and iOS. A tag v1.2.3 publishes both as a GitHub release; the
+# Actions button builds them just to look at.
 on:
   push:
     tags: ['v*']
   workflow_dispatch:
     inputs:
       platforms:
-        description: Что собирать
+        description: What to build
         type: choice
         default: all
         options: [all, android, ios]
 
 env:
   FLUTTER_VERSION: 3.41.9
-  # Публичный репозиторий, куда уходят сборки и заметки к версиям: код лежит в
-  # приватном, а из приватного без токена не скачать. Там же десктопные релизы,
-  # поэтому платформы разведены префиксом тега (mobile-v / desktop-v) и
-  # подпапками в update-notes/. См. kUpdateRepo в about_store.dart.
-  RELEASES_REPO: bxzlik/Bloom
 
 jobs:
   android:
@@ -41,9 +35,9 @@ jobs:
           channel: stable
           cache: true
 
-      # Без ключа Gradle подписывает релиз отладочным, и APK разных прогонов не
-      # ставятся друг поверх друга (см. android/app/build.gradle.kts).
-      - name: Ключ подписи
+      # Without a key Gradle signs with the debug one, and APKs of different runs
+      # don't install over each other.
+      - name: Signing key
         env:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
@@ -51,25 +45,21 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           if [ -z "$KEYSTORE" ]; then
-            echo "::warning::ANDROID_KEYSTORE_BASE64 не задан — APK будет подписан отладочным ключом и не встанет обновлением поверх прошлой версии"
+            echo "::warning::ANDROID_KEYSTORE_BASE64 is not set: the APK gets the debug key and won't install over the last version"
             exit 0
           fi
-          # tr убирает переносы строк и пробелы: при вставке секрета через
-          # веб-форму они приезжают вместе со строкой, а base64(1) на них
-          # отвечает «invalid input».
+          # A web form brings line breaks and spaces along, and base64 refuses them.
           printf '%s' "$KEYSTORE" | tr -d '[:space:]' | base64 -d > android/upload-keystore.jks
           if [ ! -s android/upload-keystore.jks ]; then
-            echo "::error::ANDROID_KEYSTORE_BASE64 не разворачивается в файл — секрет обрезан, перезалей его"
+            echo "::error::ANDROID_KEYSTORE_BASE64 doesn't unpack into a file: the secret is cut, set it again"
             exit 1
           fi
           printf "storeFile=upload-keystore.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n" \
             "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > android/key.properties
 
-      # Версия берётся из тега: v1.2.3 → 1.2.3. Номер сборки — счётчик прогонов,
-      # он обязан расти от релиза к релизу (для Android это versionCode).
-      # У ручного прогона тега нет — там версия из pubspec, только чтобы файл
-      # как-то назывался.
-      - name: Версия
+      # v1.2.3 gives 1.2.3. The build number is the run counter: Android needs it
+      # to grow from release to release. A manual run has no tag: pubspec's version.
+      - name: Version
         run: |
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             version="${GITHUB_REF_NAME#v}"
@@ -81,23 +71,15 @@ jobs:
 
       - run: flutter pub get
 
-      # Универсальный APK, а не --split-per-abi: со всеми архитектурами он
-      # весит заметно больше, зато файл в релизе один и встаёт на что угодно —
-      # так решено сознательно, ради простоты раздачи.
+      # Universal: heavier than per-ABI ones, but one file that installs anywhere.
       - name: flutter build apk
         run: flutter build apk --release $VERSION_ARGS
 
-      - name: Переименовать
+      - name: Rename
         run: mv build/app/outputs/flutter-apk/app-release.apk "bloom-$VERSION.apk"
 
-      # Имя артефакта — это имя zip'а, в который GitHub заворачивает файлы при
-      # скачивании со страницы прогона (обойти нельзя). В релиз по тегу
-      # содержимое ложится как есть, без обёртки.
-      #
-      # Три дня, а не 90 по умолчанию: артефакт нужен, только чтобы скачать
-      # сборку сразу и передать её в релиз (релиз хранится отдельно). Иначе
-      # они копятся и забивают квоту хранилища аккаунта — тогда загрузка
-      # падает с «Artifact storage quota has been hit».
+      # Three days: it's only handed over to the release, which is kept apart.
+      # Longer ones pile up and hit the storage quota.
       - uses: actions/upload-artifact@v4
         with:
           name: bloom-${{ env.VERSION }}-android
@@ -106,7 +88,7 @@ jobs:
           retention-days: 3
 
   ios:
-    name: iOS (без подписи)
+    name: iOS (unsigned)
     if: github.event_name == 'push' || contains(fromJSON('["all","ios"]'), inputs.platforms)
     runs-on: macos-latest
     steps:
@@ -118,7 +100,7 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Версия
+      - name: Version
         run: |
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             version="${GITHUB_REF_NAME#v}"
@@ -130,15 +112,13 @@ jobs:
 
       - run: flutter pub get
 
-      # Без подписи: сертификата разработчика Apple у проекта нет, а собрать и
-      # проверить, что всё компилируется, можно и так. Полученный .ipa ставится
-      # на устройство только после переподписи (Sideloadly, AltStore, Xcode).
+      # No Apple certificate: the .ipa installs only after re-signing (Sideloadly,
+      # AltStore, Xcode).
       - name: flutter build ios
         run: flutter build ios --release --no-codesign $VERSION_ARGS
 
-      # .ipa — это zip, внутри которого папка Payload с бандлом .app. Xcode
-      # собирает её сам только при экспорте с подписью, поэтому пакуем руками.
-      - name: Упаковать .ipa
+      # An .ipa is a zip with Payload/Runner.app; Xcode only makes it when signing.
+      - name: Package .ipa
         run: |
           mkdir -p Payload
           mv build/ios/iphoneos/Runner.app Payload/
@@ -149,68 +129,23 @@ jobs:
           name: bloom-${{ env.VERSION }}-ios
           path: bloom-${{ env.VERSION }}.ipa
           if-no-files-found: error
-          retention-days: 3 # см. Android выше
+          retention-days: 3
 
   release:
-    name: GitHub Release
-    # Только по тегу: ручной прогон — это просто сборка «посмотреть».
+    name: GitHub release
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [android, ios]
     runs-on: ubuntu-latest
-    # Рабочий релиз уезжает в RELEASES_REPO по своему токену, но копия кладётся
-    # и сюда — для неё нужна запись в текущий репозиторий.
     permissions:
       contents: write
     steps:
-      # Нужен ради update-notes/: артефакты сборки исходников не содержат.
-      - uses: actions/checkout@v4
-
       - uses: actions/download-artifact@v4
         with:
           path: dist
 
-      # Заливаем до релиза, чтобы заметки были на месте раньше, чем приложение
-      # увидит новую версию.
-      - name: Заметки к версиям
-        env:
-          RELEASES_TOKEN: ${{ secrets.RELEASES_TOKEN }}
-        run: |
-          set -e
-          git clone --depth 1 \
-            "https://x-access-token:${RELEASES_TOKEN}@github.com/${RELEASES_REPO}.git" \
-            releases-repo
-          # Только свою подпапку: в update-notes/desktop/ лежат заметки ПК.
-          rm -rf releases-repo/update-notes/mobile
-          mkdir -p releases-repo/update-notes
-          cp -r update-notes releases-repo/update-notes/mobile
-          cd releases-repo
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A update-notes/mobile
-          # Если заметки не менялись, коммитить нечего — это не ошибка.
-          git diff --cached --quiet || git commit -m "update notes ${GITHUB_REF_NAME} (mobile)"
-          # HEAD:main, а не просто push: у пустого репозитория ветки ещё нет.
-          git push origin HEAD:main
-
-      # RELEASES_TOKEN — PAT с правом contents:write на RELEASES_REPO. Штатный
-      # github.token сюда не годится: он ограничен текущим репозиторием.
-      - name: Создать релиз
-        env:
-          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
-        run: |
-          gh release create "mobile-$GITHUB_REF_NAME" dist/*/* \
-            --repo "$RELEASES_REPO" \
-            --title "Bloom $GITHUB_REF_NAME (Mobile)" \
-            --notes "Мобильный релиз Bloom. APK и .ipa во вложениях ниже."
-
-      # Копия рядом с кодом, из которого собрана: чтобы к любому тегу можно было
-      # поднять точный APK. Приложение сюда не ходит — оно знает только
-      # RELEASES_REPO, так что тег здесь без префикса, как в git.
-      - name: Копия релиза в этом репозитории
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create "$GITHUB_REF_NAME" dist/*/* \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "Bloom $GITHUB_REF_NAME (Mobile)" \
-            --generate-notes
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Bloom ${{ github.ref_name }}
+          # GitHub writes the description: the link to everything changed since the last tag.
+          generate_release_notes: true
+          files: dist/*/*

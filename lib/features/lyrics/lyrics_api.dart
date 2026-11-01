@@ -30,7 +30,7 @@ class LyricsResult {
 
 const String _base = 'https://lrclib.net/api/';
 // LRCLIB asks clients to say who they are.
-const String _ua = 'Bloom/1.0 (https://github.com/use-bloom/desktop)';
+const String _ua = 'Bloom/1.0 (https://github.com/use-bloom/mobile)';
 const Duration _timeout = Duration(seconds: 15);
 
 /// A search hit below this is some other song.

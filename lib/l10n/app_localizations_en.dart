@@ -21,6 +21,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonDelete => 'Delete';
 
   @override
+  String get commonClose => 'Close';
+
+  @override
   String get commonDone => 'Done';
 
   @override
@@ -3067,6 +3070,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutOpenRelease => 'Open the release page';
+
+  @override
+  String get updInThis => 'In this version';
 
   @override
   String get updWhatsNew => 'What’s new';

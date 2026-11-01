@@ -77,13 +77,8 @@ class _BloomShellState extends ConsumerState<BloomShell> {
     });
   }
 
-  /// «Что нового» — один раз после обновления приложения.
-  ///
-  /// Здесь, а не на экране «Система»: сравнить версию с прошлым запуском надо
-  /// при старте, и до настроек человек может не дойти вовсе. Мастер первого
-  /// запуска этой шторке не помешает: он живёт отдельным маршрутом, каркас при
-  /// нём не построен, а свежая установка «Что нового» и не показывает (см.
-  /// `UpdateNotes.whatsNew`).
+  /// "What's new", once after an update. Here, since the version is compared
+  /// with the last run at launch, and settings may never be opened.
   Future<void> _whatsNew() async {
     await ref.read(aboutProvider.notifier).loadVersion();
     if (!mounted) return;

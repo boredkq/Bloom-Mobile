@@ -82,8 +82,6 @@ class _VersionScreenState extends ConsumerState<VersionScreen> {
         if (about.phase == UpdatePhase.uptodate ||
             about.phase == UpdatePhase.available ||
             about.phase == UpdatePhase.error) ...[
-          SettingsCaption(l.updWhatsNew.toUpperCase()),
-          const SizedBox(height: 10),
           _NoteBlock(
             version:
                 about.phase == UpdatePhase.available && about.latest.isNotEmpty
@@ -195,9 +193,8 @@ class _StatusCard extends StatelessWidget {
   }
 }
 
-/// A version's note, with the sections of "What's new". It comes from the
-/// network or the cache, so the block shows its spinner and explains an empty
-/// outcome: a version may have no note.
+/// A version's note. It comes from the network or the cache, so the block shows
+/// its spinner and explains an empty outcome: a version may have no note.
 class _NoteBlock extends ConsumerStatefulWidget {
   const _NoteBlock({required this.version, required this.fallback});
 
@@ -253,65 +250,30 @@ class _NoteBlockState extends ConsumerState<_NoteBlock> {
     final l = context.l;
     final theme = Theme.of(context).textTheme;
 
-    return GlassBox(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-        child: FutureBuilder<UpdateNote?>(
-          future: _future,
-          builder: (context, snapshot) {
-            if (_future == null ||
-                snapshot.connectionState != ConnectionState.done) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 14),
-                child: Center(
-                  child: SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2.4),
-                  ),
-                ),
-              );
-            }
-            if (snapshot.hasError) {
-              logWarn('notes', 'заметка не загрузилась: ${snapshot.error}');
-              return Text(l.updNotesError, style: theme.bodyMedium);
-            }
-            final note = snapshot.data;
-            if (note == null) {
-              return Text(l.updNotesEmpty, style: theme.bodyMedium);
-            }
-            final pages = [
-              for (final page in note.pages)
-                if (!page.isEmpty) page,
-            ];
-            if (pages.isEmpty && note.title.isEmpty) {
-              return Text(l.updNotesEmpty, style: theme.bodyMedium);
-            }
-            final locale = Localizations.localeOf(context).languageCode;
-            final date = formatNoteDate(note.date, locale);
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Whose version and when, or the text doesn't say what it's
-                // about.
-                Text(
-                  note.title.isEmpty ? 'v${note.version}' : note.title,
-                  style: theme.titleMedium,
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  ['v${note.version}', if (date.isNotEmpty) date].join(' · '),
-                  style: theme.bodySmall,
-                ),
-                for (final page in pages) ...[
-                  const SizedBox(height: 18),
-                  UpdateNoteSection(page: page),
-                ],
-              ],
-            );
-          },
-        ),
-      ),
+    return FutureBuilder<UpdateNote?>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (_future == null ||
+            snapshot.connectionState != ConnectionState.done) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 14),
+            child: Center(
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2.4),
+              ),
+            ),
+          );
+        }
+        if (snapshot.hasError) {
+          logWarn('notes', 'заметка не загрузилась: ${snapshot.error}');
+          return Text(l.updNotesError, style: theme.bodyMedium);
+        }
+        final note = snapshot.data;
+        if (note == null) return Text(l.updNotesEmpty, style: theme.bodyMedium);
+        return UpdateNoteView(note: note);
+      },
     );
   }
 }

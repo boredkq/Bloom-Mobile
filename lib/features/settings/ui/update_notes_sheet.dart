@@ -1,6 +1,5 @@
-/// "What's new" and "Update history", as sheets. A note's pages are sections of
-/// one scroll, what a finger does anyway. Text is lists only: a line starting
-/// with `- ` is an item, others a paragraph.
+/// "What's new" and "Update history", as sheets. A major version shows its
+/// picture and the summary on a plate, a patch "In this version" and its items.
 library;
 
 import 'package:flutter/material.dart';
@@ -9,214 +8,181 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/atoms.dart';
-import '../../../shared/ui/bloom_icon.dart';
-import '../../../shared/ui/bloom_mark.dart';
 import '../../../shared/ui/bloom_sheet.dart';
-import '../../../shared/ui/pressable.dart';
+import '../../../shared/ui/subpage_header.dart';
 import '../update_notes_store.dart';
+import 'settings_rows.dart';
+import 'settings_sheets.dart';
 
 Future<void> showUpdateNote(BuildContext context, UpdateNote note) {
-  final l = context.l;
-  final locale = Localizations.localeOf(context).languageCode;
   return showBloomSheetChild<void>(
     context: context,
-    header: _NotesHeader(
-      title: note.title.isEmpty ? l.updWhatsNew : note.title,
-      subtitle: formatNoteDate(note.date, locale),
+    child: Builder(
+      builder: (sheet) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            UpdateNoteView(note: note),
+            const SizedBox(height: 24),
+            BloomButton(
+              label: sheet.l.commonClose,
+              tone: ButtonTone.plate,
+              pill: false,
+              height: 54,
+              onTap: () => Navigator.of(sheet).pop(),
+            ),
+          ],
+        ),
+      ),
     ),
-    child: _NoteBody(note: note),
   );
 }
 
 /// A tap opens the note over the list; closing it comes back to the history.
 Future<void> showUpdateHistory(BuildContext context) {
-  final l = context.l;
   return showBloomSheetChild<void>(
     context: context,
-    header: _NotesHeader(title: l.updHistory, subtitle: l.updHistorySub),
+    header: settingsSheetHeader(context, context.l.updHistory),
     child: const _HistoryList(),
   );
 }
 
-/// The app's mark, a title, a date or a caption.
-class _NotesHeader extends StatelessWidget {
-  const _NotesHeader({required this.title, required this.subtitle});
-
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
-      child: Row(
-        children: [
-          BloomMark(size: 34, color: t.text),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.titleLarge,
-                ),
-                if (subtitle.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.bodyMedium,
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// The manifest's pages as sections, "Done" at the end.
-class _NoteBody extends StatelessWidget {
-  const _NoteBody({required this.note});
+/// A note whole: its picture, "Bloom 1.0.0", the date, the text. Public: the
+/// "Version" page shows it too.
+class UpdateNoteView extends StatelessWidget {
+  const UpdateNoteView({super.key, required this.note});
 
   final UpdateNote note;
 
   @override
   Widget build(BuildContext context) {
+    final t = context.bloom;
     final l = context.l;
     final theme = Theme.of(context).textTheme;
-    final pages = [
-      for (final page in note.pages)
-        if (!page.isEmpty) page,
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 2, 20, 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (pages.isEmpty)
-            Text(l.updNotesEmpty, style: theme.bodyMedium)
-          else
-            for (var i = 0; i < pages.length; i++) ...[
-              if (i > 0) const SizedBox(height: 22),
-              UpdateNoteSection(page: pages[i]),
-            ],
-          const SizedBox(height: 22),
-          BloomButton(
-            label: l.commonDone,
-            icon: Bi.checkCircle,
-            tone: ButtonTone.accent,
-            pill: false,
-            height: 54,
-            onTap: () => Navigator.of(context).pop(),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// A title, the text as a list, a picture. Public: the "Version" page shows it
-/// too.
-class UpdateNoteSection extends StatelessWidget {
-  const UpdateNoteSection({super.key, required this.page});
-
-  final UpdateNotePage page;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    final image = page.image;
+    final locale = Localizations.localeOf(context).languageCode;
+    final date = formatNoteDate(note.date, locale);
+    final image = note.image;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (page.title.isNotEmpty) ...[
-          Text(page.title, style: theme.titleMedium),
-          const SizedBox(height: 8),
-        ],
-        if (page.body.isNotEmpty) _NoteText(body: page.body),
         if (image != null) ...[
-          const SizedBox(height: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(t.radius),
             child: Image.network(
               image,
-              fit: BoxFit.cover,
+              fit: BoxFit.fitWidth,
               // Pictures are optional: the text reads without one.
               errorBuilder: (_, _, _) => const SizedBox.shrink(),
               loadingBuilder: (context, child, progress) => progress == null
                   ? child
                   : AspectRatio(
                       aspectRatio: 16 / 9,
-                      child: ColoredBox(color: t.ovlLine2),
+                      child: ColoredBox(color: t.text.withValues(alpha: 0.04)),
                     ),
             ),
           ),
+          const SizedBox(height: 20),
         ],
+        Text('Bloom ${note.version}', style: theme.titleLarge),
+        if (date.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(date, style: theme.bodyMedium?.copyWith(color: t.text2)),
+        ],
+        const SizedBox(height: 18),
+        if (!note.hasContent) Text(l.updNotesEmpty, style: theme.bodyMedium),
+        if (note.summary.isNotEmpty) _SummaryPlate(text: note.summary),
+        if (note.summary.isNotEmpty && note.items.isNotEmpty)
+          const SizedBox(height: 18),
+        if (note.items.isNotEmpty) _Items(items: note.items),
       ],
     );
   }
 }
 
-/// `- ` lines as items, others as paragraphs.
-class _NoteText extends StatelessWidget {
-  const _NoteText({required this.body});
+class _SummaryPlate extends StatelessWidget {
+  const _SummaryPlate({required this.text});
 
-  final String body;
+  final String text;
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final style = Theme.of(
-      context,
-    ).textTheme.bodyMedium?.copyWith(color: t.text2, height: 1.45);
-    final lines = body.split('\n');
+    final theme = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: t.text.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(t.radius),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SettingsCaption(context.l.updWhatsNew.toUpperCase()),
+          const SizedBox(height: 8),
+          Text(
+            text,
+            style: theme.bodyMedium?.copyWith(color: t.text, height: 1.4),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A patch's items under a rail: a tick at each, the last one turning the corner.
+class _Items extends StatelessWidget {
+  const _Items({required this.items});
+
+  final List<String> items;
+
+  static const double _gap = 8;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final theme = Theme.of(context).textTheme;
+    final style = theme.bodyMedium?.copyWith(color: t.text2, height: 1.35);
+    final line = t.text.withValues(alpha: 0.16);
+    final tickY = ((style?.fontSize ?? 14) * 0.7).roundToDouble();
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (var i = 0; i < lines.length; i++)
-          if (lines[i].trim().isNotEmpty) ...[
-            if (i > 0) const SizedBox(height: 7),
-            if (lines[i].trimLeft().startsWith('- '))
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Its own dot: "•" in the font has too much air around it and
-                  // the text moves right.
-                  Padding(
-                    padding: const EdgeInsets.only(top: 7, right: 10),
-                    child: Container(
-                      width: 4,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: t.text2,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
+        Text(context.l.updInThis, style: theme.titleMedium),
+        const SizedBox(height: 12),
+        for (var i = 0; i < items.length; i++)
+          Padding(
+            padding: EdgeInsets.only(top: i == 0 ? 0 : _gap),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned(
+                  left: 12,
+                  top: i == 0 ? 0 : -_gap,
+                  bottom: i == items.length - 1 ? null : 0,
+                  height: i == items.length - 1
+                      ? tickY + (i == 0 ? 0 : _gap)
+                      : null,
+                  child: SizedBox(width: 1, child: ColoredBox(color: line)),
+                ),
+                Positioned(
+                  left: 12,
+                  top: tickY,
+                  child: SizedBox(
+                    width: 8,
+                    height: 1,
+                    child: ColoredBox(color: line),
                   ),
-                  Expanded(
-                    child: Text(
-                      lines[i].trimLeft().substring(2).trim(),
-                      style: style,
-                    ),
-                  ),
-                ],
-              )
-            else
-              Text(lines[i].trim(), style: style),
-          ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 32),
+                  child: Text(items[i], style: style),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -245,6 +211,7 @@ class _HistoryListState extends ConsumerState<_HistoryList> {
   Widget build(BuildContext context) {
     final l = context.l;
     final theme = Theme.of(context).textTheme;
+    final locale = Localizations.localeOf(context).languageCode;
 
     return FutureBuilder<List<NoteHeadline>>(
       future: _future,
@@ -274,72 +241,27 @@ class _HistoryListState extends ConsumerState<_HistoryList> {
         return SheetPanel(
           children: [
             for (var i = 0; i < items.length; i++) ...[
-              if (i > 0) sheetDivider(),
-              _HistoryRow(item: items[i]),
+              if (i > 0) sheetDivider(indent: 18),
+              SettingsLinkRow(
+                title: 'v${items[i].version}',
+                subtitle: formatNoteDate(items[i].date, locale),
+                onTap: () => _open(context, items[i].version, locale),
+              ),
             ],
           ],
         );
       },
     );
   }
-}
-
-class _HistoryRow extends ConsumerWidget {
-  const _HistoryRow({required this.item});
-
-  final NoteHeadline item;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    final locale = Localizations.localeOf(context).languageCode;
-    final date = formatNoteDate(item.date, locale);
-
-    return Pressable(
-      onTap: () => _open(context, ref, locale),
-      scale: 0.98,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 14, 16, 14),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'v${item.version}',
-                    style: theme.titleMedium,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (item.title.isNotEmpty || date.isNotEmpty) ...[
-                    const SizedBox(height: 3),
-                    Text(
-                      [
-                        if (item.title.isNotEmpty) item.title,
-                        if (date.isNotEmpty) date,
-                      ].join(' · '),
-                      style: theme.bodySmall?.copyWith(color: t.text2),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            BloomIcon(Bi.altArrowRight, size: 16, color: t.text2),
-          ],
-        ),
-      ),
-    );
-  }
 
   /// The list already fetched the manifest, so the note opens at once and needs
   /// no spinner.
-  Future<void> _open(BuildContext context, WidgetRef ref, String locale) async {
-    final note = await ref.read(updateNotesProvider).note(item.version, locale);
+  Future<void> _open(
+    BuildContext context,
+    String version,
+    String locale,
+  ) async {
+    final note = await ref.read(updateNotesProvider).note(version, locale);
     if (!context.mounted || note == null) return;
     await showUpdateNote(context, note);
   }

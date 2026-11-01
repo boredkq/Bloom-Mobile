@@ -6,6 +6,7 @@
   "commonCancel": "Cancel",
   "commonSave": "Save",
   "commonDelete": "Delete",
+  "commonClose": "Close",
   "commonDone": "Done",
   "commonApply": "Apply",
   "commonUndo": "Undo",
@@ -1421,6 +1422,7 @@
   "@aboutError": { "description": "desktop: settings.about.error" },
   "aboutOpenRelease": "Open the release page",
 
+  "updInThis": "In this version",
   "updWhatsNew": "What’s new",
   "@updWhatsNew": { "description": "desktop: update.whatsNew" },
   "updHistory": "Update history",

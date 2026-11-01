@@ -21,6 +21,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get commonDelete => 'Удалить';
 
   @override
+  String get commonClose => 'Закрыть';
+
+  @override
   String get commonDone => 'Готово';
 
   @override
@@ -3132,6 +3135,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get aboutOpenRelease => 'Открыть страницу релиза';
+
+  @override
+  String get updInThis => 'В этой версии';
 
   @override
   String get updWhatsNew => 'Что нового';

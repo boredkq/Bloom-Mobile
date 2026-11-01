@@ -1,7 +1,7 @@
 /// Version notes: "What's new" after an update and the update history. The
-/// manifest is `{"<version>": {title, date, pages[]}}`, where `title`/`body`
-/// are a string or `{ru, en}`. It's fetched from the public releases
-/// repository, so the text changes without a release.
+/// manifest is `{"<version>": {date, image, summary, items}}`; a text is a string
+/// or `{ru, en}`. It's read from the repository, so the text changes without a
+/// release.
 library;
 
 import 'dart:convert';
@@ -12,61 +12,52 @@ import 'package:intl/intl.dart';
 
 import '../../core/log/bloom_log.dart';
 import '../../core/store/json_store.dart';
-import 'about_store.dart' show compareVersions, kUpdateRepo;
+import 'about_store.dart' show compareVersions, isMajorVersion, kUpdateRepo;
 
-const String _rawBase =
-    'https://raw.githubusercontent.com/$kUpdateRepo/main/update-notes/mobile/';
+const String _base =
+    'https://raw.githubusercontent.com/$kUpdateRepo/main/update-notes/';
 
-Uri get _manifestUrl => Uri.parse('${_rawBase}update-notes.json');
+/// For checking a note before it's in `main`: another manifest's address, and
+/// "What's new" opening at each launch.
+const String _testNotes = String.fromEnvironment('UPDATE_NOTES');
+const bool _force = bool.fromEnvironment('UPDATE_FORCE');
+
+Uri get _manifestUrl =>
+    Uri.parse(_testNotes.isEmpty ? '${_base}update-notes.json' : _testNotes);
 
 /// Where the manifest's cache and the last run's version live in `bloom.json`.
 const String kNotesCacheKey = 'updateNotes';
 const String _lastRunKey = 'lastRun';
 
-/// A title, text and maybe a picture.
-class UpdateNotePage {
-  const UpdateNotePage({required this.title, required this.body, this.image});
-
-  final String title;
-
-  /// Lists only, lines starting with `- `.
-  final String body;
-
-  /// A full link or `null`. A file name becomes `update-notes/assets/<name>`.
-  final String? image;
-
-  bool get isEmpty => title.isEmpty && body.isEmpty && image == null;
-}
-
 /// One version's note, already parsed for the language.
 class UpdateNote {
   const UpdateNote({
     required this.version,
-    required this.title,
     required this.date,
-    required this.pages,
+    required this.summary,
+    required this.items,
+    this.image,
   });
 
   final String version;
-  final String title;
 
   /// ISO or empty.
   final String date;
-  final List<UpdateNotePage> pages;
+
+  /// A full link, only for a major version.
+  final String? image;
+  final String summary;
+  final List<String> items;
 
   /// An empty note doesn't open by itself.
-  bool get hasContent => title.isNotEmpty || pages.any((page) => !page.isEmpty);
+  bool get hasContent =>
+      summary.isNotEmpty || items.isNotEmpty || image != null;
 }
 
 class NoteHeadline {
-  const NoteHeadline({
-    required this.version,
-    required this.title,
-    required this.date,
-  });
+  const NoteHeadline({required this.version, required this.date});
 
   final String version;
-  final String title;
 
   /// Formatted when shown, so the cache doesn't depend on the language.
   final String date;
@@ -129,7 +120,6 @@ class UpdateNotes {
         if (manifest[version] is Map)
           NoteHeadline(
             version: version,
-            title: _text((manifest[version] as Map)['title'], locale),
             date: _iso((manifest[version] as Map)['date']),
           ),
     ];
@@ -142,7 +132,8 @@ class UpdateNotes {
   Future<UpdateNote?> whatsNew(String version, String locale) async {
     final previous = lastRun;
     markRun(version);
-    if (version.isEmpty || previous.isEmpty || previous == version) return null;
+    if (version.isEmpty) return null;
+    if (!_force && (previous.isEmpty || previous == version)) return null;
     try {
       final fresh = await note(version, locale);
       return fresh != null && fresh.hasContent ? fresh : null;
@@ -194,32 +185,23 @@ UpdateNote? _note(
 ) {
   final raw = manifest[version];
   if (raw is! Map) return null;
-  final rawPages = raw['pages'];
-  final pages = <UpdateNotePage>[
-    if (rawPages is List)
-      for (final page in rawPages)
-        if (page is Map)
-          UpdateNotePage(
-            title: _text(page['title'], locale),
-            body: _text(page['body'], locale),
-            image: _image(page['image']),
-          ),
-  ];
   return UpdateNote(
     version: version,
-    title: _text(raw['title'], locale),
     date: _iso(raw['date']),
-    // An old entry without `pages`: one page from `body`.
-    pages: pages.isNotEmpty
-        ? pages
-        : [
-            UpdateNotePage(
-              title: '',
-              body: _text(raw['body'], locale),
-              image: null,
-            ),
-          ],
+    image: isMajorVersion(version) ? _image(raw['image']) : null,
+    summary: _text(raw['summary'], locale),
+    items: _lines(raw['items'], locale),
   );
+}
+
+/// A list of texts, or `{ru: [...], en: [...]}`.
+List<String> _lines(Object? raw, String locale) {
+  final list = raw is Map ? raw[locale] ?? raw['ru'] ?? raw['en'] : raw;
+  if (list is! List) return const [];
+  return [
+    for (final item in list)
+      if (_text(item, locale).isNotEmpty) _text(item, locale),
+  ];
 }
 
 /// A string as it is; `{ru, en}` by language, else ru, else en.
@@ -232,11 +214,11 @@ String _text(Object? raw, String locale) {
 
 String _iso(Object? raw) => raw is String ? raw : '';
 
-/// A name becomes a link in `update-notes/assets/`; a ready link stays.
+/// A file in `update-notes/assets/`, or a link as it is.
 String? _image(Object? raw) {
   if (raw is! String || raw.isEmpty) return null;
   if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
-  return '${_rawBase}assets/${raw.replaceAll(RegExp(r'^/+'), '')}';
+  return '${_base}assets/${raw.replaceAll(RegExp(r'^/+'), '')}';
 }
 
 /// By language. A broken date stays as it is.

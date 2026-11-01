@@ -12,16 +12,11 @@ import 'package:http/http.dart' as http;
 import '../../core/log/bloom_log.dart';
 import '../../core/store/text_files.dart';
 
-/// The public repository with the releases, where the release workflow puts the
-/// APK. The notes come from it too.
-const String kUpdateRepo = 'bxzlik/Bloom';
+/// Where the APK and the notes are published.
+const String kUpdateRepo = 'use-bloom/mobile';
 
-/// Mobile release tags. Each platform numbers on its own, so another's release
-/// would look like an update here.
-const String kTagPrefix = 'mobile-v';
-
-Uri get _releasesUrl =>
-    Uri.parse('https://api.github.com/repos/$kUpdateRepo/releases?per_page=30');
+Uri get _latestUrl =>
+    Uri.parse('https://api.github.com/repos/$kUpdateRepo/releases/latest');
 
 enum UpdatePhase { idle, checking, uptodate, available, error }
 
@@ -94,25 +89,12 @@ class AboutController extends Notifier<AboutState> {
     if (state.phase == UpdatePhase.checking) return;
     state = state.copyWith(phase: UpdatePhase.checking);
     try {
-      final body = await ref.read(releaseFetchProvider)(_releasesUrl);
-      final json = jsonDecode(body);
-      if (json is! List) throw const FormatException('не JSON-массив');
-      // Newest first: I take the first mobile one, skipping drafts and
-      // pre-releases.
-      final rel = json.firstWhere(
-        (r) =>
-            r is Map &&
-            r['draft'] != true &&
-            r['prerelease'] != true &&
-            (r['tag_name'] is String) &&
-            (r['tag_name'] as String).startsWith(kTagPrefix),
-        orElse: () => null,
-      );
-      if (rel == null) {
-        throw const FormatException('в репозитории нет мобильных релизов');
+      final body = await ref.read(releaseFetchProvider)(_latestUrl);
+      final rel = jsonDecode(body);
+      if (rel is! Map || rel['tag_name'] is! String) {
+        throw const FormatException('not a release');
       }
-      final tag = rel['tag_name'] as String;
-      final latest = normalizeVersion(tag.substring(kTagPrefix.length));
+      final latest = normalizeVersion(rel['tag_name'] as String);
       final url =
           rel['html_url'] as String? ??
           'https://github.com/$kUpdateRepo/releases';
@@ -151,6 +133,12 @@ int compareVersions(String a, String b) {
     if (x != y) return x > y ? 1 : -1;
   }
   return 0;
+}
+
+/// `x.y.0`: its note shows a picture and a summary.
+bool isMajorVersion(String v) {
+  final parts = _parts(v);
+  return parts.length < 3 || parts[2] == 0;
 }
 
 List<int> _parts(String v) => [
