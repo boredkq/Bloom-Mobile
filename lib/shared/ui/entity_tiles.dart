@@ -806,13 +806,14 @@ class _ArtistCardState extends State<ArtistCard> {
 }
 
 /// A release's type as the platform says it; an album unless it says otherwise.
-String releaseKind(AppLocalizations l, String? albumType) => switch (albumType) {
-  'single' => l.relSingle,
-  'ep' => l.relEp,
-  'compilation' => l.relCompilation,
-  'podcast' => l.relPodcast,
-  _ => l.relAlbum,
-};
+String releaseKind(AppLocalizations l, String? albumType) =>
+    switch (albumType) {
+      'single' => l.relSingle,
+      'ep' => l.relEp,
+      'compilation' => l.relCompilation,
+      'podcast' => l.relPodcast,
+      _ => l.relAlbum,
+    };
 
 /// The lines under an album's or a playlist's title: an album's "artist ·
 /// type" over its date (the year when that's all the platform says), a

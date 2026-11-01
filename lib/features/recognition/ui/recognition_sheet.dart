@@ -87,19 +87,21 @@ class _RecognitionContentState extends ConsumerState<_RecognitionContent>
     showToast(context, 'Ищем трек: ${res.title}...');
 
     try {
-      final searchResults = await ref.read(registryProvider).searchAll(
-        res.searchPhrase,
-      );
+      final searchResults = await ref
+          .read(registryProvider)
+          .searchAll(res.searchPhrase);
       if (searchResults.tracks.isNotEmpty && mounted) {
         final track = searchResults.tracks.first;
-        await ref.read(playbackProvider.notifier).playTrack(
-          track,
-          source: PlaySource(
-            type: PlaySourceType.search,
-            id: 'recognition:${res.searchPhrase}',
-            title: res.title,
-          ),
-        );
+        await ref
+            .read(playbackProvider.notifier)
+            .playTrack(
+              track,
+              source: PlaySource(
+                type: PlaySourceType.search,
+                id: 'recognition:${res.searchPhrase}',
+                title: res.title,
+              ),
+            );
       } else if (mounted) {
         showToast(context, 'Трек не найден на подключенных площадках');
       }
@@ -138,7 +140,10 @@ class _RecognitionContentState extends ConsumerState<_RecognitionContent>
               style: TextStyle(fontSize: 15, color: t.text2),
             ),
           ] else if (_status == RecognitionStatus.found && _result != null) ...[
-            _FoundTrackCard(result: _result!, onPlay: () => _playFoundTrack(_result!)),
+            _FoundTrackCard(
+              result: _result!,
+              onPlay: () => _playFoundTrack(_result!),
+            ),
           ] else ...[
             Icon(Icons.music_off_rounded, size: 48, color: t.muted),
             const SizedBox(height: 12),
@@ -218,19 +223,11 @@ class _PulseWaves extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: t.accent,
                   boxShadow: [
-                    BoxShadow(
-                      color: t.glow,
-                      blurRadius: 18,
-                      spreadRadius: 2,
-                    ),
+                    BoxShadow(color: t.glow, blurRadius: 18, spreadRadius: 2),
                   ],
                 ),
                 child: Center(
-                  child: BloomIcon(
-                    Bi.wave,
-                    color: t.accentText,
-                    size: 34,
-                  ),
+                  child: BloomIcon(Bi.wave, color: t.accentText, size: 34),
                 ),
               ),
             ],

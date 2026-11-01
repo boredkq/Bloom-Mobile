@@ -9,7 +9,8 @@ import 'package:http/http.dart' as http;
 
 import 'recognition_models.dart';
 
-const String _shazamBase = 'https://amp.shazam.com/discovery/v5/en-US/US/android/-/tag';
+const String _shazamBase =
+    'https://amp.shazam.com/discovery/v5/en-US/US/android/-/tag';
 const Duration _timeout = Duration(seconds: 12);
 
 class RecognitionService {
@@ -56,8 +57,7 @@ class RecognitionService {
           .post(
             url,
             headers: const {
-              'User-Agent':
-                  'Shazam/14.1.0 (Android; ru_RU; Xiaomi 2201116SG)',
+              'User-Agent': 'Shazam/14.1.0 (Android; ru_RU; Xiaomi 2201116SG)',
               'X-Shazam-Platform': 'android',
               'X-Shazam-AppVersion': '14.1.0',
               'Content-Type': 'application/json',

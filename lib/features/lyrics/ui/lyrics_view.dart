@@ -317,10 +317,13 @@ class _LineState extends State<_Line> with SingleTickerProviderStateMixin {
                         widget.text,
                         textAlign: lay.align,
                         style: TextStyle(
-                          fontSize: widget.active ? lay.activeSize : lay.fontSize,
+                          fontSize: widget.active
+                              ? lay.activeSize
+                              : lay.fontSize,
                           height: lay.lineHeight,
-                          fontWeight:
-                              widget.active ? FontWeight.w500 : FontWeight.w400,
+                          fontWeight: widget.active
+                              ? FontWeight.w500
+                              : FontWeight.w400,
                           color: color,
                         ),
                       ),
@@ -330,13 +333,15 @@ class _LineState extends State<_Line> with SingleTickerProviderStateMixin {
                           widget.romanized!,
                           textAlign: lay.align,
                           style: TextStyle(
-                            fontSize: (widget.active
+                            fontSize:
+                                (widget.active
                                     ? lay.activeSize
                                     : lay.fontSize) *
                                 0.75,
                             height: 1.2,
                             fontStyle: FontStyle.italic,
-                            color: color?.withValues(alpha: 0.72) ??
+                            color:
+                                color?.withValues(alpha: 0.72) ??
                                 t.muted.withValues(alpha: 0.72),
                           ),
                         ),

@@ -8,7 +8,10 @@ void main() {
   group('romanize Cyrillic', () {
     test('transliterates standard Russian Cyrillic', () {
       expect(romanize('Привет мир'), 'Privet mir');
-      expect(romanize('Съешь же ещё этих мягких французских булок'), "S'esh' zhe eshcho etikh myagkikh frantsuzskikh bulok");
+      expect(
+        romanize('Съешь же ещё этих мягких французских булок'),
+        "S'esh' zhe eshcho etikh myagkikh frantsuzskikh bulok",
+      );
     });
 
     test('transliterates Ukrainian and Belarusian letters', () {

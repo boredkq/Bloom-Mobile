@@ -2786,17 +2786,76 @@ abstract class AppLocalizations {
   /// **'a spinning vinyl record'**
   String get pvStyleVinylSub;
 
+  /// Apple Music living aura style
+  ///
+  /// In en, this message translates to:
+  /// **'Aura'**
   String get pvStyleAura;
+
+  /// No description provided for @pvStyleAuraSub.
+  ///
+  /// In en, this message translates to:
+  /// **'living ambient aura & spring cover'**
   String get pvStyleAuraSub;
+
+  /// typographic minimalism style
+  ///
+  /// In en, this message translates to:
+  /// **'Ivory'**
   String get pvStyleIvory;
+
+  /// No description provided for @pvStyleIvorySub.
+  ///
+  /// In en, this message translates to:
+  /// **'editorial typographic minimalism'**
   String get pvStyleIvorySub;
+
+  /// title of recognition sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Music Recognition'**
   String get recognitionTitle;
+
+  /// listening state description
+  ///
+  /// In en, this message translates to:
+  /// **'Listening to music around you...'**
   String get recognitionListening;
+
+  /// identifying state description
+  ///
+  /// In en, this message translates to:
+  /// **'Identifying audio fingerprint...'**
   String get recognitionIdentifying;
+
+  /// track identified label
+  ///
+  /// In en, this message translates to:
+  /// **'Track identified'**
   String get recognitionFound;
+
+  /// play found track in bloom
+  ///
+  /// In en, this message translates to:
+  /// **'Play in Bloom'**
   String get recognitionPlay;
+
+  /// open in search
+  ///
+  /// In en, this message translates to:
+  /// **'Open in Search'**
   String get recognitionSearch;
+
+  /// recognition failure
+  ///
+  /// In en, this message translates to:
+  /// **'Could not identify track'**
   String get recognitionNotFound;
+
+  /// try recognition again
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
   String get recognitionRetry;
 
   /// shape of the play/pause button in the player and the mini player

@@ -123,13 +123,12 @@ typedef LyricsFetcher =
 
 final lyricsFetcherProvider = Provider<LyricsFetcher>(
   (ref) =>
-      ({required artist, required title, durationSec, trackId}) =>
-          fetchLyrics(
-            artist: artist,
-            title: title,
-            durationSec: durationSec,
-            trackId: trackId,
-          ),
+      ({required artist, required title, durationSec, trackId}) => fetchLyrics(
+        artist: artist,
+        title: title,
+        durationSec: durationSec,
+        trackId: trackId,
+      ),
 );
 
 /// Whose lyrics to show — swapped in tests.

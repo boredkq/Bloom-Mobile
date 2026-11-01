@@ -40,9 +40,21 @@ void main() {
     });
 
     test('implements value equality and hashCode', () {
-      const a = RecognitionResult(title: 'Song', artist: 'Artist', album: 'Album');
-      const b = RecognitionResult(title: 'Song', artist: 'Artist', album: 'Album');
-      const c = RecognitionResult(title: 'Other', artist: 'Artist', album: 'Album');
+      const a = RecognitionResult(
+        title: 'Song',
+        artist: 'Artist',
+        album: 'Album',
+      );
+      const b = RecognitionResult(
+        title: 'Song',
+        artist: 'Artist',
+        album: 'Album',
+      );
+      const c = RecognitionResult(
+        title: 'Other',
+        artist: 'Artist',
+        album: 'Album',
+      );
 
       expect(a, equals(b));
       expect(a.hashCode, equals(b.hashCode));
@@ -70,9 +82,7 @@ void main() {
           'track': {
             'title': 'Midnight City',
             'subtitle': 'M83',
-            'images': {
-              'coverart': 'https://images.shazam.com/cover.jpg',
-            },
+            'images': {'coverart': 'https://images.shazam.com/cover.jpg'},
             'sections': [
               {
                 'type': 'SONG',

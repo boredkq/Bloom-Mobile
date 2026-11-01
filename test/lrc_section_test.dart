@@ -38,14 +38,17 @@ void main() {
       expect(lines[2].section, 'Chorus');
     });
 
-    test('supports Russian section headers and transliterates Cyrillic text', () {
-      final lines = parseLrc('[00:12.00][Припев] Я лечу над землёй\n');
-      expect(lines.length, 1);
-      expect(lines.first.time, 12.0);
-      expect(lines.first.text, 'Я лечу над землёй');
-      expect(lines.first.section, 'Припев');
-      expect(lines.first.romanized, "Ya lechu nad zemlyoy");
-    });
+    test(
+      'supports Russian section headers and transliterates Cyrillic text',
+      () {
+        final lines = parseLrc('[00:12.00][Припев] Я лечу над землёй\n');
+        expect(lines.length, 1);
+        expect(lines.first.time, 12.0);
+        expect(lines.first.text, 'Я лечу над землёй');
+        expect(lines.first.section, 'Припев');
+        expect(lines.first.romanized, "Ya lechu nad zemlyoy");
+      },
+    );
 
     test('supports Asian scripts romanization alongside timestamps', () {
       final lines = parseLrc(

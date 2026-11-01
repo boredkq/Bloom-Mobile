@@ -535,13 +535,7 @@ void main() {
     });
 
     test('в список ключей настроек не попали данные пользователя', () {
-      for (final key in [
-        'profile',
-        'stats',
-        'follows',
-        'yandex',
-        'lastfm',
-      ]) {
+      for (final key in ['profile', 'stats', 'follows', 'yandex', 'lastfm']) {
         expect(kSettingsKeys, isNot(contains(key)), reason: key);
       }
     });
