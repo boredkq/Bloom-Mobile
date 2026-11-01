@@ -725,7 +725,7 @@ class _EditRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           child: Row(
             children: [
-              _Check(on: selected),
+              BloomCheck(on: selected),
               const SizedBox(width: 12),
               if (drag == null)
                 cover
@@ -820,30 +820,6 @@ class _DragDeck extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// Квадратик выбора. Свой, а не material `Checkbox`: тому не отключить
-/// служебные отступы и он тянет за собой свою палитру.
-class _Check extends StatelessWidget {
-  const _Check({required this.on});
-
-  final bool on;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
-      width: 22,
-      height: 22,
-      decoration: BoxDecoration(
-        color: on ? t.accent : Colors.transparent,
-        border: Border.all(color: on ? t.accent : t.muted, width: 1.6),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: on ? BloomIcon(Bi.check, size: 15, color: t.accentText) : null,
     );
   }
 }
@@ -961,24 +937,17 @@ class _RenameBarState extends State<_RenameBar> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
     return _BarShell(
       child: Row(
         children: [
           _BarIcon(icon: Bi.close, onTap: widget.onCancel),
           const SizedBox(width: 8),
           Expanded(
-            child: TextField(
+            child: BloomField(
               controller: _controller,
               autofocus: true,
-              cursorColor: t.accent,
-              style: Theme.of(context).textTheme.titleMedium,
-              textInputAction: TextInputAction.done,
+              action: TextInputAction.done,
               onSubmitted: widget.onDone,
-              decoration: const InputDecoration(
-                isDense: true,
-                border: InputBorder.none,
-              ),
             ),
           ),
           const SizedBox(width: 8),

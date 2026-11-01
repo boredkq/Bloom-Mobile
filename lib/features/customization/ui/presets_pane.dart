@@ -23,6 +23,7 @@ import '../presets_file.dart';
 import '../presets_store.dart';
 import 'custom_sheet.dart';
 import 'custom_widgets.dart';
+import '../../../shared/ui/subpage_header.dart';
 
 class PresetsPane extends ConsumerWidget {
   const PresetsPane({super.key});
@@ -30,7 +31,14 @@ class PresetsPane extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final presets = ref.watch(presetsProvider);
-    if (presets.isEmpty) return EmptyHint(text: context.l.custPresetsEmpty);
+    if (presets.isEmpty) {
+      return Center(
+        child: CenterNote(
+          context.l.custPresetsEmpty,
+          padding: const EdgeInsets.symmetric(horizontal: 40),
+        ),
+      );
+    }
     return GridView.builder(
       padding: EdgeInsets.fromLTRB(16, 12, 16, 8 + bottomBarsInset(context)),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -306,7 +314,7 @@ class _PresetCard extends ConsumerWidget {
                     );
                   }),
                 ),
-                const CustSheetDivider(),
+                const GroupDivider(indent: kCustRowText),
                 CustSheetRow(
                   icon: Bi.export,
                   label: l10n.custPresetExport,

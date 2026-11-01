@@ -304,7 +304,13 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                 if (_loading)
                   const SliverToBoxAdapter(child: DetailSkeleton(artist: true))
                 else if (_error case final message?)
-                  SliverToBoxAdapter(child: DetailError(message))
+                  SliverToBoxAdapter(
+                    child: CenterNote(
+                      message,
+                      color: context.bloom.danger,
+                      padding: const EdgeInsets.all(24),
+                    ),
+                  )
                 else ...[
                   SliverList.list(children: _sections()),
                   if (_profile) ...rows,
@@ -385,7 +391,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
       ],
       if (_profile && _tracks.isNotEmpty) SectionTitle(l.artistLikes, side: 8),
       if (!_profile && _top.isEmpty && _tracks.isEmpty && data.albums.isEmpty)
-        DetailEmpty(l.artistNoTracks),
+        CenterNote(l.artistNoTracks),
     ];
   }
 
@@ -395,7 +401,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
     }
     final bare = _tracksView || (_profile && _data!.playlists.isEmpty);
     return bare && _tracks.isEmpty
-        ? DetailEmpty(context.l.setNoTracks)
+        ? CenterNote(context.l.setNoTracks)
         : const SizedBox.shrink();
   }
 

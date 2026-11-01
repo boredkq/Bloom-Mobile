@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/tokens.dart';
+import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/pressable.dart';
 import '../play_button_store.dart';
@@ -90,13 +91,10 @@ class PlayButton extends ConsumerWidget {
 
     if (loading) {
       return shell(
-        SizedBox(
-          width: spinnerSize,
-          height: spinnerSize,
-          child: CircularProgressIndicator(
-            strokeWidth: size >= 56 ? 2.4 : 2.2,
-            color: color,
-          ),
+        BloomSpinner(
+          size: spinnerSize,
+          stroke: size >= 56 ? 2.4 : 2.2,
+          color: color,
         ),
       );
     }

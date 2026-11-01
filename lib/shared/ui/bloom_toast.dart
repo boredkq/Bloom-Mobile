@@ -464,14 +464,7 @@ class _Badge extends StatelessWidget {
             color: color.withValues(alpha: 0.16),
           ),
           child: busy
-              ? SizedBox(
-                  width: 15,
-                  height: 15,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: color,
-                  ),
-                )
+              ? BloomSpinner(size: 15, color: color)
               // У «успеха» голая галочка, а не `checkCircle`: значок и так
               // лежит в круге, круг в круге читался бы мишенью (на ПК то же —
               // `CheckBare`).

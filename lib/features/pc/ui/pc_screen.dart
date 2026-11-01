@@ -302,13 +302,10 @@ class _PcScanScreenState extends ConsumerState<PcScanScreen> {
               ),
               child: _busy
                   ? const Center(
-                      child: SizedBox(
-                        width: 28,
-                        height: 28,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.4,
-                          color: Colors.white,
-                        ),
+                      child: BloomSpinner(
+                        size: 28,
+                        stroke: 2.4,
+                        color: Colors.white,
                       ),
                     )
                   : null,
@@ -430,11 +427,7 @@ class _CodeSheetState extends ConsumerState<_CodeSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2.2, color: t.text),
-            ),
+            BloomSpinner(size: 22, stroke: 2.2, color: t.text),
             const SizedBox(height: 12),
             note(l.pcCodeSearching),
           ],
@@ -490,14 +483,14 @@ class _CodeSheetState extends ConsumerState<_CodeSheet> {
           const SizedBox(height: 14),
           GlassBox(
             borderRadius: BorderRadius.circular(t.radius),
-            child: TextField(
+            child: BloomField(
               controller: _code,
+              hint: '••• •••',
               autofocus: true,
               keyboardType: TextInputType.number,
               textAlign: TextAlign.center,
               maxLength: 7,
-              cursorColor: t.accent,
-              inputFormatters: [
+              formatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9 ]')),
               ],
               onChanged: (v) {
@@ -507,16 +500,7 @@ class _CodeSheetState extends ConsumerState<_CodeSheet> {
                 color: t.text,
                 letterSpacing: 6,
               ),
-              decoration: InputDecoration(
-                counterText: '',
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                hintText: '••• •••',
-                hintStyle: theme.headlineSmall?.copyWith(
-                  color: t.muted,
-                  letterSpacing: 6,
-                ),
-              ),
+              padding: const EdgeInsets.symmetric(vertical: 16),
             ),
           ),
           note(_error ?? l.pcCodeHint, color: _error != null ? t.danger : null),

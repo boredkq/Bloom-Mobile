@@ -144,6 +144,9 @@ class _PlAutoBody extends ConsumerWidget {
                 _CandidateRow(
                   playlist: candidates[i],
                   tracks: lib.tracksOf(candidates[i]).length,
+                  covers: lib
+                      .tracksOf(candidates[i])
+                      .map((track) => track.cover),
                   selected: candidates[i].autoRefresh,
                   busy: state.busy == candidates[i].id,
                   run: state.runs[candidates[i].id],
@@ -333,6 +336,7 @@ class _CandidateRow extends StatelessWidget {
   const _CandidateRow({
     required this.playlist,
     required this.tracks,
+    required this.covers,
     required this.selected,
     required this.busy,
     required this.run,
@@ -341,6 +345,7 @@ class _CandidateRow extends StatelessWidget {
 
   final UserPlaylist playlist;
   final int tracks;
+  final Iterable<String?> covers;
   final bool selected;
   final bool busy;
   final PlAutoRun? run;
@@ -348,9 +353,6 @@ class _CandidateRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-
     final last = busy
         ? context.l.paRunUpdating
         : run == null
@@ -361,66 +363,16 @@ class _CandidateRow extends StatelessWidget {
               ? '+${run!.added}'
               : context.l.paRunNoChanges} · ${_ago(context.l, run!.at)}';
 
-    return Pressable(
+    return SheetRow(
+      leading: Cover(url: playlist.cover, size: 44, covers: covers),
+      gap: 12,
+      label: playlist.name,
+      subtitle: last == null
+          ? context.l.tracksCount(tracks)
+          : '${context.l.tracksCount(tracks)} · $last',
+      color: context.bloom.text,
+      trailing: busy ? const BloomSpinner(size: 20) : BloomCheck(on: selected),
       onTap: onTap,
-      scale: 0.98,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Row(
-          children: [
-            Cover(url: playlist.cover, size: 44),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    playlist.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.titleMedium,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    last == null
-                        ? context.l.tracksCount(tracks)
-                        : '${context.l.tracksCount(tracks)} · $last',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.bodySmall?.copyWith(color: t.muted),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            if (busy)
-              SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: t.accent,
-                ),
-              )
-            else
-              Container(
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(
-                  color: selected ? t.accent : Colors.transparent,
-                  border: Border.all(
-                    color: selected ? t.accent : t.muted,
-                    width: 1.6,
-                  ),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: selected
-                    ? BloomIcon(Bi.check, size: 15, color: t.accentText)
-                    : null,
-              ),
-          ],
-        ),
-      ),
     );
   }
 }

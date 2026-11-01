@@ -12,7 +12,6 @@ import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../update_notes_store.dart';
 import 'settings_rows.dart';
-import 'settings_sheets.dart';
 
 Future<void> showUpdateNote(BuildContext context, UpdateNote note) {
   return showBloomSheetChild<void>(
@@ -43,7 +42,7 @@ Future<void> showUpdateNote(BuildContext context, UpdateNote note) {
 Future<void> showUpdateHistory(BuildContext context) {
   return showBloomSheetChild<void>(
     context: context,
-    header: settingsSheetHeader(context, context.l.updHistory),
+    header: SheetTitle(context.l.updHistory),
     child: const _HistoryList(),
   );
 }
@@ -219,13 +218,7 @@ class _HistoryListState extends ConsumerState<_HistoryList> {
         if (snapshot.connectionState != ConnectionState.done) {
           return const Padding(
             padding: EdgeInsets.symmetric(vertical: 34),
-            child: Center(
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2.4),
-              ),
-            ),
+            child: Center(child: BloomSpinner(size: 24, stroke: 2.4)),
           );
         }
         final items = snapshot.data ?? const <NoteHeadline>[];

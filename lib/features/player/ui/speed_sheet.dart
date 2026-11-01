@@ -20,13 +20,6 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../speed_store.dart';
 
-/// Полоса: толщина дорожки и радиус бегунка. От них же считается отступ, на
-/// который Slider поджимает дорожку с краёв (`max(thumb, overlay) / 2`, ореола
-/// у нас нет), — по нему выставляются засечки, иначе крайние риски не сойдутся
-/// с центром бегунка.
-const double _trackHeight = 5;
-const double _thumbRadius = 7;
-
 void showSpeedSheet(BuildContext context) {
   // Корневой навигатор и стекло затемнения — общие у всех наших шторок
   // (`showBloomModal`): иначе таб-бар и миниплеер остаются поверх затемнения.
@@ -44,105 +37,89 @@ class _SpeedSheet extends ConsumerWidget {
     final speed = ref.watch(speedProvider);
     final ctrl = ref.read(speedProvider.notifier);
 
-    return SheetSurface(
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SheetHandle(),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
-              child: Row(
-                children: [Text(l.playerSpeed, style: theme.titleLarge)],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  for (final preset in kSpeedPresets) ...[
-                    if (preset != kSpeedPresets.first)
-                      const SizedBox(width: 10),
-                    Expanded(
-                      child: _PresetCard(
-                        value: preset,
-                        active: speed.rate == preset,
-                        onTap: () => ctrl.setRate(preset),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 18),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
+    return SheetShell(
+      header: SheetTitle(l.playerSpeed, bottom: 14),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                for (final preset in kSpeedPresets) ...[
+                  if (preset != kSpeedPresets.first) const SizedBox(width: 10),
                   Expanded(
-                    child: Text(l.playerSpeedCustom, style: theme.bodySmall),
-                  ),
-                  Semantics(
-                    button: true,
-                    label: context.l.playerSpeedReset,
-                    child: BloomTag(
-                      text: speedLabel(speed.rate),
-                      active: speed.rate != 1,
-                      onTap: ctrl.reset,
+                    child: _PresetCard(
+                      value: preset,
+                      active: speed.rate == preset,
+                      onTap: () => ctrl.setRate(preset),
                     ),
                   ),
                 ],
-              ),
+              ],
             ),
-            const SizedBox(height: 4),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                children: [
-                  SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      trackHeight: _trackHeight,
-                      thumbShape: const RoundSliderThumbShape(
-                        enabledThumbRadius: _thumbRadius,
-                      ),
-                      // Делений тридцать — родные метки дали бы рябь;
-                      // засечки рисуем свои, каждые 0.25×, как на ПК.
-                      tickMarkShape: SliderTickMarkShape.noTickMark,
-                    ),
-                    child: Slider(
-                      value: speed.rate.clamp(kSpeedMin, kSpeedMax),
-                      min: kSpeedMin,
-                      max: kSpeedMax,
-                      divisions: kSpeedDivisions,
-                      label: speedLabel(speed.rate),
-                      onChanged: ctrl.setRate,
-                    ),
+          ),
+          const SizedBox(height: 18),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(l.playerSpeedCustom, style: theme.bodySmall),
+                ),
+                Semantics(
+                  button: true,
+                  label: context.l.playerSpeedReset,
+                  child: BloomTag(
+                    text: speedLabel(speed.rate),
+                    active: speed.rate != 1,
+                    onTap: ctrl.reset,
                   ),
-                  const _Ticks(),
-                  const SizedBox(height: 6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(speedLabel(kSpeedMin), style: theme.bodySmall),
-                      Text(speedLabel(kSpeedMax), style: theme.bodySmall),
-                    ],
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(height: 14),
-            Divider(
-              height: 1,
-              thickness: 1,
-              color: t.ovlLine2,
-              indent: 20,
-              endIndent: 20,
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              children: [
+                SheetSlider(
+                  value: speed.rate.clamp(kSpeedMin, kSpeedMax),
+                  min: kSpeedMin,
+                  max: kSpeedMax,
+                  divisions: kSpeedDivisions,
+                  label: speedLabel(speed.rate),
+                  onChanged: ctrl.setRate,
+                ),
+                const _Ticks(),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(speedLabel(kSpeedMin), style: theme.bodySmall),
+                    Text(speedLabel(kSpeedMax), style: theme.bodySmall),
+                  ],
+                ),
+              ],
             ),
-            _NightcoreRow(value: speed.nightcore, onChanged: ctrl.setNightcore),
-            const SizedBox(height: 6),
-          ],
-        ),
+          ),
+          const SizedBox(height: 14),
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: t.ovlLine2,
+            indent: 20,
+            endIndent: 20,
+          ),
+          SheetSwitchRow(
+            label: l.playerSpeedNightcore,
+            subtitle: l.playerSpeedNightcoreSub,
+            value: speed.nightcore,
+            onChanged: ctrl.setNightcore,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          ),
+        ],
       ),
     );
   }
@@ -191,7 +168,7 @@ class _Ticks extends StatelessWidget {
     return SizedBox(
       height: 8,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: _thumbRadius),
+        padding: const EdgeInsets.symmetric(horizontal: kSheetSliderThumb),
         child: LayoutBuilder(
           builder: (context, box) => Stack(
             children: [
@@ -213,49 +190,6 @@ class _Ticks extends StatelessWidget {
                 ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Тумблер «Nightcore»: питч едет вместе с темпом. Нажимается вся строка — на
-/// ПК это `<label>`, там кликается тоже всё целиком.
-class _NightcoreRow extends StatelessWidget {
-  const _NightcoreRow({required this.value, required this.onChanged});
-
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context).textTheme;
-    return GestureDetector(
-      onTap: () => onChanged(!value),
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    context.l.playerSpeedNightcore,
-                    style: theme.titleMedium,
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    context.l.playerSpeedNightcoreSub,
-                    style: theme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 14),
-            BloomSwitch(value: value, onChanged: onChanged),
-          ],
         ),
       ),
     );

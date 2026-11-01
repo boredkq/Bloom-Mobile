@@ -25,7 +25,6 @@ import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
-import '../../../shared/ui/pressable.dart';
 import '../import_file.dart';
 import '../import_url.dart';
 
@@ -185,6 +184,26 @@ class _AddBodyState extends ConsumerState<_AddBody> {
     );
   }
 
+  /// An import target. A playlist stands with its cover: among many it's found
+  /// by the picture sooner than by the name.
+  Widget _targetRow((ImportTarget, String, BloomGlyph, String?) option) {
+    final (target, label, icon, cover) = option;
+    final selected =
+        target.kind == _target.kind && target.playlistId == _target.playlistId;
+    return SheetRow(
+      icon: icon,
+      leading: cover == null ? null : Cover(url: cover, size: 40),
+      gap: cover == null ? 22 : 12,
+      label: label,
+      color: selected ? context.bloom.accent : null,
+      trailing: selected ? const SheetTick() : null,
+      onTap: () => setState(() {
+        _target = target;
+        _targetOpen = false;
+      }),
+    );
+  }
+
   Widget _mainBody() => Column(
     key: const ValueKey('main'),
     mainAxisSize: MainAxisSize.min,
@@ -198,10 +217,10 @@ class _AddBodyState extends ConsumerState<_AddBody> {
       ),
       SheetPanel(
         children: [
-          _Row(
+          SheetRow(
             icon: Bi.import,
             label: context.l.cpImport,
-            chevron: true,
+            trailing: const SheetChevron(),
             onTap: () => setState(() => _importView = true),
           ),
         ],
@@ -228,10 +247,10 @@ class _AddBodyState extends ConsumerState<_AddBody> {
       ),
       SheetPanel(
         children: [
-          _Row(
+          SheetRow(
             icon: Bi.folderPathConnect,
             label: context.l.cpDestination(_targetLabel(playlists)),
-            chevron: true,
+            trailing: const SheetChevron(),
             onTap: () => setState(() => _targetOpen = !_targetOpen),
           ),
           if (_targetOpen) ...[
@@ -266,30 +285,19 @@ class _AddBodyState extends ConsumerState<_AddBody> {
                   p.cover ?? '',
                 ),
             ])
-              _Row(
-                icon: option.$3,
-                cover: option.$4,
-                label: option.$2,
-                selected:
-                    option.$1.kind == _target.kind &&
-                    option.$1.playlistId == _target.playlistId,
-                onTap: () => setState(() {
-                  _target = option.$1;
-                  _targetOpen = false;
-                }),
-              ),
+              _targetRow(option),
           ],
         ],
       ),
       SheetPanel(
         children: [
-          _Row(
+          SheetRow(
             icon: Bi.file,
             label: context.l.cpFromFile,
             onTap: () => Navigator.of(context).pop(const _FileRequested()),
           ),
           sheetDivider(),
-          _Row(
+          SheetRow(
             icon: Bi.arrowLeft,
             label: context.l.commonBack,
             onTap: () => setState(() {
@@ -301,68 +309,4 @@ class _AddBodyState extends ConsumerState<_AddBody> {
       ),
     ],
   );
-}
-
-/// Строка шторки. Своя, а не `SheetAction`: те закрывают шторку по нажатию, а
-/// здесь пункты переключают вид внутри неё.
-class _Row extends StatelessWidget {
-  const _Row({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.cover,
-    this.chevron = false,
-    this.selected = false,
-  });
-
-  final BloomGlyph icon;
-  final String label;
-  final VoidCallback onTap;
-
-  /// Обложка вместо значка — у строк плейлистов. Пустая строка значит «это
-  /// плейлист, но своей обложки нет»: там встаёт та же заглушка, что и на
-  /// плитке в библиотеке, а не общий значок списка.
-  final String? cover;
-
-  final bool chevron;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final art = cover;
-    return Pressable(
-      onTap: onTap,
-      scale: 0.98,
-      child: Padding(
-        // Обложка выше значка — поля по вертикали ужимаются, чтобы строка с
-        // ней не выбивалась из списка (та же мера в «Добавить в плейлист»).
-        padding: EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: art == null ? 15 : 8,
-        ),
-        child: Row(
-          children: [
-            if (art == null)
-              BloomIcon(icon, size: 22, color: selected ? t.accent : t.text)
-            else
-              Cover(url: art, size: 40),
-            SizedBox(width: art == null ? 16 : 12),
-            Expanded(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: selected ? t.accent : t.text,
-                ),
-              ),
-            ),
-            if (selected) BloomIcon(Bi.check, size: 18, color: t.accent),
-            if (chevron) BloomIcon(Bi.altArrowRight, size: 20, color: t.muted),
-          ],
-        ),
-      ),
-    );
-  }
 }

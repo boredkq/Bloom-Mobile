@@ -165,11 +165,11 @@ Future<void> _openStyle(BuildContext context) {
           children: [
             _StylePreview(style: current),
             for (final style in PlayerStyle.values)
-              SheetChoiceTile(
-                glyph: _StyleGlyph(style: style),
+              SheetOptionTile(
+                leading: _StyleGlyph(style: style),
                 label: _styleLabel(context.l, style),
                 sub: _styleSub(context.l, style),
-                selected: style == current,
+                active: style == current,
                 onTap: () =>
                     ref.read(playerStyleProvider.notifier).setStyle(style),
               ),
@@ -211,11 +211,11 @@ Future<void> _openPlayShape(BuildContext context) {
           children: [
             const _PlayShapePreview(),
             for (final shape in PlayButtonShape.values)
-              SheetChoiceTile(
-                glyph: _PlayShapeGlyph(shape: shape),
+              SheetOptionTile(
+                leading: _PlayShapeGlyph(shape: shape),
                 label: _playShapeLabel(context.l, shape),
                 sub: _playShapeSub(context.l, shape),
-                selected: shape == current,
+                active: shape == current,
                 onTap: () =>
                     ref.read(playButtonShapeProvider.notifier).set(shape),
               ),
@@ -589,16 +589,18 @@ Future<void> _openTitleAlign(BuildContext context) {
           mainAxisSize: MainAxisSize.min,
           children: [
             for (final align in TitleAlign.values)
-              SheetChoiceTile(
-                glyph: CustomPaint(
+              SheetOptionTile(
+                leading: CustomPaint(
                   size: const Size(22, 22),
                   painter: _AlignGlyph(align: align, color: context.bloom.text),
                 ),
                 label: _alignLabel(context.l, align),
                 sub: _alignSub(context.l, align),
-                selected: align == current,
-                closes: true,
-                onTap: () => ref.read(titleAlignProvider.notifier).set(align),
+                active: align == current,
+                onTap: () {
+                  Navigator.of(context).pop();
+                  ref.read(titleAlignProvider.notifier).set(align);
+                },
               ),
           ],
         );
@@ -685,10 +687,10 @@ Future<void> _openSlider(BuildContext context) {
           children: [
             _SliderPreview(style: current),
             for (final style in SliderStyle.values)
-              SheetChoiceTile(
+              SheetOptionTile(
                 // In its 44×10 proportions: at 28 px it reads as a bar with a
                 // thumb, not a dash.
-                glyph: CustomPaint(
+                leading: CustomPaint(
                   size: const Size(28, 6.4),
                   painter: _SliderGlyph(
                     style: style,
@@ -696,7 +698,7 @@ Future<void> _openSlider(BuildContext context) {
                   ),
                 ),
                 label: _sliderLabel(context.l, style),
-                selected: style == current,
+                active: style == current,
                 onTap: () => ref.read(sliderStyleProvider.notifier).set(style),
               ),
           ],

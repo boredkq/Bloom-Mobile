@@ -488,12 +488,6 @@ abstract class AppLocalizations {
   /// **'Similar to'**
   String get homeSimilarTo;
 
-  /// No description provided for @homeSimilarArtist.
-  ///
-  /// In en, this message translates to:
-  /// **'Artist'**
-  String get homeSimilarArtist;
-
   /// desktop: settings.view.mpEl.queue
   ///
   /// In en, this message translates to:

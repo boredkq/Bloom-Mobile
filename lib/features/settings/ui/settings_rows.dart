@@ -50,12 +50,14 @@ class SettingsLinkRow extends StatelessWidget {
     this.icon,
     this.danger = false,
     this.enabled = true,
+    this.padding = SettingsRowShell.edge,
   });
 
   final String title;
   final String subtitle;
   final VoidCallback onTap;
   final BloomGlyph? icon;
+  final EdgeInsets padding;
 
   /// A dangerous action: the title and the icon go red.
   final bool danger;
@@ -70,6 +72,7 @@ class SettingsLinkRow extends StatelessWidget {
       subtitle: subtitle,
       enabled: enabled,
       color: danger ? t.danger : null,
+      padding: padding,
       trailing: BloomIcon(
         Bi.altArrowRight,
         size: 16,
@@ -134,10 +137,15 @@ class SettingsRowShell extends StatelessWidget {
     this.subtitle,
     this.subtitleLines,
     this.icon,
+    this.leading,
     this.color,
+    this.iconColor,
     this.onTap,
     this.enabled = true,
+    this.padding = edge,
   });
+
+  static const EdgeInsets edge = EdgeInsets.all(18);
 
   final String title;
   final String? subtitle;
@@ -145,10 +153,17 @@ class SettingsRowShell extends StatelessWidget {
   final Widget trailing;
   final BloomGlyph? icon;
 
+  /// Instead of [icon], in its place: a platform's logo.
+  final Widget? leading;
+
   /// For the title and the icon; `null` is the theme's text.
   final Color? color;
+
+  /// The icon's own colour, when it differs from the title's.
+  final Color? iconColor;
   final VoidCallback? onTap;
   final bool enabled;
+  final EdgeInsets padding;
 
   @override
   Widget build(BuildContext context) {
@@ -165,13 +180,19 @@ class SettingsRowShell extends StatelessWidget {
           onTap: onTap,
           scale: 0.98,
           child: Padding(
-            padding: const EdgeInsets.all(18),
+            padding: padding,
             child: Row(
               children: [
-                if (icon != null) ...[
+                if (icon != null || leading != null) ...[
                   SizedBox(
                     width: 24,
-                    child: BloomIcon(icon, size: 20, color: color ?? t.iconFg),
+                    child:
+                        leading ??
+                        BloomIcon(
+                          icon,
+                          size: 20,
+                          color: iconColor ?? color ?? t.iconFg,
+                        ),
                   ),
                   const SizedBox(width: 14),
                 ],

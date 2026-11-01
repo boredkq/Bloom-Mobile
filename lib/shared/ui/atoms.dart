@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart' show Ticker;
+import 'package:flutter/services.dart' show TextInputFormatter;
 
 import '../../app/theme/bloom_theme.dart';
 import '../../app/theme/tokens.dart';
@@ -180,10 +181,7 @@ class BloomButton extends StatelessWidget {
       ButtonTone.ink => (t.text, t.bg),
     };
     final radius = BorderRadius.circular(pill ? 999 : t.radius);
-    final spinner = SizedBox.square(
-      dimension: 18,
-      child: CircularProgressIndicator(strokeWidth: 2, color: ink),
-    );
+    final spinner = BloomSpinner(size: 18, color: ink);
     final glyph = icon;
     final content = Row(
       mainAxisSize: MainAxisSize.min,
@@ -271,6 +269,188 @@ class BloomTag extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: bloomText(size: 13, weight: 700, color: active ? c : t.text2),
         ),
+      ),
+    );
+  }
+}
+
+/// The spinner. With a [value] it's a progress ring over [trackColor].
+class BloomSpinner extends StatelessWidget {
+  const BloomSpinner({
+    super.key,
+    this.size = 22,
+    this.stroke = 2,
+    this.color,
+    this.value,
+    this.trackColor,
+  });
+
+  final double size;
+  final double stroke;
+
+  /// Accent when not set.
+  final Color? color;
+  final double? value;
+  final Color? trackColor;
+
+  @override
+  Widget build(BuildContext context) => SizedBox.square(
+    dimension: size,
+    child: CircularProgressIndicator(
+      value: value,
+      strokeWidth: stroke,
+      color: color ?? context.bloom.accent,
+      backgroundColor: trackColor,
+    ),
+  );
+}
+
+/// A square that fills with accent and a tick: an item of a set, where several
+/// can be on.
+class BloomCheck extends StatelessWidget {
+  const BloomCheck({super.key, required this.on});
+
+  final bool on;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      width: 22,
+      height: 22,
+      decoration: BoxDecoration(
+        color: on ? t.accent : Colors.transparent,
+        border: Border.all(color: on ? t.accent : t.muted, width: 1.6),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: on ? BloomIcon(Bi.check, size: 15, color: t.accentText) : null,
+    );
+  }
+}
+
+/// A line of text in the middle of an empty place: nothing here yet, or what
+/// went wrong in [color].
+class CenterNote extends StatelessWidget {
+  const CenterNote(
+    this.text, {
+    super.key,
+    this.color,
+    this.padding = const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+  });
+
+  final String text;
+
+  /// Muted when not set.
+  final Color? color;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: padding,
+    child: Text(
+      text,
+      textAlign: TextAlign.center,
+      style: Theme.of(
+        context,
+      ).textTheme.bodyMedium?.copyWith(color: color ?? context.bloom.muted),
+    ),
+  );
+}
+
+/// The one text input: cursor, hint and frame live here, the plate around it
+/// stays at the place. [fill] gives it a plate of its own.
+class BloomField extends StatelessWidget {
+  const BloomField({
+    super.key,
+    this.controller,
+    this.focusNode,
+    this.hint,
+    this.style,
+    this.hintStyle,
+    this.padding = const EdgeInsets.symmetric(vertical: 8),
+    this.fill,
+    this.radius,
+    this.autofocus = false,
+    this.enabled = true,
+    this.obscure = false,
+    this.autocorrect = true,
+    this.maxLength,
+    this.maxLines = 1,
+    this.minLines,
+    this.textAlign = TextAlign.start,
+    this.keyboardType,
+    this.action,
+    this.formatters,
+    this.onChanged,
+    this.onSubmitted,
+  });
+
+  final TextEditingController? controller;
+  final FocusNode? focusNode;
+  final String? hint;
+
+  /// `titleMedium` when not set.
+  final TextStyle? style;
+
+  /// [style] in muted when not set.
+  final TextStyle? hintStyle;
+  final EdgeInsets padding;
+  final Color? fill;
+  final double? radius;
+  final bool autofocus;
+  final bool enabled;
+  final bool obscure;
+
+  /// False for keys and links: no corrections or suggestions over them.
+  final bool autocorrect;
+  final int? maxLength;
+  final int? maxLines;
+  final int? minLines;
+  final TextAlign textAlign;
+  final TextInputType? keyboardType;
+  final TextInputAction? action;
+  final List<TextInputFormatter>? formatters;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final text = style ?? Theme.of(context).textTheme.titleMedium;
+    return TextField(
+      controller: controller,
+      focusNode: focusNode,
+      autofocus: autofocus,
+      enabled: enabled,
+      obscureText: obscure,
+      autocorrect: autocorrect,
+      enableSuggestions: autocorrect,
+      maxLength: maxLength,
+      maxLines: maxLines,
+      minLines: minLines,
+      textAlign: textAlign,
+      keyboardType: keyboardType,
+      textInputAction: action,
+      inputFormatters: formatters,
+      cursorColor: t.accent,
+      style: text,
+      onChanged: onChanged,
+      onSubmitted: onSubmitted,
+      decoration: InputDecoration(
+        isDense: true,
+        counterText: '',
+        contentPadding: padding,
+        hintText: hint,
+        hintStyle: hintStyle ?? text?.copyWith(color: t.muted),
+        filled: fill != null,
+        fillColor: fill,
+        border: fill == null
+            ? InputBorder.none
+            : OutlineInputBorder(
+                borderRadius: BorderRadius.circular(radius ?? t.radius),
+                borderSide: BorderSide.none,
+              ),
       ),
     );
   }

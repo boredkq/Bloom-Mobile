@@ -213,6 +213,73 @@ class PlatformCard extends StatelessWidget {
   }
 }
 
+/// A key or a link on a plate, with a quiet button at its end.
+class PlatformField extends StatelessWidget {
+  const PlatformField({
+    super.key,
+    required this.controller,
+    required this.hint,
+    required this.icon,
+    required this.onIcon,
+    this.obscure = false,
+    this.mono = false,
+    this.onChanged,
+    this.onSubmitted,
+  });
+
+  final TextEditingController controller;
+  final String hint;
+  final BloomGlyph icon;
+  final VoidCallback onIcon;
+  final bool obscure;
+
+  /// In a monospace font: a key is read character by character.
+  final bool mono;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final body = Theme.of(context).textTheme.bodyMedium;
+    return GlassBox(
+      borderRadius: BorderRadius.circular(t.radius),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
+        child: Row(
+          children: [
+            Expanded(
+              child: BloomField(
+                controller: controller,
+                hint: hint,
+                obscure: obscure,
+                autocorrect: false,
+                style: body?.copyWith(
+                  color: t.text,
+                  fontFamily: mono ? 'monospace' : null,
+                  fontFamilyFallback: mono ? const ['Courier'] : null,
+                ),
+                hintStyle: body?.copyWith(color: t.muted),
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                onChanged: onChanged,
+                onSubmitted: onSubmitted,
+              ),
+            ),
+            CircleIconButton(
+              icon: icon,
+              size: 48,
+              iconSize: 20,
+              background: Colors.transparent,
+              color: t.muted,
+              onTap: onIcon,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// No lines: one word in empty space.
 class OrLabel extends StatelessWidget {
   const OrLabel({super.key});

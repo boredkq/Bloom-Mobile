@@ -27,7 +27,6 @@ import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
-import '../../../shared/ui/pressable.dart';
 import '../import_url.dart';
 import 'create_playlist_sheet.dart' show detectLinkSource;
 
@@ -161,9 +160,17 @@ class _PlSourcesEditorState extends ConsumerState<PlSourcesEditor> {
             ),
             const SizedBox(height: 8),
           ],
-          _AddRow(
+          SheetField(
             controller: _url,
+            hint: context.l.psAddHint,
             busy: _busy,
+            autocorrect: false,
+            keyboardType: TextInputType.url,
+            trailing: switch (detectLinkSource(_url.text)) {
+              final source? => PlatformLogo(source, size: 18),
+              null => null,
+            },
+            padding: EdgeInsets.zero,
             onChanged: (_) => setState(() {}),
             onSubmit: _add,
           ),
@@ -238,112 +245,6 @@ class _SourceRow extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// Поле для новой ссылки и кнопка «Привязать» — те же две части, что в шторке
-/// импорта, только кнопка со словом: рядом с ней стоит уже целый список, и одна
-/// галочка не сказала бы, что она делает.
-class _AddRow extends StatelessWidget {
-  const _AddRow({
-    required this.controller,
-    required this.busy,
-    required this.onChanged,
-    required this.onSubmit,
-  });
-
-  final TextEditingController controller;
-  final bool busy;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onSubmit;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    final filled = controller.text.trim().isNotEmpty;
-    final platform = detectLinkSource(controller.text);
-
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(
-              color: sheetPanelColor(context),
-              borderRadius: BorderRadius.circular(t.radius),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    enabled: !busy,
-                    cursorColor: t.accent,
-                    textInputAction: TextInputAction.done,
-                    keyboardType: TextInputType.url,
-                    autocorrect: false,
-                    style: theme.bodyMedium,
-                    decoration: InputDecoration(
-                      isDense: true,
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                      hintText: context.l.psAddHint,
-                      hintStyle: theme.bodyMedium?.copyWith(color: t.muted),
-                    ),
-                    onChanged: onChanged,
-                    onSubmitted: (_) => onSubmit(),
-                  ),
-                ),
-                // Значок площадки внутри поля — как только ссылка узнана.
-                if (platform != null) ...[
-                  const SizedBox(width: 8),
-                  PlatformLogo(platform, size: 18),
-                ],
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Pressable(
-          onTap: filled && !busy ? onSubmit : null,
-          child: Material(
-            color: filled ? t.accent : sheetPanelColor(context),
-            borderRadius: BorderRadius.circular(t.radius),
-            clipBehavior: Clip.antiAlias,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: busy
-                        ? CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: filled ? t.accentText : t.muted,
-                          )
-                        : BloomIcon(
-                            Bi.addCircle,
-                            size: 16,
-                            color: filled ? t.accentText : t.muted,
-                          ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    context.l.psAdd,
-                    style: theme.titleMedium?.copyWith(
-                      color: filled ? t.accentText : t.muted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

@@ -320,27 +320,16 @@ class _SearchField extends StatelessWidget {
             BloomIcon(Bi.magnifier, size: 21, color: t.muted),
             const SizedBox(width: 10),
             Expanded(
-              child: TextField(
+              child: BloomField(
                 controller: controller,
                 focusNode: focusNode,
+                hint: context.l.searchHint,
                 autofocus: true,
+                action: TextInputAction.search,
                 onSubmitted: (_) => onSubmit(),
-                textInputAction: TextInputAction.search,
-                // Запрос — того же кегля, что название раздела в соседних
-                // шапках: поле стоит на их месте и обязано читаться так же.
                 style: Theme.of(
                   context,
                 ).textTheme.titleMedium?.copyWith(fontSize: kHeaderTitleSize),
-                cursorColor: t.accent,
-                decoration: InputDecoration(
-                  isDense: true,
-                  border: InputBorder.none,
-                  hintText: context.l.searchHint,
-                  hintStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontSize: kHeaderTitleSize,
-                    color: t.muted,
-                  ),
-                ),
               ),
             ),
             ValueListenableBuilder<TextEditingValue>(
@@ -697,26 +686,23 @@ Future<void> _pickSource(
     child: Consumer(
       builder: (context, ref, _) {
         final activeId = ref.watch(activeProviderIdProvider);
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _SourceRow(
-                label: context.l.searchSourceAll,
-                icon: Bi.widget4,
-                active: activeId == kAllProviders,
-                onTap: () => Navigator.of(context).pop(kAllProviders),
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SheetOptionTile(
+              icon: Bi.widget4,
+              label: context.l.searchSourceAll,
+              active: activeId == kAllProviders,
+              onTap: () => Navigator.of(context).pop(kAllProviders),
+            ),
+            for (final p in registry.enabled)
+              SheetOptionTile(
+                leading: PlatformLogo(p.source, size: 24),
+                label: p.source.label10n(context.l),
+                active: activeId == p.id,
+                onTap: () => Navigator.of(context).pop(p.id),
               ),
-              for (final p in registry.enabled)
-                _SourceRow(
-                  label: p.source.label10n(context.l),
-                  source: p.source,
-                  active: activeId == p.id,
-                  onTap: () => Navigator.of(context).pop(p.id),
-                ),
-            ],
-          ),
+          ],
         );
       },
     ),
@@ -726,69 +712,6 @@ Future<void> _pickSource(
   if (controller.state == picked) return;
   controller.state = picked;
   onPicked();
-}
-
-class _SourceRow extends StatelessWidget {
-  const _SourceRow({
-    required this.label,
-    required this.active,
-    required this.onTap,
-    this.source,
-    this.icon,
-  });
-
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-  final MusicSource? source;
-  final BloomGlyph? icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Pressable(
-        onTap: onTap,
-        scale: 0.98,
-        child: Material(
-          color: t.pill,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(t.radius),
-            // Выбранная карточка обведена акцентом: галочки справа мало —
-            // взгляд ищет активный пункт по силуэту, а не по значку.
-            side: active
-                ? BorderSide(color: t.accent.withValues(alpha: 0.55))
-                : BorderSide.none,
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 32,
-                  child: Center(
-                    child: source != null
-                        ? PlatformLogo(source!, size: 28)
-                        : BloomIcon(icon, size: 24, color: t.iconFg),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-                if (active) BloomIcon(Bi.check, size: 22, color: t.accent),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 /// How many tracks "all" shows; the rest are the tab's.
@@ -1082,32 +1005,13 @@ class _AllSkeleton extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
       physics: const NeverScrollableScrollPhysics(),
       children: [
-        const _SectionLabelSkeleton(width: 48),
+        const SectionLabelSkeleton(width: 48),
         for (var i = 0; i < _tracksPreview; i++) TrackRowSkeleton(index: i),
-        const _SectionLabelSkeleton(width: 62),
+        const SectionLabelSkeleton(width: 62),
         const CarouselSkeleton(height: 168, card: 104, circle: true),
-        const _SectionLabelSkeleton(width: 58),
+        const SectionLabelSkeleton(width: 58),
         const CarouselSkeleton(height: 212, card: 132),
       ],
-    );
-  }
-}
-
-/// A plate in a [SectionLabel]'s place, with its margins.
-class _SectionLabelSkeleton extends StatelessWidget {
-  const _SectionLabelSkeleton({required this.width});
-
-  final double width;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 24, 8, 12),
-      // A list stretches its children: the plate keeps its width only aligned.
-      child: Align(
-        alignment: AlignmentDirectional.centerStart,
-        child: SkeletonBox(width: width, height: 14, radius: 7),
-      ),
     );
   }
 }

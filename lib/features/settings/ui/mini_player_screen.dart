@@ -182,11 +182,7 @@ Future<void> _openMiniProgress(BuildContext context) {
   final l = context.l;
   return showBloomSheetChild<void>(
     context: context,
-    header: settingsSheetHeader(
-      context,
-      l.pvMiniProgressRow,
-      l.pvMiniProgressSub,
-    ),
+    header: SheetTitle(l.pvMiniProgressRow, subtitle: l.pvMiniProgressSub),
     child: Consumer(
       builder: (context, ref, _) {
         final mini = ref.watch(miniStyleProvider);
@@ -240,11 +236,7 @@ Future<void> _openMiniButtons(BuildContext context) {
   final l = context.l;
   return showBloomSheetChild<void>(
     context: context,
-    header: settingsSheetHeader(
-      context,
-      l.pvMiniButtonsRow,
-      l.pvMiniButtonsSub,
-    ),
+    header: SheetTitle(l.pvMiniButtonsRow, subtitle: l.pvMiniButtonsSub),
     child: Consumer(
       builder: (context, ref, _) {
         final mini = ref.watch(miniStyleProvider);

@@ -15,6 +15,7 @@ import '../../app/theme/tokens.dart';
 import '../../core/store/cover_store.dart';
 import '../../features/settings/transparency_store.dart';
 import '../util/format.dart';
+import 'atoms.dart';
 import 'bloom_icon.dart';
 import 'glass.dart';
 import 'pressable.dart';
@@ -81,7 +82,7 @@ Future<T?> showBloomSheetChild<T>({
 }) {
   return showBloomModal<T>(
     context: context,
-    builder: (_) => _SheetShell(
+    builder: (_) => SheetShell(
       header: header,
       footer: footer,
       maxFraction: maxFraction,
@@ -266,12 +267,15 @@ Color sheetLineColor(BuildContext context) =>
     ? context.bloom.text.withValues(alpha: 0.08)
     : context.bloom.ovlLine;
 
-class _SheetShell extends ConsumerWidget {
-  const _SheetShell({
-    required this.header,
-    required this.footer,
-    required this.maxFraction,
-    required this.scrolls,
+/// A sheet's body: surface, handle, a header and footer that stay put, and what
+/// scrolls between them. Sheets with state of their own build on it directly.
+class SheetShell extends ConsumerWidget {
+  const SheetShell({
+    super.key,
+    this.header,
+    this.footer,
+    this.maxFraction = _kSheetMaxFraction,
+    this.scrolls = true,
     required this.child,
   });
 
@@ -283,8 +287,8 @@ class _SheetShell extends ConsumerWidget {
   /// The share of the screen the sheet doesn't grow past.
   final double maxFraction;
 
-  /// False: the child is a list that scrolls itself and builds lazily, so the
-  /// sheet takes its full height instead of wrapping it.
+  /// False: the child is a list that scrolls itself and builds lazily. It takes
+  /// the full height, unless it shrink-wraps.
   final bool scrolls;
   final Widget child;
 
@@ -314,17 +318,16 @@ class _SheetShell extends ConsumerWidget {
                     // The handle and header stay put: only the items scroll.
                     if (!hero) const SheetHandle(),
                     ?header,
-                    if (scrolls)
-                      Flexible(
-                        child: SingleChildScrollView(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [child, const SizedBox(height: 10)],
-                          ),
-                        ),
-                      )
-                    else
-                      Expanded(child: child),
+                    Flexible(
+                      child: scrolls
+                          ? SingleChildScrollView(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [child, const SizedBox(height: 10)],
+                              ),
+                            )
+                          : child,
+                    ),
                     ?footer,
                   ],
                 ),
@@ -357,6 +360,287 @@ class SheetHandle extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A sheet's title: a line under it, what acts on the whole sheet on its right.
+class SheetTitle extends StatelessWidget {
+  const SheetTitle(
+    this.title, {
+    super.key,
+    this.subtitle,
+    this.line,
+    this.trailing,
+    this.right = kSheetEdge,
+    this.bottom = 10,
+  });
+
+  final String title;
+  final String? subtitle;
+
+  /// Instead of [subtitle]: a line with more than text in it.
+  final Widget? line;
+  final Widget? trailing;
+
+  /// Round buttons stand closer to the edge than text does.
+  final double right;
+  final double bottom;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context).textTheme;
+    final sub = subtitle;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(kSheetEdge, 6, right, bottom),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.titleLarge,
+                ),
+                if (line != null || sub != null) ...[
+                  const SizedBox(height: 2),
+                  line ?? Text(sub!, style: theme.bodyMedium),
+                ],
+              ],
+            ),
+          ),
+          ?trailing,
+        ],
+      ),
+    );
+  }
+}
+
+/// A big choice of a sheet, a block of its own: in a solid list the chosen one
+/// can't be lit. A picture, a name, a note under it, a mark on the right.
+class SheetOptionTile extends StatelessWidget {
+  const SheetOptionTile({
+    super.key,
+    this.icon,
+    this.leading,
+    required this.label,
+    required this.active,
+    required this.onTap,
+    this.sub,
+    this.check = false,
+    this.enabled = true,
+  });
+
+  final BloomGlyph? icon;
+
+  /// Instead of [icon]: a flag, a logo, a drawn preview.
+  final Widget? leading;
+  final String label;
+
+  /// A note under the name; `null` for one line.
+  final String? sub;
+
+  /// The chosen choice, or a switched-on item.
+  final bool active;
+
+  /// An item of a set: a checkbox instead of a tick and no lighting, since
+  /// several can be on.
+  final bool check;
+
+  /// Unavailable: greyed whole and not pressable. Not hidden: the sheet shows
+  /// what can be turned on, and the note says what's missing.
+  final bool enabled;
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final theme = Theme.of(context).textTheme;
+    final note = sub;
+    return Opacity(
+      opacity: enabled ? 1 : 0.4,
+      child: SheetPanel(
+        // Close together: these are large, a full gap would tear the list apart.
+        gap: 3,
+        children: [
+          Pressable(
+            onTap: enabled ? onTap : null,
+            scale: 0.98,
+            child: Ink(
+              color: active && !check ? t.accent.withValues(alpha: 0.12) : null,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 15, 18, 15),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: active
+                            ? t.accent.withValues(alpha: 0.16)
+                            : t.text.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(t.radius * 0.6),
+                      ),
+                      child:
+                          leading ??
+                          BloomIcon(
+                            icon!,
+                            size: 20,
+                            color: active ? t.accent : t.iconFg,
+                          ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.titleMedium,
+                          ),
+                          if (note != null) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              note,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.bodySmall,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    if (check)
+                      BloomCheck(on: active)
+                    else if (active)
+                      BloomIcon(Bi.check, size: 20, color: t.accent),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A sheet's row with a switch: the whole row toggles.
+class SheetSwitchRow extends StatelessWidget {
+  const SheetSwitchRow({
+    super.key,
+    this.icon,
+    required this.label,
+    this.subtitle,
+    required this.value,
+    required this.onChanged,
+    this.danger = false,
+    this.padding = const EdgeInsets.all(kSheetEdge),
+  });
+
+  final BloomGlyph? icon;
+  final String label;
+  final String? subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  /// Turning it on removes something: the switch is red, and the row while on.
+  final bool danger;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final theme = Theme.of(context).textTheme;
+    final color = danger && value ? t.danger : t.text;
+    final glyph = icon;
+    final sub = subtitle;
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: padding,
+        child: Row(
+          children: [
+            if (glyph != null) ...[
+              BloomIcon(glyph, size: 22, color: color),
+              const SizedBox(width: 16),
+            ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: theme.titleMedium?.copyWith(color: color)),
+                  if (sub != null) ...[
+                    const SizedBox(height: 3),
+                    Text(sub, style: theme.bodySmall),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 14),
+            BloomSwitch(
+              value: value,
+              onChanged: onChanged,
+              color: danger ? t.danger : null,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Radius of a [SheetSlider]'s thumb. The track is inset by it at both ends, so
+/// marks drawn along the track count from it.
+const double kSheetSliderThumb = 7;
+
+/// The bar of a sheet that picks a value by ear.
+class SheetSlider extends StatelessWidget {
+  const SheetSlider({
+    super.key,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.divisions,
+    required this.label,
+    required this.onChanged,
+  });
+
+  final double value;
+  final double min;
+  final double max;
+  final int divisions;
+  final String label;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) => SliderTheme(
+    data: SliderTheme.of(context).copyWith(
+      trackHeight: 5,
+      thumbShape: const RoundSliderThumbShape(
+        enabledThumbRadius: kSheetSliderThumb,
+      ),
+      // Divisions are many, and their own marks would ripple.
+      tickMarkShape: SliderTickMarkShape.noTickMark,
+    ),
+    child: Slider(
+      value: value,
+      min: min,
+      max: max,
+      divisions: divisions,
+      label: label,
+      onChanged: onChanged,
+    ),
+  );
 }
 
 /// A block of a sheet's rows: a plate, or flat under a [SheetHero].
@@ -462,12 +746,13 @@ class SheetRow extends StatelessWidget {
     this.color,
     this.danger = false,
     this.trailing,
+    this.gap = 22,
     this.onTap,
   });
 
   final BloomGlyph? icon;
 
-  /// Instead of [icon]: a platform's logo.
+  /// Instead of [icon]: a platform's logo, a cover.
   final Widget? leading;
   final String label;
   final String? subtitle;
@@ -476,6 +761,9 @@ class SheetRow extends StatelessWidget {
   final Color? color;
   final bool danger;
   final Widget? trailing;
+
+  /// Between [icon] and the text; a cover stands closer.
+  final double gap;
   final VoidCallback? onTap;
 
   @override
@@ -500,7 +788,7 @@ class SheetRow extends StatelessWidget {
           child: Row(
             children: [
               leading ?? BloomIcon(icon!, size: 22, color: ink),
-              const SizedBox(width: 22),
+              SizedBox(width: gap),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -531,6 +819,24 @@ class SheetRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// On the right of a [SheetRow]: where a tap leads on.
+class SheetChevron extends StatelessWidget {
+  const SheetChevron({super.key});
+
+  @override
+  Widget build(BuildContext context) =>
+      BloomIcon(Bi.altArrowRight, size: 20, color: context.bloom.muted);
+}
+
+/// On the right of a [SheetRow]: the one that's picked.
+class SheetTick extends StatelessWidget {
+  const SheetTick({super.key});
+
+  @override
+  Widget build(BuildContext context) =>
+      BloomIcon(Bi.check, size: 18, color: context.bloom.accent);
 }
 
 /// The capsule of main actions under the banner: icons only, evenly spaced.
@@ -745,8 +1051,11 @@ class SheetField extends StatelessWidget {
     required this.onSubmit,
     this.autofocus = false,
     this.busy = false,
+    this.autocorrect = true,
     this.maxLength,
+    this.keyboardType,
     this.trailing,
+    this.padding = const EdgeInsets.fromLTRB(kSheetEdge, 4, kSheetEdge, 6),
   });
 
   final TextEditingController controller;
@@ -757,21 +1066,23 @@ class SheetField extends StatelessWidget {
 
   /// Long work under way (import by link): a spinner on the button, no taps.
   final bool busy;
+  final bool autocorrect;
   final int? maxLength;
+  final TextInputType? keyboardType;
 
   /// An icon inside the field on the right: the platform a link was recognised
   /// as.
   final Widget? trailing;
+  final EdgeInsets padding;
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
     final filled = controller.text.trim().isNotEmpty;
     final radius = BorderRadius.circular(t.radius);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(kSheetEdge, 4, kSheetEdge, 6),
+      padding: padding,
       child: Row(
         children: [
           Expanded(
@@ -784,23 +1095,16 @@ class SheetField extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                    child: TextField(
+                    child: BloomField(
                       controller: controller,
+                      hint: hint,
                       autofocus: autofocus,
+                      enabled: !busy,
+                      autocorrect: autocorrect,
                       maxLength: maxLength,
-                      cursorColor: t.accent,
-                      textInputAction: TextInputAction.done,
-                      style: theme.titleMedium,
-                      decoration: InputDecoration(
-                        isDense: true,
-                        border: InputBorder.none,
-                        counterText: '',
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 16,
-                        ),
-                        hintText: hint,
-                        hintStyle: theme.titleMedium?.copyWith(color: t.muted),
-                      ),
+                      keyboardType: keyboardType,
+                      action: TextInputAction.done,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                       onChanged: onChanged,
                       onSubmitted: (_) => onSubmit(),
                     ),
@@ -858,16 +1162,7 @@ class _ConfirmButton extends StatelessWidget {
         height: 54,
         decoration: BoxDecoration(color: t.accent, borderRadius: radius),
         child: busy
-            ? Center(
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: t.accentText,
-                  ),
-                ),
-              )
+            ? Center(child: BloomSpinner(size: 20, color: t.accentText))
             : BloomIcon(Bi.check, size: 24, color: t.accentText),
       ),
     );

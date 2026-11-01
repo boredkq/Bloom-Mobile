@@ -26,6 +26,7 @@ import '../custom_store.dart';
 import '../media_store.dart';
 import 'custom_sheet.dart';
 import 'custom_widgets.dart';
+import '../../../shared/ui/subpage_header.dart';
 
 Future<void> showMediaItemSheet(BuildContext context, MediaItem item) =>
     showBloomSheetChild<void>(
@@ -65,7 +66,8 @@ class _MediaItemBody extends ConsumerWidget {
         CustSheetBlock(
           children: [
             for (final ctx in CustomCtx.values) ...[
-              if (ctx != CustomCtx.values.first) const CustSheetDivider(),
+              if (ctx != CustomCtx.values.first)
+                const GroupDivider(indent: kCustRowText),
               // Тап ставит картинку сюда или снимает; галочка — она стоит.
               CustSheetRow(
                 icon: customCtxIcon(ctx),

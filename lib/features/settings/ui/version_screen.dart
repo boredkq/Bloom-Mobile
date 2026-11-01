@@ -164,14 +164,7 @@ class _StatusCard extends StatelessWidget {
               // One box for the spinner and the icon: the block doesn't jump
               // when the outcome comes.
               child: icon == null
-                  ? SizedBox(
-                      width: 28,
-                      height: 28,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.6,
-                        color: color,
-                      ),
-                    )
+                  ? BloomSpinner(size: 28, stroke: 2.6, color: color)
                   : BloomIcon(icon, size: 34, color: color),
             ),
             const SizedBox(height: 18),
@@ -257,13 +250,7 @@ class _NoteBlockState extends ConsumerState<_NoteBlock> {
             snapshot.connectionState != ConnectionState.done) {
           return const Padding(
             padding: EdgeInsets.symmetric(vertical: 14),
-            child: Center(
-              child: SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(strokeWidth: 2.4),
-              ),
-            ),
+            child: Center(child: BloomSpinner(size: 22, stroke: 2.4)),
           );
         }
         if (snapshot.hasError) {

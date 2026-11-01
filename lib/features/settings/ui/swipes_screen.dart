@@ -16,7 +16,6 @@ import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../../../shared/ui/track_swipes.dart';
 import '../swipe_store.dart';
-import 'settings_sheets.dart';
 
 class SwipesScreen extends ConsumerWidget {
   const SwipesScreen({super.key});
@@ -187,18 +186,14 @@ Future<void> _pickAction(
       mainAxisSize: MainAxisSize.min,
       children: [
         for (final action in SwipeAction.values)
-          SheetChoiceTile(
-            glyph: BloomIcon(
-              swipeActionIcon(action),
-              size: 22,
-              color: context.bloom.text,
-            ),
+          SheetOptionTile(
+            icon: swipeActionIcon(action),
             label: swipeActionLabel(context.l, action),
-            selected: action == current,
-            height: 72,
-            closes: true,
-            onTap: () =>
-                controller.setAction(zone, isLeft: isLeft, action: action),
+            active: action == current,
+            onTap: () {
+              Navigator.of(context).pop();
+              controller.setAction(zone, isLeft: isLeft, action: action);
+            },
           ),
       ],
     ),

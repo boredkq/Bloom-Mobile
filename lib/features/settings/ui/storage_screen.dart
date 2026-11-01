@@ -19,9 +19,9 @@ import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/danger_confirm.dart';
 import '../../../shared/ui/glass.dart';
-import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../storage_stats.dart';
+import 'settings_rows.dart';
 
 class StorageSettingsScreen extends ConsumerWidget {
   const StorageSettingsScreen({super.key});
@@ -129,39 +129,13 @@ class _CacheRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
     final l = context.l;
-    final theme = Theme.of(context).textTheme;
-
-    return Pressable(
+    return SettingsLinkRow(
+      icon: _icon(kind),
+      title: _title(l, kind),
+      subtitle: stat == null ? l.stCounting : _meta(l, stat!),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
       onTap: () => _openCacheSheet(context, ref, kind),
-      scale: 0.98,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 24,
-              child: BloomIcon(_icon(kind), size: 20, color: t.iconFg),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(_title(l, kind), style: theme.titleMedium),
-                  const SizedBox(height: 2),
-                  Text(
-                    stat == null ? l.stCounting : _meta(l, stat!),
-                    style: theme.bodySmall?.copyWith(color: t.text2),
-                  ),
-                ],
-              ),
-            ),
-            BloomIcon(Bi.altArrowRight, size: 16, color: t.text2),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -175,38 +149,15 @@ class _ClearAllRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
-    final l = context.l;
-    final theme = Theme.of(context).textTheme;
     final empty = stats != null && stats!.count == 0;
-
-    return Pressable(
+    return SettingsRowShell(
+      icon: Bi.trashBinTrash,
+      iconColor: empty ? t.muted : t.danger,
+      title: context.l.stClearAll,
+      color: empty ? t.muted : null,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
+      trailing: BloomIcon(Bi.altArrowRight, size: 16, color: t.text2),
       onTap: empty ? null : () => _openClearAllSheet(context, ref, stats),
-      scale: 0.98,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 24,
-              child: BloomIcon(
-                Bi.trashBinTrash,
-                size: 20,
-                color: empty ? t.muted : t.danger,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text(
-                l.stClearAll,
-                style: theme.titleMedium?.copyWith(
-                  color: empty ? t.muted : t.text,
-                ),
-              ),
-            ),
-            BloomIcon(Bi.altArrowRight, size: 16, color: t.text2),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -217,40 +168,14 @@ class _ImportRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
     final l = context.l;
-    final theme = Theme.of(context).textTheme;
     final mode = ref.watch(settingsProvider).localImport;
-
-    return Pressable(
+    return SettingsLinkRow(
+      icon: _importIcon(mode),
+      title: l.ltImportTitle,
+      subtitle: _importLabel(l, mode),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
       onTap: () => _openImportSheet(context, ref),
-      scale: 0.98,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 24,
-              child: BloomIcon(_importIcon(mode), size: 20, color: t.iconFg),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(l.ltImportTitle, style: theme.titleMedium),
-                  const SizedBox(height: 2),
-                  Text(
-                    _importLabel(l, mode),
-                    style: theme.bodySmall?.copyWith(color: t.text2),
-                  ),
-                ],
-              ),
-            ),
-            BloomIcon(Bi.altArrowRight, size: 16, color: t.text2),
-          ],
-        ),
-      ),
     );
   }
 }

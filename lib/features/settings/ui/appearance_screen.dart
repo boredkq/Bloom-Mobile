@@ -603,14 +603,7 @@ class _NavTabRow extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (divider)
-          Padding(
-            padding: const EdgeInsets.only(left: 16),
-            child: Divider(
-              height: 1,
-              color: t.ovlLine.withValues(alpha: t.ovlLine.a * 0.5),
-            ),
-          ),
+        if (divider) const GroupDivider(indent: 16),
         SettingsRowShell(
           title: _navTabLabel(context.l, tab),
           trailing: ReorderableDragStartListener(
@@ -1274,29 +1267,17 @@ class _ThemeCreatorState extends State<_ThemeCreator> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TextField(
+          BloomField(
             controller: _name,
+            hint: context.l.thNameDefault,
+            hintStyle: theme.bodyMedium?.copyWith(color: t.muted),
             maxLength: 24,
-            cursorColor: t.accent,
             style: theme.titleMedium,
             // The name shows in the preview.
             onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(
-              counterText: '',
-              isDense: true,
-              filled: true,
-              fillColor: t.pill,
-              hintText: context.l.thNameDefault,
-              hintStyle: theme.bodyMedium?.copyWith(color: t.muted),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 14,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(t.radius * 0.7),
-                borderSide: BorderSide.none,
-              ),
-            ),
+            fill: t.pill,
+            radius: t.radius * 0.7,
+            padding: const EdgeInsets.all(14),
           ),
           const SizedBox(height: 14),
           Row(

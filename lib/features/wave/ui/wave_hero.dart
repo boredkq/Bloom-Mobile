@@ -244,13 +244,11 @@ class _WaveTitle extends StatelessWidget {
         onLongPress: () => showWaveTuneSheet(context),
         scale: 0.97,
         child: starting
-            ? SizedBox.square(
-                dimension: size * 0.6,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  color: bg,
-                  backgroundColor: bg.withValues(alpha: 0.25),
-                ),
+            ? BloomSpinner(
+                size: size * 0.6,
+                stroke: 3,
+                color: bg,
+                trackColor: bg.withValues(alpha: 0.25),
               )
             : Text(
                 context.l.waveTitle,
@@ -709,14 +707,7 @@ class _PickItem extends ConsumerWidget {
               alignment: Alignment.center,
               children: [
                 picture,
-                if (pending)
-                  SizedBox.square(
-                    dimension: 26,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.4,
-                      color: t.text,
-                    ),
-                  ),
+                if (pending) BloomSpinner(size: 26, stroke: 2.4, color: t.text),
               ],
             ),
             const SizedBox(height: 10),

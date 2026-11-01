@@ -209,8 +209,8 @@ class _CropPageState extends State<_CropPage> {
               child: LayoutBuilder(
                 builder: (context, box) {
                   if (image == null) {
-                    return Center(
-                      child: CircularProgressIndicator(color: t.accent),
+                    return const Center(
+                      child: BloomSpinner(size: 36, stroke: 4),
                     );
                   }
                   _measure(Size(box.maxWidth, box.maxHeight));

@@ -14,7 +14,6 @@ import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_toast.dart';
-import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/platform_logo.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../../lastfm/lastfm_store.dart';
@@ -210,18 +209,22 @@ class _LastfmSettingsScreenState extends ConsumerState<LastfmSettingsScreen>
         ),
         if (_keysOpen) ...[
           const SizedBox(height: 10),
-          _KeyField(
+          PlatformField(
             controller: _key,
             hint: 'API Key',
+            mono: true,
             obscure: !_keyVisible,
-            onToggle: () => setState(() => _keyVisible = !_keyVisible),
+            icon: _keyVisible ? Bi.eye : Bi.eyeClosed,
+            onIcon: () => setState(() => _keyVisible = !_keyVisible),
           ),
           const SizedBox(height: 8),
-          _KeyField(
+          PlatformField(
             controller: _secret,
             hint: 'API Secret',
+            mono: true,
             obscure: !_secretVisible,
-            onToggle: () => setState(() => _secretVisible = !_secretVisible),
+            icon: _secretVisible ? Bi.eye : Bi.eyeClosed,
+            onIcon: () => setState(() => _secretVisible = !_secretVisible),
           ),
           const SizedBox(height: 10),
           BloomButton(
@@ -265,63 +268,3 @@ String _noteText(AppLocalizations l, LfmNote note) => switch (note.kind) {
   LfmNoteKind.error => l.lfmError(note.message ?? ''),
   LfmNoteKind.sessionLost => l.lfmSessionLost,
 };
-
-/// Monospaced, keys get compared by character, with an eye.
-class _KeyField extends StatelessWidget {
-  const _KeyField({
-    required this.controller,
-    required this.hint,
-    required this.obscure,
-    required this.onToggle,
-  });
-
-  final TextEditingController controller;
-  final String hint;
-  final bool obscure;
-  final VoidCallback onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    return GlassBox(
-      borderRadius: BorderRadius.circular(t.radius),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                obscureText: obscure,
-                autocorrect: false,
-                enableSuggestions: false,
-                cursorColor: t.accent,
-                style: theme.bodyMedium?.copyWith(
-                  color: t.text,
-                  fontFamily: 'monospace',
-                  fontFamilyFallback: const ['Courier'],
-                ),
-                decoration: InputDecoration(
-                  isDense: true,
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 18),
-                  hintText: hint,
-                  hintStyle: theme.bodyMedium?.copyWith(color: t.muted),
-                ),
-              ),
-            ),
-            CircleIconButton(
-              icon: obscure ? Bi.eyeClosed : Bi.eye,
-              size: 48,
-              iconSize: 20,
-              background: Colors.transparent,
-              color: t.muted,
-              onTap: onToggle,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

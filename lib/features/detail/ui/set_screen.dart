@@ -208,9 +208,15 @@ class _SetScreenState extends ConsumerState<SetScreen> {
           if (_loading)
             const SliverToBoxAdapter(child: DetailSkeleton(artist: false))
           else if (_error case final message?)
-            SliverToBoxAdapter(child: DetailError(message))
+            SliverToBoxAdapter(
+              child: CenterNote(
+                message,
+                color: context.bloom.danger,
+                padding: const EdgeInsets.all(24),
+              ),
+            )
           else if (_tracks.isEmpty)
-            SliverToBoxAdapter(child: DetailEmpty(context.l.setNoTracks))
+            SliverToBoxAdapter(child: CenterNote(context.l.setNoTracks))
           else ...[
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(8, 4, 8, 16),

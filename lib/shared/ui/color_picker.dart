@@ -82,7 +82,6 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
 
     return SheetSurface(
       child: SafeArea(
@@ -123,30 +122,20 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: TextField(
+                    child: BloomField(
                       controller: _hex,
                       onChanged: _onHex,
-                      cursorColor: t.accent,
                       maxLength: 7,
-                      style: theme.titleMedium,
-                      inputFormatters: [
+                      formatters: [
                         FilteringTextInputFormatter.allow(
                           RegExp('[#0-9a-fA-F]'),
                         ),
                       ],
-                      decoration: InputDecoration(
-                        counterText: '',
-                        isDense: true,
-                        filled: true,
-                        fillColor: t.pill,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(t.radius * 0.6),
-                          borderSide: BorderSide.none,
-                        ),
+                      fill: t.pill,
+                      radius: t.radius * 0.6,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
                       ),
                     ),
                   ),

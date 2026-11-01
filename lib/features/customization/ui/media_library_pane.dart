@@ -30,7 +30,14 @@ class MediaLibraryPane extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(mediaLibProvider);
-    if (items.isEmpty) return EmptyHint(text: context.l.custLibraryEmpty);
+    if (items.isEmpty) {
+      return Center(
+        child: CenterNote(
+          context.l.custLibraryEmpty,
+          padding: const EdgeInsets.symmetric(horizontal: 40),
+        ),
+      );
+    }
     return GridView.builder(
       padding: EdgeInsets.fromLTRB(16, 12, 16, 8 + bottomBarsInset(context)),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(

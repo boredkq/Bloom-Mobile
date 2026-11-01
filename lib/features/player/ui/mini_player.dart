@@ -20,12 +20,14 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/theme/bloom_theme.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
 import '../../../core/store/library_store.dart';
 import '../../../features/customization/custom_store.dart';
+import '../../../features/settings/user_fonts.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/marquee_text.dart';
@@ -101,6 +103,13 @@ double _progressFrac(WidgetRef ref) {
       ? 0.0
       : (head.position.inMilliseconds / total).clamp(0.0, 1.0);
 }
+
+/// A cover's picture or colour under the card is dark whatever the theme, so on
+/// a light theme its row takes the dark theme's ink.
+final _miniInkProvider = Provider<ThemeData>(
+  (ref) =>
+      buildBloomTheme(BloomThemes.dark, fontFamily: ref.watch(uiFontProvider)),
+);
 
 /// Цвет артиста под названием.
 ///
@@ -181,7 +190,6 @@ class MiniCardRow extends ConsumerWidget {
     final track = neighbor ?? state.track;
     if (track == null) return const SizedBox.shrink();
 
-    final theme = Theme.of(context).textTheme;
     final style = ref.watch(miniStyleProvider);
     // Своя картинка из «Кастомизации» подменяет обложку ИГРАЮЩЕГО трека —
     // соседи показывают свои.
@@ -190,6 +198,9 @@ class MiniCardRow extends ConsumerWidget {
     final progress = live ? style.progress : const MiniProgress(line: false);
     final error = live ? state.error : null;
     final visible = MiniButton.values.where(style.hasButton).toList();
+    final island = t.isLight && style.bg != MiniBg.theme;
+    Widget ink(Widget row) =>
+        island ? Theme(data: ref.watch(_miniInkProvider), child: row) : row;
 
     return SizedBox(
       height: kMiniCardHeight,
@@ -200,60 +211,72 @@ class MiniCardRow extends ConsumerWidget {
           if (style.bg == MiniBg.cover)
             Positioned.fill(child: _CoverBackdrop(cover: cover)),
           if (progress.fill) Positioned.fill(child: _FillProgress(tint: tint)),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Row(
-              children: [
-                _MiniCover(
-                  trackId: track.id,
-                  cover: cover,
-                  animated: live,
-                  shape: style.shape,
-                  ring: progress.ring,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TrackSwap(
-                    id: track.id,
+          ink(
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Row(
+                children: [
+                  _MiniCover(
+                    trackId: track.id,
+                    cover: cover,
                     animated: live,
-                    tuning: TrackSwapTuning.mini,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Название бежит, если не влезло, — как `#mpTitle` на
-                        // ПК; артист под ним остаётся с эллипсисом.
-                        MarqueeText(track.name, style: theme.titleSmall),
-                        const SizedBox(height: 2),
-                        Text(
-                          // В состоянии лежит КОД ошибки — разворачиваем его в
-                          // фразу здесь (см. `play_error.dart`).
-                          error == null
-                              ? track.artist
-                              : describePlayError(context.l, error),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.bodySmall?.copyWith(
-                            color: error != null ? t.danger : _artistColor(t),
+                    shape: style.shape,
+                    ring: progress.ring,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TrackSwap(
+                      id: track.id,
+                      animated: live,
+                      tuning: TrackSwapTuning.mini,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Название бежит, если не влезло, — как `#mpTitle` на
+                          // ПК; артист под ним остаётся с эллипсисом.
+                          Builder(
+                            builder: (context) => MarqueeText(
+                              track.name,
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 2),
+                          Builder(
+                            builder: (context) => Text(
+                              // В состоянии лежит КОД ошибки — разворачиваем его
+                              // в фразу здесь (см. `play_error.dart`).
+                              error == null
+                                  ? track.artist
+                                  : describePlayError(context.l, error),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: error != null
+                                        ? t.danger
+                                        : _artistColor(context.bloom),
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                // Порядок кнопок задан самим перечислением, набор —
-                // настройкой; убранная не оставляет после себя зазора, иначе
-                // подпись упиралась бы в пустоту.
-                for (var i = 0; i < visible.length; i++) ...[
-                  SizedBox(width: i == 0 ? 8 : 4),
-                  _MiniButton(
-                    button: visible[i],
-                    track: track,
-                    loading: live && state.loading,
-                    live: live,
-                  ),
+                  // Порядок кнопок задан самим перечислением, набор —
+                  // настройкой; убранная не оставляет после себя зазора, иначе
+                  // подпись упиралась бы в пустоту.
+                  for (var i = 0; i < visible.length; i++) ...[
+                    SizedBox(width: i == 0 ? 8 : 4),
+                    _MiniButton(
+                      button: visible[i],
+                      track: track,
+                      loading: live && state.loading,
+                      live: live,
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
           if (progress.line)

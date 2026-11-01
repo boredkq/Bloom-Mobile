@@ -239,7 +239,6 @@ class _QueueSheetState extends ConsumerState<_QueueSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final media = MediaQuery.of(context);
     final state = ref.watch(playbackProvider);
     final ctrl = ref.read(playbackProvider.notifier);
     final queue = state.queue;
@@ -255,107 +254,63 @@ class _QueueSheetState extends ConsumerState<_QueueSheet> {
       }
     });
 
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: media.size.height * 0.85),
-      child: SheetSurface(
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SheetHandle(),
-              _QueueHeader(
-                count: queue.length,
-                shuffle: state.shuffle,
-                onClear: queue.length > 1 ? ctrl.clearExceptCurrent : null,
-                // «Похожие на очередь» продолжают её подбором. Шторку
-                // закрываем: очередь под ней сменится целиком, и стоять на
-                // её старом списке уже незачем.
-                onWave: queue.isEmpty
-                    ? null
-                    : () {
-                        Navigator.of(context).pop();
-                        startWaveFromQueue(context, ref, queue);
-                      },
-              ),
-              Flexible(
-                child: CustomScrollView(
-                  controller: _scroll,
-                  shrinkWrap: true,
-                  slivers: [
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
-                      sliver: SliverMainAxisGroup(
-                        slivers: _slivers(
-                          queue: queue,
-                          keys: keys,
-                          current: state.index,
-                          extended: ref.watch(queueViewProvider).isExtended,
-                          ctrl: ctrl,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+    return SheetShell(
+      scrolls: false,
+      header: SheetTitle(
+        context.l.playerQueue,
+        right: 12,
+        bottom: 12,
+        line: Row(
+          children: [
+            Text(
+              context.l.tracksCount(queue.length),
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            if (state.shuffle) ...[
+              const SizedBox(width: 8),
+              BloomIcon(Bi.shuffle, size: 14, color: context.bloom.accent),
             ],
-          ),
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // It carries the queue on with a pick. The sheet closes: the list
+            // under it is about to change whole.
+            CircleIconButton(
+              icon: Bi.soundwave,
+              iconSize: 20,
+              onTap: queue.isEmpty
+                  ? null
+                  : () {
+                      Navigator.of(context).pop();
+                      startWaveFromQueue(context, ref, queue);
+                    },
+            ),
+            const SizedBox(width: 8),
+            CircleIconButton(
+              icon: Bi.trashBinTrash,
+              iconSize: 20,
+              onTap: queue.length > 1 ? ctrl.clearExceptCurrent : null,
+            ),
+          ],
         ),
       ),
-    );
-  }
-}
-
-class _QueueHeader extends StatelessWidget {
-  const _QueueHeader({
-    required this.count,
-    required this.shuffle,
-    required this.onClear,
-    required this.onWave,
-  });
-
-  final int count;
-  final bool shuffle;
-  final VoidCallback? onClear;
-  final VoidCallback? onWave;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 6, 12, 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(context.l.playerQueue, style: theme.titleLarge),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    Text(context.l.tracksCount(count), style: theme.bodyMedium),
-                    // Перемешивание показываем здесь же: список ниже уже стоит
-                    // в перемешанном порядке, и надо понимать, почему.
-                    if (shuffle) ...[
-                      const SizedBox(width: 8),
-                      BloomIcon(Bi.shuffle, size: 14, color: t.accent),
-                    ],
-                  ],
-                ),
-              ],
+      child: CustomScrollView(
+        controller: _scroll,
+        shrinkWrap: true,
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
+            sliver: SliverMainAxisGroup(
+              slivers: _slivers(
+                queue: queue,
+                keys: keys,
+                current: state.index,
+                extended: ref.watch(queueViewProvider).isExtended,
+                ctrl: ctrl,
+              ),
             ),
-          ),
-          CircleIconButton(icon: Bi.soundwave, iconSize: 20, onTap: onWave),
-          const SizedBox(width: 8),
-          CircleIconButton(
-            icon: Bi.trashBinTrash,
-            iconSize: 20,
-            // Как на десктопе: чистим всё, КРОМЕ играющего — обрывать
-            // воспроизведение кнопка не должна.
-            onTap: onClear,
           ),
         ],
       ),

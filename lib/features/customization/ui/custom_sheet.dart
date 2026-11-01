@@ -202,26 +202,8 @@ class CustSheetBlock extends StatelessWidget {
   }
 }
 
-/// Линия между строками блока — как в группах настроек (`SettingsGroupCard`):
-/// от начала текста до края, половина обычной рамки.
-class CustSheetDivider extends StatelessWidget {
-  const CustSheetDivider({super.key});
-
-  /// Где в строке начинается текст: 16 паддинга + 38 значка + 14 зазора.
-  static const double inset = 68;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Padding(
-      padding: const EdgeInsets.only(left: inset),
-      child: Divider(
-        height: 1,
-        color: t.ovlLine.withValues(alpha: t.ovlLine.a * 0.5),
-      ),
-    );
-  }
-}
+/// Where a row's text starts: its padding, icon box and gap.
+const double kCustRowText = 68;
 
 /// Строка блока: значок, название и справа [trailing] (галочка у контекстов).
 class CustSheetRow extends StatelessWidget {

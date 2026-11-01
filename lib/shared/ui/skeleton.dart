@@ -43,6 +43,29 @@ class SkeletonBox extends StatelessWidget {
   }
 }
 
+/// A section's title while it loads.
+class SectionLabelSkeleton extends StatelessWidget {
+  const SectionLabelSkeleton({
+    super.key,
+    required this.width,
+    this.height = 14,
+    this.padding = const EdgeInsets.fromLTRB(8, 24, 8, 12),
+  });
+
+  final double width;
+  final double height;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: padding,
+    child: Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: SkeletonBox(width: width, height: height, radius: height / 2),
+    ),
+  );
+}
+
 /// Плашка на месте строки текста: скругление по высоте, ширина — доля от
 /// доступной, чтобы «строки» не выглядели одинаковой линейкой.
 class SkeletonLine extends StatelessWidget {

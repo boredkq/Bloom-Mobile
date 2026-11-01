@@ -83,14 +83,7 @@ class ChartScreen extends ConsumerWidget {
               child: tracks.isEmpty
                   ? Center(
                       child: result.isLoading
-                          ? SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: t.accent,
-                              ),
-                            )
+                          ? BloomSpinner(size: 22, color: t.accent)
                           : Text(
                               l.setNoTracks,
                               style: Theme.of(

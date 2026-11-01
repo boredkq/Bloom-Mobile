@@ -228,9 +228,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeSimilarTo => 'Similar to';
 
   @override
-  String get homeSimilarArtist => 'Artist';
-
-  @override
   String get playerQueue => 'Queue';
 
   @override

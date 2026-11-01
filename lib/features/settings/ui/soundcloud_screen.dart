@@ -18,7 +18,6 @@ import '../../../providers/soundcloud/models.dart';
 import '../../../providers/soundcloud/soundcloud.dart' as sc;
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
-import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/platform_logo.dart';
 import 'platform_page.dart';
 
@@ -134,40 +133,14 @@ class _SoundCloudSettingsScreenState
           onTap: _guide,
         ),
         const Center(child: OrLabel()),
-        GlassBox(
-          borderRadius: BorderRadius.circular(t.radius),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    cursorColor: t.accent,
-                    style: theme.bodyMedium?.copyWith(color: t.text),
-                    onChanged: (_) => setState(() {}),
-                    onSubmitted: (_) => _save(),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 18),
-                      hintText: l.scHint,
-                      hintStyle: theme.bodyMedium?.copyWith(color: t.muted),
-                    ),
-                  ),
-                ),
-                // The guide is needed exactly when looking at an empty field.
-                CircleIconButton(
-                  icon: Bi.questionCircle,
-                  size: 48,
-                  iconSize: 20,
-                  background: Colors.transparent,
-                  color: t.muted,
-                  onTap: _guide,
-                ),
-              ],
-            ),
-          ),
+        // The guide is needed exactly when looking at an empty field.
+        PlatformField(
+          controller: _controller,
+          hint: l.scHint,
+          icon: Bi.questionCircle,
+          onIcon: _guide,
+          onChanged: (_) => setState(() {}),
+          onSubmitted: (_) => _save(),
         ),
         const SizedBox(height: 10),
         Row(

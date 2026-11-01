@@ -7,10 +7,8 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../../app/theme/tokens.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
-import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../custom_store.dart';
 
@@ -51,25 +49,6 @@ class CustomizationPage extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Подпись на месте пустого списка — десктопные `.ssub` по центру.
-class EmptyHint extends StatelessWidget {
-  const EmptyHint({super.key, required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 40),
-    child: Center(
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.bodySmall,
-      ),
-    ),
-  );
 }
 
 /// Поле ввода в шторке — ровно то же, что у «Создать плейлист» ([SheetField]):
@@ -151,7 +130,7 @@ class SheetAddForm extends StatelessWidget {
   );
 }
 
-/// Пункт под полем шторки добавления: закрывает её с `true`.
+/// The item under the field of an adding sheet: closes it with `true`.
 class SheetPickRow extends StatelessWidget {
   const SheetPickRow({super.key, required this.icon, required this.label});
 
@@ -159,31 +138,13 @@ class SheetPickRow extends StatelessWidget {
   final String label;
 
   @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return SheetPanel(
-      children: [
-        Pressable(
-          onTap: () => Navigator.of(context).pop(true),
-          scale: 0.98,
-          child: Padding(
-            // Тот же ряд, что у пунктов меню шторки.
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
-            child: Row(
-              children: [
-                BloomIcon(icon, size: 22, color: t.text),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => SheetPanel(
+    children: [
+      SheetRow(
+        icon: icon,
+        label: label,
+        onTap: () => Navigator.of(context).pop(true),
+      ),
+    ],
+  );
 }

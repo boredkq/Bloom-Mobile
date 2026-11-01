@@ -105,20 +105,28 @@ class SettingsGroupCard extends StatelessWidget {
       child: Column(
         children: [
           for (var i = 0; i < rows.length; i++) ...[
-            if (i > 0)
-              Padding(
-                padding: EdgeInsets.only(left: dividerInset),
-                // Половина от обычной рамки: строки уже сгруппированы
-                // контейнером, разделителю достаточно едва намекать.
-                child: Divider(
-                  height: 1,
-                  color: t.ovlLine.withValues(alpha: t.ovlLine.a * 0.5),
-                ),
-              ),
+            if (i > 0) GroupDivider(indent: dividerInset),
             rows[i],
           ],
         ],
       ),
+    );
+  }
+}
+
+/// The line between rows of a group, from where their text starts. Half of the
+/// usual line: the plate already groups them, this only hints.
+class GroupDivider extends StatelessWidget {
+  const GroupDivider({super.key, required this.indent});
+
+  final double indent;
+
+  @override
+  Widget build(BuildContext context) {
+    final line = context.bloom.ovlLine;
+    return Padding(
+      padding: EdgeInsets.only(left: indent),
+      child: Divider(height: 1, color: line.withValues(alpha: line.a * 0.5)),
     );
   }
 }

@@ -7,9 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/tokens.dart';
-import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
-import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/pressable.dart';
 import '../../detail/detail_nav.dart';
@@ -77,7 +75,11 @@ class SimilarToSection extends ConsumerWidget {
               index: 0,
               source: source,
             ),
-            SimilarArtistItem(:final artist) => _ArtistTile(artist: artist),
+            SimilarArtistItem(:final artist) => ArtistCard(
+              artist: artist,
+              size: 132,
+              centerLabel: true,
+            ),
           },
         ),
       ],
@@ -111,44 +113,3 @@ VoidCallback? _seedAction(
         ),
   SimilarTrackSeed() => null,
 };
-
-/// An artist in the row: the track card's size in a circle, "Artist" under the
-/// name.
-class _ArtistTile extends StatelessWidget {
-  const _ArtistTile({required this.artist});
-
-  final Artist artist;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context).textTheme;
-    return Pressable(
-      onTap: () => openArtist(context, artist.id, initial: artist),
-      scale: 0.97,
-      child: SizedBox(
-        width: 132,
-        child: Column(
-          children: [
-            Cover(url: artist.avatar, size: 132, circle: true),
-            const SizedBox(height: 8),
-            Text(
-              artist.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: theme.titleSmall,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              context.l.homeSimilarArtist,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: theme.bodySmall,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

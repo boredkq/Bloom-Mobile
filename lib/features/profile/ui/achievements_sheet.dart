@@ -32,35 +32,19 @@ class _Head extends ConsumerWidget {
     final list = ref.watch(achievementsProvider);
     final done = list.fold(0, (n, a) => n + a.tierReached);
     final total = list.length * kTierOrder.length;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(kSheetEdge, 6, kSheetEdge, 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              context.l.profileAchievements,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: bloomText(
-                size: 18,
-                weight: 700,
-                color: t.text,
-                letterSpacing: -0.2,
-              ),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: sheetLineColor(context)),
-            ),
-            child: Text(
-              '$done/$total',
-              style: bloomText(size: 12, weight: 700, color: t.text2),
-            ),
-          ),
-        ],
+    return SheetTitle(
+      context.l.profileAchievements,
+      bottom: 12,
+      trailing: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: sheetLineColor(context)),
+        ),
+        child: Text(
+          '$done/$total',
+          style: bloomText(size: 12, weight: 700, color: t.text2),
+        ),
       ),
     );
   }

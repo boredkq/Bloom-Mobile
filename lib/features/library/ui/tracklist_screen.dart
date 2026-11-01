@@ -678,16 +678,7 @@ class _AddLocalButtonState extends ConsumerState<_AddLocalButton> {
       child: const SizedBox(
         width: kHeaderControl,
         height: kHeaderControl,
-        child: Center(
-          child: SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: Colors.white,
-            ),
-          ),
-        ),
+        child: Center(child: BloomSpinner(size: 18, color: Colors.white)),
       ),
     );
   }
@@ -776,7 +767,6 @@ class _InlineSearch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
     return GlassSurface(
       shape: BorderRadius.circular(999),
       child: Padding(
@@ -788,22 +778,17 @@ class _InlineSearch extends StatelessWidget {
               const BloomIcon(Bi.magnifier, size: 21, color: Colors.white),
               const SizedBox(width: 10),
               Expanded(
-                child: TextField(
+                child: BloomField(
+                  hint: context.l.tlSearchHint,
                   autofocus: true,
                   onChanged: onQuery,
-                  cursorColor: t.accent,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontSize: kHeaderTitleSize,
                     color: Colors.white,
                   ),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    border: InputBorder.none,
-                    hintText: context.l.tlSearchHint,
-                    hintStyle: const TextStyle(
-                      color: Colors.white54,
-                      fontSize: kHeaderTitleSize,
-                    ),
+                  hintStyle: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: kHeaderTitleSize,
                   ),
                 ),
               ),

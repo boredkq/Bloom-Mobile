@@ -579,24 +579,16 @@ class _Field extends StatelessWidget {
                     : CrossAxisAlignment.center,
                 children: [
                   Expanded(
-                    child: TextField(
+                    child: BloomField(
                       controller: controller,
+                      hint: hint,
                       maxLines: lines,
                       minLines: lines,
-                      cursorColor: t.accent,
-                      inputFormatters: [
-                        LengthLimitingTextInputFormatter(limit),
-                      ],
+                      formatters: [LengthLimitingTextInputFormatter(limit)],
                       style: theme.titleMedium?.copyWith(
                         fontStyle: italic ? FontStyle.italic : FontStyle.normal,
                       ),
-                      decoration: InputDecoration(
-                        hintText: hint,
-                        hintStyle: theme.titleMedium?.copyWith(color: t.muted),
-                        isDense: true,
-                        isCollapsed: true,
-                        border: InputBorder.none,
-                      ),
+                      padding: EdgeInsets.zero,
                     ),
                   ),
                   const SizedBox(width: 10),

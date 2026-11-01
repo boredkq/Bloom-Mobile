@@ -21,7 +21,6 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
-import '../../../shared/ui/pressable.dart';
 import '../merge.dart';
 
 /// Что человек выбрал в шторке.
@@ -202,6 +201,7 @@ class _MergeBodyState extends ConsumerState<_MergeBody> {
               _PlaylistRow(
                 playlist: other,
                 tracks: lib.tracksOf(other).length,
+                covers: lib.tracksOf(other).map((track) => track.cover),
                 // The number says in what order the tracks land in the new
                 // playlist, which a tick wouldn't.
                 order: _picked.indexOf(other.id),
@@ -213,18 +213,20 @@ class _MergeBodyState extends ConsumerState<_MergeBody> {
         ),
         SheetPanel(
           children: [
-            _SwitchRow(
+            SheetSwitchRow(
               icon: Bi.copy,
               label: context.l.mgDedup,
               value: _dedup,
               onChanged: (v) => setState(() => _dedup = v),
+              padding: const EdgeInsets.all(16),
             ),
-            _SwitchRow(
+            SheetSwitchRow(
               icon: Bi.trashBinTrash,
               label: context.l.mgDeleteSources,
               value: _deleteSources,
               danger: true,
               onChanged: (v) => setState(() => _deleteSources = v),
+              padding: const EdgeInsets.all(16),
             ),
           ],
         ),
@@ -237,12 +239,14 @@ class _PlaylistRow extends StatelessWidget {
   const _PlaylistRow({
     required this.playlist,
     required this.tracks,
+    required this.covers,
     required this.order,
     required this.onTap,
   });
 
   final UserPlaylist playlist;
   final int tracks;
+  final Iterable<String?> covers;
 
   /// Номер в порядке склейки; `-1` — не выбран.
   final int order;
@@ -252,105 +256,32 @@ class _PlaylistRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
     final picked = order >= 0;
 
-    return Pressable(
-      onTap: onTap,
-      scale: 0.98,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
-          children: [
-            Cover(url: playlist.cover, size: 40),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    playlist.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: picked
-                        ? theme.titleMedium?.copyWith(color: t.accent)
-                        : theme.titleMedium,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(context.l.tracksCount(tracks), style: theme.bodySmall),
-                ],
+    return SheetRow(
+      leading: Cover(url: playlist.cover, size: 40, covers: covers),
+      gap: 12,
+      label: playlist.name,
+      subtitle: context.l.tracksCount(tracks),
+      color: picked ? t.accent : t.text,
+      trailing: picked
+          ? Container(
+              width: 24,
+              height: 24,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: t.accent,
+                shape: BoxShape.circle,
               ),
-            ),
-            if (picked)
-              Container(
-                width: 24,
-                height: 24,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: t.accent,
-                  shape: BoxShape.circle,
-                ),
-                child: Text(
-                  '${order + 2}',
-                  style: theme.bodySmall?.copyWith(color: t.accentText),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Строка-тумблер шторки. Своя, а не `SwitchListTile`: тот тянет материальные
-/// отступы и палитру, а строка обязана выглядеть как остальные строки блока.
-class _SwitchRow extends StatelessWidget {
-  const _SwitchRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.onChanged,
-    this.danger = false,
-  });
-
-  final BloomGlyph icon;
-  final String label;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  /// Красный, когда включён: «Удалить исходные» — необратимое согласие.
-  final bool danger;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final color = danger && value ? t.danger : t.text;
-
-    return GestureDetector(
-      onTap: () => onChanged(!value),
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Row(
-          children: [
-            BloomIcon(icon, size: 22, color: color),
-            const SizedBox(width: 16),
-            Expanded(
               child: Text(
-                label,
+                '${order + 2}',
                 style: Theme.of(
                   context,
-                ).textTheme.titleMedium?.copyWith(color: color),
+                ).textTheme.bodySmall?.copyWith(color: t.accentText),
               ),
-            ),
-            BloomSwitch(
-              value: value,
-              onChanged: onChanged,
-              color: danger ? t.danger : null,
-            ),
-          ],
-        ),
-      ),
+            )
+          : null,
+      onTap: onTap,
     );
   }
 }

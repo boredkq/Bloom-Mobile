@@ -440,8 +440,9 @@ class _ItemRow extends StatelessWidget {
               SheetPanel(
                 children: [
                   for (final cand in item.cands)
-                    _CandidateRow(
-                      match: cand,
+                    _candidateRow(
+                      context,
+                      cand,
                       picked: switch (decision) {
                         TakeMatch(:final track) => track.id == cand.track.id,
                         _ => false,
@@ -455,19 +456,19 @@ class _ItemRow extends StatelessWidget {
               ),
             SheetPanel(
               children: [
-                _DecisionRow(
+                SheetRow(
                   icon: Bi.undoLeftRound,
                   label: l.cvKeepOriginal,
-                  picked: decision is KeepOriginal,
+                  trailing: decision is KeepOriginal ? const SheetTick() : null,
                   onTap: () {
                     Navigator.of(sheetContext).pop();
                     onDecide(const KeepOriginal());
                   },
                 ),
-                _DecisionRow(
+                SheetRow(
                   icon: Bi.close,
                   label: l.cvSkip,
-                  picked: decision is SkipTrack,
+                  trailing: decision is SkipTrack ? const SheetTick() : null,
                   danger: true,
                   onTap: () {
                     Navigator.of(sheetContext).pop();
@@ -483,111 +484,26 @@ class _ItemRow extends StatelessWidget {
   }
 }
 
-class _CandidateRow extends StatelessWidget {
-  const _CandidateRow({
-    required this.match,
-    required this.picked,
-    required this.onTap,
-  });
-
-  final ScoredMatch match;
-  final bool picked;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    final track = match.track;
-
-    return Pressable(
-      onTap: onTap,
-      scale: 0.98,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
-          children: [
-            Cover(url: track.cover, size: 40),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    track.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: picked
-                        ? theme.titleMedium?.copyWith(color: t.accent)
-                        : theme.titleMedium,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    track.artist,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            // Счёт совпадения — не украшение: по нему видно, почему трек попал
-            // в спорные, и стоит ли ему верить.
-            Text(
-              '${(match.score * 100).round()}%',
-              style: theme.bodySmall?.copyWith(
-                color: match.score >= kAutoMatchScore ? t.accent : t.text2,
-              ),
-            ),
-          ],
-        ),
+/// A track the platform offered: the score is how sure the match is.
+Widget _candidateRow(
+  BuildContext context,
+  ScoredMatch match, {
+  required bool picked,
+  required VoidCallback onTap,
+}) {
+  final t = context.bloom;
+  return SheetRow(
+    leading: Cover(url: match.track.cover, size: 40),
+    gap: 12,
+    label: match.track.name,
+    subtitle: match.track.artist,
+    color: picked ? t.accent : null,
+    trailing: Text(
+      '${(match.score * 100).round()}%',
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+        color: match.score >= kAutoMatchScore ? t.accent : t.text2,
       ),
-    );
-  }
-}
-
-class _DecisionRow extends StatelessWidget {
-  const _DecisionRow({
-    required this.icon,
-    required this.label,
-    required this.picked,
-    required this.onTap,
-    this.danger = false,
-  });
-
-  final BloomGlyph icon;
-  final String label;
-  final bool picked;
-  final VoidCallback onTap;
-  final bool danger;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final color = danger ? t.danger : t.text;
-
-    return Pressable(
-      onTap: onTap,
-      scale: 0.98,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-        child: Row(
-          children: [
-            BloomIcon(icon, size: 22, color: color),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                label,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(color: color),
-              ),
-            ),
-            if (picked) BloomIcon(Bi.check, size: 18, color: t.accent),
-          ],
-        ),
-      ),
-    );
-  }
+    ),
+    onTap: onTap,
+  );
 }

@@ -32,31 +32,11 @@ class _Head extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
     final count = ref.watch(historyProvider.select((h) => h.length));
-    // Full width, or the sheet's header slot centres it.
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(kSheetEdge, 6, kSheetEdge, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            context.l.commonHistory,
-            style: bloomText(
-              size: 18,
-              weight: 700,
-              color: t.text,
-              letterSpacing: -0.2,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            context.l.tracksCount(count),
-            style: bloomText(size: 12, weight: 500, color: t.text2),
-          ),
-        ],
-      ),
+    return SheetTitle(
+      context.l.commonHistory,
+      subtitle: context.l.tracksCount(count),
+      bottom: 8,
     );
   }
 }

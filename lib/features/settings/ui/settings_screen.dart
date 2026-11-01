@@ -12,7 +12,6 @@ import '../../../core/l10n/l10n.dart';
 import '../../../core/store/settings_store.dart';
 import '../../../providers/yandex/ym_auth.dart';
 import '../../../shared/ui/bloom_icon.dart';
-import '../../../shared/ui/pressable.dart';
 import '../../lastfm/lastfm_store.dart';
 import '../../pc/pc_store.dart';
 import '../../../shared/ui/atoms.dart';
@@ -21,6 +20,7 @@ import '../../../shared/ui/language_card.dart';
 import '../../../shared/ui/platform_logo.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../about_store.dart';
+import 'settings_rows.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -201,33 +201,30 @@ class SettingsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    return Pressable(
+    final text = value;
+    return SettingsRowShell(
+      icon: icon,
+      leading: leading,
+      title: title,
+      // Makes 64 a row with the text line.
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 22),
       onTap: onTap,
-      scale: 0.98,
-      child: Padding(
-        // Makes 64 a row with the text line.
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 22),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 24,
-              child: leading ?? BloomIcon(icon, size: 20, color: t.iconFg),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (text != null) ...[
+            Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: t.text2),
             ),
-            const SizedBox(width: 14),
-            Expanded(child: Text(title, style: theme.titleMedium)),
-            if (value case final text?) ...[
-              Text(
-                text,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.bodyMedium?.copyWith(color: t.text2),
-              ),
-              const SizedBox(width: 10),
-            ],
-            trailing ?? BloomIcon(Bi.altArrowRight, size: 16, color: t.text2),
+            const SizedBox(width: 10),
           ],
-        ),
+          trailing ?? BloomIcon(Bi.altArrowRight, size: 16, color: t.text2),
+        ],
       ),
     );
   }
@@ -271,8 +268,12 @@ Future<void> _pickLanguage(
         mainAxisSize: MainAxisSize.min,
         children: [
           for (final locale in kLocales)
-            _LanguageTile(
-              locale: locale,
+            SheetOptionTile(
+              leading: LanguageFlag(code: locale.languageCode, width: 32),
+              label: switch (locale.languageCode) {
+                'ru' => sheetContext.l.apLanguageRu,
+                _ => sheetContext.l.apLanguageEn,
+              },
               active: locale.languageCode == current,
               onTap: () => Navigator.of(sheetContext).pop(locale),
             ),
@@ -281,56 +282,6 @@ Future<void> _pickLanguage(
     ),
   );
   if (picked != null) ref.read(settingsProvider.notifier).setLocale(picked);
-}
-
-class _LanguageTile extends StatelessWidget {
-  const _LanguageTile({
-    required this.locale,
-    required this.active,
-    required this.onTap,
-  });
-
-  final Locale locale;
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final name = switch (locale.languageCode) {
-      'ru' => context.l.apLanguageRu,
-      _ => context.l.apLanguageEn,
-    };
-    return SheetPanel(
-      // Close together: a full gap would tear a short list into separate
-      // plates.
-      gap: 3,
-      children: [
-        Pressable(
-          onTap: onTap,
-          scale: 0.98,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 17, 18, 17),
-            child: Row(
-              children: [
-                LanguageFlag(code: locale.languageCode, width: 32),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-                if (active) BloomIcon(Bi.check, size: 20, color: t.accent),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 /// The installed version on the right; a tap opens the update check with its

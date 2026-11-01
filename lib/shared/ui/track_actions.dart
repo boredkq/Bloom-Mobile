@@ -30,7 +30,6 @@ import 'bloom_icon.dart';
 import 'bloom_sheet.dart';
 import 'bloom_toast.dart';
 import 'platform_logo.dart';
-import 'pressable.dart';
 import 'track_info_sheet.dart';
 import 'track_swipes.dart';
 
@@ -517,15 +516,22 @@ class _PlaylistRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
     final lib = ref.watch(libraryProvider);
-    // Галочка — «всё это уже здесь»: у пачки половина треков в плейлисте ещё
-    // не отметка, добавить остальные по-прежнему есть смысл.
+    // A tick means all of it is here already: with half of a batch in the
+    // playlist there's still something to add.
     final ids = playlist.trackIds.toSet();
     final has =
         tracks.isNotEmpty && tracks.every((track) => ids.contains(track.id));
 
-    return Pressable(
+    return SheetRow(
+      leading: Cover(
+        url: playlist.cover,
+        size: 40,
+        covers: playlist.trackIds.map((id) => lib.tracks[id]?.cover),
+      ),
+      gap: 12,
+      label: playlist.name,
+      trailing: has ? const SheetTick() : null,
       onTap:
           onTap ??
           () {
@@ -534,29 +540,6 @@ class _PlaylistRow extends ConsumerWidget {
                 .addTracksToPlaylist(playlist.id, tracks);
             Navigator.of(context).pop();
           },
-      scale: 0.98,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
-          children: [
-            Cover(
-              url: playlist.cover,
-              size: 40,
-              covers: playlist.trackIds.map((id) => lib.tracks[id]?.cover),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                playlist.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-            if (has) BloomIcon(Bi.check, size: 18, color: t.accent),
-          ],
-        ),
-      ),
     );
   }
 }

@@ -38,71 +38,75 @@ class _TuneSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.bloom;
     final source = ref.watch(waveStoreProvider).source;
     final dislikes = ref.watch(waveStoreProvider).dislikes.length;
     // Именно через провайдер, а не `ym.activeToken()`: модульное состояние не
     // реактивно, и после входа шторка осталась бы с погашенной плиткой.
     final ymAuthed = ref.watch(ymAuthProvider).authed;
 
-    return SheetSurface(
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SheetHandle(),
-            // Плитки лежат прямо на шторке, без подложки и подписи: что это
-            // выбор площадки, видно по самим логотипам.
-            Padding(
-              // Боковой край — как у блока «Дизлайки» ниже, иначе плитки
-              // вылезают за его границы.
-              padding: const EdgeInsets.fromLTRB(
-                kSheetEdge,
-                12,
-                kSheetEdge,
-                10,
-              ),
-              child: Row(
-                children: [
-                  for (final s in kWaveSources) ...[
-                    if (s != kWaveSources.first) const SizedBox(width: 10),
-                    Expanded(
-                      child: _SourceTile(
-                        source: s,
-                        label: s.label10n(context.l),
-                        selected:
-                            source == s &&
-                            (s != MusicSource.yandex || ymAuthed),
-                        enabled: s != MusicSource.yandex || ymAuthed,
-                        // Без аккаунта Яндекса выбирать нечего, но и молчать
-                        // нельзя — говорим, куда идти за входом.
-                        onTap: s == MusicSource.yandex && !ymAuthed
-                            ? () => showToast(
-                                context,
-                                context.l.waveToastYmNoAuth,
-                                kind: ToastKind.warn,
-                              )
-                            : () => _pick(ref, s),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            SheetPanel(
+    return SheetShell(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Плитки лежат прямо на шторке, без подложки и подписи: что это
+          // выбор площадки, видно по самим логотипам.
+          Padding(
+            // Боковой край — как у блока «Дизлайки» ниже, иначе плитки
+            // вылезают за его границы.
+            padding: const EdgeInsets.fromLTRB(kSheetEdge, 12, kSheetEdge, 10),
+            child: Row(
               children: [
-                _DislikesRow(
-                  count: dislikes,
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    showWaveDislikesSheet(context);
-                  },
-                ),
+                for (final s in kWaveSources) ...[
+                  if (s != kWaveSources.first) const SizedBox(width: 10),
+                  Expanded(
+                    child: _SourceTile(
+                      source: s,
+                      label: s.label10n(context.l),
+                      selected:
+                          source == s && (s != MusicSource.yandex || ymAuthed),
+                      enabled: s != MusicSource.yandex || ymAuthed,
+                      // Без аккаунта Яндекса выбирать нечего, но и молчать
+                      // нельзя — говорим, куда идти за входом.
+                      onTap: s == MusicSource.yandex && !ymAuthed
+                          ? () => showToast(
+                              context,
+                              context.l.waveToastYmNoAuth,
+                              kind: ToastKind.warn,
+                            )
+                          : () => _pick(ref, s),
+                    ),
+                  ),
+                ],
               ],
             ),
-            const SizedBox(height: 8),
-          ],
-        ),
+          ),
+          SheetPanel(
+            children: [
+              SheetRow(
+                icon: Bi.dislike,
+                label: context.l.waveDislikes,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '$dislikes',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: t.muted),
+                    ),
+                    const SizedBox(width: 6),
+                    BloomIcon(Bi.altArrowRight, size: 18, color: t.muted),
+                  ],
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  showWaveDislikesSheet(context);
+                },
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -172,44 +176,5 @@ class _SourceTile extends StatelessWidget {
       ),
     );
     return enabled ? tile : Opacity(opacity: 0.45, child: tile);
-  }
-}
-
-class _DislikesRow extends StatelessWidget {
-  const _DislikesRow({required this.count, required this.onTap});
-
-  final int count;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Pressable(
-      onTap: onTap,
-      scale: 0.98,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-        child: Row(
-          children: [
-            BloomIcon(Bi.dislike, size: 22, color: t.text),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                context.l.waveDislikes,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-            Text(
-              '$count',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: t.muted),
-            ),
-            const SizedBox(width: 6),
-            BloomIcon(Bi.altArrowRight, size: 18, color: t.muted),
-          ],
-        ),
-      ),
-    );
   }
 }

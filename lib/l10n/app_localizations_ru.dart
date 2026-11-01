@@ -232,9 +232,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get homeSimilarTo => 'Похожие на';
 
   @override
-  String get homeSimilarArtist => 'Артист';
-
-  @override
   String get playerQueue => 'Очередь';
 
   @override

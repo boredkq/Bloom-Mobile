@@ -458,15 +458,12 @@ class _OfflineMark extends ConsumerWidget {
     if (status.pending) {
       return Padding(
         padding: const EdgeInsets.only(left: 8),
-        child: SizedBox(
-          width: 14,
-          height: 14,
-          child: CircularProgressIndicator(
-            value: status.progress,
-            strokeWidth: 1.6,
-            color: t.accent,
-            backgroundColor: t.ovlLine,
-          ),
+        child: BloomSpinner(
+          size: 14,
+          stroke: 1.6,
+          color: t.accent,
+          value: status.progress,
+          trackColor: t.ovlLine,
         ),
       );
     }
@@ -806,13 +803,14 @@ class _ArtistCardState extends State<ArtistCard> {
 }
 
 /// A release's type as the platform says it; an album unless it says otherwise.
-String releaseKind(AppLocalizations l, String? albumType) => switch (albumType) {
-  'single' => l.relSingle,
-  'ep' => l.relEp,
-  'compilation' => l.relCompilation,
-  'podcast' => l.relPodcast,
-  _ => l.relAlbum,
-};
+String releaseKind(AppLocalizations l, String? albumType) =>
+    switch (albumType) {
+      'single' => l.relSingle,
+      'ep' => l.relEp,
+      'compilation' => l.relCompilation,
+      'podcast' => l.relPodcast,
+      _ => l.relAlbum,
+    };
 
 /// The lines under an album's or a playlist's title: an album's "artist ·
 /// type" over its date (the year when that's all the platform says), a
