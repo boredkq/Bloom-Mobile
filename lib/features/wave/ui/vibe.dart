@@ -1,5 +1,5 @@
-/// My Wave's living circle (shaders/vibe.frag) on the stage's colour, as
-/// `Vibe` on the PC. The circle is drawn into a small square at 30 fps and
+/// My Wave's living circle on the stage's colour.
+/// The circle is drawn into a small square at 30 fps and
 /// stretched: it's all soft, the size doesn't show, and the cost is the same
 /// on any screen. Playing, it runs three times faster and takes the cover's
 /// colour; paused, it slows down and goes back to the theme's accent, in steps

@@ -1,4 +1,4 @@
-/// My Wave atop the home screen, the phone's turn of the PC's wave page: the
+/// My Wave atop the home screen: the
 /// living circle on a stage in the wave's colour fills the first screen, the
 /// rest of the home lies below it.
 ///

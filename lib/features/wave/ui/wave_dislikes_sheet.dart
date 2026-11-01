@@ -1,9 +1,5 @@
-/// «Дизлайки в волне» — порт `DislikesModal.tsx`. На телефоне это шторка, а не
-/// отдельный экран: список короткий и живёт ровно одним действием — снять
-/// метку.
-///
-/// Дизлайк у нас один на все площадки (см. `wave_store`), поэтому и списка
-/// здесь один, без десктопного склеивания «библиотечные + гостевые».
+/// Wave dislikes, a sheet: the list is short and has one action, removing a
+/// mark. A dislike is one across all platforms, so there's one list.
 library;
 
 import 'package:flutter/material.dart';
@@ -27,7 +23,7 @@ class _DislikesSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Новые сверху, как на ПК.
+    // Newest on top.
     final tracks = ref.watch(waveStoreProvider).dislikes;
 
     return SheetShell(

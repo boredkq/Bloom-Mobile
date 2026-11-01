@@ -1,32 +1,32 @@
-/// Общие типы «Волны» — как в `Wave` ПК.
+/// Shared wave types.
 library;
 
 import '../../core/entities/entities.dart';
 
-/// Чем набирается волна.
+/// What fills the wave.
 enum WaveMode {
-  /// «Моя волна»: сиды из библиотеки (самое слушаемое и лайки) + свои треки.
+  /// My wave: seeds from the library (most played and likes) plus own tracks.
   personal,
 
-  /// Волна по одному треку.
+  /// Wave by one track.
   track,
 
-  /// «Похожие на очередь»: сиды из текущей очереди.
+  /// Similar to queue: seeds from the current queue.
   queue,
 
-  /// Волна по артисту: сиды из его треков либо станция Яндекса.
+  /// Wave by artist: seeds from their tracks, or a Yandex station.
   artist,
 }
 
-/// Откуда волна берёт треки: радио [station] площадки [provider] (код базы:
-/// `sc`, `ytm`, `ym`).
+/// Where the wave takes tracks: radio [station] of platform [provider] (a
+/// database code: `sc`, `ytm`, `ym`).
 class WaveSeed {
   const WaveSeed(this.provider, this.station);
 
   final String provider;
   final String station;
 
-  /// Ключ курсора — как у ПК.
+  /// Cursor key.
   String get key => '$provider|$station';
 
   @override
@@ -39,8 +39,7 @@ class WaveSeed {
   int get hashCode => Object.hash(provider, station);
 }
 
-/// Идущая волна; переживает перезапуск в kv `wave.session` того же вида, что
-/// на ПК.
+/// The running wave; survives a restart in kv `wave.session`.
 class WaveRun {
   WaveRun({
     required this.mode,
@@ -54,19 +53,19 @@ class WaveRun {
 
   final WaveMode mode;
 
-  /// С чего начата: `artist:<ключ>`, `track:<id>`; пусто у «Моей волны» и
-  /// очереди.
+  /// What it started from: `artist:<key>`, `track:<id>`; empty for My wave and
+  /// the queue.
   final String about;
 
-  /// Одна станция, которая учится сама (Яндекс): её порядок не трогаем.
+  /// One self-learning station (Yandex): its order stays untouched.
   final bool native;
 
   List<WaveSeed> seeds;
 
-  /// Услышанное в этой волне, старое первым.
+  /// What's been heard in this wave, oldest first.
   final List<String> played;
 
-  /// Ключ артиста → дослушали (+3) и пролистнули (−2) в этой волне.
+  /// Artist key to finished (+3) and skipped (−2) in this wave.
   final Map<String, int> bonus;
 
   Map<String, dynamic> toJson() => {
@@ -109,19 +108,19 @@ class WaveRun {
   }
 }
 
-/// Кандидат в пачку.
+/// A batch candidate.
 class WaveCandidate {
   WaveCandidate(this.track, this.rank, this.artists, {this.library = false});
 
   final Track track;
 
-  /// Место в своей станции: 0 — верх … 20.
+  /// Place in its station: 0 is the top … 20.
   final double rank;
 
-  /// Ключи артистов трека (`artistKeys`).
+  /// The track's artist keys (`artistKeys`).
   final Set<String> artists;
 
-  /// Свой трек из библиотеки, подмешанный в «Мою волну».
+  /// An own library track mixed into My wave.
   final bool library;
 
   double score = 0;
@@ -129,8 +128,9 @@ class WaveCandidate {
   String get id => track.id;
 }
 
-/// Ниже стольких секунд И ниже доли 0,3 — пролистнули; от 0,85 — дослушали.
-/// Оба порога вместе: у трека на десять минут первая минута — ещё не оценка.
+/// Below this many seconds AND below a 0.3 share is skipped; from 0.85 is
+/// finished. Both thresholds together: on a ten-minute track the first minute
+/// isn't yet a verdict.
 int completionStep(Duration played, Duration total) {
   if (total <= Duration.zero) return 0;
   final ratio = played.inMilliseconds / total.inMilliseconds;

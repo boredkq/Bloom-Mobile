@@ -1,8 +1,6 @@
-/// Пачка волны из того, что отдали станции, — `Wave::pick` ПК.
-///
-/// Чистая функция над снимком ([WavePick]): она решает, что человек услышит,
-/// и проверять её надо списком, а не на слух. Сеть и постановка в очередь —
-/// в `wave_controller`.
+/// A wave batch from what stations gave. A pure function over a snapshot
+/// ([WavePick]): it decides what's heard, and should be checked with lists, not
+/// by ear. Network and queueing are in the controller.
 library;
 
 import 'dart:math';
@@ -12,24 +10,26 @@ import '../../shared/util/taste.dart';
 import '../../shared/util/track_dedup.dart';
 import 'wave_types.dart';
 
-/// Сколько треков в пачке.
+/// Tracks in a batch.
 const int kWaveBatch = 20;
 
-/// Осталось столько впереди — пора просить следующую (у станции Яндекса — 4).
+/// With this many left ahead it's time to ask for more (4 for a Yandex
+/// station).
 const int kWaveRefillAt = 5;
 const int kWaveRefillAtNative = 4;
 
-/// Не больше стольких треков одного артиста в пачке.
+/// At most this many tracks by one artist in a batch.
 const int kWaveMaxPerArtist = 2;
 
-/// Доля своих треков в «Моей волне».
+/// Share of own tracks in My wave.
 const double kWaveFamiliarShare = 0.2;
 
-/// Слушали за столько дней — снова не предлагаем; показывали за столько — тоже.
+/// Played within this many days isn't offered again; shown within this many
+/// neither.
 const int kWaveRecentDays = 7;
 const int kWaveShownDays = 14;
 
-/// Снимок, по которому собирается пачка.
+/// Snapshot a batch is built from.
 class WavePick {
   WavePick({
     required this.run,
@@ -46,31 +46,30 @@ class WavePick {
 
   final WaveRun? run;
 
-  /// Очередь плеера: что в ней, второй раз не встаёт (ни тем же id, ни
-  /// перезаливом).
+  /// The player's queue: what's in it doesn't go in twice, by id or as a
+  /// reupload.
   final List<Track> queue;
   final String? currentId;
 
-  /// Треки библиотеки — из них «Моя волна» подмешивает свои.
+  /// Library tracks, from which My wave mixes in own ones.
   final List<Track> library;
   final bool Function(String id) inLibrary;
   final bool Function(String id) isFav;
   final bool Function(String id) isDisliked;
 
-  /// Звучал ли трек за последние N дней.
+  /// Whether a track played in the last N days.
   final bool Function(String id, int days) playedWithin;
 
-  /// Что волна показывала за [kWaveShownDays].
+  /// What the wave showed within [kWaveShownDays].
   final Set<String> shown;
   final Random random;
 }
 
-/// Пачка из порций станций (по порции на сид). Станция, которая учится сама,
-/// сохраняет свой порядок — уходит только то, что уже в очереди или с
-/// дизлайком. У остальных: ничего слышанного за неделю, показанного за две или
-/// уже лежащего в библиотеке (свои приходят только долей «Моей волны»); дальше
-/// по месту в станции, лайкам и тому, чему волна научилась; артист — не больше
-/// двух раз и никогда дважды подряд.
+/// A batch from stations' portions, one per seed. A self-learning station keeps
+/// its order, losing only what's queued or disliked. For others: nothing heard
+/// in a week, shown in two or in the library (own come only as My wave's
+/// share); then by place in the station, likes and what the wave learned; an
+/// artist at most twice and never twice in a row.
 List<Track> pickBatch(
   List<List<Track>> pages,
   WavePick ctx, {
@@ -109,7 +108,7 @@ List<Track> pickBatch(
   final personal = run?.mode == WaveMode.personal;
   final played = {...?run?.played};
   if (personal) {
-    // Доля своих: не слышанных последние три дня.
+    // Own share: not heard in the last three days.
     final lib = [
       for (final t in ctx.library)
         if (!queued.contains(t.id) &&
@@ -141,7 +140,7 @@ List<Track> pickBatch(
     for (final c in cands)
       if (passes(c, relaxed: false)) c,
   ];
-  // Всё слышали или показывали недавно: лучше повтор, чем тишина.
+  // All heard or shown recently: a repeat beats silence.
   if (kept.isEmpty) {
     kept = [
       for (final c in cands)
@@ -162,10 +161,10 @@ List<Track> pickBatch(
     if (!c.library) s += 1;
     c.score = s + ctx.random.nextDouble() * 2;
   }
-  // Сортировка устойчивая: `List.sort` в Dart — нет.
+  // A stable sort: Dart's `List.sort` isn't.
   kept = _stableSorted(kept, (a, b) => b.score.compareTo(a.score));
 
-  // «Моя волна»: один свой после каждых четырёх новых.
+  // My wave: one own after every four new.
   if (personal) {
     final fresh = [
       for (final c in kept)
@@ -186,7 +185,7 @@ List<Track> pickBatch(
     }
   }
 
-  // Те, что сверх потолка, ждут в конце — на случай короткой пачки.
+  // Those over the cap wait at the end, in case of a short batch.
   final spaced = <WaveCandidate>[];
   final later = <WaveCandidate>[];
   final cap = ArtistCap(kWaveMaxPerArtist);
@@ -213,8 +212,8 @@ List<T> _stableSorted<T>(List<T> list, int Function(T, T) compare) {
   return [for (final x in indexed) x.$2];
 }
 
-/// Сиды поровну по списку: все из ≤8, 8 из ≤15, иначе 10. Каждый сид — запрос
-/// или два; больше десяти стартуют медленно и мало что добавляют.
+/// Seeds evenly along the list: all of ≤8, 8 of ≤15, else 10. Each seed is a
+/// request or two; more than ten start slowly and add little.
 List<T> spreadSeeds<T>(List<T> all) {
   final n = all.length;
   final want = n <= 8
