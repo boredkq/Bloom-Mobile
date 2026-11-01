@@ -1,8 +1,6 @@
-/// Яндекс.Музыка как [MusicProvider]: тонкий слой поверх порта API
-/// (`yandex.dart`), который приводит `YmRaw*` к общим сущностям.
-///
-/// Вся сетевая логика и её гочи живут этажом ниже — здесь только маппинг и
-/// сборка страниц. Зеркало `sc_provider.dart`.
+/// Yandex Music as a [MusicProvider]: a thin layer over the API, mapping
+/// `YmRaw*` to shared entities. All network logic and its gotchas live a floor
+/// below; here it's mapping and building pages.
 library;
 
 import 'dart:async';
@@ -12,20 +10,18 @@ import '../../core/providers/music_provider.dart';
 import 'models.dart';
 import 'yandex.dart' as ym;
 
-/// Сквозные id с префиксом источника — те же, что на ПК:
-///   трек     → `ym:<id>`
-///   артист   → `ym:artist:<id>`
-///   альбом   → `ym:album:<id>`
-///   плейлист → `ym:pl:<owner>~<kind>` (owner+kind нужны запросу плейлиста)
-///   публичный плейлист нового формата → `ym:plu:<uuid>`
+/// Global ids with a source prefix: a track is `ym:<id>`, an artist
+/// `ym:artist:<id>`, an album `ym:album:<id>`, a playlist
+/// `ym:pl:<owner>~<kind>` (the playlist request needs owner and kind), and a
+/// new format public playlist `ym:plu:<uuid>`.
 String ymTrackId(String id) => 'ym:$id';
 String ymArtistId(String id) => 'ym:artist:$id';
 String ymAlbumId(String id) => 'ym:album:$id';
 String ymPlaylistId(String owner, String kind) => 'ym:pl:$owner~$kind';
 String ymPlaylistUuidId(String uuid) => 'ym:plu:$uuid';
 
-/// Разобрать `ym:pl:<owner>~<kind>` обратно (по ПОСЛЕДНЕМУ `~`: в логине
-/// владельца тильда встречается, в kind — нет).
+/// Parses `ym:pl:<owner>~<kind>` back, by the LAST `~`: a tilde occurs in an
+/// owner's login, not in kind.
 ({String owner, String kind})? parseYmPlaylistId(String id) {
   if (!id.startsWith('ym:pl:')) return null;
   final body = id.substring('ym:pl:'.length);
@@ -34,12 +30,12 @@ String ymPlaylistUuidId(String uuid) => 'ym:plu:$uuid';
   return (owner: body.substring(0, i), kind: body.substring(i + 1));
 }
 
-/// Разобрать `ym:plu:<uuid>` обратно в uuid (новый формат).
+/// Parses `ym:plu:<uuid>` back to a uuid (new format).
 String? parseYmPlaylistUuidId(String id) =>
     id.startsWith('ym:plu:') ? id.substring('ym:plu:'.length) : null;
 
-/// Числовой id из сквозного (`ym:123`, `ym:artist:123`, `ym:album:123`).
-/// Пустая строка — id не разобрался, провайдер тогда просто ничего не найдёт.
+/// Numeric id from a global one (`ym:123`, `ym:artist:123`, `ym:album:123`).
+/// Empty means unparsed, and the provider then finds nothing.
 String ymNumericId(String entityId) {
   final last = entityId.split(':').last;
   return RegExp(r'^\d+$').hasMatch(last) ? last : '';
@@ -61,12 +57,11 @@ Track trackFromYm(YmRawTrack t) => Track(
     for (final a in t.artists)
       (name: a.name, id: a.id.isEmpty ? null : ymArtistId(a.id)),
   ],
-  // Стрим резолвится по id трека, поэтому сырьё площадки нужно ровно для
-  // одного: не гонять запрос за треком, который Яндекс сам пометил
-  // недоступным.
+  // The stream resolves by track id, so the platform's raw data is for one
+  // thing: not requesting a track Yandex marked unavailable.
   sourceData: {'available': t.available},
-  // Чартовые поля есть только у ответа чарта; у прочих запросов места нет — и
-  // интерфейс не рисует ни цифры, ни стрелки.
+  // Chart fields exist only in a chart's answer; elsewhere there's no position,
+  // and the UI draws no number or arrow.
   chartPos: t.chartPos > 0 ? t.chartPos : null,
   chartShift: t.chartShift,
   chartNew: t.chartNew,
@@ -83,8 +78,8 @@ Playlist albumFromYm(YmRawAlbum a) => Playlist(
   id: ymAlbumId(a.id),
   title: a.title,
   cover: _blankToNull(a.cover),
-  // У Яндекса отсутствующий счётчик приходит нулём — «0 треков» под альбомом с
-  // четырнадцатью хуже, чем ничего.
+  // A missing count arrives as zero: 0 tracks under a 14-track album is worse
+  // than nothing.
   trackCount: a.trackCount > 0 ? a.trackCount : null,
   ownerName: _blankToNull(a.artist),
   ownerAvatar: _blankToNull(a.artistCover),
@@ -107,13 +102,13 @@ Playlist playlistFromYm(YmRawPlaylist p) => Playlist(
   source: MusicSource.yandex,
 );
 
-/// Внутренний пейджер поиска: страницы Яндекса 0-индексные, ~24 трека в
-/// каждой, а общий стор считает `offset` шагами под SoundCloud — маппинг
-/// offset→page разъехался бы. Порт `_pager` с десктопа.
+/// Search's inner pager: Yandex's pages are 0-indexed with ~24 tracks each,
+/// while the shared store counts `offset` in SoundCloud steps, and offset to
+/// page mapping would drift.
 String? _pagerQuery;
 int _pagerPage = 0;
 
-/// Станция → batch-id её последней порции: отзыв идёт с ним.
+/// Station to its last batch's id, sent with feedback.
 final Map<String, String> _batches = {};
 
 class YandexProvider extends MusicProvider {
@@ -122,8 +117,8 @@ class YandexProvider extends MusicProvider {
   @override
   MusicSource get source => MusicSource.yandex;
 
-  /// До входа в аккаунт Яндекс не появляется ни в переключателе площадок, ни в
-  /// «Все источники»: без токена API отвечает 401 вообще на всё.
+  /// Before login Yandex doesn't show in the platform picker or all sources:
+  /// with no token the API answers 401 to everything.
   @override
   bool get isEnabled => ym.activeToken() != null;
 
@@ -132,18 +127,18 @@ class YandexProvider extends MusicProvider {
     String query, {
     SearchSort sort = SearchSort.relevance,
   }) async {
-    // Сбрасываем пейджер: следующий loadMoreTracks начнёт со страницы 1.
+    // Resets the pager: the next loadMoreTracks starts from page 1.
     _pagerQuery = query;
     _pagerPage = 0;
-    // Сортировки у поиска Яндекса нет — параметр приходит от общего UI и здесь
-    // просто не на что влиять.
+    // Yandex search has no sort: the parameter comes from the shared UI, with
+    // nothing to affect here.
     final d = await ym.search(query);
     return SearchResults(
       tracks: d.tracks.map(trackFromYm).toList(),
       artists: d.artists.map(artistFromYm).toList(),
       albums: d.albums.map(albumFromYm).toList(),
       playlists: d.playlists.map(playlistFromYm).toList(),
-      // Страница у Яндекса ~24 трека; пришла полная — значит есть ещё.
+      // A Yandex page has ~24 tracks; a full one means there's more.
       tracksHasMore: d.tracks.length >= 20,
     );
   }
@@ -154,8 +149,8 @@ class YandexProvider extends MusicProvider {
     int offset, {
     SearchSort sort = SearchSort.relevance,
   }) async {
-    // `offset` игнорируем (он SC-калибра) и ведём свой счётчик страниц.
-    // Рассинхрон запроса — начинаем заново.
+    // `offset` is ignored (it's SoundCloud-sized), with a page counter of my
+    // own. On a query mismatch it starts over.
     if (_pagerQuery != query) {
       _pagerQuery = query;
       _pagerPage = 0;
@@ -170,7 +165,7 @@ class YandexProvider extends MusicProvider {
 
   @override
   Future<ResolvedUrl?> resolveUrl(String url) async {
-    // Чужую ссылку отдаём дальше по реестру, не тратя на неё запрос.
+    // A foreign link goes on through the registry with no request spent.
     if (!RegExp(r'music\.yandex\.[a-z]+', caseSensitive: false).hasMatch(url)) {
       return null;
     }
@@ -178,8 +173,8 @@ class YandexProvider extends MusicProvider {
     switch (r.kind) {
       case 'track':
         return ResolvedTrack(trackFromYm(r.track!));
-      // Сущность приходит с треками, но без своего id — id берём из самой
-      // ссылки, чтобы страницу можно было дозагрузить (getAlbum/getPlaylist).
+      // The entity comes with tracks but no id of its own: I take it from the
+      // link, so the page can load (getAlbum, getPlaylist).
       case 'album':
         final id = ym.reAlbum.firstMatch(url)?.group(1);
         if (id == null) return null;
@@ -236,8 +231,8 @@ class YandexProvider extends MusicProvider {
     return trackFromYm(await ym.trackOne(numeric));
   }
 
-  /// Похожие для витрин главной. Под префиксом `ym:` живут и артисты, альбомы,
-  /// плейлисты — похожих у них нет, в сеть за ними не ходим.
+  /// Similar for home shelves. Artists, albums and playlists also live under
+  /// the `ym:` prefix, with no similar and no network trip.
   @override
   Future<List<Track>?> getSimilarTracks(String seedId) async {
     if (!RegExp(r'^ym:\d+$').hasMatch(seedId)) return const [];
@@ -252,7 +247,7 @@ class YandexProvider extends MusicProvider {
     return id.isNotEmpty && isEnabled ? 'track:$id' : '';
   }
 
-  /// Станция rotor: идёт дальше от последнего трека, который отдала.
+  /// A rotor station: it goes on from the last track it gave.
   @override
   Future<StationPage> station(String station, String cursor) async {
     try {
@@ -267,7 +262,7 @@ class YandexProvider extends MusicProvider {
     }
   }
 
-  /// Как получится: потерянный отзыв лишь чуть меньше научит станцию.
+  /// Best effort: lost feedback just teaches the station a bit less.
   @override
   void stationFeedback(
     String station,
@@ -299,9 +294,8 @@ class YandexProvider extends MusicProvider {
         avatar: _blankToNull(e.cover),
         source: MusicSource.yandex,
       ),
-      // «Популярные» — из brief-info; «Треки» — первая страница дискографии,
-      // остальное — «Загрузить ещё» через [getArtistTracksPage]. Раскладка
-      // страницы артиста у SoundCloud.
+      // Popular from brief-info; tracks are the discography's first page, with
+      // more through Load more ([getArtistTracksPage]).
       topTracks: e.popularTracks.map(trackFromYm).toList(),
       tracks: e.tracks.map(trackFromYm).toList(),
       albums: e.albums.map(albumFromYm).toList(),
@@ -313,8 +307,8 @@ class YandexProvider extends MusicProvider {
     );
   }
 
-  /// Догрузка «Треков» артиста. Курсор — `<id артиста>:<номер страницы>`
-  /// (см. [getArtist]).
+  /// Loads an artist's tracks. The cursor is `<artist id>:<page number>` (see
+  /// [getArtist]).
   @override
   Future<TrackPage?> getArtistTracksPage(String cursor) async {
     final m = RegExp(r'^(\d+):(\d+)$').firstMatch(cursor);
@@ -379,8 +373,8 @@ class YandexProvider extends MusicProvider {
   Future<PlayableStream?> resolveStream(Track track) async =>
       PlayableStream(url: await _streamUrl(track));
 
-  /// Скачивается ровно то же, что играет: у Яндекса это цельный mp3, а не
-  /// плейлист кусков.
+  /// What downloads is just what plays: on Yandex it's a whole mp3, not a
+  /// playlist of chunks.
   @override
   bool canDownload(Track track) => track.sourceData?['available'] != false;
 
@@ -388,8 +382,8 @@ class YandexProvider extends MusicProvider {
   Future<PlayableStream?> resolveDownload(Track track) async =>
       PlayableStream(url: await _streamUrl(track));
 
-  /// Подписанная ссылка живёт минуты — держим кеш 4, как на десктопе: иначе
-  /// пауза с последующим play уже требовала бы нового резолва.
+  /// A signed link lives minutes, so a 4 minute cache: otherwise a pause and
+  /// play would need a new resolve.
   Future<String> _streamUrl(Track track) async {
     final id = ymNumericId(track.id);
     if (id.isEmpty) throw const YmException('ym.err.trackNotFound');
@@ -406,6 +400,6 @@ class YandexProvider extends MusicProvider {
 const Duration _streamTtl = Duration(minutes: 4);
 final Map<String, ({String url, DateTime at})> _streamCache = {};
 
-/// Забыть подписанные ссылки — при выходе из аккаунта они всё равно
-/// протухнут, но держать их в памяти после logout незачем.
+/// Forgets signed links: on logout they'd expire anyway, with no reason to hold
+/// them in memory.
 void clearYmStreamCache() => _streamCache.clear();

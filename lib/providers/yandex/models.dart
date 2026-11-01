@@ -1,9 +1,8 @@
-/// Типы выдачи Яндекс.Музыки — зеркало структур из десктопного `yandex.rs`
-/// (там они сериализуются в camelCase для фронта; здесь это просто поля).
+/// Yandex Music result types.
 library;
 
-/// Ошибка Яндекса. `code` — ключ из набора `ym.err.*`, который UI переводит
-/// сам (см. `describeYmFailure` в экране настроек), либо текст от площадки.
+/// A Yandex error. `code` is a key from `ym.err.*`, translated by the UI (see
+/// `describeYmFailure`), or the platform's text.
 class YmException implements Exception {
   final String code;
   const YmException(this.code);
@@ -11,9 +10,8 @@ class YmException implements Exception {
   String toString() => code;
 }
 
-/// Дефолты полей — порт `yandex.rs`: подставляются, только когда площадка не
-/// отдала поле вовсе. В UI попадают настолько редко, что заводить под них
-/// ключи перевода не стали (то же решение, что с `Unknown` у SoundCloud).
+/// Field defaults, used only when the platform gave no field at all. They reach
+/// the UI so rarely that they get no translation keys.
 const String kYmUntitled = 'Без названия';
 const String kYmUnknownArtist = 'Неизвестен';
 const String kYmDash = '—';
@@ -23,31 +21,31 @@ class YmRawTrack {
   final String title;
   final String artist;
 
-  /// id первого артиста (для перехода на страницу артиста).
+  /// First artist's id, to go to their page.
   final String artistId;
 
   /// Every artist with their id, for the artist links.
   final List<({String id, String name})> artists;
 
-  /// Полный https-URL обложки 400x400 (или пусто).
+  /// Full https URL of a 400x400 cover, or empty.
   final String cover;
   final Duration duration;
 
-  /// Год релиза (из первого альбома трека) или пусто.
+  /// Release year from the track's first album, or empty.
   final String year;
 
-  /// Полная дата релиза альбома («2024-05-13T00:00:00+03:00»), если она в
-  /// выдаче есть: у Яндекса рядом с `year` часто лежит и `releaseDate`.
+  /// Album's full release date (2024-05-13T00:00:00+03:00), if in the results:
+  /// Yandex often has `releaseDate` beside `year`.
   final String releaseDate;
   final bool available;
 
-  /// Место в чарте (1-based); 0 — трек пришёл не из чарта.
+  /// Chart position (1-based); 0 if the track isn't from a chart.
   final int chartPos;
 
-  /// Сдвиг места за сутки: >0 — поднялся, <0 — опустился, 0 — без изменений.
+  /// Daily position change: >0 rose, <0 fell, 0 none.
   final int chartShift;
 
-  /// Новичок чарта (`progress: "new"`) — вместо стрелки «нов.».
+  /// New in the chart (`progress: "new"`): shows new instead of an arrow.
   final bool chartNew;
 
   const YmRawTrack({
@@ -66,8 +64,8 @@ class YmRawTrack {
     this.chartNew = false,
   });
 
-  /// Тот же трек с местом в чарте: чартовые поля лежат не в самом треке, а в
-  /// обёртке элемента чарта, и проставляются поверх разобранного.
+  /// The same track with a chart position: chart fields lie in the chart item's
+  /// wrapper, not the track, and go on top of the parsed result.
   YmRawTrack withChart({
     required int pos,
     required int shift,
@@ -108,19 +106,20 @@ class YmRawAlbum {
   final String cover;
   final String year;
 
-  /// Полная дата релиза — см. [YmRawTrack.releaseDate].
+  /// Full release date; see [YmRawTrack.releaseDate].
   final String releaseDate;
   final int trackCount;
 
-  /// id первого артиста — переход на его страницу с карточки релиза.
+  /// First artist's id, to go to their page from a release card.
   final String artistId;
 
-  /// Фото первого артиста 1000×1000 — крупный круг карточки релиза. Крупнее
-  /// обложек: круг почти во всю ширину карточки, и 400×400 там мылит.
+  /// First artist's 1000×1000 photo for a release card's large circle. Larger
+  /// than covers: the circle is nearly the card's width, and 400×400 is soft
+  /// there.
   final String artistCover;
 
-  /// Тип релиза от Яндекса: `single` | `compilation` | `podcast` | …; пусто —
-  /// обычный альбом.
+  /// Yandex's release type: `single`, `compilation`, `podcast`…; empty is a
+  /// usual album.
   final String albumType;
 
   const YmRawAlbum({
@@ -153,32 +152,32 @@ class YmRawPlaylist {
   });
 }
 
-/// Страница сущности (альбом/артист/плейлист): шапка + треки + (для артиста)
-/// его альбомы и похожие исполнители.
+/// An entity page (album, artist, playlist): a header, tracks and, for an
+/// artist, albums and similar artists.
 class YmEntity {
   final String title;
   final String subtitle;
   final String cover;
 
-  /// Основной список треков (альбом/плейлист — все; артист — дискография из
-  /// `/artists/{id}/tracks`, секция «Треки»).
+  /// Main track list: all for an album or playlist; for an artist the
+  /// discography from `/artists/{id}/tracks`.
   final List<YmRawTrack> tracks;
 
-  /// Только у артиста: «Популярные» из brief-info.
+  /// Artist only: popular tracks from brief-info.
   final List<YmRawTrack> popularTracks;
   final List<YmRawAlbum> albums;
 
-  /// Год выпуска (альбом). У артиста/плейлиста пусто.
+  /// Release year (album); empty for an artist or playlist.
   final String year;
 
-  /// Полная дата релиза альбома — см. [YmRawTrack.releaseDate].
+  /// Album's full release date; see [YmRawTrack.releaseDate].
   final String releaseDate;
 
-  /// Аватар владельца/артиста для строки владельца в шапке
-  /// (альбом → `artists[0]`).
+  /// Owner's or artist's avatar for the header's owner row (an album takes
+  /// `artists[0]`).
   final String ownerAvatar;
 
-  /// Только у артиста: похожие исполнители из brief-info.
+  /// Artist only: similar artists from brief-info.
   final List<YmRawArtist> similarArtists;
 
   const YmEntity({
@@ -196,29 +195,29 @@ class YmEntity {
     this.tracksTotal,
   });
 
-  /// Только у артиста: номер следующей страницы «Треков»; `null` — дискография
-  /// уместилась в первую.
+  /// Artist only: next tracks page number; `null` if the discography fit the
+  /// first.
   final int? tracksNextPage;
 
-  /// Только у артиста: всего треков в «Треках» (`pager.total`) — счётчик в
-  /// шапке, пока догружено не всё.
+  /// Artist only: total tracks (`pager.total`), for the header's count until
+  /// all are loaded.
   final int? tracksTotal;
 }
 
-/// Страница «Треков» артиста (догрузка по «Загрузить ещё»).
+/// A page of an artist's tracks, loaded by Load more.
 class YmTracksPage {
   const YmTracksPage({this.tracks = const [], this.nextPage, this.total});
 
   final List<YmRawTrack> tracks;
 
-  /// Номер следующей страницы; `null` — это была последняя.
+  /// Next page number; `null` if this was the last.
   final int? nextPage;
 
-  /// Всего треков у артиста; `null` — Яндекс не отдал pager.
+  /// The artist's total tracks; `null` if Yandex gave no pager.
   final int? total;
 }
 
-/// Результат поиска по всем категориям.
+/// Search result across all categories.
 class YmSearch {
   final List<YmRawTrack> tracks;
   final List<YmRawArtist> artists;
@@ -233,7 +232,7 @@ class YmSearch {
   });
 }
 
-/// Результат резолва ссылки music.yandex.ru — порт `YmResolved` (tag `kind`).
+/// Result of resolving a music.yandex.ru link (tag `kind`).
 class YmResolved {
   /// `track` | `album` | `artist` | `playlist`.
   final String kind;
@@ -248,8 +247,8 @@ class YmResolved {
       track = null;
 }
 
-/// Батч rotor-станции: сами треки и id пачки, который потом уходит обратно в
-/// фидбек — по нему станция сопоставляет событие с тем, что она предложила.
+/// A rotor station batch: the tracks and a batch id that goes back in feedback,
+/// by which the station matches an event to what it offered.
 class YmWaveBatch {
   final List<YmRawTrack> tracks;
   final String batchId;
@@ -257,16 +256,16 @@ class YmWaveBatch {
   const YmWaveBatch({this.tracks = const [], this.batchId = ''});
 }
 
-/// Код устройства OAuth device-flow (шаг 1).
+/// OAuth device-flow device code (step 1).
 class YmDeviceCode {
   final String deviceCode;
   final String userCode;
   final String verificationUrl;
 
-  /// Пауза между опросами токена.
+  /// Pause between token polls.
   final Duration interval;
 
-  /// Сколько живёт код.
+  /// Code lifetime.
   final Duration expiresIn;
 
   const YmDeviceCode({
@@ -278,9 +277,10 @@ class YmDeviceCode {
   });
 }
 
-/// Исход одного опроса токена: либо ещё ждём подтверждения, либо токен готов.
+/// One token poll's outcome: still waiting for confirmation, or the token is
+/// ready.
 class YmPollOutcome {
-  /// null — пользователь ещё не подтвердил, опросить позже.
+  /// null: the user hasn't confirmed, poll later.
   final String? token;
   const YmPollOutcome.pending() : token = null;
   const YmPollOutcome.token(String this.token);

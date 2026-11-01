@@ -1,9 +1,8 @@
-/// Типы выдачи SoundCloud — зеркало структур из десктопного `soundcloud.rs`
-/// (там они сериализуются в camelCase для фронта; здесь это просто поля).
+/// SoundCloud result types.
 library;
 
-/// Ошибка SC. `code` — ключ i18n-словаря (`sc.err.*` / `search.err.*`) либо
-/// текст ошибки от самого SC, как в Rust-версии.
+/// A SoundCloud error. `code` is a dictionary key (`sc.err.*`, `search.err.*`)
+/// or the platform's own error text.
 class ScException implements Exception {
   final String code;
   const ScException(this.code);
@@ -20,7 +19,7 @@ class ScRawTrack {
   final int duration;
   final String? permalink;
 
-  /// Сырой `media` SC (transcodings) — нужен для стрима/скачивания.
+  /// Raw `media` (transcodings), for streaming and downloading.
   final Map<String, dynamic>? media;
   final String? genre;
   final List<String> tags;
@@ -34,12 +33,12 @@ class ScRawTrack {
   final bool artistVerified;
   final String year;
 
-  /// Та же дата, из которой вырезан [year], но целиком (`release_date`, иначе
-  /// `created_at`) — чтобы «Инфо о треке» показало день и месяц, когда они есть.
+  /// The date [year] was cut from, whole (`release_date`, else `created_at`),
+  /// so track info can show day and month when known.
   final String releaseDate;
 
-  /// `policy` из выдачи api-v2 (`ALLOW` / `MONETIZE` / `BLOCK` / `SNIP`).
-  /// Нужен волне: подбор не должен предлагать то, что заведомо не заиграет.
+  /// `policy` from api-v2 (`ALLOW`, `MONETIZE`, `BLOCK`, `SNIP`). For the wave:
+  /// picks shouldn't offer what surely won't play.
   final String? policy;
 
   const ScRawTrack({
@@ -93,15 +92,15 @@ class ScRawPlaylist {
   final String artist;
   final String? artwork;
 
-  /// Аватар владельца (`user.avatar_url`) — для строки владельца в hero.
+  /// Owner's avatar (`user.avatar_url`), for the owner row in a hero.
   final String? artistAvatar;
   final int trackCount;
   final int duration;
 
-  /// Год выпуска: `release_date`, иначе `created_at` (как у трека).
+  /// Release year: `release_date`, else `created_at`.
   final String year;
 
-  /// Та же дата целиком — см. [ScRawTrack.releaseDate].
+  /// The same date whole; see [ScRawTrack.releaseDate].
   final String releaseDate;
   final String? permalink;
 
@@ -187,15 +186,15 @@ class ScPlaylistFull {
   final String? cover;
   final String ownerName;
 
-  /// Аватар владельца (для строки владельца в hero).
+  /// Owner's avatar, for the owner row in a hero.
   final String? ownerAvatar;
   final int? ownerId;
   final int trackCount;
 
-  /// Год выпуска (release_date / created_at).
+  /// Release year (release_date or created_at).
   final String year;
 
-  /// Та же дата целиком — см. [ScRawTrack.releaseDate].
+  /// The same date whole; see [ScRawTrack.releaseDate].
   final String releaseDate;
 
   const ScPlaylistFull({
@@ -211,7 +210,7 @@ class ScPlaylistFull {
   });
 }
 
-/// Результат резолва SC-ссылки — поля по `kind`.
+/// Result of resolving a SoundCloud link, with fields by `kind`.
 class ScResolved {
   final String kind; // "track" | "artist" | "playlist" | "album"
   final ScRawTrack? track;

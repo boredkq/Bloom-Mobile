@@ -1,8 +1,6 @@
-/// SoundCloud как [MusicProvider]: тонкий слой поверх порта api-v2
-/// (`soundcloud.dart`), который приводит `ScRaw*` к общим сущностям.
-///
-/// Вся сетевая логика и её гочи живут этажом ниже — здесь только маппинг и
-/// сборка страниц.
+/// SoundCloud as a [MusicProvider]: a thin layer over api-v2, mapping `ScRaw*`
+/// to shared entities. All network logic and its gotchas live a floor below;
+/// here it's mapping and building pages.
 library;
 
 import '../../core/entities/entities.dart';
@@ -12,14 +10,14 @@ import 'models.dart';
 import 'sc_sources.dart' show similarTracks, waveRelated, waveStation;
 import 'soundcloud.dart' as sc;
 
-/// Сквозные id — как на ПК: `sc:123`, `sc:artist:123`, `sc:set:123`. Альбом и
-/// плейлист у SoundCloud — один «set», различает их [Playlist.isAlbum].
+/// Global ids: `sc:123`, `sc:artist:123`, `sc:set:123`. An album and a playlist
+/// are one set on SoundCloud, told apart by [Playlist.isAlbum].
 String scTrackId(int id) => 'sc:$id';
 String scArtistId(int id) => 'sc:artist:$id';
 String scSetId(int id) => 'sc:set:$id';
 
-/// Числовой id обратно из сквозного. Небезопасные значения дают 0 — провайдер
-/// тогда просто ничего не найдёт, вместо падения.
+/// Numeric id back from a global one. Unsafe values give 0: the provider then
+/// finds nothing rather than crashing.
 int scNumericId(String entityId) => int.tryParse(entityId.split(':').last) ?? 0;
 
 String? _blankToNull(String s) => s.isEmpty ? null : s;
@@ -43,13 +41,14 @@ Track trackFromSc(ScRawTrack t) => Track(
   artistAvatar: t.artistAvatar,
   artistVerified: t.artistVerified,
   creditedArtist: _blankToNull(t.creditedArtist),
-  // Стрим резолвится из `media.transcodings` — держим сырьё при треке.
+  // The stream resolves from `media.transcodings`, so I keep the raw data with
+  // the track.
   sourceData: t.media,
 );
 
 Artist artistFromSc(ScRawArtist a) => Artist(
   id: scArtistId(a.id),
-  // У SC `title` — это username, а `artist` — full_name.
+  // Here `title` is the username and `artist` the full_name.
   name: a.title,
   fullName: _blankToNull(a.artist),
   avatar: a.artwork,
@@ -66,8 +65,8 @@ Playlist setFromSc(ScRawPlaylist p, {required bool isAlbum}) => Playlist(
   id: scSetId(p.id),
   title: p.title,
   cover: p.artwork,
-  // У SC отсутствующий счётчик приходит нулём — «0 треков» под альбомом с
-  // четырнадцатью хуже, чем ничего.
+  // A missing count arrives as zero: 0 tracks under a 14-track album is worse
+  // than nothing.
   trackCount: p.trackCount > 0 ? p.trackCount : null,
   ownerName: _blankToNull(p.artist),
   ownerAvatar: p.artistAvatar,
@@ -117,7 +116,7 @@ class SoundCloudProvider extends MusicProvider {
     SearchSort sort = SearchSort.relevance,
   }) async {
     final sortParam = sort == SearchSort.newest ? 'new' : 'relevance';
-    // Четыре эндпоинта параллельно; упавший раздел просто не вносит вклад.
+    // Four endpoints in parallel; a failed section just adds nothing.
     final results = await Future.wait([
       sc
           .searchTracks(query, limit: 30, sort: sortParam)
@@ -151,8 +150,8 @@ class SoundCloudProvider extends MusicProvider {
     );
   }
 
-  /// Узкий `/search/users` вместо всей выдачи: за аватаром одного исполнителя
-  /// незачем тянуть ещё треки, альбомы и плейлисты.
+  /// Narrow `/search/users` rather than all results: one artist's avatar
+  /// doesn't need tracks, albums and playlists too.
   @override
   Future<List<Artist>> searchArtists(String query, {int limit = 3}) async {
     final page = await sc.searchArtists(query, limit: limit);
@@ -179,9 +178,9 @@ class SoundCloudProvider extends MusicProvider {
 
   @override
   Future<ResolvedUrl?> resolveUrl(String url) async {
-    // Чужую ссылку отдаём дальше по реестру, не гоняя через SC `/resolve`:
-    // площадки опрашиваются по очереди, и лишний запрос — это лишние секунды
-    // ожидания перед той, что ссылку действительно понимает.
+    // A foreign link goes on through the registry with no `/resolve` call:
+    // platforms are asked in turn, and an extra request means extra seconds
+    // before the one that understands it.
     final u = url.trim().toLowerCase();
     if (!u.contains('soundcloud.com') && !u.contains('snd.sc')) return null;
     final r = await sc.resolveUrl(url);
@@ -212,9 +211,9 @@ class SoundCloudProvider extends MusicProvider {
     return raw == null ? null : trackFromSc(raw);
   }
 
-  /// Похожие для витрин главной: related, а если их мало — станция трека. Через
-  /// общую с волной очередь и кэш (`sc_sources.dart`), иначе вместе они
-  /// упрутся в 429.
+  /// Similar for home shelves: related, and if few, the track's station.
+  /// Through the queue and cache shared with the wave, or together they hit
+  /// 429.
   @override
   Future<List<Track>?> getSimilarTracks(String seedId) async {
     final m = RegExp(r'^sc:(\d+)$').firstMatch(seedId);
@@ -230,10 +229,10 @@ class SoundCloudProvider extends MusicProvider {
     return sid > 0 ? 'track:$sid' : '';
   }
 
-  /// Станция трека со смещением и related вперемешку: верх обоих списков
-  /// одинаково хорош. Курсор — следующее смещение станции, и двигается он
-  /// только за тем, что пришло; кончившаяся станция начинается сначала.
-  /// Related не листается — каждый раз тот же список, услышанное отсеет волна.
+  /// The track's station by offset and related mixed: the top of both is
+  /// equally good. The cursor is the station's next offset, moving only past
+  /// what came; an ended station starts over. Related doesn't page, always the
+  /// same list, and the wave filters what's heard.
   @override
   Future<StationPage> station(String station, String cursor) async {
     final sid = station.startsWith('track:') ? station.substring(6) : '';
@@ -317,7 +316,7 @@ class SoundCloudProvider extends MusicProvider {
   Future<SetContent?> getPlaylist(String id) => _getSet(id, isAlbum: false);
 
   Future<SetContent?> _getSet(String id, {required bool isAlbum}) async {
-    // Лайки аккаунта — тоже коллекция: так их обновляет «Обновить треки».
+    // Account likes are a collection too, updated this way by Refresh tracks.
     if (id.startsWith('sc:likes:')) {
       final likes = await sc.userLikes(id.substring('sc:likes:'.length));
       return SetContent(
@@ -361,9 +360,9 @@ class SoundCloudProvider extends MusicProvider {
     return PlayableStream(url: stream.url, isHls: stream.isHls);
   }
 
-  /// Скачать можно всё, у чего есть чем резолвить: сырьё при треке либо id, по
-  /// которому его дотянуть. Есть ли среди транскодингов progressive —
-  /// выяснится только при самом резолве.
+  /// Anything with a way to resolve can download: raw data with the track or an
+  /// id to fetch it. Whether transcodings include progressive shows only at the
+  /// resolve itself.
   @override
   bool canDownload(Track track) =>
       track.sourceData != null || scNumericId(track.id) > 0;
@@ -377,17 +376,17 @@ class SoundCloudProvider extends MusicProvider {
     return PlayableStream(url: stream.url, isHls: stream.isHls);
   }
 
-  /// Транскодинги трека. Пусто — трек приехал из файла переноса, где сырья не
-  /// было: дотягиваем его по id тем же путём, что «недавние» после рестарта.
-  /// Обратно в библиотеку дотянутое не кладём (провайдер её не знает), так что
-  /// такому треку это стоит лишнего запроса на каждое включение — платят за
-  /// него ровно те треки, что иначе не заиграли бы вообще.
+  /// A track's transcodings. Empty means it came from a transfer file with no
+  /// raw data: I fetch it by id, the same way as recents after a restart. It
+  /// doesn't go back to the library (the provider doesn't know it), so such a
+  /// track costs a request per play, paid only by tracks that otherwise
+  /// wouldn't play.
   Future<Map<String, dynamic>?> _media(Track track) async =>
       track.sourceData ?? (await resolveTrackById(track.id))?.sourceData;
 }
 
-/// Что заиграет целиком: превью Go+ (`SNIP`) и закрытые (`BLOCK`) только
-/// пролистывались бы — как `playable` ПК.
+/// What plays whole: Go+ previews (`SNIP`) and blocked (`BLOCK`) tracks would
+/// just get skipped.
 List<Track> _playable(List<ScRawTrack> raw) => [
   for (final t in raw)
     if (t.policy == null ||

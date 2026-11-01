@@ -1,10 +1,9 @@
-/// Типы выдачи YouTube Music — зеркало структур из десктопного `ytm.rs`
-/// (там они сериализуются в camelCase для фронта; здесь это просто поля).
+/// YouTube Music result types.
 library;
 
-/// Ошибка YouTube Music. `code` — ключ из набора `ytm.err.*`, который переводит
-/// UI, либо готовый текст причины от самой площадки (`playabilityStatus.reason`
-/// приходит на языке запроса и переводу не подлежит).
+/// A YouTube Music error. `code` is a key from `ytm.err.*`, translated by the
+/// UI, or the platform's ready reason text (`playabilityStatus.reason` comes in
+/// the request's language and isn't translated).
 class YtmException implements Exception {
   final String code;
   const YtmException(this.code);
@@ -12,9 +11,8 @@ class YtmException implements Exception {
   String toString() => code;
 }
 
-/// Дефолты полей — те же слова, что у Яндекса (на десктопе YTM переиспользует
-/// его ключи `ym.fallback.*`). Дублируются, а не импортируются из соседнего
-/// провайдера: площадки друг о друге не знают.
+/// Field defaults, the same words as Yandex's. Duplicated rather than imported
+/// from the neighbour: platforms don't know about each other.
 const String kYtmUntitled = 'Без названия';
 const String kYtmUnknownArtist = 'Неизвестен';
 const String kYtmAlbumFallback = 'Альбом';
@@ -26,7 +24,7 @@ class YtmRawTrack {
   final String title;
   final String artist;
 
-  /// browseId артиста (`UC…`) для перехода на его страницу; пусто, если нет.
+  /// Artist's browseId (`UC…`), to go to their page; empty if none.
   final String artistId;
 
   /// Every artist with a page, for the artist links.
@@ -44,7 +42,7 @@ class YtmRawTrack {
     this.artists = const [],
   });
 
-  /// Строки альбома донашивают обложку и артиста со страницы — см. `album()`.
+  /// Album rows take cover and artist from the page; see `album()`.
   YtmRawTrack copyWith({String? artist, String? cover}) => YtmRawTrack(
     id: id,
     title: title,
@@ -98,8 +96,8 @@ class YtmRawPlaylist {
   final String cover;
   final String ownerName;
 
-  /// Число треков, если YTM его дал (см. `rowTrackCount`). Именно nullable:
-  /// «неизвестно» и «ноль треков» — разные вещи.
+  /// Track count, if YTM gave it (see `rowTrackCount`). Nullable: unknown and
+  /// zero tracks are different things.
   final int? trackCount;
 
   const YtmRawPlaylist({
@@ -117,9 +115,8 @@ class YtmSearchRaw {
   final List<YtmRawAlbum> albums;
   final List<YtmRawPlaylist> playlists;
 
-  /// Есть ли токен следующей страницы треков. На десктопе это знание живёт в
-  /// Rust и наружу не отдаётся (там «Загрузить ещё» показывается всегда), здесь
-  /// общий UI спрашивает флаг у выдачи — см. `SearchResults.tracksHasMore`.
+  /// Whether there's a next page token. The shared UI asks the results for this
+  /// flag; see `SearchResults.tracksHasMore`.
   final bool tracksHasMore;
 
   const YtmSearchRaw({
@@ -131,35 +128,35 @@ class YtmSearchRaw {
   });
 }
 
-/// Порция догрузки поиска (см. `searchMore`).
+/// A batch of search loading (see `searchMore`).
 class YtmSearchMore {
   final List<YtmRawTrack> tracks;
   final bool hasMore;
   const YtmSearchMore({this.tracks = const [], this.hasMore = false});
 }
 
-/// Страница сущности (альбом/артист/плейлист): шапка + треки + (артист)
-/// релизы. Зеркало `YmEntity`.
+/// An entity page (album, artist, playlist): a header, tracks and, for an
+/// artist, releases.
 class YtmEntity {
   final String title;
   final String subtitle;
   final String cover;
   final List<YtmRawTrack> tracks;
 
-  /// Только для артиста: «Популярные» (top songs shelf).
+  /// Artist only: popular, the top songs shelf.
   final List<YtmRawTrack> popularTracks;
   final List<YtmRawAlbum> albums;
 
-  /// Только для артиста: похожие исполнители («Fans might also like»).
+  /// Artist only: similar artists (Fans might also like).
   final List<YtmRawArtist> similarArtists;
 
-  /// Год выпуска (4-значный run в subtitle шапки). У артиста пусто.
+  /// Release year, a 4-digit run in the header's subtitle. Empty for an artist.
   final String year;
 
-  /// Аватар артиста/владельца из шапки (`straplineThumbnail`).
+  /// Artist's or owner's avatar from the header (`straplineThumbnail`).
   final String ownerAvatar;
 
-  /// Только для артиста: биография из шапки. Пусто, если YTM её не даёт.
+  /// Artist only: bio from the header. Empty if YTM gives none.
   final String description;
 
   const YtmEntity({
@@ -176,8 +173,8 @@ class YtmEntity {
   });
 }
 
-/// Что открывает вставленная ссылка: [kind] — `track`/`album`/`playlist`/
-/// `artist`, [id] — videoId либо browseId соответствующей страницы.
+/// What a pasted link opens: [kind] is `track`, `album`, `playlist` or
+/// `artist`, [id] a videoId or the page's browseId.
 class YtmResolved {
   final String kind;
   final String id;

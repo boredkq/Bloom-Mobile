@@ -1,13 +1,10 @@
-/// SoundCloud api-v2 — порт десктопного `src-tauri/src/soundcloud.rs`
-/// (c:\bloom\bloom), функция-в-функцию.
+/// SoundCloud api-v2. client_id: manual (from settings), then known ones, then
+/// scraping soundcloud.com's assets. Each request races direct and a CORS
+/// proxy: the proxy isn't for CORS but a fallback if SoundCloud is blocked for
+/// the user; the first good answer wins.
 ///
-/// client_id: ручной (из настроек) → известные → скрейп ассетов soundcloud.com.
-/// Каждый запрос — гонка «прямой + CORS-прокси»: прокси не для CORS (его тут
-/// нет), а фолбэк на случай блокировки SC у пользователя; первый успешный
-/// ответ побеждает.
-///
-/// Ошибки — коды i18n-словаря (`sc.err.*` / `search.err.*`) в [ScException];
-/// переводит их слой UI.
+/// Errors are dictionary codes (`sc.err.*`, `search.err.*`) in [ScException],
+/// translated by the UI.
 library;
 
 import 'dart:async';
@@ -18,7 +15,7 @@ import 'package:http/http.dart' as http;
 import 'models.dart';
 
 const List<String> kKnownClientIds = [
-  'O7atZypwLvuWSY9hWnnQ3vrLTHH7wqMe', // актуальный на 2026-07 (со скрейпа)
+  'O7atZypwLvuWSY9hWnnQ3vrLTHH7wqMe', // current as of 2026-07, from a scrape
   'iZIs9mchVcX5lhVRyQGGAYlNPa2Rp1jf',
   'a3e059563d7fd3372b49b37f00a00bcf',
   'fDoItMDbsbZz8dY16ZzARCZmzgHBPotA',
@@ -32,11 +29,12 @@ const Duration _clientIdTtl = Duration(hours: 6);
 String? _manualId;
 String? _autoId;
 
-/// null — авто-кеш «протух»/не получен (в т.ч. после фолбэка на известный id).
+/// null when the auto cache is stale or absent, also after falling back to a
+/// known id.
 DateTime? _fetchedAt;
 
-/// Ручной client_id из настроек. null/пустая строка — сброс (вместе с
-/// авто-кешем).
+/// Manual client_id from settings. null or empty resets it, with the auto
+/// cache.
 void setManualClientId(String? id) {
   final v = id?.trim();
   final norm = (v == null || v.isEmpty) ? null : v;
@@ -49,8 +47,8 @@ void setManualClientId(String? id) {
 
 String? activeClientId() => _manualId ?? _autoId;
 
-/// Сбросить авто-кеш (ручной не трогаем) — перед [checkConnection] и при
-/// невалидном ответе SC.
+/// Clears the auto cache, not the manual: before [checkConnection] and on an
+/// invalid answer.
 void _resetAutoCache() {
   if (_manualId == null) {
     _autoId = null;
@@ -63,7 +61,7 @@ void _clearAuto() {
   _fetchedAt = null;
 }
 
-// ============================ HTTP (гонка direct+прокси) ============================
+// ── HTTP (direct and proxy race) ────────────────────────────────────────
 
 final http.Client _http = http.Client();
 
@@ -85,16 +83,16 @@ Future<(int, String)> _get(
   final status = r.statusCode;
   final ok = status >= 200 && status < 300;
   if (ok || (acceptAuthErr && (status == 401 || status == 403))) {
-    // Тело декодируем сами: без charset в Content-Type http падает на latin1
-    // и ломает кириллицу в названиях.
+    // I decode the body myself: with no charset in Content-Type http falls to
+    // latin1 and breaks Cyrillic titles.
     return (status, utf8.decode(r.bodyBytes, allowMalformed: true));
   }
   throw const ScException('not ok');
 }
 
-/// Гонка «прямой запрос (8с) + прокси (12с)», побеждает первый успешный.
-/// [acceptAuthErr] — принять 401/403 от прямого запроса (нужно [apiFetch] для
-/// ветки перебора известных client_id); от прокси — только 2xx.
+/// Race of a direct request (8 s) and a proxy (12 s), the first good one wins.
+/// [acceptAuthErr] accepts 401 or 403 from the direct one, for [apiFetch]'s
+/// known client_id branch; from a proxy only 2xx.
 Future<(int, String)> _raceFetch(String url, bool acceptAuthErr) {
   final attempts = <Future<(int, String)>>[
     _get(url, const Duration(seconds: 8), acceptAuthErr: acceptAuthErr),
@@ -129,8 +127,8 @@ final RegExp _assetRe = RegExp(
 );
 final RegExp _idRe = RegExp(r'client_id:"([a-zA-Z0-9]{20,})"');
 
-/// Активный client_id: ручной → свежий авто → скрейп ассетов soundcloud.com →
-/// первый известный (без отметки времени — перепроверится в следующий раз).
+/// The active client_id: manual, fresh auto, a scrape of soundcloud.com's
+/// assets, then the first known (with no timestamp, so it rechecks next time).
 Future<String> _getClientId() async {
   final manual = _manualId;
   if (manual != null) return manual;
@@ -142,8 +140,7 @@ Future<String> _getClientId() async {
     return auto;
   }
 
-  // Сканируем ВСЕ ассеты (раньше первые 6 — SC переложил client_id в хвост
-  // списка, и старый скрейп из-за этого молча ломался).
+  // Scans ALL assets: SoundCloud may put client_id at the list's tail.
   try {
     final (_, html) = await _raceFetch('https://soundcloud.com', false);
     for (final m in _assetRe.allMatches(html).take(16)) {
@@ -157,11 +154,11 @@ Future<String> _getClientId() async {
           return id;
         }
       } catch (_) {
-        // следующий ассет
+        // next asset
       }
     }
   } catch (_) {
-    // проваливаемся на известный id
+    // fall through to a known id
   }
 
   final id = kKnownClientIds[0];
@@ -169,7 +166,7 @@ Future<String> _getClientId() async {
   return id;
 }
 
-/// JS-falsy для полей ответа SC (`!data.errors`, `!data.status`).
+/// JS-style falsiness for answer fields.
 bool _falsy(Object? v) {
   if (v == null) return true;
   if (v is bool) return !v;
@@ -178,7 +175,7 @@ bool _falsy(Object? v) {
   return false;
 }
 
-/// Перебор известных client_id; валидная выдача — кешируем id и возвращаем её.
+/// Tries known client_ids; on a valid answer caches the id and returns it.
 Future<Object?> _tryKnownIds(String url) async {
   for (final id in kKnownClientIds) {
     final sep = url.contains('?') ? '&' : '?';
@@ -187,7 +184,7 @@ Future<Object?> _tryKnownIds(String url) async {
       final (_, body) = await _raceFetch('$url${sep}client_id=$id', false);
       data = jsonDecode(body);
     } catch (_) {
-      continue; // недоступно или не JSON — пробуем следующий id
+      continue; // unavailable or not JSON, so try the next id
     }
     if (data is! Map) continue;
     final hasPayload =
@@ -203,8 +200,8 @@ Future<Object?> _tryKnownIds(String url) async {
   return null;
 }
 
-/// Запрос к api-v2 с client_id и авто-восстановлением при невалидном ключе
-/// (401/403, `errors[]`, `status: "4xx"` → сброс кеша + перебор известных id).
+/// An api-v2 request with client_id and auto-recovery on an invalid key (401 or
+/// 403, `errors[]`, `status: "4xx"`: clears the cache and tries known ids).
 Future<Object?> apiFetch(String url, {bool noRetry = false}) async {
   final id = await _getClientId();
   final sep = url.contains('?') ? '&' : '?';
@@ -225,7 +222,7 @@ Future<Object?> apiFetch(String url, {bool noRetry = false}) async {
     throw const ScException('sc.err.unavailable');
   }
 
-  // Списочные ответы (`/tracks?ids=`) — ни errors, ни status в них не бывает.
+  // List answers (`/tracks?ids=`) never have errors or status.
   if (data is! Map) return data;
 
   final errors = data['errors'];
@@ -267,9 +264,9 @@ Future<Object?> apiFetch(String url, {bool noRetry = false}) async {
 
 bool _isDigit(String c) => c.codeUnitAt(0) >= 0x30 && c.codeUnitAt(0) <= 0x39;
 
-// ============================ JSON-хелперы ============================
+// ── JSON helpers ────────────────────────────────────────────────────────
 
-/// Непустая строка поля (пустая = JS-falsy, проваливается в фолбэк как `||`).
+/// A field's non-empty string (empty counts as falsy and falls through).
 String? _vstr(Object? v, String k) {
   if (v is! Map) return null;
   final x = v[k];
@@ -284,7 +281,7 @@ int? _vu64(Object? v, String k) {
   return null;
 }
 
-/// JS-truthiness поля (`!!x`).
+/// A field's truthiness.
 bool _vbool(Object? v, String k) => v is Map ? !_falsy(v[k]) : false;
 
 List<Object?> _varr(Object? v, String k) {
@@ -293,11 +290,11 @@ List<Object?> _varr(Object? v, String k) {
   return x is List ? x : const [];
 }
 
-/// `-large` → `-t300x300` (обложка 300px), null при пустом значении.
+/// `-large` to `-t300x300` (a 300 px cover), null when empty.
 String? _t300(String? raw) => _sized(raw, 't300x300');
 
-/// Тот же URL в 500px — для шапки артиста во всю ширину экрана, где 300px
-/// заметно мылит. В списках и плитках такой размер не нужен.
+/// The same URL at 500 px, for an artist header at screen width, where 300 px
+/// is visibly soft. Lists and tiles don't need it.
 String? _t500(String? raw) => _sized(raw, 't500x500');
 
 String? _sized(String? raw, String size) {
@@ -313,7 +310,7 @@ Object? _obj(Object? v, String k) {
   return x is Map ? x : null;
 }
 
-// ============================ Маппинг ============================
+// ── Mapping ─────────────────────────────────────────────────────────────
 
 ScRawTrack mapRawTrack(Object? t) {
   final user = _obj(t, 'user');
@@ -383,16 +380,16 @@ ScRawPlaylist mapRawPlaylist(Object? p) {
   );
 }
 
-/// Дата плейлиста/альбома: `release_date` (у альбомов), иначе `created_at`.
+/// Playlist or album date: `release_date` (albums), else `created_at`.
 String _playlistDate(Object? p) =>
     _vstr(p, 'release_date') ?? _vstr(p, 'created_at') ?? '';
 
-/// Год из неё же — той самой, чтобы год и полная дата не разошлись источником.
+/// The year from that same date, so year and full date share a source.
 String _playlistYear(Object? p) => _year(_playlistDate(p));
 
 bool _hasId(Object? v) => _vu64(v, 'id') != null;
 
-// ============================ Поиск ============================
+// ── Search ──────────────────────────────────────────────────────────────
 
 Future<ScPage<ScRawTrack>> searchTracks(
   String query, {
@@ -454,7 +451,7 @@ Future<ScPage<ScRawPlaylist>> searchAlbums(String query, {int limit = 20}) =>
       '?q=${Uri.encodeComponent(query)}&limit=$limit',
     );
 
-/// Проверка соединения из настроек: сброс авто-кеша → тестовый поиск.
+/// Connection check from settings: clears the auto cache, then a test search.
 Future<ScCheckResult> checkConnection() async {
   _resetAutoCache();
   try {
@@ -469,9 +466,10 @@ Future<ScCheckResult> checkConnection() async {
   }
 }
 
-// ============================ Артист / профиль ============================
+// ── Artist and profile ──────────────────────────────────────────────────
 
-/// Числовой userId из id-строки ("12345") или permalink-URL (через /resolve).
+/// Numeric userId from an id string ("12345") or a permalink URL (through
+/// /resolve).
 Future<int> _resolveUserId(String idOrUrl) async {
   if (idOrUrl.isNotEmpty && idOrUrl.split('').every(_isDigit)) {
     return int.parse(idOrUrl);
@@ -508,9 +506,9 @@ Future<ScTracksCursorPage> userTrackLikes(int userId) => listPage(
   '?limit=50&linked_partitioning=1',
 );
 
-/// Лайкнутые треки пользователя (профиль по ссылке); ошибки — пустой список.
-/// SC отдаёт лайки страницами (в выдаче попадаются и плейлисты — их пропускаем),
-/// поэтому идём по `next_href` до конца; ошибка на середине — отдаём накопленное.
+/// A user's liked tracks; errors give an empty list. Likes come in pages (with
+/// playlists among them, skipped), so I follow `next_href` to the end; an error
+/// midway returns what's gathered.
 Future<List<ScRawTrack>> userLikes(String idOrUrl) async {
   final out = <ScRawTrack>[];
   final seen = <int>{};
@@ -518,7 +516,7 @@ Future<List<ScRawTrack>> userLikes(String idOrUrl) async {
     final id = await _resolveUserId(idOrUrl);
     var url =
         'https://api-v2.soundcloud.com/users/$id/likes?limit=200&linked_partitioning=1';
-    // Потолок в 25 страниц (~5000 лайков) — страховка от «висячего» курсора.
+    // A cap of 25 pages (~5000 likes), insurance against a hanging cursor.
     for (var page = 0; page < 25; page++) {
       final Object? d;
       try {
@@ -544,7 +542,7 @@ Future<List<ScRawTrack>> userLikes(String idOrUrl) async {
   return out;
 }
 
-/// Данные пользователя (hero артиста); null при ошибке.
+/// User data for an artist hero; null on error.
 Future<ScRawUser?> getUser(String idOrUrl) async {
   try {
     final userId = await _resolveUserId(idOrUrl);
@@ -569,7 +567,8 @@ Future<ScRawUser?> getUser(String idOrUrl) async {
   }
 }
 
-/// Популярные треки артиста: /toptracks → /spotlight → /tracks → поиск по имени.
+/// An artist's popular tracks: /toptracks, /spotlight, /tracks, then a search
+/// by name.
 Future<List<ScRawTrack>> artistTopTracks(
   String idOrUrl, {
   String? artistName,
@@ -582,7 +581,7 @@ Future<List<ScRawTrack>> artistTopTracks(
   }
 
   if (userId != 0) {
-    // 1. /toptracks — настоящие «популярные».
+    // 1. /toptracks, the true popular ones.
     try {
       final tt = await apiFetch(
         'https://api-v2.soundcloud.com/users/$userId/toptracks'
@@ -592,9 +591,9 @@ Future<List<ScRawTrack>> artistTopTracks(
         return _varr(tt, 'collection').where(_hasId).map(mapRawTrack).toList();
       }
     } catch (_) {
-      // молча — падаем в следующий фолбэк
+      // silently on to the next fallback
     }
-    // 2. /spotlight — закреплённые артистом.
+    // 2. /spotlight, pinned by the artist.
     try {
       final sp = await apiFetch(
         'https://api-v2.soundcloud.com/users/$userId/spotlight'
@@ -606,9 +605,9 @@ Future<List<ScRawTrack>> artistTopTracks(
           .toList();
       if (trs.isNotEmpty) return trs;
     } catch (_) {
-      // молча — падаем в следующий фолбэк
+      // silently on to the next fallback
     }
-    // 3. /tracks (может требовать сессию).
+    // 3. /tracks (may need a session).
     try {
       final d = await apiFetch(
         'https://api-v2.soundcloud.com/users/$userId/tracks'
@@ -618,11 +617,11 @@ Future<List<ScRawTrack>> artistTopTracks(
         return _varr(d, 'collection').where(_hasId).map(mapRawTrack).toList();
       }
     } catch (_) {
-      // молча — падаем в следующий фолбэк
+      // silently on to the next fallback
     }
   }
 
-  // 4. Фолбэк: поиск по имени артиста (точное совпадение → первые 20).
+  // 4. Fallback: a search by the artist's name (exact match, first 20).
   if (artistName != null && artistName.isNotEmpty) {
     try {
       final sr = await apiFetch(
@@ -644,13 +643,14 @@ Future<List<ScRawTrack>> artistTopTracks(
         return coll.where(_hasId).take(20).map(mapRawTrack).toList();
       }
     } catch (_) {
-      // молча — падаем в следующий фолбэк
+      // silently on to the next fallback
     }
   }
   return [];
 }
 
-/// Треки (первая страница + курсор) и альбомы артиста; фолбэк — поиск по имени.
+/// An artist's tracks (first page and cursor) and albums; the fallback is a
+/// search by name.
 Future<ScArtistData> artistData(String idOrUrl, {String? artistName}) async {
   var userId = 0;
   try {
@@ -686,11 +686,11 @@ Future<ScArtistData> artistData(String idOrUrl, {String? artistName}) async {
         'collection',
       ).where(_hasId).map(mapRawPlaylist).toList();
     } catch (_) {
-      // молча — падаем в следующий фолбэк
+      // silently on to the next fallback
     }
   }
 
-  // Фолбэк: пусто — ищем по имени.
+  // Fallback: empty, so search by name.
   if (tracks.isEmpty &&
       albums.isEmpty &&
       artistName != null &&
@@ -713,16 +713,16 @@ Future<ScArtistData> artistData(String idOrUrl, {String? artistName}) async {
           ? matched.map(mapRawTrack).toList()
           : coll.where(_hasId).take(20).map(mapRawTrack).toList();
     } catch (_) {
-      // молча — падаем в следующий фолбэк
+      // silently on to the next fallback
     }
   }
 
   return ScArtistData(tracks: tracks, tracksNext: tracksNext, albums: albums);
 }
 
-/// Похожие исполнители (`/users/{id}/relatedartists`) — секция «Похожие» на
-/// странице артиста. У малоизвестных профилей SC отдаёт пустую коллекцию;
-/// ошибки тоже гасим в пустой список (секция просто не рисуется).
+/// Similar artists (`/users/{id}/relatedartists`), the artist page's section.
+/// Little-known profiles get an empty collection; errors also become an empty
+/// list, and the section just isn't drawn.
 Future<List<ScRawArtist>> relatedArtists(String idOrUrl) async {
   try {
     final id = await _resolveUserId(idOrUrl);
@@ -766,10 +766,10 @@ Future<ScTracksCursorPage> listPage(String url, {int hops = 0}) async {
   );
 }
 
-// ============================ Плейлисты / треки ============================
+// ── Playlists and tracks ────────────────────────────────────────────────
 
-/// Треки из данных плейлиста: полные + дозагрузка stub'ов (только id) батчами
-/// по 50.
+/// Tracks from playlist data: full ones, plus stubs (id only) loaded in batches
+/// of 50.
 Future<List<ScRawTrack>> _loadTracksFromPlaylistData(Object? data) async {
   final all = _varr(data, 'tracks');
   final full = all.where((t) => _vstr(t, 'title') != null).toList();
@@ -789,7 +789,7 @@ Future<List<ScRawTrack>> _loadTracksFromPlaylistData(Object? data) async {
       );
       if (batch is List) fetched.addAll(batch);
     } catch (_) {
-      // молча — падаем в следующий фолбэк
+      // silently on to the next fallback
     }
     if ((i + 1) * 50 < stubs.length) {
       await Future<void>.delayed(const Duration(milliseconds: 80));
@@ -799,8 +799,8 @@ Future<List<ScRawTrack>> _loadTracksFromPlaylistData(Object? data) async {
   return [...full, ...fetched].where(_hasId).map(mapRawTrack).toList();
 }
 
-/// Треки плейлиста/альбома по permalink-URL (ошибки пробрасываются — импорт
-/// должен их показать).
+/// A playlist's or album's tracks by permalink URL. Errors pass through: import
+/// must show them.
 Future<List<ScRawTrack>> playlistTracks(String permalinkUrl) async {
   final data = await apiFetch(
     'https://api-v2.soundcloud.com/resolve?url=${Uri.encodeComponent(permalinkUrl)}',
@@ -808,7 +808,7 @@ Future<List<ScRawTrack>> playlistTracks(String permalinkUrl) async {
   return _loadTracksFromPlaylistData(data);
 }
 
-/// Полные данные плейлиста по числовому SC-id (открытие из «недавних»).
+/// Full playlist data by numeric id, for opening from recents.
 Future<ScPlaylistFull> playlistById(int id) async {
   final data = await apiFetch('https://api-v2.soundcloud.com/playlists/$id');
   final tracks = await _loadTracksFromPlaylistData(data);
@@ -831,7 +831,7 @@ Future<ScPlaylistFull> playlistById(int id) async {
   );
 }
 
-/// Один трек по числовому SC-id; null при ошибке.
+/// One track by numeric id; null on error.
 Future<ScRawTrack?> trackById(int id) async {
   try {
     final data = await apiFetch('https://api-v2.soundcloud.com/tracks/$id');
@@ -842,29 +842,29 @@ Future<ScRawTrack?> trackById(int id) async {
   }
 }
 
-// ============================ Волна: похожие треки ============================
+// ── Wave: similar tracks ────────────────────────────────────────────────
 
-/// Треки станции трека (`stations/soundcloud:track-stations:<id>/tracks`) —
-/// главный источник кандидатов волны. Листается смещением: [offset] двигает
-/// движок волны, чтобы каждый новый сеанс не начинался с тех же двадцати.
+/// A track station's tracks (`stations/soundcloud:track-stations:<id>/tracks`),
+/// the wave's main candidate source. Pages by offset: [offset] moves so each
+/// new session doesn't start with the same twenty.
 ///
-/// Сбой пробрасывается, а не превращается в пустоту: пустой ответ значит
-/// «станция кончилась» и двигает курсор, и путать его с обрывом сети нельзя.
-/// Гасит ошибки слой выше (`sc_sources.dart`), там же и повтор.
+/// A failure passes through rather than turning empty: an empty answer means
+/// the station ended and moves the cursor, and can't be confused with a broken
+/// network. The layer above dampens errors and retries.
 Future<List<ScRawTrack>> stationTracks(Object scTrackId, {int offset = 0}) =>
     _waveTracks(
       'https://api-v2.soundcloud.com/stations/'
       'soundcloud:track-stations:$scTrackId/tracks?limit=20&offset=$offset',
     );
 
-/// Похожие на трек (`tracks/<id>/related`). Не пагинируется, зато для волны по
-/// одному треку это главный источник вкусовых рекомендаций.
+/// Similar to a track (`tracks/<id>/related`). No paging, but for a one-track
+/// wave it's the main source of taste.
 Future<List<ScRawTrack>> relatedTracks(Object scTrackId) => _waveTracks(
   'https://api-v2.soundcloud.com/tracks/$scTrackId/related?limit=20',
 );
 
-/// Разбор обоих ответов: элемент коллекции — либо сам трек, либо обёртка
-/// `{track: {...}}` (так отдаёт станция).
+/// Parses both answers: a collection item is either the track or a `{track:
+/// {...}}` wrapper, as a station gives it.
 Future<List<ScRawTrack>> _waveTracks(String url) async {
   final data = await apiFetch(url);
   final items = data is List ? data : _varr(data, 'collection');
@@ -881,10 +881,10 @@ Object? _unwrapTrack(Object? item) {
   return inner is Map ? inner : item;
 }
 
-// ============================ Резолв ссылки ============================
+// ── Resolving a link ────────────────────────────────────────────────────
 
-/// SC-ссылка → сущность (трек / артист / плейлист / альбом); null если не
-/// распознали.
+/// A SoundCloud link to an entity (track, artist, playlist, album); null if
+/// unrecognised.
 Future<ScResolved?> resolveUrl(String url) async {
   var u = url.trim();
   if (!u.startsWith('http://') && !u.startsWith('https://')) {
@@ -911,14 +911,14 @@ Future<ScResolved?> resolveUrl(String url) async {
   }
 }
 
-// ============================ Стрим ============================
+// ── Stream ──────────────────────────────────────────────────────────────
 
-/// Играбельный signed CDN-URL из `media.transcodings`: progressive (mp3) → hls →
-/// любой не-DRM; одна повторная попытка через 500мс.
+/// A playable signed CDN URL from `media.transcodings`: progressive (mp3), hls,
+/// then any non-DRM; one retry after 500 ms.
 ///
-/// [progressiveOnly] — для скачивания: HLS это плейлист с кусками, файлом его
-/// не сохранить, а «любой не-DRM» может оказаться тем же HLS под другим именем.
-/// Такой трек честно падает `sc.err.hlsOnly`, как и на десктопе.
+/// [progressiveOnly] is for downloading: HLS is a playlist of chunks that can't
+/// save as a file, and any non-DRM may be the same HLS under another name. Such
+/// a track fails with `sc.err.hlsOnly`.
 Future<ScStream> streamUrl(
   Map<String, dynamic>? media, {
   bool progressiveOnly = false,

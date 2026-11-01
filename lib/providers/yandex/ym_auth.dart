@@ -1,17 +1,14 @@
-/// Авторизация Яндекс.Музыки (OAuth device-flow) — порт десктопного
-/// `features/yandex/model/authStore.ts`.
+/// Yandex Music auth (OAuth device-flow). `authed` is a synchronous flag, by
+/// which `YandexProvider.isEnabled` decides whether the platform shows in
+/// search and the picker. The token lies in `bloom.json` under `yandex`, in the
+/// clear, and goes to the network layer through `ym.setToken`.
 ///
-/// `authed` — синхронный флаг, по нему `YandexProvider.isEnabled` решает,
-/// показывать ли площадку в поиске и переключателе. Токен лежит в `bloom.json`
-/// под ключом `yandex` (на десктопе — в конфиге приложения, тоже открытым
-/// текстом) и отдаётся сетевому слою через `ym.setToken`.
+/// Device-flow: [YmAuthController.startAuth] gets a code, opens the
+/// confirmation page and polls for a token with a race token `_pollGen`: logout
+/// or a new start cancels the last cycle.
 ///
-/// Device-flow: [YmAuthController.startAuth] получает код, открывает страницу
-/// подтверждения и поллит токен с гонка-токеном `_pollGen` — logout или
-/// повторный старт отменяют прошлый цикл.
-///
-/// Текстов здесь нет: состояние несёт типизированную причину ([YmAuthNote]), а
-/// фразу собирает экран настроек — сторы не возвращают готовые строки.
+/// No texts here: state carries a typed reason ([YmAuthNote]), and the settings
+/// screen builds the phrase.
 library;
 
 import 'dart:async';
@@ -26,16 +23,17 @@ import 'yandex.dart' as ym;
 import 'ym_provider.dart' show clearYmStreamCache;
 
 enum YmAuthNoteKind {
-  /// Запрашиваем код устройства.
+  /// Asking for a device code.
   gettingCode,
 
-  /// Код показан, ждём подтверждения в браузере.
+  /// The code shows, waiting for confirmation in the browser.
   waiting,
 
-  /// Код протух — «Подключить» заново.
+  /// The code expired: connect again.
   codeExpired,
 
-  /// Отказ площадки; [YmAuthNote.errorCode] — код `ym.err.*` или текст от неё.
+  /// A platform refusal; [YmAuthNote.errorCode] is a `ym.err.*` code or its
+  /// text.
   error,
 }
 
@@ -46,16 +44,16 @@ class YmAuthNote {
 }
 
 class YmAuthState {
-  /// Есть сохранённый токен.
+  /// There's a saved token.
   final bool authed;
 
-  /// Активен ли Яндекс Плюс. null — ещё не проверяли/неизвестно.
+  /// Whether Yandex Plus is active. null: unchecked or unknown.
   final bool? hasPlus;
 
-  /// Идёт проверка статуса.
+  /// A status check is running.
   final bool checking;
 
-  /// Идёт device-flow (код получен/показан).
+  /// Device-flow is running (a code got or shown).
   final bool connecting;
   final String? userCode;
   final String? verifyUrl;
@@ -98,23 +96,21 @@ final ymAuthProvider = NotifierProvider<YmAuthController, YmAuthState>(
 );
 
 class YmAuthController extends Notifier<YmAuthState> {
-  /// Гонка-токен поллинга: при logout/повторном старте старый цикл отменяется.
+  /// Polling race token: logout or a new start cancels the old cycle.
   int _pollGen = 0;
 
   @override
   YmAuthState build() {
     final raw = ref.read(jsonStoreProvider).readMap('yandex');
     final token = raw['token'];
-    // Сетевой слой держит токен в модульном состоянии — при старте ему надо
-    // отдать сохранённый, иначе провайдер останется выключенным до логина.
+    // The network layer keeps the token in module state, so at launch it gets
+    // the saved one, or the provider stays off until login.
     ym.setToken(token is String ? token : null);
     return YmAuthState(authed: ym.activeToken() != null);
   }
 
-  /// Стабильный между запусками id устройства. На десктопе он выводится из
-  /// пути LocalAppData; здесь такого якоря нет, поэтому заводим случайный один
-  /// раз и храним рядом с токеном. Яндекс его не валидирует, важна только
-  /// стабильность.
+  /// Device id stable between launches, random once and kept beside the token.
+  /// Yandex doesn't validate it, only stability matters.
   String _deviceId() {
     final store = ref.read(jsonStoreProvider);
     final raw = store.readMap('yandex');
@@ -141,9 +137,9 @@ class YmAuthController extends Notifier<YmAuthState> {
     ym.setToken(token);
   }
 
-  /// Перечитать статус подписки. Ошибку не считаем разлогином: 401 бывает и от
-  /// сбоя, а молча выкинуть пользователя хуже, чем показать «статус
-  /// неизвестен» — выйти он может кнопкой.
+  /// Re-reads the subscription status. An error doesn't count as logout: a 401
+  /// may come from a failure, and silently throwing the user out is worse than
+  /// status unknown; they can log out by a button.
   Future<void> refresh() async {
     if (!state.authed) {
       state = state.copyWith(checking: false, clearPlus: true);
@@ -162,9 +158,10 @@ class YmAuthController extends Notifier<YmAuthState> {
     }
   }
 
-  /// Начать device-flow: код → открыть страницу подтверждения → поллинг токена.
+  /// Starts device-flow: a code, opening the confirmation page, polling for a
+  /// token.
   Future<void> startAuth() async {
-    _pollGen++; // отменить прошлый поллинг
+    _pollGen++; // cancels the last poll
     state = state.copyWith(
       connecting: true,
       clearCode: true,
@@ -177,14 +174,14 @@ class YmAuthController extends Notifier<YmAuthState> {
         verifyUrl: d.verificationUrl,
         note: const YmAuthNote(YmAuthNoteKind.waiting),
       );
-      // Страница подтверждения открывается в браузере: своей её показать
-      // негде, а вводить код всё равно в Яндекс ID. Не открылась — код и
-      // адрес видны на экране, пользователь дойдёт руками.
+      // The confirmation page opens in a browser: there's nowhere to show it,
+      // and the code goes to Yandex ID anyway. If it doesn't open, code and
+      // address show on screen for doing it by hand.
       unawaited(openVerifyPage(d.verificationUrl));
 
       final gen = ++_pollGen;
       final deadline = DateTime.now().add(d.expiresIn);
-      // Меньше 3 секунд между опросами Яндекс считает «slow_down».
+      // Yandex counts under 3 seconds between polls as slow_down.
       final step = d.interval < const Duration(seconds: 3)
           ? const Duration(seconds: 3)
           : d.interval;
@@ -205,7 +202,7 @@ class YmAuthController extends Notifier<YmAuthState> {
     Duration step,
   ) async {
     while (true) {
-      if (gen != _pollGen) return; // отменён
+      if (gen != _pollGen) return; // cancelled
       if (DateTime.now().isAfter(deadline)) {
         state = state.copyWith(
           connecting: false,
@@ -241,23 +238,23 @@ class YmAuthController extends Notifier<YmAuthState> {
     }
   }
 
-  /// Прервать поллинг (уход с экрана, повторный вход).
+  /// Stops polling (leaving the screen, a new login).
   void cancelAuth() {
     _pollGen++;
     state = state.copyWith(connecting: false, clearCode: true, clearNote: true);
   }
 
-  /// Выйти: токен удаляется, площадка исчезает из поиска.
+  /// Logs out: the token is deleted and the platform leaves search.
   void logout() {
-    _pollGen++; // остановить поллинг
+    _pollGen++; // stops polling
     _saveToken(null);
     clearYmStreamCache();
     state = const YmAuthState();
   }
 }
 
-/// Открыть страницу подтверждения. Отдельной функцией — тесты подменяют её,
-/// чтобы не дёргать браузер.
+/// Opens the confirmation page. A separate function, so tests can swap it and
+/// leave the browser alone.
 Future<bool> Function(String url) openVerifyPage = (url) async {
   try {
     return await launchUrl(
@@ -269,7 +266,7 @@ Future<bool> Function(String url) openVerifyPage = (url) async {
   }
 };
 
-/// Человеческая причина отказа для UI: код `ym.err.*` либо текст площадки.
+/// A refusal's reason for the UI: a `ym.err.*` code or the platform's text.
 String ymErrorCode(Object error) {
   final s = error is YmException ? error.code : '$error';
   return s.startsWith('YmException: ') ? s.substring(13) : s;

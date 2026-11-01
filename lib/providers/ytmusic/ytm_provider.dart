@@ -1,11 +1,9 @@
-/// YouTube Music как [MusicProvider]: тонкий слой поверх порта InnerTube
-/// (`ytmusic.dart`), который приводит `YtmRaw*` к общим сущностям.
+/// YouTube Music as a [MusicProvider]: a thin layer over InnerTube, mapping
+/// `YtmRaw*` to shared entities. All network logic and its gotchas live a floor
+/// below; here it's mapping and building pages.
 ///
-/// Вся сетевая логика и её гочи живут этажом ниже — здесь только маппинг и
-/// сборка страниц. Зеркало `ym_provider.dart` / `sc_provider.dart`.
-///
-/// Без `isEnabled`: публичный поиск и стрим работают без авторизации, площадка
-/// всегда в выдаче (в отличие от Яндекса, которому нужен токен).
+/// No `isEnabled`: public search and stream need no auth, so the platform
+/// always shows, unlike Yandex with its token.
 library;
 
 import 'dart:io';
@@ -15,19 +13,16 @@ import '../../core/providers/music_provider.dart';
 import 'models.dart';
 import 'ytmusic.dart' as ytm;
 
-/// Сквозные id с префиксом источника — те же, что на ПК:
-///   трек     → `ytm:<videoId>`
-///   артист   → `ytm:artist:<browseId>`
-///   альбом   → `ytm:album:<browseId>`
-///   плейлист → `ytm:pl:<browseId>`
+/// Global ids with a source prefix: a track is `ytm:<videoId>`, an artist
+/// `ytm:artist:<browseId>`, an album `ytm:album:<browseId>`, a playlist
+/// `ytm:pl:<browseId>`.
 String ytmTrackId(String videoId) => 'ytm:$videoId';
 String ytmArtistId(String browseId) => 'ytm:artist:$browseId';
 String ytmAlbumId(String browseId) => 'ytm:album:$browseId';
 String ytmPlaylistId(String browseId) => 'ytm:pl:$browseId';
 
-/// Обратный разбор сквозного id. У трека префикс общий с остальными, поэтому
-/// сначала отсекаем более длинные — иначе `ytm:album:MPRE…` разобрался бы как
-/// videoId `album:MPRE…`.
+/// Parses a global id back. A track's prefix is shared with the rest, so longer
+/// ones go first, or `ytm:album:MPRE…` parses as videoId `album:MPRE…`.
 String? parseYtmTrackId(String id) =>
     id.startsWith('ytm:') &&
         !id.startsWith('ytm:artist:') &&
@@ -57,7 +52,8 @@ Track trackFromYtm(YtmRawTrack t) => Track(
       (name: a.name, id: a.id.isEmpty ? null : ytmArtistId(a.id)),
   ],
   url: 'https://music.youtube.com/watch?v=${t.id}',
-  // Стрим резолвится по videoId из сквозного id, сырьё площадки не нужно.
+  // The stream resolves by the videoId in the global id, with no raw platform
+  // data needed.
 );
 
 Artist artistFromYtm(YtmRawArtist a) => Artist(
@@ -83,16 +79,16 @@ Playlist playlistFromYtm(YtmRawPlaylist p) => Playlist(
   id: ytmPlaylistId(p.id),
   title: p.title.isEmpty ? kYtmPlaylistFallback : p.title,
   cover: _blankToNull(p.cover),
-  // Счётчик не подставляем нулём: YTM даёт его только у своих плейлистов, и
-  // «0 тр.» вместо «неизвестно» выглядит как пустой плейлист.
+  // The count isn't filled with zero: YTM gives it only on its own playlists,
+  // and 0 for unknown looks like an empty playlist.
   trackCount: p.trackCount,
   ownerName: _blankToNull(p.ownerName),
   sourceUrl: 'https://music.youtube.com/playlist?list=${_bare(p.id)}',
   source: MusicSource.ytmusic,
 );
 
-/// browseId плейлиста без служебного префикса `VL` — в ссылке `?list=` он
-/// лишний.
+/// A playlist's browseId with no service prefix `VL`, which is extra in a
+/// `?list=` link.
 String _bare(String browseId) =>
     browseId.startsWith('VL') ? browseId.substring(2) : browseId;
 
@@ -107,8 +103,8 @@ class YtmusicProvider extends MusicProvider {
     String query, {
     SearchSort sort = SearchSort.relevance,
   }) async {
-    // Сортировки у поиска YTM нет — параметр приходит от общего UI и здесь
-    // просто не на что влиять.
+    // YTM search has no sort: the parameter comes from the shared UI, with
+    // nothing to affect here.
     final d = await ytm.search(query);
     return SearchResults(
       tracks: d.tracks.map(trackFromYtm).toList(),
@@ -119,9 +115,9 @@ class YtmusicProvider extends MusicProvider {
     );
   }
 
-  /// Одна вкладка «Artists» вместо всей выдачи: за аватаром исполнителя незачем
-  /// гонять пять запросов поиска. Ту же вкладку общий поиск считает источником
-  /// истины по артистам — искомый в ней первый.
+  /// One Artists tab rather than all results: an artist's avatar doesn't need
+  /// five search requests. General search treats the same tab as the truth on
+  /// artists, with the wanted one first.
   @override
   Future<List<Artist>> searchArtists(String query, {int limit = 3}) async {
     final v = await ytm.searchRaw(query, ytm.kParamsArtists);
@@ -135,9 +131,9 @@ class YtmusicProvider extends MusicProvider {
     return rows.map(artistFromYtm).toList();
   }
 
-  /// Догрузка выдачи (по 20). `offset` игнорируем: InnerTube листает
-  /// непрозрачным токеном, а не смещением, — токен привязан к строке запроса и
-  /// живёт в сетевом слое.
+  /// Loads results (20 at a time). `offset` is ignored: InnerTube pages by an
+  /// opaque token rather than an offset, tied to the query and living in the
+  /// network layer.
   @override
   Future<TrackPage?> loadMoreTracks(
     String query,
@@ -153,7 +149,7 @@ class YtmusicProvider extends MusicProvider {
 
   @override
   Future<ResolvedUrl?> resolveUrl(String url) async {
-    // Чужую ссылку отдаём дальше по реестру, не тратя на неё запрос.
+    // A foreign link goes on through the registry with no request spent.
     if (!RegExp(
       r'youtube\.com|youtu\.be',
       caseSensitive: false,
@@ -264,7 +260,7 @@ class YtmusicProvider extends MusicProvider {
     return vid == null || vid.isEmpty ? '' : 'track:$vid';
   }
 
-  /// Похожих отдельно YouTube Music не отдаёт — это начало радио трека.
+  /// YouTube Music has no separate similar: it's the start of a track's radio.
   @override
   Future<List<Track>?> getSimilarTracks(String seedId) async {
     final vid = parseYtmTrackId(seedId);
@@ -290,34 +286,33 @@ class YtmusicProvider extends MusicProvider {
     }
   }
 
-  /// Прямая ссылка `googlevideo` — плеер тянет её сам. Локального прокси, как на
-  /// десктопе, здесь нет: он там нужен из-за CORS и range-запросов WebView2.
+  /// A direct `googlevideo` link, fetched by the player itself.
   ///
-  /// На iOS вместо неё идёт HLS-плейлист: прямая ведёт на фрагментированный
-  /// mp4, а AVPlayer вне HLS считает его длительность вдвое больше настоящей
-  /// (подробности — у `_hlsAudioUrl` в `ytmusic.dart`).
+  /// On iOS it's an HLS playlist instead: the direct link leads to fragmented
+  /// mp4, and outside HLS AVPlayer counts its duration as double the real one
+  /// (see `_hlsAudioUrl`).
   @override
   Future<PlayableStream?> resolveStream(Track track) async =>
       PlayableStream(url: await _streamUrl(track, hls: Platform.isIOS));
 
-  /// Скачивается ровно то, что играет: `adaptiveFormats` — цельный файл
-  /// (itag 140, m4a), а не плейлист кусков.
+  /// What downloads is just what plays: `adaptiveFormats` is a whole file (itag
+  /// 140, m4a), not a playlist of chunks.
   @override
   bool canDownload(Track track) => true;
 
-  /// Качаем всегда прямую ссылку — даже на iOS, где играем через плейлист:
-  /// офлайн-копия должна быть одним файлом, а не набором сегментов.
+  /// Downloads always take the direct link, even on iOS, which plays through a
+  /// playlist: an offline copy must be one file, not a set of segments.
   @override
   Future<PlayableStream?> resolveDownload(Track track) async =>
       PlayableStream(url: await _streamUrl(track));
 
-  /// Подписанная ссылка googlevideo живёт минуты — держим кеш 4, как на
-  /// десктопе: иначе пауза с последующим play требовала бы нового резолва.
+  /// A signed googlevideo link lives minutes, so a 4 minute cache: otherwise a
+  /// pause and play would need a new resolve.
   Future<String> _streamUrl(Track track, {bool hls = false}) async {
     final videoId = parseYtmTrackId(track.id);
     if (videoId == null) throw const YtmException('ytm.err.trackNotFound');
-    // Плеер и скачивание берут у одного трека РАЗНЫЕ ссылки — общий ключ отдал
-    // бы скачиванию плейлист (или наоборот), смотря кто попросил первым.
+    // Player and download take DIFFERENT links for one track: a shared key
+    // would give a download the playlist, or the reverse, by who asked first.
     final key = hls ? '$videoId#hls' : videoId;
     final cached = _streamCache[key];
     if (cached != null && DateTime.now().difference(cached.at) < _streamTtl) {
