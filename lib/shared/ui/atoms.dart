@@ -125,6 +125,9 @@ enum ButtonTone {
 
   /// Secondary: a line, no fill.
   line,
+
+  /// Main action on a coloured backdrop: the text colour's fill reads over any.
+  ink,
 }
 
 /// The one button with a label. Fills the width it is given (shrinks to the
@@ -174,6 +177,7 @@ class BloomButton extends StatelessWidget {
       ButtonTone.line => (null, t.text2),
       ButtonTone.accent => idle ? (t.pill, t.muted) : (t.accent, t.accentText),
       ButtonTone.danger => idle ? (t.ovlBg, t.muted) : (_danger, Colors.white),
+      ButtonTone.ink => (t.text, t.bg),
     };
     final radius = BorderRadius.circular(pill ? 999 : t.radius);
     final spinner = SizedBox.square(
@@ -263,11 +267,30 @@ class BloomTag extends StatelessWidget {
         ),
         child: Text(
           text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: bloomText(size: 13, weight: 700, color: active ? c : t.text2),
         ),
       ),
     );
   }
+}
+
+/// Over a [Cover] while what it leads to is being looked for.
+class CoverSpinner extends StatelessWidget {
+  const CoverSpinner({super.key});
+
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+    color: Colors.black.withValues(alpha: 0.55),
+    child: const Center(
+      child: FractionallySizedBox(
+        widthFactor: 0.36,
+        heightFactor: 0.36,
+        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+      ),
+    ),
+  );
 }
 
 class CircleIconButton extends StatelessWidget {

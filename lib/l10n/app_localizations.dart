@@ -5132,36 +5132,6 @@ abstract class AppLocalizations {
   /// **'{from} — {to}'**
   String wrHourRange(Object from, Object to);
 
-  /// No description provided for @wrSetCaption.
-  ///
-  /// In en, this message translates to:
-  /// **'WRAPPED'**
-  String get wrSetCaption;
-
-  /// No description provided for @wrSetShow.
-  ///
-  /// In en, this message translates to:
-  /// **'Show Wrapped'**
-  String get wrSetShow;
-
-  /// No description provided for @wrSetShowSub.
-  ///
-  /// In en, this message translates to:
-  /// **'The month card in your profile and the year banner in December — when there’s something to sum up'**
-  String get wrSetShowSub;
-
-  /// No description provided for @wrSetAlways.
-  ///
-  /// In en, this message translates to:
-  /// **'Always show'**
-  String get wrSetAlways;
-
-  /// No description provided for @wrSetAlwaysSub.
-  ///
-  /// In en, this message translates to:
-  /// **'Skip the schedule — the year in review on any day, the month counted as the current one'**
-  String get wrSetAlwaysSub;
-
   /// desktop: settings.system.startup
   ///
   /// In en, this message translates to:

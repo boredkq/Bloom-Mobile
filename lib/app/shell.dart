@@ -7,9 +7,10 @@
 /// остаются под ними навсегда: он берётся из [bottomBarsInset].
 library;
 
+import 'dart:async';
+
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -46,15 +47,32 @@ class BloomShell extends ConsumerStatefulWidget {
 }
 
 class _BloomShellState extends ConsumerState<BloomShell> {
+  Timer? _noticeTimer;
+
+  /// The app can stay open into the 1st: the date is checked on coming back.
+  late final AppLifecycleListener _life = AppLifecycleListener(
+    onResume: () {
+      if (ref.read(wrappedDayProvider.notifier).refresh()) _wrappedNotice();
+    },
+  );
+
+  @override
+  void dispose() {
+    _noticeTimer?.cancel();
+    _life.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
+    _life;
     // Первый прогон — молчаливый: он же засеивает уже выполненные достижения.
     // Из `initState` провайдер трогать нельзя, ждём кадр.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _sync();
-      _wrappedNotice();
+      _wrappedNotice(after: const Duration(seconds: 3));
       _whatsNew();
     });
   }
@@ -77,43 +95,49 @@ class _BloomShellState extends ConsumerState<BloomShell> {
     await showUpdateNote(context, note);
   }
 
-  /// A review is out: a toast with a way into it, once per period and only
-  /// when the period has plays. I mark it before the toast, so a restart the
-  /// same day stays quiet.
-  void _wrappedNotice() {
+  /// A review is out: a toast with a way into it, once per period. I mark it
+  /// before the toast, so a restart stays quiet.
+  void _wrappedNotice({Duration after = Duration.zero}) {
     final entries = ref.read(wrappedEntriesProvider);
-    if (entries.isEmpty) return;
-    final prefs = ref.read(wrappedPrefsProvider.notifier);
+    final marks = ref.read(wrappedMarksProvider.notifier);
     final now = ref.read(playLogClockProvider)();
-    final l = context.l;
-    final locale = Localizations.localeOf(context).languageCode;
-
-    for (final kind in scheduledPeriods(
-      now,
-      force: ref.read(wrappedPrefsProvider).always && kDebugMode,
-    )) {
-      final data = kind == PeriodKind.year ? entries.year : entries.month;
-      if (data == null || prefs.isNotified(data.range)) continue;
-      prefs.markNotified(data.range);
-      ScaffoldMessenger.of(context).toast(
-        [
-          kind == PeriodKind.year ? l.wrYear : l.wrMonth,
-          periodDatesLabel(data.range, locale),
-          l.wrPlaysN(data.plays),
-        ].join(' · '),
-        action: ToastAction(
-          label: l.wrWatch,
-          // I read the data again on the tap: the day may have turned.
-          fn: () {
-            if (!mounted) return;
-            final fresh = ref.read(wrappedEntriesProvider);
-            final data = kind == PeriodKind.year ? fresh.year : fresh.month;
-            if (data == null) return;
-            showWrappedSheet(context, period: kind, data: data);
-          },
-        ),
-      );
+    final due = [
+      for (final kind in scheduledPeriods(
+        now,
+        force: ref.read(wrappedForceProvider),
+      ))
+        if (entries.of(kind) case final data?
+            when !marks.isNotified(data.range))
+          kind,
+    ];
+    if (due.isEmpty) return;
+    for (final kind in due) {
+      marks.markNotified(entries.of(kind)!.range);
     }
+    _noticeTimer = Timer(after, () {
+      if (!mounted) return;
+      final l = context.l;
+      final locale = Localizations.localeOf(context).languageCode;
+      for (final kind in due) {
+        final data = entries.of(kind)!;
+        ScaffoldMessenger.of(context).toast(
+          [
+            periodTitle(l, kind),
+            periodDatesLabel(data.range, locale),
+            l.wrPlaysN(data.plays),
+          ].join(' · '),
+          action: ToastAction(
+            label: l.wrWatch,
+            // Read again on the tap: the day may have turned.
+            fn: () {
+              if (!mounted) return;
+              final fresh = ref.read(wrappedEntriesProvider).of(kind);
+              if (fresh != null) showWrappedSheet(context, fresh);
+            },
+          ),
+        );
+      }
+    });
   }
 
   /// Достижения ловятся здесь, а не на вкладке профиля: иначе они «получались»

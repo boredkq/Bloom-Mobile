@@ -891,11 +891,6 @@
   "wrTimesN": "{count, plural, one{{count} раз} few{{count} раза} many{{count} раз} other{{count} раз}}",
   "wrTimesWord": "{count, plural, one{раз} few{раза} many{раз} other{раз}}",
   "wrHourRange": "{from} — {to}",
-  "wrSetCaption": "ИТОГИ",
-  "wrSetShow": "Показывать «Итоги»",
-  "wrSetShowSub": "Карточка месяца в профиле и декабрьская плашка года, когда есть что подводить",
-  "wrSetAlways": "Показывать всегда",
-  "wrSetAlwaysSub": "Не ждать расписания — итоги года в любой день, а месяцем считать идущий",
 
   "sysStartup": "\u0417\u0430\u043f\u0443\u0441\u043a",
   "audRestoreTitle": "\u0412\u043e\u0441\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435 \u043e\u0447\u0435\u0440\u0435\u0434\u0438",

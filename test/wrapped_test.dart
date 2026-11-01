@@ -1,12 +1,9 @@
-/// «Итоги»: периоды, расчёт по журналу, сам журнал, входы в профиле и шторка.
+/// The reviews: periods, the count from the journal, the journal itself, what
+/// shows when, and the sheet.
 ///
-/// Часы везде подменные (`playLogClockProvider`): доступность года завязана на
-/// число, и на настоящих часах половина проверок зависела бы от даты прогона.
-///
-/// В тестах шторки `pumpAndSettle` НЕЛЬЗЯ: слайд крутит полосу прогресса на
-/// 6 секунд и по её концу переключается на следующий — «устоится» такое дерево
-/// только в конце последнего слайда. Кадры крутим руками (те же грабли, что с
-/// кольцами онбординга и качанием плиток волны).
+/// The clock is a stand-in everywhere, as the year's window hangs on the date.
+/// No `pumpAndSettle` for the sheet: a slide runs its bar for 6 s and moves on,
+/// so the tree settles only on the last one.
 library;
 
 import 'package:bloom/app/theme/bloom_theme.dart';
@@ -21,6 +18,7 @@ import 'package:bloom/features/wrapped/ui/wrapped_sheet.dart';
 import 'package:bloom/features/wrapped/wrapped_data.dart';
 import 'package:bloom/features/wrapped/wrapped_format.dart';
 import 'package:bloom/features/wrapped/wrapped_store.dart';
+import 'package:bloom/shared/ui/atoms.dart' show BloomButton;
 import 'package:bloom/shared/ui/bloom_sheet.dart' show SheetHandle;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,18 +29,18 @@ import 'package:intl/date_symbol_data_local.dart';
 /// 3 августа 2026: прошедший месяц — июль, окно года закрыто.
 final _now = DateTime(2026, 8, 3, 12);
 
-/// [clock] — часы журнала; по умолчанию стоят на [now] (или [_now]).
 ProviderContainer _container({
   DateTime? now,
   BloomDb? db,
-  JsonStore? main,
   DateTime Function()? clock,
+  bool force = false,
 }) {
   final c = ProviderContainer(
     overrides: [
-      jsonStoreProvider.overrideWithValue(main ?? JsonStore.memory()),
+      jsonStoreProvider.overrideWithValue(JsonStore.memory()),
       dbProvider.overrideWithValue(db ?? BloomDb.memory()),
       playLogClockProvider.overrideWithValue(clock ?? () => now ?? _now),
+      wrappedForceProvider.overrideWithValue(force),
     ],
   );
   addTearDown(c.dispose);
@@ -119,16 +117,16 @@ void main() {
     });
 
     test('напоминать уместно 1-го числа и в декабрьском окне', () {
-      // Это НЕ «доступны ли итоги» (месяц смотрят когда угодно), а только
-      // повод кинуть уведомление.
       expect(scheduledPeriods(_now), isEmpty);
       expect(scheduledPeriods(DateTime(2026, 8, 1)), [PeriodKind.month]);
       expect(scheduledPeriods(DateTime(2026, 12, 22)), [PeriodKind.year]);
       // 1 декабря окно года ещё закрыто — только месяц.
       expect(scheduledPeriods(DateTime(2026, 12, 1)), [PeriodKind.month]);
-      // 21 декабря совпали оба: год важнее.
       expect(scheduledPeriods(DateTime(2026, 12, 21)), [PeriodKind.year]);
-      expect(scheduledPeriods(_now, force: true), kPeriodOrder);
+      expect(scheduledPeriods(_now, force: true), [
+        PeriodKind.year,
+        PeriodKind.month,
+      ]);
     });
 
     test('ключ периода стабилен и различает виды', () {
@@ -172,7 +170,7 @@ void main() {
       expect(data.plays, 2);
       expect(data.uniqueTracks, 1);
       expect(data.seconds, 360);
-      expect(data.topTracks.single.id, 'sc:1');
+      expect(data.topTracks.single.track.id, 'sc:1');
     });
 
     test('топ треков по числу прослушиваний', () {
@@ -186,7 +184,7 @@ void main() {
         ]),
         month,
       );
-      expect(data.topTracks.map((t) => t.name), ['Два', 'Один']);
+      expect(data.topTracks.map((t) => t.track.name), ['Два', 'Один']);
       expect(data.topTracks.first.plays, 2);
     });
 
@@ -336,9 +334,60 @@ void main() {
       expect(data.nightShare, 0);
     });
 
-    test('событие без снимка трека всё равно считается', () {
-      // Снимок мог не сохраниться (трек не резолвился) — на ПК это тот же
-      // STUB: прослушивание не должно пропадать из итогов.
+    test('при равном числе прослушиваний выше трек длиннее', () {
+      final short = _track('sc:1', name: 'Короткий', seconds: 100);
+      final long = _track('sc:2', name: 'Длинный', seconds: 300);
+      final data = buildWrapped(
+        _log([
+          (DateTime(2026, 7, 27, 9), short),
+          (DateTime(2026, 7, 28, 9), long),
+        ]),
+        month,
+      );
+      expect(data.topTracks.map((t) => t.track.name), ['Длинный', 'Короткий']);
+    });
+
+    test('лучший трек артиста знает его страницу, только если он один', () {
+      final solo = Track(
+        id: 'sc:1',
+        name: 'Соло',
+        artist: 'Boards',
+        duration: const Duration(seconds: 180),
+        source: MusicSource.soundcloud,
+        cover: 'a.jpg',
+      );
+      final duo = _track('sc:2', artist: 'Boards, Canada', cover: 'b.jpg');
+      final data = buildWrapped(
+        _log([
+          (DateTime(2026, 7, 27, 9), solo),
+          (DateTime(2026, 7, 27, 10), solo),
+          (DateTime(2026, 7, 28, 9), duo),
+        ]),
+        month,
+      );
+      final boards = data.topArtists.firstWhere((a) => a.name == 'Boards');
+      final canada = data.topArtists.firstWhere((a) => a.name == 'Canada');
+      expect(boards.track.id, 'sc:1');
+      // Совместный трек ничего о нём не скажет: заглушка с именем.
+      expect(canada.track.id, '');
+      expect(canada.track.artist, 'Canada');
+      expect(canada.cover, 'b.jpg');
+    });
+
+    test('серия считается по календарю, а не по суткам в 24 часа', () {
+      final t = _track('sc:1');
+      final data = buildWrapped(
+        _log([
+          (DateTime(2026, 3, 28, 12), t),
+          (DateTime(2026, 3, 29, 12), t),
+          (DateTime(2026, 3, 30, 12), t),
+        ]),
+        PeriodRange(PeriodKind.month, DateTime(2026, 3), DateTime(2026, 4)),
+      );
+      expect(data.streak, 3);
+    });
+
+    test('событие без снимка трека считается, но в топ не идёт', () {
       final data = buildWrapped(
         PlayLog(
           events: [
@@ -350,6 +399,7 @@ void main() {
       expect(data.plays, 1);
       expect(data.uniqueTracks, 1);
       expect(data.uniqueArtists, 0);
+      expect(data.topTracks, isEmpty);
       expect(data.sources.single.source, MusicSource.yandex);
     });
   });
@@ -397,10 +447,11 @@ void main() {
     ProviderContainer withPlays(
       List<(DateTime, Track)> events, {
       DateTime? now,
-      JsonStore? main,
+      BloomDb? db,
+      bool force = false,
     }) {
       var clock = now ?? _now;
-      final seed = _container(main: main, clock: () => clock);
+      final seed = _container(db: db, clock: () => clock, force: force);
       final log = seed.read(playLogProvider.notifier);
       for (final (at, track) in events) {
         clock = at;
@@ -439,68 +490,67 @@ void main() {
       expect(c.read(wrappedEntriesProvider).month, isNull);
     });
 
-    test('тумблер «показывать» убирает все входы', () {
-      final c = withPlays([(DateTime(2026, 7, 28, 9), _track('sc:1'))]);
-      c.read(wrappedPrefsProvider.notifier).setShow(false);
-      expect(c.read(wrappedEntriesProvider).isEmpty, isTrue);
-    });
-
-    test('«показывать всегда» открывает год и берёт идущий месяц', () {
-      final c = withPlays([(DateTime(2026, 8, 2, 9), _track('sc:1'))]);
+    test('проверочный запуск открывает год и берёт идущий месяц', () {
+      final events = [(DateTime(2026, 8, 2, 9), _track('sc:1'))];
       // Событие в августе: прошедший месяц (июль) пуст, окно года закрыто.
-      expect(c.read(wrappedEntriesProvider).isEmpty, isTrue);
+      expect(withPlays(events).read(wrappedEntriesProvider).isEmpty, isTrue);
 
-      c.read(wrappedPrefsProvider.notifier).setAlways(true);
-      final entries = c.read(wrappedEntriesProvider);
+      final entries = withPlays(
+        events,
+        force: true,
+      ).read(wrappedEntriesProvider);
       expect(entries.year, isNotNull);
       expect(entries.month!.range.from, DateTime(2026, 8, 1));
     });
 
+    test('отметки проверочного запуска не трогают настоящие', () {
+      final db = BloomDb.memory();
+      final events = [(DateTime(2026, 8, 2, 9), _track('sc:1'))];
+      final forced = withPlays(events, db: db, force: true);
+      final range = forced.read(wrappedEntriesProvider).month!.range;
+      forced.read(wrappedMarksProvider.notifier).markSeen(range);
+      expect(db.getMap('wrapped.seen.force')['month'], '2026-08');
+      expect(db.getMap('wrapped.seen'), isEmpty);
+    });
+
     test('про период напоминаем один раз — и после перезапуска тоже', () {
-      final main = JsonStore.memory();
-      final c = withPlays([
-        (DateTime(2026, 7, 28, 9), _track('sc:1')),
-      ], main: main);
-      final prefs = c.read(wrappedPrefsProvider.notifier);
+      final db = BloomDb.memory();
+      final c = withPlays([(DateTime(2026, 7, 28, 9), _track('sc:1'))], db: db);
+      final marks = c.read(wrappedMarksProvider.notifier);
       final range = c.read(wrappedEntriesProvider).month!.range;
 
-      expect(prefs.isNotified(range), isFalse);
-      prefs.markNotified(range);
-      expect(prefs.isNotified(range), isTrue);
-      // Список уведомлений живёт только сессию, а отметка — на диске.
-      final again = _container(main: main);
+      expect(marks.isNotified(range), isFalse);
+      marks.markNotified(range);
+      expect(marks.isNotified(range), isTrue);
+      // Ключ и вид — как на ПК.
+      expect(db.getMap('wrapped.notified'), {'month': '2026-07'});
+      final again = _container(db: db);
       expect(
-        again.read(wrappedPrefsProvider.notifier).isNotified(range),
+        again.read(wrappedMarksProvider.notifier).isNotified(range),
         isTrue,
       );
       // Просмотр и напоминание — разные отметки: одна не гасит другую.
-      expect(again.read(wrappedPrefsProvider.notifier).isSeen(range), isFalse);
+      expect(again.read(wrappedEntriesProvider).monthUnseen, isTrue);
     });
 
     test('просмотр снимает подмену и переживает перезапуск', () {
-      final main = JsonStore.memory();
-      final c = withPlays([
-        (DateTime(2026, 7, 28, 9), _track('sc:1')),
-      ], main: main);
+      final db = BloomDb.memory();
+      final c = withPlays([(DateTime(2026, 7, 28, 9), _track('sc:1'))], db: db);
       final range = c.read(wrappedEntriesProvider).month!.range;
-      c.read(wrappedPrefsProvider.notifier).markSeen(range);
+      c.read(wrappedMarksProvider.notifier).markSeen(range);
       expect(c.read(wrappedEntriesProvider).monthUnseen, isFalse);
-      expect(c.read(wrappedPrefsProvider.notifier).isSeen(range), isTrue);
-
-      // Другой месяц просмотренным не считается.
-      final older = PeriodRange(
-        PeriodKind.month,
-        DateTime(2026, 6, 1),
-        DateTime(2026, 7, 1),
+      expect(
+        _container(db: db).read(wrappedEntriesProvider).monthUnseen,
+        isFalse,
       );
-      expect(c.read(wrappedPrefsProvider.notifier).isSeen(older), isFalse);
+      expect(db.getMap('wrapped.seen'), {'month': '2026-07'});
     });
 
     test('подсказка «Итоги месяца» — первую неделю и после просмотра', () {
       final c = withPlays([(DateTime(2026, 7, 28, 9), _track('sc:1'))]);
       expect(c.read(wrappedEntriesProvider).monthHint, isTrue);
       final range = c.read(wrappedEntriesProvider).month!.range;
-      c.read(wrappedPrefsProvider.notifier).markSeen(range);
+      c.read(wrappedMarksProvider.notifier).markSeen(range);
       expect(c.read(wrappedEntriesProvider).monthHint, isTrue);
 
       final later = withPlays([
@@ -548,9 +598,6 @@ void main() {
     testWidgets('полный топ из пяти строк влезает в карточку 3:4', (
       tester,
     ) async {
-      // Раскладка постера считается в фиксированном дизайн-боксе, и при
-      // полном топе запас там маленький: переполнение Column'а вылезло бы
-      // жёлто-чёрной полосой прямо в отправленной картинке.
       final month = periodRange(PeriodKind.month, _now);
       final data = buildWrapped(
         _log([
@@ -583,10 +630,7 @@ void main() {
               body: Center(
                 child: SizedBox(
                   height: 560,
-                  child: WrappedPosterCard(
-                    data: data,
-                    accent: BloomThemes.dark.accent,
-                  ),
+                  child: WrappedPosterCard(data: data, width: 300),
                 ),
               ),
             ),
@@ -639,55 +683,37 @@ void main() {
         ),
       );
 
-      showWrappedSheet(ctx, period: PeriodKind.month, data: monthData());
-      // Один кадр открытия: `pumpAndSettle` здесь зациклится на полосе
-      // прогресса слайда (см. шапку файла).
+      showWrappedSheet(ctx, monthData());
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      // Первый слайд называет период датами (кикер идёт капсом), дальше ведёт
-      // кнопка.
       expect(find.text('ИЮЛЬ 2026'), findsOneWidget);
-      // Внизу обе кнопки: выйти можно с любого слайда, а не только с последнего.
       expect(find.text('Далее'), findsOneWidget);
-      expect(find.text('Закрыть'), findsOneWidget);
-      // Пилюля тянется во всю ширину шторки. Без растяжки она обтягивает своё
-      // слово и вырождается в кружок — наступил 2026-08-30.
-      final pill = tester.getSize(find.widgetWithText(Material, 'Далее').last);
+      // Кнопка одна: «Закрыть» встаёт на её место на последнем слайде.
+      expect(find.text('Закрыть'), findsNothing);
+      // Она во всю ширину шторки, а сама шторка крупная: ручка выше середины.
       final screen = tester.getSize(find.byType(MaterialApp));
-      expect(pill.width, greaterThan(screen.width / 2));
-      // И сама шторка крупная — не полоска у нижней кромки: её верх (ручка)
-      // выше середины экрана.
       expect(
-        tester.getTopLeft(find.byType(SheetHandle)).dy,
-        lessThan(screen.height / 2),
+        tester.getSize(find.widgetWithText(BloomButton, 'Далее')).width,
+        greaterThan(screen.width / 2),
       );
-
       final top = tester.getTopLeft(find.byType(SheetHandle)).dy;
+      expect(top, lessThan(screen.height / 2));
 
       await tester.tap(find.text('Далее'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 600));
-      // Второй слайд — время прослушивания.
       expect(find.text('Ты слушал музыку'), findsOneWidget);
 
-      // Долистываем до постера: там «Далее» уходит, и его место обязано забрать
-      // тело — иначе шторка на последнем слайде становится ниже (наступил
-      // 2026-08-30).
       for (var i = 0; i < 20 && find.text('Далее').evaluate().isNotEmpty; i++) {
         await tester.tap(find.text('Далее'));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 600));
       }
       expect(find.text('Далее'), findsNothing);
-      // «Не ниже», а не «ровно столько же»: на узком экране постер сам просит
-      // больше места, и шторка честно подрастает. Ловим именно усадку.
-      expect(
-        tester.getTopLeft(find.byType(SheetHandle)).dy,
-        lessThanOrEqualTo(top),
-      );
+      expect(find.text('Закрыть'), findsOneWidget);
+      expect(find.byType(WrappedPosterCard), findsOneWidget);
 
-      // Уносим шторку со сцены: иначе тест валится на неостывших таймерах.
       Navigator.of(ctx, rootNavigator: true).pop();
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));

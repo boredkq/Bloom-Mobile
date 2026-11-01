@@ -25,7 +25,6 @@ library;
 import 'dart:math' show Random, min;
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -43,7 +42,6 @@ import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../../customization/custom_store.dart';
 import '../../customization/media_store.dart' show kBgBlurMax, kBgDimMax;
-import '../../wrapped/wrapped_store.dart';
 import '../transparency_store.dart';
 import '../user_fonts.dart';
 
@@ -274,14 +272,6 @@ class AppearanceScreen extends ConsumerWidget {
             if (settings.coverAsBg) ..._coverAsBgRows(context, ref),
           ],
         ),
-        // Тумблеры «Итогов» — только в отладочной сборке, как повтор онбординга
-        // (см. `settings_screen.dart`). В релизе итоги не настраиваются, они
-        // случаются: на ПК настроек нет вовсе, а расписание там снимают скрытым
-        // флагом в `localStorage`.
-        if (kDebugMode) ...[
-          const SizedBox(height: 26),
-          ..._wrappedGroup(context, ref),
-        ],
       ],
     );
   }
@@ -326,51 +316,6 @@ List<Widget> _coverAsBgRows(BuildContext context, WidgetRef ref) {
         unit: '%',
         onChanged: controller.setDim,
       ),
-    ),
-  ];
-}
-
-/// Группа «ИТОГИ». На ПК тумблеров больше нет (итоги не настраиваются, они
-/// случаются), и роль «показать вне расписания» там играет скрытый флаг в
-/// `localStorage`; на телефоне девтулзы нет, поэтому оба тумблера остались.
-///
-/// «Показывать всегда» — единственный способ увидеть итоги года вне декабря, а
-/// месяцем считать идущий: журнал копится только с обновления, и у прошедшего
-/// месяца сплошь и рядом ноль событий.
-List<Widget> _wrappedGroup(BuildContext context, WidgetRef ref) {
-  final prefs = ref.watch(wrappedPrefsProvider);
-  final controller = ref.read(wrappedPrefsProvider.notifier);
-  final l = context.l;
-
-  return [
-    // Метку «DEBUG» несёт сама подпись — как у группы повтора онбординга.
-    SettingsCaption('${l.wrSetCaption} · DEBUG'),
-    const SizedBox(height: 10),
-    SettingsGroupCard(
-      rows: [
-        _SettingsCard(
-          child: _SettingsRow(
-            title: l.wrSetShow,
-            subtitle: l.wrSetShowSub,
-            trailing: BloomSwitch(
-              value: prefs.show,
-              onChanged: controller.setShow,
-            ),
-          ),
-        ),
-        // Расписание настраивается, только пока вход вообще показывается.
-        if (prefs.show)
-          _SettingsCard(
-            child: _SettingsRow(
-              title: l.wrSetAlways,
-              subtitle: l.wrSetAlwaysSub,
-              trailing: BloomSwitch(
-                value: prefs.always,
-                onChanged: controller.setAlways,
-              ),
-            ),
-          ),
-      ],
     ),
   ];
 }

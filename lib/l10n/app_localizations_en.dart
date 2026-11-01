@@ -3023,23 +3023,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get wrSetCaption => 'WRAPPED';
-
-  @override
-  String get wrSetShow => 'Show Wrapped';
-
-  @override
-  String get wrSetShowSub =>
-      'The month card in your profile and the year banner in December — when there’s something to sum up';
-
-  @override
-  String get wrSetAlways => 'Always show';
-
-  @override
-  String get wrSetAlwaysSub =>
-      'Skip the schedule — the year in review on any day, the month counted as the current one';
-
-  @override
   String get sysStartup => 'Startup';
 
   @override

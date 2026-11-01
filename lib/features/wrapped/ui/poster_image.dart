@@ -1,14 +1,5 @@
-/// Постер «Итогов» — отдать картинку системной шторке.
-///
-/// На ПК постер сохраняется файлом PNG. На телефоне сохранённый в галерею PNG
-/// человек всё равно понесёт в мессенджер руками, поэтому финальный шаг здесь —
-/// системный `ACTION_SEND` / `UIActivityViewController`: оттуда картинка уходит
-/// в чат или в сторис одним касанием, а «Сохранить в галерею» есть в той же
-/// шторке.
-///
-/// Пакета `share_plus` не тянем — свой метод в уже заведённом канале
-/// `bloom/files` (тот же приём, что с уведомлениями и скачиванием: ради одного
-/// системного вызова пакет в проект не заводим).
+/// Hands the review's poster to the system's share sheet: from there it goes
+/// to a chat or a story in one tap, and saving is in the same sheet.
 library;
 
 import 'dart:io';
@@ -18,25 +9,16 @@ import 'package:path_provider/path_provider.dart';
 
 const MethodChannel _channel = MethodChannel('bloom/files');
 
-/// Куда кладём картинку перед отправкой.
-///
-/// ВРЕМЕННЫЙ каталог, а не `appPrivateDir`, и это не мелочь: на Android файл
-/// уходит наружу через `FileProvider`, а тот умеет отдавать `cache/`
-/// (`<cache-path>` в `res/xml/bloom_share_paths.xml`) — каталог
-/// `app_flutter`, куда смотрит `appPrivateDir`, ему не виден вовсе.
-///
-/// Файл переживает ровно показ шторки: система читает его уже после нашего
-/// возврата, поэтому удалять сразу нельзя — вместо этого следующая отправка
-/// перезаписывает тот же файл, а кеш чистит сама система.
+/// The temporary folder: on Android that's what the file provider can hand
+/// out (`res/xml/bloom_share_paths.xml`). The system reads the file after the
+/// call returns, so it stays; the next share overwrites it.
 Future<File> _shareFile(String name) async {
   final dir = Directory('${(await getTemporaryDirectory()).path}/share');
   if (!dir.existsSync()) await dir.create(recursive: true);
   return File('${dir.path}/$name');
 }
 
-/// Отдать PNG системной шторке. `false` — отправить не удалось (нативная
-/// сторона отказала); отмена самим человеком считается успехом — так же ведёт
-/// себя любой системный пикер.
+/// False when it couldn't be handed over. Cancelling the sheet is a success.
 Future<bool> shareImageBytes(
   Uint8List png, {
   required String filename,
@@ -52,7 +34,6 @@ Future<bool> shareImageBytes(
     });
     return true;
   } catch (_) {
-    // Нет места, нет прав или канал не отвечает — зовущий покажет тост.
     return false;
   }
 }

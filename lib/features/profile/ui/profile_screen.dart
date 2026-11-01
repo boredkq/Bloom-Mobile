@@ -23,7 +23,6 @@ import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/sticky_hero.dart';
-import '../../wrapped/periods.dart';
 import '../../wrapped/ui/wrapped_sheet.dart';
 import '../../wrapped/wrapped_store.dart';
 import '../achievements.dart';
@@ -54,33 +53,11 @@ class ProfileScreen extends ConsumerStatefulWidget {
   ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends ConsumerState<ProfileScreen>
-    with WidgetsBindingObserver {
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   /// Kept here: `extra` lives for the whole location, and once the editor is
   /// opened from here the page rebuilds without it — the avatar would have
   /// nowhere to fly back to.
   late CoverFlight? _flight = widget.flight;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    // The app can stay open into the 1st: the date is checked on coming back,
-    // or the ways into the reviews would keep yesterday's period.
-    if (state == AppLifecycleState.resumed) {
-      ref.read(wrappedDayProvider.notifier).refresh();
-    }
-  }
 
   @override
   void didUpdateWidget(ProfileScreen old) {
@@ -460,19 +437,14 @@ class _Entries extends ConsumerWidget {
             icon: Bi.stars,
             label: l.wrYear,
             fresh: wrapped.yearUnseen,
-            onTap: () =>
-                showWrappedSheet(context, period: PeriodKind.year, data: year),
+            onTap: () => showWrappedSheet(context, year),
           ),
         if (month != null && wrapped.monthUnseen)
           _Entry(
             icon: Bi.stars,
             label: l.wrMonth,
             fresh: true,
-            onTap: () => showWrappedSheet(
-              context,
-              period: PeriodKind.month,
-              data: month,
-            ),
+            onTap: () => showWrappedSheet(context, month),
           )
         else
           _Entry(

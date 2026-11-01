@@ -20,6 +20,8 @@ import '../../app/providers.dart';
 import '../../core/entities/entities.dart';
 import '../../core/providers/artist_lookup.dart';
 import '../../core/store/json_store.dart' show jsonStoreProvider;
+import '../../shared/util/artists.dart';
+import 'tally.dart';
 
 /// Столько живёт запись кеша — как `TTL` на десктопе.
 const Duration _ttl = Duration(days: 30);
@@ -31,6 +33,13 @@ typedef ArtistRef = ({String name, MusicSource source});
 /// они, топ смотрел бы в пустоту.
 String artistAvatarKey(MusicSource source, String name) =>
     '${source.id}|${name.trim().toLowerCase()}';
+
+/// What to show for an artist from the stats or a review: the avatar their best
+/// track brings, else the one found, else that track's cover.
+String? playedArtistAvatar(ArtistPlays a, Map<String, String> found) =>
+    ownArtistAvatar(a.track) ??
+    found[artistAvatarKey(a.source, a.name)] ??
+    a.cover;
 
 class _Cached {
   const _Cached(this.url, this.at);

@@ -1,17 +1,5 @@
-/// Периоды «Итогов» — порт десктопного `features/wrapped/lib/periods.ts`.
-///
-/// Недели больше нет: за семь дней не набирается ничего, что стоило бы
-/// показывать историей, а напоминание каждый понедельник быстро надоедало.
-///
-/// Доступность у месяца и года РАЗНАЯ, и это главное правило файла:
-///   месяц — доступен ВСЕГДА (кнопка «Итоги месяца» внизу шторки статистики),
-///           а пока их не посмотрели, карточка статистики в профиле подменяется
-///           входом в итоги прошедшего месяца;
-///   год   — только с 21 по 31 декабря: вне окна плашки года просто нет.
-///
-/// Ручки тюнинга — константы ниже. Проверить год и подмену вне окна можно
-/// тумблером «Показывать всегда» (`wrapped_store.dart`): он и есть [force] во
-/// всех функциях этого файла.
+/// The reviews' periods. The month's is always there once it has plays; the
+/// year's only on Dec 21–31.
 library;
 
 import 'package:flutter/foundation.dart';
@@ -23,30 +11,15 @@ enum PeriodKind {
 
   const PeriodKind(this.id);
 
-  /// Ключ в хранилище просмотренного. В интерфейсе не показывается.
+  /// The key in the seen and notified marks.
   final String id;
-
-  static PeriodKind? byId(String id) {
-    for (final k in PeriodKind.values) {
-      if (k.id == id) return k;
-    }
-    return null;
-  }
 }
 
-/// Окно «года»: с 21 по 31 декабря включительно.
-const int kYearWindowFromDay = 21;
-const int kYearWindowToDay = 31;
+const int _kYearFromDay = 21;
+const int _kMonthToastDay = 1;
 
-/// День месяца, в который напоминаем про итоги прошедшего месяца.
-const int kMonthWindowDay = 1;
-
-/// Последний день «недели напоминания»: пока идут первые семь чисел, карточка
-/// статистики чередует своё число с надписью «Итоги месяца».
-const int kMonthHintToDay = 7;
-
-/// Порядок «значимости»: где показаны оба, год идёт первым.
-const List<PeriodKind> kPeriodOrder = [PeriodKind.year, PeriodKind.month];
+/// The stats row swaps its value for the review's name through this day.
+const int _kHintToDay = 7;
 
 @immutable
 class PeriodRange {
@@ -54,23 +27,18 @@ class PeriodRange {
 
   final PeriodKind kind;
 
-  /// Начало периода, включительно (локальная полночь).
+  /// Local midnight, inclusive.
   final DateTime from;
 
-  /// Конец периода, НЕ включительно.
+  /// Exclusive.
   final DateTime to;
 
   int get fromMs => from.millisecondsSinceEpoch;
   int get toMs => to.millisecondsSinceEpoch;
 }
 
-/// Границы периода. Месяц — ПРОШЕДШИЙ целиком (цифры окончательные, ничего не
-/// дорастёт), год — текущий с 1 января по «сейчас» (так же делают площадки в
-/// декабре).
-///
-/// [force] берёт у месяца ИДУЩИЙ месяц: журнал копится только с обновления,
-/// поэтому у прошедшего сплошь и рядом ноль событий — и проверять подмену
-/// карточки было бы нечем, итогов месяца просто не существует.
+/// The month is the last one whole, the year runs from Jan 1 until now. A
+/// checking run ([force]) takes the month going on: the last one may be empty.
 PeriodRange periodRange(PeriodKind kind, [DateTime? now, bool force = false]) {
   final at = now ?? DateTime.now();
   switch (kind) {
@@ -83,33 +51,20 @@ PeriodRange periodRange(PeriodKind kind, [DateTime? now, bool force = false]) {
   }
 }
 
-/// Идёт ли окно итогов года (21–31 декабря). Вне его плашки года нет вообще.
 bool inYearWindow(DateTime now, {bool force = false}) =>
-    force ||
-    (now.month == DateTime.december &&
-        now.day >= kYearWindowFromDay &&
-        now.day <= kYearWindowToDay);
+    force || (now.month == DateTime.december && now.day >= _kYearFromDay);
 
-/// Идёт ли «неделя напоминания» (1–7 число). В отличие от подмены карточки,
-/// она не зависит от просмотра: это подсказка, что итоги никуда не делись.
 bool inMonthHintWindow(DateTime now, {bool force = false}) =>
-    force || (now.day >= kMonthWindowDay && now.day <= kMonthHintToDay);
+    force || now.day <= _kHintToDay;
 
-/// О каких итогах «сегодня» уместно НАПОМНИТЬ уведомлением.
-///
-/// У месяца это ровно 1-е число, а не весь месяц, как у подмены карточки:
-/// напоминание — событие, а не состояние. Смотреть итоги месяца можно и после,
-/// кнопкой внизу шторки статистики.
-List<PeriodKind> scheduledPeriods(DateTime now, {bool force = false}) {
-  if (force) return kPeriodOrder;
-  return [
-    if (inYearWindow(now)) PeriodKind.year,
-    if (now.day == kMonthWindowDay) PeriodKind.month,
-  ];
-}
+/// The toasts due today: the year's any day of its window, the month's on the
+/// 1st only.
+List<PeriodKind> scheduledPeriods(DateTime now, {bool force = false}) => [
+  if (inYearWindow(now, force: force)) PeriodKind.year,
+  if (force || now.day == _kMonthToastDay) PeriodKind.month,
+];
 
-/// Стабильный ключ периода («2026-07» / «2026») — им помечаем просмотренные
-/// итоги: по нему карточка статистики понимает, что подменяться уже не нужно.
+/// "2026-07" / "2026": what the seen and notified marks hold.
 String periodKey(PeriodRange r) {
   final d = r.from;
   return switch (r.kind) {
@@ -118,16 +73,10 @@ String periodKey(PeriodRange r) {
   };
 }
 
-/// Подпись диапазона: «Июль 2026» / «2026».
-///
-/// Месяц идёт с заглавной — это заголовок, а `intl` даёт строчную, и форма у
-/// него standalone (`LLLL` — «август», не «августа»).
+/// "Июль 2026" / "2026". LLLL is the form that stands alone.
 String periodDatesLabel(PeriodRange r, String locale) {
   final from = r.from;
   if (r.kind == PeriodKind.year) return '${from.year}';
-  final mon = DateFormat('LLLL', locale).format(from);
-  return '${_capitalize(mon)} ${from.year}';
+  final month = DateFormat('LLLL', locale).format(from);
+  return '${month[0].toUpperCase()}${month.substring(1)} ${from.year}';
 }
-
-String _capitalize(String s) =>
-    s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';

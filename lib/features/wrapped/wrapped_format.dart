@@ -1,17 +1,11 @@
-/// Числа и время «Итогов» — порт десктопного `features/wrapped/lib/fmt.ts`.
-///
-/// На ПК склонения считает свой `ruForm` (общего plural-хелпера там нет); у нас
-/// формы живут прямо в ARB (`{count, plural, …}`), поэтому от десктопного файла
-/// остаётся только сборка фраз.
+/// Numbers and words for the reviews.
 library;
 
 import 'package:intl/intl.dart';
 
 import '../../core/l10n/l10n.dart';
 
-/// Время прослушивания: «12 часов 34 минуты», «45 минут», «меньше минуты».
-///
-/// Секунды не показываем — это оценка, а не секундомер (см. `wrapped_data.dart`).
+/// "12 часов 34 минуты", "45 минут", "Меньше минуты".
 String fmtListenTime(AppLocalizations l, int seconds) {
   final totalMin = (seconds / 60).round();
   if (totalMin < 1) return l.wrTimeLessThanMin;
@@ -22,10 +16,8 @@ String fmtListenTime(AppLocalizations l, int seconds) {
   return '${l.wrHoursN(h)} ${l.wrMinutesN(m)}';
 }
 
-/// То же время, но разобранное на части: слайду нужны отдельные ОГРОМНЫЕ числа
-/// с мелкой подписью («2» + «часа»), а не готовая строка.
-///
-/// Пустой список — меньше минуты (слайд сам покажет `wrTimeLessThanMin`).
+/// The time as big numbers with their words; empty under a minute. No seconds:
+/// it's an estimate.
 List<({int n, String word})> splitListenTime(AppLocalizations l, int seconds) {
   final totalMin = (seconds / 60).round();
   if (totalMin < 1) return const [];
@@ -37,12 +29,12 @@ List<({int n, String word})> splitListenTime(AppLocalizations l, int seconds) {
   ];
 }
 
-/// «14:00 — 15:00» для любимого часа.
+/// "14:00 — 15:00".
 String fmtHourRange(AppLocalizations l, int hour) => l.wrHourRange(
   '${hour.toString().padLeft(2, '0')}:00',
   '${((hour + 1) % 24).toString().padLeft(2, '0')}:00',
 );
 
-/// Число с разделителями разрядов на языке интерфейса.
+/// 12 345 with the language's grouping.
 String fmtCount(String locale, int n) =>
     NumberFormat.decimalPattern(locale).format(n);

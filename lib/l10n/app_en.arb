@@ -1398,11 +1398,6 @@
   "@wrTimesWord": { "placeholders": { "count": { "type": "int" } } },
   "wrHourRange": "{from} — {to}",
   "@wrHourRange": { "description": "favorite hour, both sides already formatted as HH:00", "placeholders": { "from": {}, "to": {} } },
-  "wrSetCaption": "WRAPPED",
-  "wrSetShow": "Show Wrapped",
-  "wrSetShowSub": "The month card in your profile and the year banner in December — when there’s something to sum up",
-  "wrSetAlways": "Always show",
-  "wrSetAlwaysSub": "Skip the schedule — the year in review on any day, the month counted as the current one",
 
   "@_system": {},
   "sysStartup": "Startup",

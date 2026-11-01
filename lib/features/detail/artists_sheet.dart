@@ -15,8 +15,10 @@ import '../../core/providers/music_provider.dart';
 import '../../shared/ui/atoms.dart';
 import '../../shared/ui/bloom_icon.dart';
 import '../../shared/ui/bloom_sheet.dart';
+import '../../shared/ui/bloom_toast.dart';
 import '../../shared/ui/pressable.dart';
 import '../../shared/util/artists.dart';
+import '../profile/tally.dart';
 import 'detail_nav.dart';
 
 /// Whether the track has an artist to go to: one with a known page, or
@@ -66,6 +68,42 @@ Future<void> openTrackArtist(
   // I open the page from the screen's context: the sheet's is gone by now.
   if (picked == null || !context.mounted) return;
   await openArtist(context, picked.id, initial: picked);
+}
+
+/// Opens an artist from the stats or a review: the page their best track
+/// knows, else the one with that name where they were played most.
+Future<void> openPlayedArtist(
+  BuildContext context,
+  WidgetRef ref,
+  ArtistPlays a,
+) async {
+  final known = artistLinks(a.track).where((l) => l.name == a.name).firstOrNull;
+  if (known?.id case final id?) {
+    return openArtist(
+      context,
+      id,
+      initial: Artist(
+        id: id,
+        name: a.name,
+        source: a.source,
+        avatar: ownArtistAvatar(a.track),
+        verified: a.track.artistVerified,
+      ),
+    );
+  }
+  Artist? found;
+  try {
+    final provider = ref.read(registryProvider).byId(a.source.id);
+    found = provider == null ? null : await findArtistCached(provider, a.name);
+  } catch (_) {
+    // No network or the platform said no: nowhere to go all the same.
+  }
+  if (!context.mounted) return;
+  if (found == null) {
+    showToast(context, context.l.artistNotFound);
+    return;
+  }
+  await openArtist(context, found.id, initial: found);
 }
 
 /// The track's artists: avatar and name. Each is looked up on its own, so a

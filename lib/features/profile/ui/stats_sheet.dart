@@ -8,13 +8,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/providers.dart';
 import '../../../app/theme/bloom_theme.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/l10n/source_label.dart';
-import '../../../core/providers/artist_lookup.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
@@ -22,9 +20,8 @@ import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
 import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/track_actions.dart';
-import '../../detail/detail_nav.dart';
+import '../../detail/artists_sheet.dart';
 import '../../player/player_controller.dart';
-import '../../wrapped/periods.dart';
 import '../../wrapped/ui/wrapped_sheet.dart';
 import '../../wrapped/wrapped_store.dart';
 import '../artist_avatars.dart';
@@ -170,7 +167,7 @@ class _ArtistStrip extends ConsumerStatefulWidget {
   const _ArtistStrip({required this.rows, required this.avatars});
 
   final List<ArtistPlays> rows;
-  final Map<String, String?> avatars;
+  final Map<String, String> avatars;
 
   static const double size = 108;
 
@@ -187,26 +184,8 @@ class _ArtistStripState extends ConsumerState<_ArtistStrip> {
     if (_busy != null) return;
     setState(() => _busy = row.name);
 
-    Artist? artist;
-    try {
-      // The same name on another platform is another person.
-      final provider = ref.read(registryProvider).byId(row.source.id);
-      artist = provider == null
-          ? null
-          : await findArtistCached(provider, row.name);
-    } catch (_) {
-      // No network or the platform said no: nowhere to go all the same.
-    }
-    if (!mounted) return;
-    setState(() => _busy = null);
-
-    if (artist == null) {
-      showToast(context, context.l.artistNotFound);
-      return;
-    }
-    // The page goes into the tab's navigator; whatever is over the shell,
-    // this sheet too, folds by itself (`_target` in `detail_nav.dart`).
-    await openArtist(context, artist.id, initial: artist);
+    await openPlayedArtist(context, ref, row);
+    if (mounted) setState(() => _busy = null);
   }
 
   @override
@@ -230,38 +209,11 @@ class _ArtistStripState extends ConsumerState<_ArtistStrip> {
               width: side,
               child: Column(
                 children: [
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Cover(
-                        url:
-                            widget.avatars[artistAvatarKey(
-                              row.source,
-                              row.name,
-                            )] ??
-                            row.cover,
-                        size: side,
-                        circle: true,
-                      ),
-                      if (_busy == row.name)
-                        Container(
-                          width: side,
-                          height: side,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.black.withValues(alpha: 0.55),
-                          ),
-                          child: const Center(
-                            child: SizedBox.square(
-                              dimension: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
+                  Cover(
+                    url: playedArtistAvatar(row, widget.avatars),
+                    size: side,
+                    circle: true,
+                    overlay: _busy == row.name ? const CoverSpinner() : null,
                   ),
                   const SizedBox(height: 10),
                   Text(
@@ -581,11 +533,7 @@ class _FootState extends ConsumerState<_Foot> {
               onTap: () {
                 // The review is its own sheet: this one goes first.
                 Navigator.of(context).pop();
-                showWrappedSheet(
-                  context,
-                  period: PeriodKind.month,
-                  data: month,
-                );
+                showWrappedSheet(context, month);
               },
             ),
             const SizedBox(height: 10),

@@ -180,10 +180,8 @@ Future<void> hardReset(WidgetRef ref) async {
   // The kept lyrics went with the database; the missed ones live in memory.
   ref.invalidate(lyricsCacheProvider);
   ref.invalidate(lyricsProvider);
-  // Тумблеры и отметки просмотра «Итогов» лежат в `bloom.json` под ключом
-  // `wrapped`: сам ключ уже стёрт, гасим стор, чтобы он не висел в памяти до
-  // перезапуска.
-  ref.invalidate(wrappedPrefsProvider);
+  // The reviews' marks went with the database.
+  ref.invalidate(wrappedMarksProvider);
   // Связка с ПК жила в стёртой базе. Не invalidate: расписание кругов заведено
   // в `main()` и пересобранный стор остался бы без него.
   ref.read(pcProvider.notifier).unpair();

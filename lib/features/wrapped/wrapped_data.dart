@@ -1,89 +1,22 @@
-/// Сборка «Итогов» из журнала прослушиваний — порт десктопного
-/// `features/wrapped/lib/aggregate.ts`.
+/// A period's review, counted from the plays journal.
 ///
-/// Чистая функция: события + снимки треков → всё, что показывают слайды. Один
-/// проход по журналу, события идут по возрастанию `ts`.
-///
-/// Время прослушивания — ОЦЕНКА: Σ длительность трека × число прослушиваний.
-/// Прослушивание засчитывается на ~90% трека, поэтому оценка близка к правде,
-/// но замером не является.
+/// The time is an estimate: each play counts its track's whole length.
 library;
 
 import 'package:flutter/foundation.dart';
 
 import '../../core/entities/entities.dart';
 import '../../core/store/days_store.dart' show dayKey;
-import '../../shared/util/artists.dart';
-import 'periods.dart';
 import '../../core/store/play_log.dart';
+import '../../shared/util/artists.dart';
+import '../../shared/util/taste.dart' show artistKey;
+import '../profile/stats.dart';
+import 'periods.dart';
 
-@immutable
-class WrappedTrack {
-  const WrappedTrack({
-    required this.id,
-    required this.name,
-    required this.artist,
-    required this.cover,
-    required this.source,
-    required this.plays,
-    required this.seconds,
-  });
+const int _kTop = 5;
 
-  final String id;
-  final String name;
-  final String artist;
-  final String? cover;
-  final MusicSource source;
-  final int plays;
-
-  /// Оценка времени, отданного этому треку за период.
-  final int seconds;
-
-  WrappedTrack _plus(int seconds) => WrappedTrack(
-    id: id,
-    name: name,
-    artist: artist,
-    cover: cover,
-    source: source,
-    plays: plays + 1,
-    seconds: this.seconds + seconds,
-  );
-}
-
-@immutable
-class WrappedArtist {
-  const WrappedArtist({
-    required this.name,
-    required this.plays,
-    required this.cover,
-    required this.source,
-  });
-
-  final String name;
-  final int plays;
-
-  /// Обложка самого заслушанного его трека за период — вместо аватара, за
-  /// которым пришлось бы лезть на площадку (аватар догружается в интерфейсе).
-  final String? cover;
-
-  /// Площадка, где его слушали чаще всего: у неё интерфейс спрашивает аватар и
-  /// на неё же уходит по нажатию. Аккаунт с тем же именем на соседней площадке
-  /// принадлежит другому человеку, поэтому площадку выбирают, а не берут любую.
-  final MusicSource source;
-}
-
-@immutable
-class WrappedSource {
-  const WrappedSource({
-    required this.source,
-    required this.plays,
-    required this.seconds,
-  });
-
-  final MusicSource source;
-  final int plays;
-  final int seconds;
-}
+/// Plays before 6:00 are the night's.
+const int _kNightTo = 6;
 
 @immutable
 class WrappedRecordDay {
@@ -116,254 +49,127 @@ class WrappedData {
   });
 
   final PeriodRange range;
-
-  /// Всего засчитанных прослушиваний за период.
   final int plays;
   final int uniqueTracks;
   final int uniqueArtists;
-
-  /// Оценка времени прослушивания, секунды.
   final int seconds;
+  final List<TrackPlays> topTracks;
+  final List<ArtistPlays> topArtists;
+  final List<SourcePlays> sources;
 
-  final List<WrappedTrack> topTracks;
-  final List<WrappedArtist> topArtists;
-  final List<WrappedSource> sources;
-
-  /// Артисты, впервые появившиеся в журнале в этом периоде.
-  final List<WrappedArtist> newArtists;
+  /// Heard for the first time in this period.
+  final List<ArtistPlays> newArtists;
   final int newArtistsCount;
   final int newTracksCount;
 
-  /// Самый «залипательный» день периода.
   final WrappedRecordDay? recordDay;
 
-  /// Гистограмма по часам суток (24 значения, локальное время).
+  /// Plays by the hour of the day, local time.
   final List<int> hours;
   final int peakHour;
-
-  /// Доля прослушиваний с 00:00 до 05:59 — «ночной слушатель».
   final double nightShare;
-
-  /// Дней, в которые вообще что-то играло.
   final int activeDays;
 
-  /// Самая длинная серия дней подряд внутри периода.
+  /// The longest run of days in a row within the period.
   final int streak;
 
   bool get isEmpty => plays == 0;
 }
 
-/// Сколько строк показываем в топах — десктопный `slice(0, 5)`.
-const int kWrappedTopSize = 5;
-
-/// Ключ группировки артиста: регистр и лишние пробелы не должны плодить дубли.
-String _artistKey(String name) => name.trim().toLowerCase();
-
-/// Имена артистов трека по отдельности: строка бывает мультиартистной
-/// («reidenshi, Øneheart»), а в топ должен попадать каждый сам по себе — по
-/// склеенному имени площадка не найдёт ни аватара, ни страницы.
-///
-/// Кеш — потому что зовётся на КАЖДОЕ событие журнала, а строк артистов там
-/// заметно меньше, чем прослушиваний.
-List<String> _splitArtists(String str, Map<String, List<String>> cache) =>
-    cache[str] ??= parseArtists(str);
-
-/// Площадка артиста — та, где его слушали чаще. Свои файлы в счёт не идут,
-/// пока есть хоть одна площадка: у локального артиста своей страницы нет, и
-/// поискать его там, где слушали хотя бы раз, — единственный способ на неё
-/// попасть.
-MusicSource _artistSource(Map<MusicSource, int> plays) {
-  MusicSource? top;
-  var best = 0;
-  for (final e in plays.entries) {
-    if (e.key == MusicSource.local || e.value <= best) continue;
-    top = e.key;
-    best = e.value;
-  }
-  return top ?? MusicSource.local;
-}
-
 WrappedData buildWrapped(PlayLog log, PeriodRange range) {
-  final from = range.fromMs;
-  final to = range.toMs;
-
-  // Что уже звучало ДО периода — нужно для «открытий» (новых артистов и
-  // треков).
+  // What played before the period: the rest is heard for the first time.
   final seenTracks = <String>{};
   final seenArtists = <String>{};
-
-  final trackAgg = <String, WrappedTrack>{};
-  final artistAgg = <String, WrappedArtist>{};
-  // Сколько прослушиваний было у трека, от которого взята обложка артиста.
-  final artistBest = <String, int>{};
-  // На каких площадках его слушали и сколько раз — из этого [_artistSource]
-  // выбирает ту, куда вести за аватаром и страницей.
-  final artistSrcs = <String, Map<MusicSource, int>>{};
-  final srcAgg = <MusicSource, WrappedSource>{};
-  final dayAgg = <String, int>{};
+  final perTrack = <String, int>{};
+  final perDay = <String, int>{};
   final hours = List<int>.filled(24, 0);
-
   var plays = 0;
-  var seconds = 0;
-  var newTracksCount = 0;
-  final newArtistKeys = <String>{};
-  final splitCache = <String, List<String>>{};
 
   for (final e in log.events) {
-    if (e.ts < from) {
-      seenTracks.add(e.id);
-      final before = log.tracks[e.id];
-      if (before != null && before.artist.isNotEmpty) {
-        for (final n in _splitArtists(before.artist, splitCache)) {
-          seenArtists.add(_artistKey(n));
-        }
+    if (e.ts >= range.toMs) break;
+    if (e.ts < range.fromMs) {
+      if (!seenTracks.add(e.id)) continue;
+      for (final name in parseArtists(log.tracks[e.id]?.artist)) {
+        seenArtists.add(artistKey(name));
       }
       continue;
     }
-    // События отсортированы по ts — дальше только «будущее».
-    if (e.ts >= to) break;
-
-    final m = log.tracks[e.id];
-    final name = m?.name ?? '';
-    final artist = m?.artist ?? '';
-    final cover = m?.cover;
-    final sec = m?.duration.inSeconds ?? 0;
-    final source = MusicSource.fromId(e.id);
-
     plays++;
-    seconds += sec;
-
-    final was = trackAgg[e.id];
-    if (was != null) {
-      trackAgg[e.id] = was._plus(sec);
-    } else {
-      trackAgg[e.id] = WrappedTrack(
-        id: e.id,
-        name: name,
-        artist: artist,
-        cover: cover,
-        source: source,
-        plays: 1,
-        seconds: sec,
-      );
-      if (!seenTracks.contains(e.id)) newTracksCount++;
-    }
-
-    if (artist.isNotEmpty) {
-      // Обложка артиста — от его самого заслушанного трека в периоде.
-      final trackPlays = trackAgg[e.id]!.plays;
-      // Каждый участник строки считается сам по себе (см. [_splitArtists]),
-      // так что совместный трек идёт в зачёт обоим.
-      for (final name in _splitArtists(artist, splitCache)) {
-        final key = _artistKey(name);
-        final srcs = artistSrcs[key] ??= {};
-        srcs[source] = (srcs[source] ?? 0) + 1;
-        final a = artistAgg[key];
-        if (a == null) {
-          // Площадка здесь — заглушка: настоящую поставит [_artistSource],
-          // когда весь период уже сосчитан.
-          artistAgg[key] = WrappedArtist(
-            name: name,
-            plays: 1,
-            cover: cover,
-            source: source,
-          );
-          artistBest[key] = cover != null ? 1 : -1;
-          if (!seenArtists.contains(key)) newArtistKeys.add(key);
-        } else {
-          final better = cover != null && trackPlays > (artistBest[key] ?? -1);
-          artistAgg[key] = WrappedArtist(
-            name: a.name,
-            plays: a.plays + 1,
-            cover: better ? cover : a.cover,
-            source: a.source,
-          );
-          if (better) artistBest[key] = trackPlays;
-        }
-      }
-    }
-
-    final s = srcAgg[source];
-    srcAgg[source] = WrappedSource(
-      source: source,
-      plays: (s?.plays ?? 0) + 1,
-      seconds: (s?.seconds ?? 0) + sec,
-    );
-
+    perTrack[e.id] = (perTrack[e.id] ?? 0) + 1;
     final at = DateTime.fromMillisecondsSinceEpoch(e.ts);
-    final key = dayKey(at);
-    dayAgg[key] = (dayAgg[key] ?? 0) + 1;
+    final day = dayKey(at);
+    perDay[day] = (perDay[day] ?? 0) + 1;
     hours[at.hour]++;
   }
 
-  final topTracks = trackAgg.values.toList()
-    ..sort((a, b) {
-      final byPlays = b.plays.compareTo(a.plays);
-      return byPlays != 0 ? byPlays : b.seconds.compareTo(a.seconds);
-    });
+  final artists = ArtistTally();
+  final sources = <MusicSource, SourcePlays>{};
+  final tracks = <TrackPlays>[];
+  var seconds = 0;
+  var newTracks = 0;
+  for (final MapEntry(key: id, value: n) in perTrack.entries) {
+    final t = log.tracks[id];
+    final source = t?.source ?? MusicSource.fromId(id);
+    final sec = (t?.duration.inSeconds ?? 0) * n;
+    final was = sources[source];
+    sources[source] = SourcePlays(
+      source,
+      (was?.plays ?? 0) + n,
+      (was?.seconds ?? 0) + sec,
+    );
+    if (!seenTracks.contains(id)) newTracks++;
+    // Nothing to show of it in the tops.
+    if (t == null) continue;
+    seconds += sec;
+    tracks.add(TrackPlays(t, n));
+    artists.add(t, n, source);
+  }
 
-  // Площадку артиста ставим уже на выходе: пока идёт разбор, известна только
-  // площадка очередного трека, а нужна та, где его слушали чаще всего.
-  final artists = [
-    for (final e in artistAgg.entries)
-      WrappedArtist(
-        name: e.value.name,
-        plays: e.value.plays,
-        cover: e.value.cover,
-        source: _artistSource(artistSrcs[e.key]!),
-      ),
+  // A tie goes to the longer listen.
+  tracks.sort((a, b) {
+    final byPlays = b.plays.compareTo(a.plays);
+    return byPlays != 0
+        ? byPlays
+        : b.track.duration.compareTo(a.track.duration);
+  });
+
+  final rank = artists.ranked();
+  final fresh = [
+    for (final a in rank)
+      if (!seenArtists.contains(artistKey(a.name))) a,
   ];
-  final topArtists = [...artists]..sort((a, b) => b.plays.compareTo(a.plays));
-  final newArtists =
-      artists.where((a) => newArtistKeys.contains(_artistKey(a.name))).toList()
-        ..sort((a, b) => b.plays.compareTo(a.plays));
 
-  final sources = srcAgg.values.toList()
-    ..sort((a, b) => b.plays.compareTo(a.plays));
-
-  // Рекордный день.
-  WrappedRecordDay? recordDay;
-  for (final e in dayAgg.entries) {
-    if (recordDay != null && e.value <= recordDay.plays) continue;
-    final date = DateTime.parse(e.key);
-    recordDay = WrappedRecordDay(date, e.value);
+  WrappedRecordDay? record;
+  for (final MapEntry(key: day, value: n) in perDay.entries) {
+    if (record == null || n > record.plays) {
+      record = WrappedRecordDay(DateTime.parse(day), n);
+    }
   }
 
-  // Самая длинная серия дней подряд внутри периода.
-  final days = dayAgg.keys.toList()..sort();
-  var streak = 0;
-  var run = 0;
-  DateTime? prev;
-  for (final key in days) {
-    final date = DateTime.parse(key);
-    run = prev != null && date.difference(prev).inDays == 1 ? run + 1 : 1;
-    prev = date;
-    if (run > streak) streak = run;
-  }
-
-  var peakHour = 0;
+  var peak = 0;
   for (var h = 1; h < 24; h++) {
-    if (hours[h] > hours[peakHour]) peakHour = h;
+    if (hours[h] > hours[peak]) peak = h;
   }
-  final night = hours.take(6).fold(0, (s, n) => s + n);
+  final night = hours.take(_kNightTo).fold(0, (s, n) => s + n);
 
   return WrappedData(
     range: range,
     plays: plays,
-    uniqueTracks: trackAgg.length,
-    uniqueArtists: artistAgg.length,
+    uniqueTracks: perTrack.length,
+    uniqueArtists: artists.size,
     seconds: seconds,
-    topTracks: topTracks.take(kWrappedTopSize).toList(),
-    topArtists: topArtists.take(kWrappedTopSize).toList(),
-    sources: sources,
-    newArtists: newArtists.take(kWrappedTopSize).toList(),
-    newArtistsCount: newArtistKeys.length,
-    newTracksCount: newTracksCount,
-    recordDay: recordDay,
+    topTracks: tracks.take(_kTop).toList(),
+    topArtists: rank.take(_kTop).toList(),
+    sources: sources.values.toList()
+      ..sort((a, b) => b.plays.compareTo(a.plays)),
+    newArtists: fresh.take(_kTop).toList(),
+    newArtistsCount: fresh.length,
+    newTracksCount: newTracks,
+    recordDay: record,
     hours: hours,
-    peakHour: peakHour,
+    peakHour: peak,
     nightShare: plays > 0 ? night / plays : 0,
-    activeDays: dayAgg.length,
-    streak: streak,
+    activeDays: perDay.length,
+    streak: longestRun(perDay.keys),
   );
 }

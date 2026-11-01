@@ -19,44 +19,9 @@ import '../../core/store/history_store.dart';
 import '../../core/store/library_store.dart';
 import '../../core/store/days_store.dart';
 import '../../core/store/play_stats.dart';
-import '../../shared/util/artists.dart';
+import 'tally.dart';
 
-/// Строка «Топ треков».
-class TrackPlays {
-  const TrackPlays(this.track, this.plays);
-
-  final Track track;
-  final int plays;
-}
-
-/// Строка «Топ исполнителей».
-class ArtistPlays {
-  const ArtistPlays(this.name, this.plays, this.cover, this.source);
-
-  final String name;
-  final int plays;
-
-  /// Обложка самого слушаемого его трека — вместо аватара, за которым пришлось
-  /// бы лезть на площадку.
-  final String? cover;
-
-  /// Где его слушали — по ней и ищем самого артиста: аватар для топа и id для
-  /// перехода на страницу. Иначе у того, кто слушает Яндекс, в любимых
-  /// артистах стояли бы аккаунты SoundCloud.
-  ///
-  /// [MusicSource.local] — слушали только свои файлы: искать негде, страницы у
-  /// такого артиста нет.
-  final MusicSource source;
-}
-
-/// Строка «Где слушали чаще».
-class SourcePlays {
-  const SourcePlays(this.source, this.plays, this.seconds);
-
-  final MusicSource source;
-  final int plays;
-  final int seconds;
-}
+export 'tally.dart';
 
 class ProfileStats {
   const ProfileStats({
@@ -129,11 +94,7 @@ class ProfileStats {
   ) {
     var totalPlays = 0;
     var listenSec = 0;
-    final artists =
-        <
-          String,
-          ({int plays, String? cover, int best, Map<MusicSource, int> sources})
-        >{};
+    final artists = ArtistTally();
     final sources = <MusicSource, ({int plays, int seconds})>{};
     final rows = <TrackPlays>[];
     String? topCover;
@@ -176,40 +137,12 @@ class ProfileStats {
         topTs = entry.lastTs;
       }
 
-      // Each artist of a line counts on their own, a joint track for both;
-      // no name counts for no one.
-      for (final name in parseArtists(track.artist)) {
-        final artist =
-            artists[name] ??
-            (plays: 0, cover: null, best: -1, sources: <MusicSource, int>{});
-        final better = track.cover != null && plays > artist.best;
-        artists[name] = (
-          plays: artist.plays + plays,
-          cover: better ? track.cover : artist.cover,
-          best: better ? plays : artist.best,
-          // Считаем прослушивания по площадкам: по ним потом и выбирается, где
-          // этого артиста искать.
-          sources: artist.sources
-            ..update(source, (n) => n + plays, ifAbsent: () => plays),
-        );
-      }
+      artists.add(track, plays, source);
     }
 
     rows.sort((a, b) => b.plays.compareTo(a.plays));
 
-    final topArtists =
-        artists.entries
-            .where((e) => e.value.plays > 0)
-            .map(
-              (e) => ArtistPlays(
-                e.key,
-                e.value.plays,
-                e.value.cover,
-                _artistSource(e.value.sources),
-              ),
-            )
-            .toList()
-          ..sort((a, b) => b.plays.compareTo(a.plays));
+    final topArtists = artists.ranked();
 
     final bySource =
         sources.entries
@@ -235,7 +168,7 @@ class ProfileStats {
       totalPlays: totalPlays,
       listenSec: listenSec,
       uniqueTracks: played.length,
-      uniqueArtists: artists.length,
+      uniqueArtists: artists.size,
       avgSec: totalPlays > 0 ? (listenSec / totalPlays).round() : 0,
       daySpan: span < 1 ? 1 : span,
       recordDay: recordDay,
@@ -272,23 +205,6 @@ int longestRun(Iterable<String> keys) {
 /// Следующий календарный день — через конструктор, а не +24 ч: на переходе
 /// на летнее время сутки бывают в 23 и 25 часов.
 DateTime nextDay(DateTime d) => DateTime(d.year, d.month, d.day + 1);
-
-/// Площадка артиста — та, где его слушали чаще всего.
-///
-/// Свои файлы в счёт не идут, пока есть хоть одна площадка: страницы у
-/// локального артиста нет, а искать его там, где слушали хотя бы раз, —
-/// единственный способ на неё попасть. Слушали ТОЛЬКО свои файлы —
-/// [MusicSource.local], и артист остаётся без перехода.
-MusicSource _artistSource(Map<MusicSource, int> plays) {
-  MusicSource? top;
-  var best = 0;
-  for (final e in plays.entries) {
-    if (e.key == MusicSource.local || e.value <= best) continue;
-    top = e.key;
-    best = e.value;
-  }
-  return top ?? MusicSource.local;
-}
 
 /// Дней подряд с прослушиваниями. Отсчёт от сегодня, но если сегодня ещё не
 /// слушали — от вчера: иначе стрик обнулялся бы каждое утро (десктопный грейс).

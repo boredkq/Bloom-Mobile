@@ -3087,23 +3087,6 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get wrSetCaption => 'ИТОГИ';
-
-  @override
-  String get wrSetShow => 'Показывать «Итоги»';
-
-  @override
-  String get wrSetShowSub =>
-      'Карточка месяца в профиле и декабрьская плашка года, когда есть что подводить';
-
-  @override
-  String get wrSetAlways => 'Показывать всегда';
-
-  @override
-  String get wrSetAlwaysSub =>
-      'Не ждать расписания — итоги года в любой день, а месяцем считать идущий';
-
-  @override
   String get sysStartup => 'Запуск';
 
   @override
