@@ -1,15 +1,9 @@
-/// Куда применены картинки библиотеки — порт десктопного
-/// `customizationStore.ts`.
+/// Where library pictures are applied. Three contexts: background, player cover
+/// and progress knob.
 ///
-/// Контекстов на телефоне ТРИ, а не пять: курсора здесь нет вовсе, а
-/// визуализатора нет у нас (на ПК это `VizBlock`). Остались фон, обложка
-/// плеера и ползунок прогресса.
-///
-/// Стор хранит только `id` картинок библиотеки, как на ПК хранит их пресет:
-/// сама картинка живёт в [mediaLibProvider], и удаление её оттуда обязано
-/// снимать контекст — этим занимается [removeMedia], единственная точка, где
-/// сходятся библиотека, контексты и пресеты (десктопный каскад
-/// `mediaLibStore.remove`).
+/// The store holds only picture `id`s: the picture lives in [mediaLibProvider],
+/// and deleting it there must clear the context. [removeMedia] does that, the
+/// one point where library, contexts and presets meet.
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,40 +13,35 @@ import '../player/player_controller.dart' show playbackProvider;
 import 'media_store.dart';
 import 'presets_store.dart';
 
-/// Куда можно поставить картинку.
+/// Where a picture can go.
 enum CustomCtx {
-  /// Фон приложения (десктопный слой `#bgl`).
+  /// App background.
   bg,
 
-  /// Обложка в плеере и миниплеере поверх обложки трека.
+  /// The cover in the player and mini player, over the track's cover.
   cover,
 
-  /// Пуговка ползунка прогресса.
+  /// The progress slider's knob.
   slider,
 }
 
-/// Умолчания размытия и затемнения у «обложки трека как фон» — десктопные
-/// `bgBlur: 0` и `bgDim: 65`. Затемнение не ноль: без плёнки светлая обложка
-/// съедает текст интерфейса.
-///
-/// Ровно эти числа и стояли, пока ползунков не было, — так что у того, кто
-/// настройку не открывал, фон остаётся прежним.
+/// Default blur and dim of the track cover as a background. Dim isn't zero:
+/// with no film a light cover eats the UI's text.
 const int kCoverAsBgBlur = 0;
 const int kCoverAsBgDim = 65;
 
-/// Размытие и затемнение «обложки трека как фон» ([SettingsState.coverAsBg]).
-///
-/// У картинки из библиотеки эти числа лежат в ней самой ([MediaItem.blur]), но
-/// у обложки трека своей записи в библиотеке нет — крутить их приходится
-/// отдельной настройкой. Границы и единицы те же, что на странице картинки:
-/// пиксели 0…[kBgBlurMax] и проценты 0…[kBgDimMax].
+/// Blur and dim of the track cover as a background ([SettingsState.coverAsBg]).
+/// A library picture holds these numbers itself ([MediaItem.blur]), but a
+/// track's cover has no library entry, so it takes a separate setting. Bounds
+/// and units match the picture's page: pixels 0…[kBgBlurMax], percent
+/// 0…[kBgDimMax].
 class CoverAsBgFx {
   const CoverAsBgFx({this.blur = kCoverAsBgBlur, this.dim = kCoverAsBgDim});
 
-  /// Размытие, px.
+  /// Blur, px.
   final int blur;
 
-  /// Затемнение, %.
+  /// Dim, %.
   final int dim;
 }
 
@@ -67,8 +56,8 @@ class CoverAsBgFxController extends Notifier<CoverAsBgFx> {
   @override
   CoverAsBgFx build() {
     final raw = ref.read(jsonStoreProvider).readMap(_key);
-    // Битую запись (правили файл руками) молча заменяем умолчанием: фон не
-    // повод ронять запуск.
+    // A broken entry silently becomes the default: a background is no reason to
+    // crash a launch.
     int value(String field, double max, int fallback) {
       final saved = raw[field];
       return saved is num ? saved.round().clamp(0, max.round()) : fallback;
@@ -109,8 +98,8 @@ class CustomTargets {
     CustomCtx.slider => slider,
   };
 
-  /// `next` разворачивается прямо в поле: `copyWith` с `null` не отличил бы
-  /// «не трогать» от «снять», а снимать здесь нужно постоянно.
+  /// `next` unfolds right in the field: `copyWith` with `null` can't tell leave
+  /// alone from clear, and clearing is constant here.
   CustomTargets with_(CustomCtx ctx, String? next) => switch (ctx) {
     CustomCtx.bg => CustomTargets(bg: next, cover: cover, slider: slider),
     CustomCtx.cover => CustomTargets(bg: bg, cover: next, slider: slider),
@@ -148,22 +137,21 @@ class CustomController extends Notifier<CustomTargets> {
     );
   }
 
-  /// Поставить картинку в контекст. Контекст держит ОДНУ картинку: поставили
-  /// новую — прежняя оттуда ушла (тумблеры на странице картинки читаются
-  /// именно так).
+  /// Puts a picture in a context, which holds ONE: a new one displaces the
+  /// last, as the switches on the picture's page read.
   void set(CustomCtx ctx, String? id) {
     if (state.of(ctx) == id) return;
     state = state.with_(ctx, id);
     _save();
   }
 
-  /// Тумблер на странице картинки: включили — картинка встала в контекст,
-  /// выключили — контекст снят (но только если там стоит именно она).
+  /// Switch on the picture's page: on puts it in the context, off clears the
+  /// context (only if this one's there).
   void toggle(CustomCtx ctx, String id, bool on) =>
       set(ctx, on ? id : (state.of(ctx) == id ? null : state.of(ctx)));
 
-  /// Применить снимок пресета: заданные контексты ставим, пустые НЕ трогаем —
-  /// как `applyPreset` на десктопе.
+  /// Applies a preset snapshot: set contexts get placed, empty ones are NOT
+  /// touched.
   void applyTargets(CustomTargets next) {
     var value = state;
     for (final ctx in CustomCtx.values) {
@@ -179,7 +167,7 @@ class CustomController extends Notifier<CustomTargets> {
     _save();
   }
 
-  /// Убрать ссылки на удалённую картинку.
+  /// Removes references to a deleted picture.
   void purge(String id) {
     var value = state;
     for (final ctx in CustomCtx.values) {
@@ -193,23 +181,21 @@ class CustomController extends Notifier<CustomTargets> {
   void _save() => ref.read(jsonStoreProvider).write(_key, state.toJson());
 }
 
-/// Чтение провайдера — `ref.read` экрана, `container.read` теста. Так каскад
-/// не привязан ни к виджету, ни к контейнеру.
+/// Provider read: a screen's `ref.read`, a test's `container.read`. So the
+/// cascade is tied to neither widget nor container.
 typedef ReadProvider = T Function<T>(ProviderListenable<T> provider);
 
-/// Удаление картинки из библиотеки со всем каскадом: контексты, пресеты, файл.
-///
-/// Живёт вне сторов намеренно — стор, который лезет в соседние сторы, на
-/// десктопе тянул за собой циклические импорты (`mediaLibStore` ↔
-/// `presetsStore` ↔ `customizationStore`).
+/// Deleting a picture from the library with the whole cascade: contexts,
+/// presets, file. Outside the stores on purpose: a store reaching into
+/// neighbours brings circular imports.
 void removeMedia(ReadProvider read, String id) {
   read(customProvider.notifier).purge(id);
   read(presetsProvider.notifier).purgeImage(id);
   read(mediaLibProvider.notifier).remove(id);
 }
 
-/// Картинка контекста целиком (нужна фону — у него ещё размытие и
-/// затемнение). `null` — контекст пуст или картинку удалили мимо каскада.
+/// A context's whole picture (the background also needs blur and dim). `null`
+/// if the context is empty or the picture was deleted past the cascade.
 final customItemProvider = Provider.family<MediaItem?, CustomCtx>((ref, ctx) {
   final id = ref.watch(customProvider).of(ctx);
   if (id == null) return null;
@@ -219,17 +205,17 @@ final customItemProvider = Provider.family<MediaItem?, CustomCtx>((ref, ctx) {
   return null;
 });
 
-/// Ссылка на картинку контекста — то, что понимает `coverImage`.
+/// Link to a context's picture, as `coverImage` understands it.
 final customSrcProvider = Provider.family<String?, CustomCtx>(
   (ref, ctx) => ref.watch(customItemProvider(ctx))?.src,
 );
 
-/// Когда своя обложка встаёт поверх обложки трека — десктопный `coverMode`.
+/// When a custom cover goes over a track's.
 enum CoverMode {
-  /// У всех треков.
+  /// On all tracks.
   always,
 
-  /// Только у тех, у кого своей обложки нет.
+  /// Only on those with no cover of their own.
   fallback,
 }
 
@@ -253,8 +239,8 @@ class CoverModeController extends Notifier<CoverMode> {
   }
 }
 
-/// Обложка, которую плеер показывает на самом деле: своя из «Кастомизации»
-/// (с учётом [CoverMode]) или обложка трека — десктопный `applyCoverNow`.
+/// The cover the player really shows: a custom one (per [CoverMode]) or the
+/// track's.
 final playerCoverProvider = Provider<String?>((ref) {
   final own = ref.watch(playbackProvider.select((s) => s.track?.cover));
   final custom = ref.watch(customSrcProvider(CustomCtx.cover));
@@ -265,8 +251,8 @@ final playerCoverProvider = Provider<String?>((ref) {
       : custom;
 });
 
-/// Где стоит эта картинка — для значков на её плитке в библиотеке. Порядок
-/// тот же, что у тумблеров на её странице.
+/// Where this picture stands, for the icons on its library tile. In the order
+/// of the switches on its page.
 final mediaUsageProvider = Provider.family<List<CustomCtx>, String>((ref, id) {
   final targets = ref.watch(customProvider);
   return [

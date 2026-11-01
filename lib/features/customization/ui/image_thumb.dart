@@ -1,13 +1,7 @@
-/// Пуговка ползунка своей картинкой — порт десктопного контекста «Слайдер»
-/// (`playerStore.sliderThumb`, там это `background-image` у `.sl-thumb`).
-///
-/// До этого у нашего ползунка пуговки не было вовсе (`noThumb`): позицию
-/// показывал сам край залитой части. Картинка её возвращает — но только пока
-/// она выбрана, без картинки всё остаётся как было.
-///
-/// Рисуем ЧЕРЕЗ `SliderComponentShape`, а не виджетом поверх: `Slider` сам
-/// знает, где сейчас пуговка, и сам двигает её под пальцем — своя раскладка
-/// поверх дорожки разъезжалась бы с ней на каждом кадре.
+/// Slider knob from an own picture, shown only while one is picked. Drawn
+/// THROUGH `SliderComponentShape` rather than a widget on top: `Slider` knows
+/// where the knob is and moves it under the finger, and a layout over the track
+/// would drift every frame.
 library;
 
 import 'dart:async';
@@ -19,16 +13,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/store/cover_store.dart';
 import '../custom_store.dart';
 
-/// Диаметр пуговки. Чуть больше дорожки плеера (6), чтобы картинку было
-/// видно, но не настолько, чтобы она перекрывала полосу.
+/// Knob diameter. A bit over the player's track, so the picture shows without
+/// covering the bar.
 const double kSliderThumbSize = 22;
 
-/// Декодированная картинка ползунка — `null`, если её не выбрали или не
-/// удалось прочитать.
-///
-/// Художнику нужна именно `ui.Image`: `ImageProvider` рисуется виджетами, а на
-/// холст канвы кладут уже готовые пиксели. Гифка отдаёт первый кадр — как и
-/// курсор-гифка на десктопе, который Chromium растеризует.
+/// Decoded knob picture; `null` if none is picked or it's unreadable. The
+/// painter needs a `ui.Image`: `ImageProvider` is drawn by widgets, and a
+/// canvas takes ready pixels. A GIF gives its first frame.
 final sliderThumbProvider = FutureProvider<ui.Image?>((ref) async {
   final src = ref.watch(customSrcProvider(CustomCtx.slider));
   if (src == null) return null;
@@ -44,7 +35,7 @@ final sliderThumbProvider = FutureProvider<ui.Image?>((ref) async {
   }
 
   listener = ImageStreamListener(
-    // Кадр может прийти не один (та же гифка) — берём первый и отписываемся.
+    // More than one frame may come (a GIF): I take the first and unsubscribe.
     (info, _) => done(info.image),
     onError: (_, _) => done(null),
   );
@@ -83,8 +74,8 @@ class ImageSliderThumb extends SliderComponentShape {
 
     canvas.save();
     canvas.clipPath(Path()..addOval(rect));
-    // `cover`: картинку любых пропорций вписываем в круг без искажений —
-    // лишнее уходит под обрезку.
+    // `cover`: a picture of any shape fits the circle undistorted, with the
+    // excess clipped.
     final src = _coverSrc(image, size);
     canvas.drawImageRect(
       image,
@@ -95,8 +86,7 @@ class ImageSliderThumb extends SliderComponentShape {
     canvas.restore();
   }
 
-  /// Прямоугольник исходника для заполнения квадрата: берём центральный
-  /// квадрат картинки.
+  /// Source rectangle filling a square: the picture's central square.
   static Rect _coverSrc(ui.Image image, double side) {
     final w = image.width.toDouble();
     final h = image.height.toDouble();

@@ -1,18 +1,11 @@
-/// Библиотека картинок кастомизации — порт десктопного
-/// `features/customization/model/mediaLibStore.ts` + `lib/mediaIdb.ts`.
+/// Customization picture library. `bloom.json` is rewritten whole per edit, and
+/// a couple of base64 wallpapers would turn each library save into megabytes.
+/// So the file is copied to the app's directory and JSON keeps just a link,
+/// `local:<file name>`, the scheme `coverImage` understands. A picture by link
+/// stays its http(s) address.
 ///
-/// Отличие от ПК в ХРАНЕНИИ, и оно принципиальное. Там картинка живёт целиком
-/// в IndexedDB строкой `data:` — здесь так нельзя: `bloom.json` переписывается
-/// целиком на каждую правку, и пара обоев в base64 превратила бы каждое
-/// сохранение библиотеки в мегабайты. Поэтому файл копируется в каталог
-/// приложения (тот же `covers/`, где лежат свои обложки плейлистов и аватары),
-/// а в JSON едет только ссылка `local:<имя файла>` — ровно та схема, которую
-/// понимает `coverImage` из `cover_store.dart`. Картинка «по ссылке» хранится
-/// самим http(s)-адресом, и та же `coverImage` отдаёт по нему `NetworkImage`.
-///
-/// Размытие и затемнение — СВОИ У КАЖДОЙ КАРТИНКИ (на ПК это две общие ручки
-/// фона). Так выбрал пользователь: страница картинки показывает их рядом с её
-/// превью, и обои помнят, какими их настроили, даже пока фоном стоит другое.
+/// Blur and dim belong to EACH PICTURE: its page shows them beside its preview,
+/// and a wallpaper remembers its setup even while another is the background.
 library;
 
 import 'dart:async';
@@ -25,12 +18,11 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/store/cover_store.dart';
 import '../../core/store/json_store.dart' show jsonStoreProvider;
 
-/// Границы ползунков страницы картинки — те же, что на десктопе
-/// (`BackgroundCards`: blur 0…80 px, dim 0…100 %).
+/// Slider bounds on the picture's page.
 const double kBgBlurMax = 80;
 const double kBgDimMax = 100;
 
-/// Картинка библиотеки.
+/// A library picture.
 class MediaItem {
   const MediaItem({
     required this.id,
@@ -43,18 +35,18 @@ class MediaItem {
 
   final String id;
 
-  /// Имя файла или последний сегмент ссылки — подпись под превью.
+  /// File name or the link's last segment, the caption under the preview.
   final String name;
 
-  /// `local:<имя>` (файл в каталоге приложения) либо http(s)-ссылка. В обоих
-  /// случаях разворачивается общей `coverImage`.
+  /// `local:<name>` (a file in the app's directory) or an http(s) link;
+  /// `coverImage` expands both.
   final String src;
 
-  /// Размытие фона, 0…[kBgBlurMax] px. Работает, только когда эта картинка
-  /// стоит фоном.
+  /// Background blur, 0…[kBgBlurMax] px. Works only when this picture is the
+  /// background.
   final double blur;
 
-  /// Затемнение фона, 0…[kBgDimMax] %.
+  /// Background dim, 0…[kBgDimMax] %.
   final double dim;
 
   final int addedAt;
@@ -79,7 +71,7 @@ class MediaItem {
     'addedAt': addedAt,
   };
 
-  /// `null` — запись без ссылки на картинку: показывать нечего.
+  /// `null` for an entry with no picture link: nothing to show.
   static MediaItem? fromJson(Object? raw) {
     if (raw is! Map) return null;
     final id = raw['id'];
@@ -100,11 +92,11 @@ class MediaItem {
   }
 }
 
-/// http(s)-ссылка на картинку — десктопный `addUrl` пускает только такие.
+/// An http(s) link to a picture; only those are allowed.
 bool isImageUrl(String value) =>
     RegExp(r'^https?://.+', caseSensitive: false).hasMatch(value.trim());
 
-/// Имя из ссылки: последний сегмент без параметров запроса.
+/// Name from a link: the last segment with no query.
 String urlName(String url) {
   final tail = url.split('/').last.split('?').first;
   return tail.isEmpty ? 'image' : tail;
@@ -131,13 +123,13 @@ class MediaLibController extends Notifier<List<MediaItem>> {
     return null;
   }
 
-  /// Выбрать картинки в галерее и положить их к себе. Возвращает, сколько
-  /// добавилось (0 — отменили или не дали доступ).
+  /// Picks gallery pictures and stores them. Returns how many were added (0 if
+  /// cancelled or denied).
   ///
-  /// Размер НЕ ограничиваем и качество не трогаем: `image_picker` с
-  /// `maxWidth`/`imageQuality` пережимает картинку в JPEG, и гифка приехала бы
-  /// одним кадром — а гифки тут главный смысл (на ПК их отдельно ловит
-  /// `isGif`). Обои и так лежат по одной штуке, а не сотнями, как обложки.
+  /// No size limit and no quality change: `image_picker` with `maxWidth` or
+  /// `imageQuality` recompresses to JPEG and a GIF arrives as one frame, and
+  /// GIFs are the point here. Wallpapers come one at a time, not by the hundred
+  /// like covers.
   Future<int> addFromGallery() async {
     final List<XFile> picked;
     try {
@@ -145,7 +137,7 @@ class MediaLibController extends Notifier<List<MediaItem>> {
         requestFullMetadata: kPickMetadata,
       );
     } catch (_) {
-      return 0; // отказ в доступе к галерее
+      return 0; // gallery access denied
     }
     if (picked.isEmpty) return 0;
     final added = <MediaItem>[];
@@ -167,8 +159,7 @@ class MediaLibController extends Notifier<List<MediaItem>> {
     return added.length;
   }
 
-  /// Добавить по ссылке. `false` — ссылка не похожа на картинку (десктопный
-  /// `medialib.toast.badUrl`).
+  /// Adds by link. `false` if the link doesn't look like a picture.
   bool addUrl(String url) {
     final value = url.trim();
     if (!isImageUrl(value)) return false;
@@ -185,12 +176,10 @@ class MediaLibController extends Notifier<List<MediaItem>> {
     return true;
   }
 
-  /// Положить в библиотеку картинку из файла пресета: `data:`-строку пишем
-  /// файлом, ссылку кладём как есть. Дубли разводим по `src` — так импорт
-  /// одного и того же файла дважды не плодит копии (десктопный `ensureImages`
-  /// дедупит по тем же данным).
-  ///
-  /// Возвращает id картинки в библиотеке; `null` — строку не разобрать.
+  /// Puts a picture from a preset file in the library: a `data:` string goes to
+  /// a file, a link as is. Duplicates separate by `src`, so importing one file
+  /// twice makes no copies. Returns the picture's library id; `null` if
+  /// unparseable.
   Future<String?> ensureImage(
     String data, {
     String name = 'preset',
@@ -243,10 +232,8 @@ class MediaLibController extends Notifier<List<MediaItem>> {
   void setDim(String id, double pct) =>
       _patch(id, (item) => item.copyWith(dim: pct.clamp(0, kBgDimMax)));
 
-  /// Удалить картинку. Файл с диска тоже уходит, но каскад по контекстам и
-  /// пресетам делает не стор, а вызывающая сторона (`removeMedia` в
-  /// `custom_store.dart`): сторы про друг друга не знают, как и на десктопе,
-  /// где каскад собран в `mediaLibStore.remove`.
+  /// Deletes a picture. The file goes too, but the caller does the cascade over
+  /// contexts and presets (`removeMedia`): stores don't know about each other.
   void remove(String id) {
     final item = byId(id);
     if (item == null) return;
@@ -279,8 +266,8 @@ String _extOfMime(String mime) => switch (mime) {
   _ => 'jpg',
 };
 
-/// Счётчик разводит id картинок, добавленных в одну миллисекунду: выбор
-/// нескольких файлов разом — обычное дело, а `Random` тут ни к чему.
+/// Separates ids of pictures added in one millisecond: picking several at once
+/// is common, with no need for `Random`.
 int _seq = 0;
 
 String _genId() => 'ml${DateTime.now().millisecondsSinceEpoch}_${_seq++}';

@@ -1,7 +1,6 @@
-/// Детали шторок «Кастомизации» — картинки библиотеки и пресета. Вид с макета
-/// пользователя, а не общий вид шторок: фон шторки ровный, без картинки,
-/// блоки залиты плашкой темы без рамки, отступ от края у превью и у блоков
-/// один, «Удалить» прибито к низу.
+/// Parts of customization sheets for library and preset pictures. A plain sheet
+/// background with no picture, blocks filled with the theme's plate and no
+/// border, one edge margin for preview and blocks, Delete pinned to the bottom.
 library;
 
 import 'dart:ui' show ImageFilter;
@@ -15,18 +14,16 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/pressable.dart';
 
-/// Отступ превью и блоков от края шторки — на макете они стоят по одной
-/// линии с кнопкой «назад» страницы под шторкой.
+/// Margin of preview and blocks from the sheet's edge.
 const double kCustSheetEdge = 16;
 
-/// Шапка шторки: картинка во всю ширину, по краям — как блоки ниже.
-///
-/// Картинок бывает несколько (у пресета — по одной на занятый контекст): тогда
-/// их листают пальцем, точки снизу показывают, сколько всего.
+/// Sheet header: a full-width picture, with edges like the blocks below. There
+/// may be several pictures (a preset has one per taken context): they flip by
+/// finger, with dots below showing how many.
 class CustSheetPreview extends StatefulWidget {
   const CustSheetPreview({super.key, required this.srcs});
 
-  /// Высота превью — с макета.
+  /// Preview height.
   static const double height = 180;
 
   final List<String> srcs;
@@ -59,7 +56,7 @@ class _CustSheetPreviewState extends State<CustSheetPreview> {
           child: DecoratedBox(
             decoration: BoxDecoration(color: t.pill),
             child: switch (srcs.length) {
-              // Пресет, у которого все картинки удалены, — значок коробки.
+              // A preset with all pictures deleted shows a box icon.
               0 => Center(
                 child: BloomIcon(Bi.boxMinimalistic, size: 30, color: t.muted),
               ),
@@ -106,16 +103,16 @@ class _CustSheetPreviewState extends State<CustSheetPreview> {
   }
 }
 
-/// Картинка превью: вписана целиком, а не обрезана — вертикальный скриншот и
-/// широкие обои видны полностью. Пустые поля по бокам (или сверху и снизу)
-/// закрывает та же картинка, растянутая и размытая, — так на макете.
+/// Preview picture: fitted whole rather than cropped, so a vertical screenshot
+/// and wide wallpaper both show fully. The same picture, stretched and blurred,
+/// fills the empty margins.
 class _FitImage extends StatelessWidget {
   const _FitImage({required this.src});
 
-  /// Размытие подложки полей.
+  /// Blur of the margin backing.
   static const double blur = 24;
 
-  /// Притемнение подложки: размытая копия не должна спорить с самим фото.
+  /// Dim of the backing: a blurred copy shouldn't compete with the photo.
   static const double dim = 0.35;
 
   final String src;
@@ -155,7 +152,7 @@ class _FitImage extends StatelessWidget {
   }
 }
 
-/// Подпись секции над блоком.
+/// Section caption over a block.
 class CustSheetLabel extends StatelessWidget {
   const CustSheetLabel(this.text, {super.key});
 
@@ -180,8 +177,7 @@ class CustSheetLabel extends StatelessWidget {
   );
 }
 
-/// Блок секции: плашка темы без рамки — цвет снят с макета (#1a1a1a на фоне
-/// #0a0a0a).
+/// Section block: a theme plate with no border.
 class CustSheetBlock extends StatelessWidget {
   const CustSheetBlock({super.key, required this.children});
 
@@ -205,7 +201,7 @@ class CustSheetBlock extends StatelessWidget {
 /// Where a row's text starts: its padding, icon box and gap.
 const double kCustRowText = 68;
 
-/// Строка блока: значок, название и справа [trailing] (галочка у контекстов).
+/// Block row: icon, title and [trailing] on the right (a tick for contexts).
 class CustSheetRow extends StatelessWidget {
   const CustSheetRow({
     super.key,
@@ -254,8 +250,8 @@ class CustSheetRow extends StatelessWidget {
   }
 }
 
-/// Кнопка, прибитая к низу шторки («Удалить»), как на макете: без заливки,
-/// тонкая рамка и белая подпись по центру.
+/// Button pinned to the sheet's bottom (Delete): no fill, a thin border and a
+/// centred white caption.
 class CustSheetFooterButton extends StatelessWidget {
   const CustSheetFooterButton({
     super.key,

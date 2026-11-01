@@ -1,8 +1,7 @@
-/// Общее для «Кастомизации»: каркас страницы, значки контекстов, поля и
-/// форма добавления в шторке, подпись пустого списка.
-///
-/// Каркас свой, а не [SubPage]: там всё содержимое едет одним списком, а здесь
-/// листается только сетка вкладки — плитки и вкладки над ней стоят на месте.
+/// Shared for customization: page frame, context icons, the sheet's fields and
+/// add form, an empty list caption. Its own frame rather than [SubPage], which
+/// scrolls all content as one list: here only the tab's grid scrolls, with
+/// tiles and tabs staying put.
 library;
 
 import 'package:flutter/material.dart';
@@ -13,7 +12,7 @@ import '../../../shared/ui/subpage_header.dart';
 import '../custom_store.dart';
 import '../../../shared/ui/atoms.dart';
 
-/// A context's icon, the PC's: for the page's tiles, the picture sheet's rows
+/// A context's icon: for the page's tiles, the picture sheet's rows
 /// and the badge of where a picture is used.
 BloomGlyph customCtxIcon(CustomCtx ctx) => switch (ctx) {
   CustomCtx.bg => Bi.galleryWide,
@@ -21,10 +20,8 @@ BloomGlyph customCtxIcon(CustomCtx ctx) => switch (ctx) {
   CustomCtx.slider => Bi.sliderHorizontal,
 };
 
-/// Поле ввода в шторке — ровно то же, что у «Создать плейлист» ([SheetField]):
-/// широкое поле и акцентная галочка, которая появляется вместе с текстом.
-///
-/// Возвращает введённое значение через `Navigator.pop`.
+/// Input in a sheet, just like [SheetField]: a wide field and an accent tick
+/// appearing with text. Returns the value through `Navigator.pop`.
 class SheetTextField extends StatefulWidget {
   const SheetTextField({
     super.key,
@@ -69,11 +66,9 @@ class _SheetTextFieldState extends State<SheetTextField> {
   );
 }
 
-/// Шторка под плюсиком «Кастомизации»: поле ввода ([SheetTextField]) и под
-/// ним второй способ добавить — «Приложить фото» у библиотеки, «Импорт» у
-/// пресетов.
-///
-/// Закрывается введённой строкой или `true`, если выбрали пункт под полем.
+/// Sheet under customization's plus: an input ([SheetTextField]) and a second
+/// way to add below it, Attach photo for the library and Import for presets.
+/// Closes with the entered string, or `true` if the item below was picked.
 class SheetAddForm extends StatelessWidget {
   const SheetAddForm({
     super.key,
@@ -86,7 +81,7 @@ class SheetAddForm extends StatelessWidget {
   final String hint;
   final int? maxLength;
 
-  /// Пункт под полем.
+  /// Item under the field.
   final BloomGlyph icon;
   final String label;
 

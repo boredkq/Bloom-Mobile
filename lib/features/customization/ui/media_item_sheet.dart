@@ -1,17 +1,9 @@
-/// Шторка одной картинки библиотеки: превью, куда она применена, режим
-/// обложки, размытие и затемнение фона, удаление.
+/// Sheet for one library picture: preview, where it's applied, cover mode,
+/// background blur and dim, delete. Blur and dim are a property of the picture
+/// itself, not a shared background setting (see [MediaItem.blur]).
 ///
-/// На десктопе это разнесено по трём местам — карточки контекстов, настройки
-/// под сеткой и крестик на плитке галереи. Пользователь собрал их вместе на
-/// картинке, и размытие с затемнением стали свойством самой картинки, а не
-/// общей настройкой фона (см. [MediaItem.blur]).
-///
-/// Настройки под списком появляются, только когда им есть к чему относиться,
-/// — как на ПК под сеткой (`CustomizationSection.tsx`): режим — когда
-/// картинка стоит обложкой, эффекты — когда фоном.
-///
-/// Вид — с макета пользователя, детали общие со шторкой пресета
-/// (`custom_sheet.dart`).
+/// Settings under the list show only when they have something to apply to: the
+/// mode when it's a cover, effects when it's the background.
 library;
 
 import 'package:flutter/material.dart';
@@ -35,7 +27,7 @@ Future<void> showMediaItemSheet(BuildContext context, MediaItem item) =>
       child: _MediaItemBody(id: item.id),
     );
 
-/// Сколько раскрывается секция, появившаяся под списком.
+/// How long a section under the list takes to open.
 const Duration _kReveal = Duration(milliseconds: 220);
 
 class _MediaItemBody extends ConsumerWidget {
@@ -49,8 +41,8 @@ class _MediaItemBody extends ConsumerWidget {
     for (final it in ref.watch(mediaLibProvider)) {
       if (it.id == id) item = it;
     }
-    // Картинку удаляет только кнопка ниже, и шторка закрывается раньше, —
-    // пустое тело здесь лишь страховка на кадр.
+    // Only the button below deletes a picture and the sheet closes first, so an
+    // empty body is just insurance for a frame.
     if (item == null) return const SizedBox.shrink();
 
     final targets = ref.watch(customProvider);
@@ -67,7 +59,8 @@ class _MediaItemBody extends ConsumerWidget {
             for (final ctx in CustomCtx.values) ...[
               if (ctx != CustomCtx.values.first)
                 const GroupDivider(indent: kCustRowText),
-              // Тап ставит картинку сюда или снимает; галочка — она стоит.
+              // A tap places or clears the picture here; the tick means it's
+              // there.
               CustSheetRow(
                 icon: customCtxIcon(ctx),
                 label: _ctxLabel(context, ctx),
@@ -141,8 +134,8 @@ class _MediaItemBody extends ConsumerWidget {
   };
 }
 
-/// Секция, которая выезжает под списком и прячется обратно. Схлопывается по
-/// высоте, а не пропадает скачком: иначе шторка дёргалась бы на весь блок.
+/// A section that slides out under the list and back. It collapses by height
+/// rather than jumping, or the sheet would jerk by a whole block.
 class _Reveal extends StatelessWidget {
   const _Reveal({required this.show, required this.child});
 
@@ -181,7 +174,7 @@ class _SliderRow extends StatelessWidget {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
     return Padding(
-      // Шаг строк — 56, как на макете: подпись сверху, дорожка под ней.
+      // Rows step by 56: the caption on top, the track below.
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -207,8 +200,8 @@ class _SliderRow extends StatelessWidget {
               child: Slider(
                 value: value.clamp(0, max),
                 max: max,
-                // Шаг в единицу: ползунок настройки, а не полоса плеера —
-                // целые проценты и пиксели читаются, дробные ничего не дают.
+                // A step of one: this is a setting's slider, not the player's
+                // bar, and whole percent and pixels read fine.
                 divisions: max.round(),
                 onChanged: onChanged,
               ),

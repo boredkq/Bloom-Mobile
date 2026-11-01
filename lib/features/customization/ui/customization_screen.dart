@@ -1,10 +1,6 @@
-/// «Настройки → Кастомизация» — порт десктопного `CustomizationSection.tsx`
-/// на один экран: сверху плитки контекстов (что где сейчас стоит), под ними
-/// вкладки «Библиотека / Пресеты» с плюсиком справа и сетка текущей вкладки.
-///
-/// Раньше библиотека и пресеты жили на двух страницах; пользователь свёл их в
-/// одну, как на ПК. Кнопки внизу страницы ушли под плюсик — он открывает
-/// шторку добавления своей вкладки.
+/// Customization, on one screen: context tiles on top (what stands where),
+/// Library and Presets tabs under them with a plus on the right, and the
+/// current tab's grid. The plus opens its tab's add sheet.
 library;
 
 import 'package:flutter/material.dart';
@@ -28,8 +24,7 @@ import '../../../shared/ui/atoms.dart';
 
 enum _Pane { library, presets }
 
-/// Смена вкладки — десктопный `cz-pane` (сдвиг с той стороны, куда
-/// переключились, и проявление).
+/// Tab change: a slide from the side switched to, with a fade.
 const Duration _kPaneSwitch = Duration(milliseconds: 260);
 
 class CustomizationScreen extends ConsumerStatefulWidget {
@@ -43,7 +38,7 @@ class CustomizationScreen extends ConsumerStatefulWidget {
 class _CustomizationScreenState extends ConsumerState<CustomizationScreen> {
   _Pane _pane = _Pane.library;
 
-  /// Куда переключились: 1 — вправо (к «Пресетам»), -1 — влево.
+  /// Which way it switched: 1 right (to presets), -1 left.
   double _dir = 1;
 
   void _pick(_Pane pane) {
@@ -66,7 +61,7 @@ class _CustomizationScreenState extends ConsumerState<CustomizationScreen> {
             padding: EdgeInsets.symmetric(horizontal: 16),
             child: _CtxTiles(),
           ),
-          // Полоса между плитками и вкладками — десктопная граница `cz-chips`.
+          // Line between tiles and tabs.
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: Divider(height: 1, thickness: 1, color: t.ovlBg),
@@ -104,8 +99,8 @@ class _CustomizationScreenState extends ConsumerState<CustomizationScreen> {
                 fit: StackFit.expand,
                 children: [...previous, ?current],
               ),
-              // Въезжает только новая вкладка, старая просто гаснет: сдвиг
-              // уходящей в ту же сторону читался бы встречным движением.
+              // Only the new tab slides in, the old just fades: the leaving one
+              // sliding the same way would read as a counter-move.
               transitionBuilder: (child, animation) {
                 final incoming = child.key == ValueKey(_pane);
                 return FadeTransition(
@@ -136,8 +131,8 @@ class _CustomizationScreenState extends ConsumerState<CustomizationScreen> {
   }
 }
 
-/// Плитки контекстов — десктопные `mls-card`: картинка контекста на половину
-/// прозрачности и значок поверх. Тап снимает картинку, как клик на ПК.
+/// Context tiles: the context's picture at half opacity with an icon on top. A
+/// tap clears the picture.
 class _CtxTiles extends StatelessWidget {
   const _CtxTiles();
 
@@ -157,7 +152,7 @@ class _CtxTile extends ConsumerWidget {
 
   final CustomCtx ctx;
 
-  /// Высота плитки — десктопные 58.
+  /// Tile height.
   static const double height = 58;
 
   @override
@@ -165,8 +160,8 @@ class _CtxTile extends ConsumerWidget {
     final t = context.bloom;
     final src = ref.watch(customSrcProvider(ctx));
     final image = coverImage(src);
-    // Картинку из библиотеки можно бросить на плитку — она встанет сюда,
-    // как на ПК. Пока палец над плиткой, по её краю пунктир.
+    // A library picture can be dropped on a tile to stand here. While a finger
+    // is over the tile, its edge is dashed.
     return DragTarget<MediaItem>(
       onAcceptWithDetails: (details) {
         ref.read(customProvider.notifier).set(ctx, details.data.id);
@@ -215,8 +210,8 @@ class _CtxTile extends ConsumerWidget {
             },
       scale: 0.97,
       child: ClipRRect(
-        // Скругление — как у карточек групп настроек: на ПК плашки мельче, и
-        // их 0.75 радиуса здесь читались почти углами.
+        // Rounding as on settings group cards: at 0.75 of the radius these read
+        // almost square.
         borderRadius: BorderRadius.circular(t.radius * 1.3),
         child: SizedBox(
           height: height,
@@ -238,8 +233,8 @@ class _CtxTile extends ConsumerWidget {
                   child: BloomIcon(
                     customCtxIcon(ctx),
                     size: 22,
-                    // Поверх картинки значок белый с тенью — читается на любом
-                    // сюжете; на пустой плитке он приглушён.
+                    // Over a picture the icon is white with a shadow, readable
+                    // on anything; on an empty tile it's muted.
                     color: image == null ? t.text2 : Colors.white,
                     shadows: image == null
                         ? null
@@ -257,9 +252,8 @@ class _CtxTile extends ConsumerWidget {
   }
 }
 
-/// Пунктир по краю плитки, над которой держат картинку, — десктопный
-/// `.mls-card.drop-over::after`: 2 px внутри плитки, а не снаружи, чтобы не
-/// налезать на соседей.
+/// Dashed edge of a tile a picture is held over: 2 px inside the tile rather
+/// than outside, to stay off its neighbours.
 class _DashedRRect extends CustomPainter {
   const _DashedRRect({required this.color, required this.radius});
 
