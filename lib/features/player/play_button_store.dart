@@ -1,10 +1,8 @@
-/// Вид кнопки воспроизведения. Настройка наша, десктопной пары у неё нет: на ПК
-/// транспорт живёт в узкой полосе и круг там единственный вариант, а на телефоне
-/// кнопка — самый крупный элемент плеера, и её форма видна первой.
+/// Play button look. On a phone it's the player's largest element, so its shape
+/// shows first.
 ///
-/// Настройка ОДНА на обе поверхности (плеер и карточка над таб-баром): кнопка в
-/// них одна и та же по смыслу, и разъехавшийся вид читался бы как недоделка, а
-/// не как выбор.
+/// One setting for both surfaces (the player and the card above the tab bar):
+/// it's one button in meaning, and different looks would read as unfinished.
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,13 +10,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/store/json_store.dart' show jsonStoreProvider;
 
 enum PlayButtonShape {
-  /// Круг с заливкой акцентом — то, что было до настройки.
+  /// A circle filled with the accent.
   circle,
 
-  /// Та же заливка, но скруглённым квадратом.
+  /// The same fill as a rounded square.
   square,
 
-  /// Заливки нет вовсе: один знак, цветом соседних кнопок и крупнее их.
+  /// No fill: just the glyph, in the neighbours' colour and larger.
   plain;
 
   bool get isPlain => this == PlayButtonShape.plain;
@@ -36,8 +34,8 @@ class PlayButtonShapeController extends Notifier<PlayButtonShape> {
     for (final shape in PlayButtonShape.values) {
       if (shape.name == raw) return shape;
     }
-    // Незнакомую запись (правили файл руками, откат на старую сборку) молча
-    // заменяем умолчанием: форма кнопки не повод ронять запуск.
+    // An unknown entry silently becomes the default: a button's shape is no
+    // reason to crash a launch.
     return PlayButtonShape.circle;
   }
 

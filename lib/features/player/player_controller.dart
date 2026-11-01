@@ -1,15 +1,15 @@
-/// Плеер: очередь треков, резолв стрима через провайдера площадки,
-/// авто-переход.
+/// The player: track queue, stream resolving through the platform's provider,
+/// auto-advance.
 ///
-/// Плеер о площадках не знает: берёт провайдера по префиксу id трека и просит
-/// [MusicProvider.resolveStream]. Стрим резолвится в момент перехода, а не
-/// заранее — у SoundCloud подписанный URL протухает, поэтому
-/// `ConcatenatingAudioSource` тут не годится. У трека со скачанной копией
-/// площадку не спрашиваем вовсе — играем файл с диска (см. `offline_store`).
+/// It knows nothing of platforms: it takes the provider by the track id's
+/// prefix and asks [MusicProvider.resolveStream]. The stream resolves at the
+/// moment of the change, not ahead: SoundCloud's signed URL expires, so
+/// `ConcatenatingAudioSource` won't do. A track with a downloaded copy plays
+/// from disk with no platform asked.
 ///
-/// Фон, шторка и гарнитура — в [BloomAudioHandler]; он владеет [AudioPlayer] и
-/// заворачивает команды извне обратно сюда (см. [PlaybackCommands]), чтобы
-/// «дальше» из шторки и «дальше» в приложении были одним и тем же кодом.
+/// Background, shade and headset are in [BloomAudioHandler], which owns
+/// [AudioPlayer] and sends outside commands back here ([PlaybackCommands]), so
+/// next in the shade and in the app are one code.
 library;
 
 import 'dart:async';
@@ -44,7 +44,7 @@ import 'track_swap_dir.dart';
 
 enum PlayerRepeat { off, all, one }
 
-/// Подменяется в `main()` на созданный через `AudioService.init` экземпляр.
+/// Overridden in `main()` with the instance from `AudioService.init`.
 final audioHandlerProvider = Provider<BloomAudioHandler>((ref) {
   throw StateError('audioHandlerProvider не переопределён в main()');
 });
@@ -53,17 +53,15 @@ final audioPlayerProvider = Provider<AudioPlayer>(
   (ref) => ref.watch(audioHandlerProvider).player,
 );
 
-/// Головка воспроизведения: где стоим и сколько всего.
+/// The playhead: where we are and how long in all.
 typedef Playhead = ({Duration position, Duration total});
 
-/// Позиция и длительность одним потоком.
-///
-/// По отдельности они разъезжаются: на смене трека позиция тикает уже от
-/// нового, а `player.duration`, прочитанная мимо стрима, ещё от старого — доля
-/// прыгает. Плюс длительность приходит без тика позиции (пауза, загрузка), и
-/// подписчик на одну только позицию про неё не узнаёт.
+/// Position and duration as one stream. Apart they drift: on a track change the
+/// position ticks from the new one while `player.duration` read past the stream
+/// is still the old, and the share jumps. Duration also arrives with no
+/// position tick (pause, loading).
 final playheadProvider = StreamProvider<Playhead>((ref) {
-  // Пульт ПК: позиция с ПК, между его тиками идёт сама.
+  // Computer remote: its position, moving on its own between its ticks.
   final remote = ref.watch(pcRemoteProvider);
   if (remote != null) {
     Playhead now() => remote.playheadAt(DateTime.now());
@@ -99,12 +97,12 @@ final playheadProvider = StreamProvider<Playhead>((ref) {
     }
     out.close();
   });
-  emit(); // первое значение — сразу, до первого тика
+  emit(); // first value at once, before the first tick
   return out.stream;
 });
 
-/// Идёт ли звук. Отдельным потоком, потому что `playing` меняется и мимо нас —
-/// кнопкой в шторке, гарнитурой, аудиофокусом.
+/// Whether sound plays. A separate stream because `playing` also changes past
+/// me: the shade, a headset, audio focus.
 final playingProvider = StreamProvider<bool>((ref) {
   final remote = ref.watch(pcRemoteProvider.select((r) => r?.playing));
   if (remote != null) return Stream.value(remote);
@@ -112,8 +110,9 @@ final playingProvider = StreamProvider<bool>((ref) {
   return player.playingStream;
 });
 
-/// То же сразу, без ожидания первого значения потока: кнопкам и полоскам
-/// первый кадр уже нужен верный. Пульт ПК — состояние ПК.
+/// The same at once, with no wait for the stream's first value: buttons and
+/// bars need it right on the first frame. As a remote, it's the computer's
+/// state.
 final playingNowProvider = Provider<bool>(
   (ref) =>
       ref.watch(playingProvider).value ??
@@ -129,13 +128,10 @@ class PlaybackState {
   final PlayerRepeat repeat;
   final bool shuffle;
 
-  /// Откуда набрана очередь: раздел библиотеки, альбом площадки, страница
-  /// артиста, выдача поиска (см. [PlaySource]). `null` — источника нет вовсе.
-  ///
-  /// Нужен двоим: пилюле в шапке плеера (что именно играет) и карточкам — по
-  /// [sourceId] плитка сета показывает эквалайзер, как строка трека вместо
-  /// длительности. Вычислить его из очереди нельзя: один и тот же состав легко
-  /// лежит сразу в двух списках.
+  /// Where the queue came from; see [PlaySource]. `null` means no source. Used
+  /// by the player's pill and by cards: by [sourceId] a set tile shows the
+  /// equalizer. It can't be worked out from the queue: one set of tracks can
+  /// sit in two lists.
   final PlaySource? source;
 
   const PlaybackState({
@@ -151,21 +147,18 @@ class PlaybackState {
   Track? get track =>
       (index >= 0 && index < queue.length) ? queue[index] : null;
 
-  /// Что заиграет после текущего трека — для плашки «Далее» в плеере.
-  ///
-  /// `null` — дальше ничего: очередь кончилась и не закольцована. На последнем
-  /// треке смотрим на повтор, потому что закольцовку делает [next]
-  /// (`(index + 1) % length`), а не порядок очереди: при `all` дальше
-  /// действительно первый трек, при `off` и `one` — тишина либо тот же трек, и
-  /// называть «следующим» нечего. Очередь из одного трека молчит всегда: сам
-  /// себе он не «дальше».
+  /// What plays after this track, for the Next plate. `null` when nothing does:
+  /// the queue ended and doesn't loop. On the last track I look at repeat,
+  /// because [next] does the looping (`(index + 1) % length`): with `all` it's
+  /// the first track, with `off` and `one` silence or the same track. A
+  /// one-track queue never has a next.
   Track? get nextTrack {
     if (index < 0 || queue.length < 2) return null;
     if (index + 1 < queue.length) return queue[index + 1];
     return repeat == PlayerRepeat.all ? queue.first : null;
   }
 
-  /// Ключ источника для сравнения с id списка — см. [PlaySource.id].
+  /// Source key for comparing with a list id; see [PlaySource.id].
   String? get sourceId => source?.id;
 
   PlaybackState copyWith({
@@ -193,12 +186,10 @@ final playbackProvider = NotifierProvider<PlaybackController, PlaybackState>(
   PlaybackController.new,
 );
 
-/// Куда переедет играющий трек ([current]), когда строку [from] переносят на
-/// место [target] (оба — уже настоящие номера, без поправки списка).
-///
-/// Играющий остаётся ТЕМ ЖЕ треком, меняется только его номер: перетащили его
-/// самого — он теперь на [target]; перетащили строку через него — он сдвинулся
-/// на одну. Ошибка здесь тихая: играет то же, но «дальше» уводит не туда.
+/// Where the playing track ([current]) lands when row [from] moves to [target]
+/// (both real indices, with no list correction). The same track keeps playing,
+/// only its index changes. A bug here is quiet: the same sound plays, but next
+/// goes astray.
 int indexAfterReorder(int current, int from, int target) {
   if (current == from) return target;
   if (from < current && target >= current) return current - 1;
@@ -206,24 +197,16 @@ int indexAfterReorder(int current, int from, int target) {
   return current;
 }
 
-/// Очередь после «Следующим»: [track] встаёт сразу за играющим ([index]), а
-/// если он в очереди уже стоял — переезжает оттуда, а не дублируется (порт
-/// `enqueue(..., 'next')` с десктопа). Возвращает новый порядок и новый номер
-/// играющего.
-///
-/// Отдельной функцией — ровно как [indexAfterReorder]: перестановка вокруг
-/// играющего трека тихо ломается (играет то же, а «дальше» уводит не туда), и
-/// проверять её надо списком, а не на глаз.
+/// Queue after Play next: [track] goes right behind the playing one ([index]),
+/// and if already queued it moves rather than duplicates. Returns the new order
+/// and the playing index. A separate function, like [indexAfterReorder], so it
+/// can be checked with lists.
 (List<Track>, int) queueWithNext(List<Track> queue, int index, Track track) =>
     queueWithNextAll(queue, index, [track]);
 
-/// То же самое для пачки — «Играть следующими» целым плейлистом. Порядок пачки
-/// сохраняется, повторы внутри неё схлопываются, уже стоящие в очереди треки
-/// переезжают на новое место, а не задваиваются.
-///
-/// Играющий трек из пачки выбрасывается: он уже звучит, и «следующим» ему быть
-/// негде — на десктопе этот случай тихо уводит номер играющего мимо (`enqueue`
-/// пересобирает очередь, не глядя на `curId` внутри пачки).
+/// The same for a batch, like a whole playlist. Batch order stays, repeats
+/// within it collapse, queued tracks move rather than double. The playing track
+/// drops from the batch: it's already sounding.
 (List<Track>, int) queueWithNextAll(
   List<Track> queue,
   int index,
@@ -240,16 +223,15 @@ int indexAfterReorder(int current, int from, int target) {
     for (final t in queue)
       if (!seen.contains(t.id)) t,
   ];
-  // Номер играющего считаем уже ПОСЛЕ изъятия: треки могли выдернуть сверху.
+  // The playing index is found AFTER removal: tracks may have been pulled from
+  // above it.
   final at = current == null ? -1 : rest.indexWhere((t) => t.id == current.id);
   return ([...rest]..insertAll(at + 1, add), at < 0 ? index : at);
 }
 
-/// Перемешанная копия [tracks]. Трек с номером [keep] встаёт первым и в тасовке
-/// не участвует (`-1` — оставлять некого, мешаем всё), остальные — Фишер—Йетс.
-///
-/// Играющий трек обязан оказаться в начале: перемешивание не обрывает то, что
-/// уже звучит, — оно меняет только то, что пойдёт дальше.
+/// Shuffled copy of [tracks]. Track [keep] goes first and stays out of the
+/// shuffle (`-1` shuffles all), the rest by Fisher–Yates. The playing track
+/// must come first: shuffling doesn't break what's sounding, only what's next.
 List<Track> shuffledQueue(List<Track> tracks, int keep, Random rnd) {
   final rest = [...tracks];
   final head = (keep >= 0 && keep < rest.length) ? rest.removeAt(keep) : null;
@@ -266,40 +248,39 @@ class PlaybackController extends Notifier<PlaybackState>
     implements PlaybackCommands {
   final _rnd = Random();
 
-  /// Порядок очереди до перемешивания — чтобы вернуть его, когда перемешку
-  /// выключат. `null` — очередь не перемешана (или её ставили заново).
+  /// Queue order before shuffling, to return to when it's turned off. `null` if
+  /// not shuffled.
   List<Track>? _origQueue;
 
-  /// Счётчик запусков: ответ на устаревший резолв стрима не должен перебить
-  /// трек, который пользователь успел выбрать позже.
+  /// Launch counter: a stale stream answer mustn't override a track picked
+  /// later.
   int _generation = 0;
 
-  /// Разрешение на уведомления спрашиваем один раз за сеанс и только перед
-  /// первым звуком — дёргать системный диалог на старте приложения незачем.
+  /// Notification permission is asked once per session and only before the
+  /// first sound: no reason for a system dialog at app start.
   bool _askedForNotifications = false;
 
-  /// Прослушивание текущего трека уже засчитано. Сбрасывается только при смене
-  /// трека (в [_load]) — как `_playCredited` на десктопе, поэтому второй круг
-  /// повтора одного трека второй раз не считается.
+  /// This track's play is already counted. Reset only on a track change (in
+  /// [_load]), so a repeat's second round doesn't count again.
   bool _credited = false;
 
-  /// Очередь в том виде, какой она была до очистки (кнопка «очистить» или
-  /// удаление последнего трека), — её поднимает «Продолжить». Сбрасывается
-  /// новой очередью; повторная очистка полную очередь урезанной не перетирает.
+  /// The queue as it was before clearing (the clear button, or removing the
+  /// last track), restored on resume. A new queue resets it; clearing again
+  /// doesn't overwrite the full queue with a cut one.
   List<Track>? _preClearQueue;
 
-  /// «Авто похожие»: трек, для которого продолжение уже запрошено…
+  /// Auto similar: the track a continuation was already asked for…
   String? _autoSimilarFor;
 
-  /// …запрос ещё в пути…
+  /// …the request still in flight…
   bool _autoSimilarPending = false;
 
-  /// …и «далее» нажали раньше, чем пришла пачка. Все три сбрасываются сменой
-  /// трека (в [_load]).
+  /// …and next pressed before the batch came. All three reset on a track change
+  /// (in [_load]).
   bool _autoSimilarAdvance = false;
 
-  /// Очередь доиграла до конца без повтора — плеер стоит на начале последнего
-  /// трека. Опоздавшая пачка «Авто похожих» тогда переходит на неё сама.
+  /// The queue played out with no repeat, and the player sits at the start of
+  /// the last track. A late auto similar batch then moves on to it by itself.
   bool _queueEnded = false;
 
   @override
@@ -310,27 +291,27 @@ class PlaybackController extends Notifier<PlaybackState>
       handler.player.processingStateStream.listen((s) {
         if (s == ProcessingState.completed) _onCompleted();
       }),
-      // Зачёт прослушивания — на 90% трека, как на десктопе; плюс своё,
-      // независимое правило зачёта у Last.fm (см. [_onPosition]).
+      // A play counts at 90% of the track; Last.fm has its own separate rule
+      // (see [_onPosition]).
       handler.player.positionStream.listen(_onPosition),
-      // Сессия — на каждую смену play/pause: именно на паузе человек чаще
-      // всего и уходит из приложения.
+      // The session saves on every play or pause: pause is when people most
+      // often leave.
       handler.player.playingStream.listen((playing) {
         _stateDirty();
         _reportToPc();
-        // Только что звучало — отметка «играло здесь» встаёт на миг паузы.
+        // Sound just played: the played here mark lands at the moment of pause.
         if (!playing && BloomDb.now() - _audibleAt < 6000) {
           _audibleAt = 0;
           _markAudible();
         }
       }),
     ];
-    // Плюс по таймеру, пока играет: процесс убивают без предупреждения, и без
-    // тика «Продолжить» вернуло бы на позицию последнего нажатия паузы.
+    // And on a timer while playing: the process gets killed with no warning,
+    // and with no tick a resume would return to the last pause.
     final ticker = Timer.periodic(_sessionEvery, (_) {
       if (handler.player.playing) {
         _stateDirty();
-        _reportToPc(); // ПК, показывающий нас, сверяет часы
+        _reportToPc(); // a computer showing this phone syncs its clock
       }
     });
     ref.onDispose(() {
@@ -342,22 +323,21 @@ class PlaybackController extends Notifier<PlaybackState>
       }
       if (handler.commands == this) handler.commands = null;
     });
-    // Скорость и питч — своя настройка (`speed_store`), а плеер здесь: ставим
-    // их сами и держим подписку. Порт `bootstrapSpeed` + `setPlaybackRate` с
-    // десктопа: сохранённая скорость должна работать с первого же трека, а не
-    // с момента, когда человек откроет пикер.
+    // Speed and pitch are a separate setting while the player is here, so I
+    // apply them and keep listening: a saved speed must work from the first
+    // track, not once the picker opens.
     ref.listen(speedProvider, (_, next) => unawaited(_applySpeed(next)));
     unawaited(_applySpeed(ref.read(speedProvider)));
-    // Таймер сна: стор тикает временем, паузу и затухание делаем здесь — плеер
-    // наш. Слушаем каждый тик, а не только заведение таймера: остаток на нуле
-    // и есть команда «пора».
+    // Sleep timer: the store ticks time, and pause and fade happen here, where
+    // the player is. I listen to every tick: zero left is the command itself.
     ref.listen(sleepTimerProvider, (_, next) => _applySleep(next));
     ref.onDispose(_stopFade);
-    // Сердечко в шторке: лайк могут поставить где угодно в приложении, а трек
-    // сменить десятком путей — поэтому следим за обоими, а не за кнопками.
+    // The shade's heart: a like can come from anywhere and a track can change a
+    // dozen ways, so I watch both rather than buttons.
     ref.listen(libraryProvider.select((lib) => lib.favs), (_, _) => _syncFav());
-    // Пульт ПК: пока он есть, на экране — то, что играет там, а команды
-    // уходят туда (см. [_pc]). Своя очередь и сессия при этом стоят как были.
+    // Computer remote: while there is one, the screen shows what plays there
+    // and commands go there (see [_pc]). My own queue and session stay as they
+    // are.
     ref.listen(pcRemoteProvider, (_, remote) {
       state = remote?.playback ?? _local;
       _syncFav();
@@ -366,8 +346,8 @@ class PlaybackController extends Notifier<PlaybackState>
     return ref.read(pcRemoteProvider)?.playback ?? _local;
   }
 
-  /// Своё состояние — то, что играет на этом телефоне. Наружу ([state]) оно
-  /// выходит, только пока телефон не пульт ПК.
+  /// My own state, what plays on this phone. It goes out ([state]) only while
+  /// the phone isn't a remote.
   PlaybackState _local = const PlaybackState();
 
   PlaybackState get _st => _local;
@@ -378,7 +358,7 @@ class PlaybackController extends Notifier<PlaybackState>
     if (ref.read(pcRemoteProvider) == null) state = next;
     _reportToPc();
     if (prev.track?.id != next.track?.id) _syncFav();
-    // Перемешка меняет и порядок, к которому возвращаться.
+    // Shuffling also changes the order to return to.
     if (!identical(prev.queue, next.queue) || prev.shuffle != next.shuffle) {
       _queueDirty();
     } else if (prev.index != next.index ||
@@ -389,20 +369,18 @@ class PlaybackController extends Notifier<PlaybackState>
     }
   }
 
-  /// Пульт ПК, если телефон сейчас он.
+  /// The computer remote, if the phone is one now.
   PcRemoteController? get _pc => ref.read(pcRemoteProvider) == null
       ? null
       : ref.read(pcRemoteProvider.notifier);
 
-  /// Тик затухания перед сном. Не `null` — громкость сейчас крутится вниз.
+  /// Sleep fade tick. Not `null`: the volume is going down.
   Timer? _fadeTick;
 
-  /// Реакция на состояние таймера сна.
-  ///
-  /// Времени своего не держим: единственные часы — `endsAt` в сторе, поэтому
-  /// «сколько осталось» и здесь считается от него. Тик стора идёт раз в
-  /// секунду, а затухание крутится своим тиком в 100 мс: посекундными ступенями
-  /// уход громкости слышен.
+  /// Reacts to the sleep timer state. No clock of my own: the only clock is
+  /// `endsAt` in the store, so time left is counted from it. The store ticks
+  /// every second and the fade every 100 ms: in one-second steps the volume
+  /// drop is audible.
   void _applySleep(SleepTimerState sleep) {
     if (sleep.expired) {
       _fireSleep();
@@ -418,12 +396,12 @@ class PlaybackController extends Notifier<PlaybackState>
         (_) => _fadeStep(),
       );
     } else {
-      // Таймер продлили или перезавели — вышли из зоны затухания.
+      // The timer was extended or restarted, leaving the fade zone.
       _stopFade();
     }
   }
 
-  /// Шаг затухания: громкость = доля непрожитого окна [kSleepFade].
+  /// Fade step: volume is the unspent share of the [kSleepFade] window.
   void _fadeStep() {
     final endsAt = ref.read(sleepTimerProvider).endsAt;
     if (endsAt == null) {
@@ -433,13 +411,12 @@ class PlaybackController extends Notifier<PlaybackState>
     final left = endsAt.difference(ref.read(sleepClockProvider)());
     final k = (left.inMilliseconds / kSleepFade.inMilliseconds).clamp(0.0, 1.0);
     unawaited(_player.setVolume(k));
-    // Ноль — не повод жать паузу самим: это сделает тик стора через
-    // [_fireSleep], и одной точкой останова меньше поводов разъехаться.
+    // Zero is no reason to pause here: the store's tick does it through
+    // [_fireSleep], and one stopping point leaves less to drift apart.
   }
 
-  /// Вернуть громкость на место. Зовётся отовсюду, где затухание кончилось —
-  /// хоть срабатыванием, хоть отменой таймера: недокрученная громкость иначе
-  /// осталась бы и на следующем прослушивании.
+  /// Restores the volume, from wherever the fade ended, whether fired or
+  /// cancelled: a half-faded volume would carry into the next listen.
   void _stopFade() {
     if (_fadeTick == null) return;
     _fadeTick!.cancel();
@@ -447,7 +424,7 @@ class PlaybackController extends Notifier<PlaybackState>
     unawaited(_player.setVolume(1));
   }
 
-  /// Время вышло: пауза, громкость на место, таймер снять.
+  /// Time's up: pause, restore the volume, clear the timer.
   void _fireSleep() {
     _fadeTick?.cancel();
     _fadeTick = null;
@@ -456,26 +433,26 @@ class PlaybackController extends Notifier<PlaybackState>
     ref.read(sleepTimerProvider.notifier).cancel();
   }
 
-  /// Скорость и питч на плеер. Повторять на каждый трек не надо: just_audio
-  /// держит обе величины у себя и переставляет их на новый источник сам.
+  /// Speed and pitch on the player. No need to repeat per track: just_audio
+  /// keeps both and moves them to a new source.
   Future<void> _applySpeed(SpeedSettings speed) async {
-    // iOS — до скорости: установка скорости и докручивает алгоритм треку.
+    // iOS before speed: setting speed is what applies the algorithm to the
+    // track.
     await setIosNightcore(speed.nightcore);
     await _player.setSpeed(speed.rate);
     try {
       await _player.setPitch(speed.pitch);
     } catch (_) {
-      // Питч умеет только Android (ExoPlayer). На iOS канал отвечает ошибкой,
-      // и тон за темпом там делает `setIosNightcore`.
+      // Only Android has pitch (ExoPlayer). On iOS the channel answers with an
+      // error, and `setIosNightcore` makes pitch follow tempo.
     }
   }
 
-  /// Как часто обновляем позицию в сессии, пока играет. Реже — заметный откат
-  /// назад после убийства процесса, чаще — лишняя запись на ровном месте.
+  /// How often the session position updates while playing. Rarer gives a
+  /// noticeable jump back after a kill, more often a pointless write.
   static const Duration _sessionEvery = Duration(seconds: 10);
 
-  /// Запись сессии откладывается на 300 мс, как у `Session` ПК: пачка правок
-  /// очереди подряд пишется одной записью.
+  /// Session writes wait 300 ms: a burst of queue edits becomes one write.
   Timer? _queueSave, _stateSave;
 
   void _queueDirty() {
@@ -484,13 +461,13 @@ class PlaybackController extends Notifier<PlaybackState>
     _queueSave = Timer(const Duration(milliseconds: 300), _saveQueue);
   }
 
-  /// Очередь ждёт записи — она запишет и состояние.
+  /// The queue is waiting to be written, and will write the state too.
   void _stateDirty() {
     if (_queueSave?.isActive == true || _stateSave?.isActive == true) return;
     _stateSave = Timer(const Duration(milliseconds: 300), _saveState);
   }
 
-  /// Записать то, что ждёт, сразу.
+  /// Writes what's waiting at once.
   void _flushSession() {
     if (_queueSave?.isActive == true) {
       _saveQueue();
@@ -499,7 +476,7 @@ class PlaybackController extends Notifier<PlaybackState>
     }
   }
 
-  /// Пустая очередь строки не трогает: остановка не стирает то, что слушали.
+  /// An empty queue leaves the row alone: a stop doesn't erase what was heard.
   void _saveQueue() {
     _queueSave?.cancel();
     ref
@@ -516,8 +493,8 @@ class PlaybackController extends Notifier<PlaybackState>
         .read(sessionProvider.notifier)
         .saveState(
           index: _st.index,
-          // Пока новый трек грузится (или не заиграл), позиция плеера ещё от
-          // прошлого — пишем ту, с которой его ставили.
+          // While a new track loads (or failed), the player's position is still
+          // the last one's, so I write the one it started from.
           position: _st.loading || _loadedId != track.id
               ? _loadingAt
               : _player.position,
@@ -532,16 +509,16 @@ class PlaybackController extends Notifier<PlaybackState>
   BloomAudioHandler get _handler => ref.read(audioHandlerProvider);
   AudioPlayer get _player => _handler.player;
 
-  /// Доля трека, после которой прослушивание засчитывается, — десктопный порог
-  /// `creditPlay`.
+  /// Share of a track after which a play counts.
   static const double _creditAt = 0.9;
 
-  /// Тик позиции. Слушателей у него двое, и пороги у них РАЗНЫЕ: наш зачёт
-  /// прослушивания (0.9 длительности) и скробблинг Last.fm (30 с и половина —
-  /// это требование самой площадки, а не наш выбор). Пока идёт загрузка нового
-  /// трека, тики принадлежат ещё прошлому, поэтому оба ждут её конца.
-  /// Когда здесь последний раз шёл звук (kv [kConnectPlayed], как у ПК): по
-  /// нему Connect решает, где играть. Не чаще раза в 5 с.
+  /// When sound last played here (kv [kConnectPlayed]): Connect decides where
+  /// to play by it. At most once in 5 s.
+  ///
+  /// The position tick has two listeners with DIFFERENT thresholds: my play
+  /// credit (0.9 of the duration) and Last.fm's scrobble (30 s and half, the
+  /// platform's own rule). While a new track loads, ticks still belong to the
+  /// last one, so both wait.
   int _audibleAt = 0;
 
   void _markAudible() {
@@ -552,7 +529,7 @@ class PlaybackController extends Notifier<PlaybackState>
   }
 
   void _onPosition(Duration position) {
-    // Звук идёт по-настоящему, а не «собирается» на загрузке.
+    // Sound really plays, not getting ready on load.
     if (_player.playing && _player.processingState == ProcessingState.ready) {
       _markAudible();
     }
@@ -561,10 +538,8 @@ class PlaybackController extends Notifier<PlaybackState>
     ref.read(lastfmProvider.notifier).onProgress(position, _player.duration);
   }
 
-  /// Тик позиции: доиграли до порога — засчитываем. Пока идёт загрузка нового
-  /// трека, тики принадлежат ещё прошлому — и засчитались бы не тому, кто их
-  /// наиграл (на десктопе от этого спасает то, что `curId` меняется только
-  /// после успешного резолва).
+  /// Position tick: at the threshold the play counts. While a new track loads,
+  /// ticks belong to the last one and would count for the wrong track.
   void _maybeCredit(Duration position) {
     if (_credited || _st.loading) return;
     final total = _player.duration;
@@ -572,30 +547,28 @@ class PlaybackController extends Notifier<PlaybackState>
     if (position.inMilliseconds >= total.inMilliseconds * _creditAt) _credit();
   }
 
-  /// Засчитать прослушивание в журнал. Одна точка на всё, как
-  /// `Player::credit` ПК, и зовётся она НЕ на старте: трек, который
-  /// пролистнули или который не заиграл, прослушанным не считается.
+  /// Counts a play in the log. One point for all, and NOT at the start: a track
+  /// skipped or never started isn't heard.
   void _credit() {
     if (_credited) return;
     final track = _st.track;
     if (track == null) return;
     _credited = true;
-    // Журнал событий «трек X в момент T» — из него выводятся «История»,
-    // статистика профиля и дни, уровень, сиды волны и «Итоги». Своих
-    // счётчиков больше нет нигде.
+    // The "track X at time T" log: history, profile stats and days, the level,
+    // wave seeds and Wrapped all derive from it.
     ref.read(playLogProvider.notifier).log(track);
-    // В волне трек теперь услышан — и пора проверить её запас.
+    // In the wave the track is now heard, and its stock is due a check.
     ref.read(waveProvider.notifier).onCounted(track);
-    // Засчитан последний трек очереди — просим продолжение заранее, чтобы к
-    // концу трека пачка уже стояла и переход шёл обычным путём, без паузы.
+    // The queue's last track counted: I ask for a continuation early, so the
+    // batch is there at the end and the change goes the usual way, with no
+    // pause.
     _maybeAutoSimilar();
   }
 
-  /// «Авто похожие» (порт `maybeAutoSimilar` с ПК): последний трек очереди
-  /// засчитан, доиграл или на нём нажали «далее» — дописываем в хвост похожие
-  /// (см. `WaveController.continueQueue`). Не
-  /// срабатывает при повторе (он сам решает, что после конца) и в живой волне
-  /// (она догружается сама).
+  /// Auto similar: when the queue's last track is counted, ends or gets next
+  /// pressed, similar tracks go on the tail (see
+  /// `WaveController.continueQueue`). Not on repeat, which decides what follows
+  /// itself, or in a live wave, which loads on its own.
   void _maybeAutoSimilar() {
     if (!ref.read(settingsProvider).autoSimilar) return;
     final track = _st.track;
@@ -609,29 +582,27 @@ class PlaybackController extends Notifier<PlaybackState>
     unawaited(
       ref
           .read(waveProvider.notifier)
-          // Источник сменился, пока ждали сеть (запустили плейлист), — в чужую
-          // очередь не пишем.
+          // The source changed while waiting for the network (a playlist
+          // started), so I don't write to someone else's queue.
           .continueQueue(isValid: () => identical(_st.source, source))
           .catchError((Object _) => false)
           .then((ok) {
-            // Трек уже сменился — это продолжение больше не наше.
+            // The track changed, so this continuation isn't mine any more.
             if (_autoSimilarFor != track.id) return;
             _autoSimilarPending = false;
-            // Пачка опоздала: трек доиграл или жали «далее» — переходим на
-            // первый дописанный сами.
+            // The batch came late: the track ended or next was pressed, so I
+            // move to the first added one.
             if (ok && (_queueEnded || _autoSimilarAdvance)) unawaited(next());
             _autoSimilarAdvance = false;
           }),
     );
   }
 
-  /// Поставить очередь и заиграть с [index]. [source] — откуда она набрана
-  /// (см. [PlaybackState.source]); не передали — считаем, что очередь ниоткуда,
-  /// и старый источник сбрасываем.
+  /// Sets a queue and plays from [index]. [source] is where it came from
+  /// ([PlaybackState.source]); if omitted the old source resets.
   ///
-  /// При включённой перемешке новая очередь сразу ставится перемешанной:
-  /// порядок очереди у нас и есть порядок воспроизведения, иначе флаг перемешки
-  /// висел бы, а треки шли подряд.
+  /// With shuffle on the new queue is shuffled at once: queue order is playback
+  /// order, or the flag would be up with tracks in sequence.
   Future<void> playQueue(List<Track> tracks, int index, {PlaySource? source}) {
     if (_pc case final pc?) return pc.playQueue(tracks, index, source: source);
     if (_st.shuffle && tracks.length > 1) {
@@ -645,8 +616,8 @@ class PlaybackController extends Notifier<PlaybackState>
     return _start(tracks, index, source: source, orig: null);
   }
 
-  /// «Перемешать» с карточки списка: включает перемешку и начинает со
-  /// случайного трека, а не с первого. Порт `playShuffledFromSource`.
+  /// Shuffle from a list card: turns shuffle on and starts from a random track,
+  /// not the first.
   Future<void> playQueueShuffled(List<Track> tracks, {PlaySource? source}) {
     if (tracks.isEmpty) return Future.value();
     if (_pc case final pc?) {
@@ -672,9 +643,9 @@ class PlaybackController extends Notifier<PlaybackState>
   }) async {
     if (tracks.isEmpty) return;
     _origQueue = orig;
-    // Новая очередь — «до очистки» больше нечему быть. Кроме восстановленной
-    // урезанной: полную держим дальше, иначе первая же запись снимка её
-    // потеряет и «Продолжить» вернёт один трек.
+    // A new queue leaves nothing to be before clearing. Except a restored cut
+    // one: the full one stays, or the first snapshot write loses it and a
+    // resume brings back one track.
     _preClearQueue = preClear;
     _st = _st.copyWith(
       queue: tracks,
@@ -687,23 +658,22 @@ class PlaybackController extends Notifier<PlaybackState>
     await _load(index, startAt: startAt, autoplay: autoplay);
   }
 
-  /// Один трек — очередь из него же, и в пилюле стоит он сам (десктопный
-  /// источник `single`).
+  /// One track is a queue of itself, and the pill shows it.
   Future<void> play(Track track) =>
       playQueue([track], 0, source: PlainSource.single(track));
 
-  /// Поставить очередь волны. Отдельно от [playQueue] ради перемешки: волна
-  /// САМА выбирает порядок, и перетасовать её значило бы выбросить работу
-  /// подбора. Флаг снимаем, как `host.shuffle = false` на десктопе.
+  /// Sets a wave queue. Apart from [playQueue] for shuffle's sake: the wave
+  /// picks its own order, and reshuffling would throw away its work. So the
+  /// flag goes off.
   Future<void> playWave(List<Track> tracks, WaveSource source) {
     if (_pc case final pc?) return pc.playQueue(tracks, 0, source: source);
     _st = _st.copyWith(shuffle: false);
     return _start(tracks, 0, source: source, orig: null);
   }
 
-  /// Дописать пачку в конец очереди — догрузка волны. От [addToQueue]
-  /// отличается тем, что треков много и уже стоящие в очереди пропускаются
-  /// молча: подбор мог предложить то, что там уже есть.
+  /// Adds a batch to the queue's end, for wave loading. Unlike [addToQueue]
+  /// there are many tracks and queued ones are skipped silently: picks may
+  /// offer what's there already.
   void appendToQueue(List<Track> tracks) =>
       _pc?.enqueue(tracks) ?? _append(tracks);
 
@@ -718,7 +688,7 @@ class PlaybackController extends Notifier<PlaybackState>
     _append(tracks);
   }
 
-  /// Дописать и вернуть, сколько реально встало.
+  /// Adds and returns how many really went in.
   int _append(List<Track> tracks) {
     if (tracks.isEmpty || _st.queue.isEmpty) return 0;
     final have = {for (final t in _st.queue) t.id};
@@ -735,76 +705,73 @@ class PlaybackController extends Notifier<PlaybackState>
     return add.length;
   }
 
-  /// «Авто похожие»: дописать продолжение, и очередь становится волной — дальше
-  /// она догружается сама. Текущий трек не трогаем, он доигрывает. Перемешку
-  /// снимаем без отката к снимку «до перемешки»: волна сама задаёт порядок, а
-  /// откат выкинул бы только что дописанное. Возвращает, встало ли что-то.
+  /// Auto similar: adds the continuation and the queue becomes a wave, loading
+  /// by itself from here. The current track plays on. Shuffle goes off with no
+  /// return to the earlier snapshot: the wave sets its own order, and returning
+  /// would drop what was just added. Returns whether anything went in.
   bool continueAsWave(List<Track> tracks, WaveSource source) {
-    if (_pc != null) return false; // ПК продолжает свою очередь сам
+    if (_pc != null) return false; // the computer continues its queue itself
     if (_append(tracks) == 0) return false;
     _origQueue = null;
     _st = _st.copyWith(source: source, shuffle: false);
     return true;
   }
 
-  /// Продолжить прошлую сессию — та же очередь с той же позиции (запуск
-  /// приложения, «Продолжить» на главной), как `Session::restore` ПК.
+  /// Resumes the last session: the same queue from the same position. It may
+  /// have been a wave: the queue returns by itself, but picks' memory lives
+  /// apart, and without it the wave would play out the saved tracks and stop.
   ///
-  /// Сессия могла быть волновой: очередь вернётся сама, а вот память подбора
-  /// живёт отдельно — без неё волна доиграла бы сохранённые треки и молча
-  /// встала, вместо того чтобы догрузиться.
-  ///
-  /// [autoplay] `false` — сессия возвращается НА ПАУЗЕ: так работает
-  /// «Восстановление очереди» при запуске приложения (`Настройки → Аудио`).
+  /// With [autoplay] `false` the session returns PAUSED, as for queue restore
+  /// at launch.
   Future<void> resumeSession(SessionData data, {bool autoplay = true}) async {
-    // «Продолжить» своё, пока пульт, — та же очередь, но играет на ПК.
+    // Resuming my own session as a remote: the same queue, playing on the
+    // computer.
     if (_pc case final pc?) {
       return pc.playQueue(data.queue, data.index, source: data.source);
     }
     ref.read(waveProvider.notifier).adoptRestored(data.source);
-    // Режимы ставим ДО очереди: `_start` их не трогает, а `_load` уже смотрит
-    // на повтор. Очередь записана уже тасованной, так что перемешку
-    // возвращаем флагом, а порядок до неё — из `orig`.
+    // Modes go BEFORE the queue: `_start` leaves them alone and `_load` already
+    // looks at repeat. The queue was saved shuffled, so shuffle returns as a
+    // flag and the earlier order from `orig`.
     _st = _st.copyWith(shuffle: data.shuffle, repeat: data.repeat);
     await _start(
       data.queue,
       data.index,
       source: data.source,
       orig: data.shuffle && data.orig.isNotEmpty ? data.orig : null,
-      // Первые пару секунд перематывать некуда — начинаем с начала трека.
+      // In the first couple of seconds there's nothing to seek past, so I start
+      // from the top.
       startAt: data.position > const Duration(seconds: 2)
           ? data.position
           : null,
       autoplay: autoplay,
       preClear: data.full.isEmpty ? null : data.full,
     );
-    // Доиграла до конца — «далее» и «Авто похожие» ведут себя как тогда.
+    // It played out: next and auto similar behave as they did then.
     if (data.ended && _st.track?.id == data.track.id) _queueEnded = true;
   }
 
-  /// Трек, который загрузили, но играть не начали (восстановление на паузе).
-  ///
-  /// События «трек пошёл» — волне и Last.fm — обязаны случиться, когда звук
-  /// действительно пойдёт: «сейчас играет» на паузе было бы враньём площадке, а
-  /// волне отсчёт прослушивания начинать не с чего. Поэтому держим трек здесь и
-  /// добираем события из [commandPlay].
+  /// A track loaded but not started (restore on pause). The track-started
+  /// events for the wave and Last.fm must happen when sound really goes: now
+  /// playing while paused would be a lie to the platform. So it waits here and
+  /// [commandPlay] fires them.
   Track? _pendingStart;
 
-  /// Id трека, у которого поток реально открылся. Нужен волне: уходя с трека,
-  /// [_reportWaveTrackEnd] докладывает, сколько его слушали, — а у пропущенного
-  /// слушать было нечего, и `_player.duration` к тому моменту ещё от прошлого,
-  /// по-настоящему игравшего. Без этой отметки цепочка авто-скипов научила бы
-  /// подбор тому, чего не было.
+  /// Id of the track whose stream really opened. For the wave: on leaving,
+  /// [_reportWaveTrackEnd] reports how long it was heard, but a skipped one
+  /// wasn't, and `_player.duration` is still the last real track's. Without
+  /// this mark a chain of auto-skips would teach picks something that never
+  /// happened.
   String? _loadedId;
 
-  /// С какой позиции ставили текущий трек — её пишет сессия, пока он грузится.
+  /// Position the current track started from, written by the session while it
+  /// loads.
   Duration _loadingAt = Duration.zero;
 
-  /// [skipped] — сколько недоступных треков уже пропустили в этой цепочке.
-  /// Порог — длина очереди: если не заиграл ни один, авто-скип обязан
-  /// остановиться, а не крутить её по кругу (`_skipCount` на десктопе). Счётчик
-  /// идёт параметром, а не полем: цепочка живёт ровно один заход, и обнулять
-  /// его потом было бы негде.
+  /// [skipped] is how many unavailable tracks this chain already passed. The
+  /// cap is the queue length: if none plays, the auto-skip must stop, not loop.
+  /// A parameter rather than a field: the chain lives one run, with nowhere to
+  /// reset it later.
   Future<void> _load(
     int index, {
     Duration? startAt,
@@ -812,32 +779,31 @@ class PlaybackController extends Notifier<PlaybackState>
     int skipped = 0,
   }) async {
     final track = _st.queue[index];
-    // Уход с прошлого трека — единственный сигнал, по которому учится волна:
-    // сколько его слушали, столько он и «понравился». Считаем до смены
-    // состояния, пока позиция и длительность ещё от него.
+    // Leaving a track is the only signal the wave learns from: how long it was
+    // heard is how much it was liked. Counted before the state changes, while
+    // position and duration are still its own.
     _reportWaveTrackEnd(track);
-    // Куда «поехал» показ — считаем ровно здесь, на реальном переключении:
-    // слои анимации в плеере и миниплеере обязаны ехать в одну сторону, а к
-    // моменту перерисовки прошлый номер в очереди уже потерян.
+    // Which way the display moves is worked out here, on the real change: the
+    // player's and mini player's animation layers must go one way, and by
+    // repaint the old index is lost.
     commitSwapDir(_st.queue, index);
     final gen = ++_generation;
     _loadingAt = startAt ?? Duration.zero;
-    // Прошлый трек умолкает СРАЗУ, а не когда доедет ссылка на новый. Источник
-    // у just_audio подменяется только в setUrl — то есть после похода в сеть за
-    // стримом, и всё это время в ушах играл бы старый трек, хотя в плеере уже
-    // написан новый. Не ждём: pause переставляет `playing` синхронно, а команду
-    // платформе шлёт сам, и задерживать ради неё загрузку незачем.
+    // The last track goes quiet AT ONCE, not when the new link arrives.
+    // just_audio swaps the source only in setUrl, after the network trip, and
+    // the old track would keep playing under the new title. No waiting: pause
+    // flips `playing` synchronously and sends the platform command by itself.
     unawaited(_player.pause());
     _st = _st.copyWith(index: index, loading: true, clearError: true);
-    // Текущим стал другой трек — зачёт для него начинается заново, а
-    // отложенный старт прошлого больше не нужен.
+    // Another track is current: its credit starts over, and the last one's
+    // deferred start is no longer needed.
     _credited = false;
     _pendingStart = null;
     _autoSimilarFor = null;
     _autoSimilarPending = false;
     _autoSimilarAdvance = false;
     _queueEnded = false;
-    // Название в шторке ставим сразу, не дожидаясь ссылки на стрим.
+    // The shade's title goes up at once, with no wait for the stream link.
     _handler
       ..setTrack(track, queueIndex: index)
       ..setResolving(true);
@@ -845,13 +811,10 @@ class PlaybackController extends Notifier<PlaybackState>
       _askedForNotifications = true;
       unawaited(ensureNotificationPermission());
     }
-    // Путь трека до звука — по шагам и с немедленной записью на диск.
-    //
-    // Немедленной не для красоты: если процесс убивает нативная сторона
-    // (ExoPlayer, кодек, драйвер), Dart об этом не узнаёт и дописать журнал не
-    // успевает — в файле осталась бы тишина. Зато по последней доехавшей
-    // строке видно, что именно не пережило: резолв ссылки, открытие потока или
-    // уже само воспроизведение.
+    // A track's path to sound, step by step, written to disk at once. If the
+    // native side kills the process (ExoPlayer, a codec, a driver), Dart never
+    // hears, and the log's last line shows what didn't survive: the link,
+    // opening the stream or playback itself.
     final startedAt = DateTime.now();
     var via = 'стрим';
     logInfo(
@@ -860,18 +823,17 @@ class PlaybackController extends Notifier<PlaybackState>
       now: true,
     );
     try {
-      // Офлайн-копия выигрывает у сетевого стрима — как резолвер офлайна,
-      // который на десктопе стоит первым в очереди. Заодно это единственный
-      // способ заиграть без сети.
+      // An offline copy beats a network stream. It's also the only way to play
+      // with no network.
       final offlinePath = ref.read(offlineProvider.notifier).pathOf(track.id);
       if (offlinePath != null) {
         via = 'офлайн';
         await _player.setFilePath(offlinePath, initialPosition: startAt);
       } else if (isLocalTrack(track)) {
         via = 'свой файл';
-        // Свой файл с телефона: площадки за ним нет, спрашивать некого. Копия
-        // внутри приложения приходит как `file://`, чужой файл — как
-        // `content://`, и тому и другому нужен общий `AudioSource.uri`.
+        // A local file: no platform behind it to ask. The copy inside the app
+        // comes as `file://`, a user's file as `content://`, and both take
+        // `AudioSource.uri`.
         final uri = localTrackUri(track);
         if (uri == null) throw const LocalFileGone();
         await _player.setAudioSource(
@@ -885,7 +847,7 @@ class PlaybackController extends Notifier<PlaybackState>
         }
         final stream = await provider.resolveStream(track);
         if (stream == null) throw StateError('search.err.noStream');
-        if (gen != _generation) return; // пользователь уже переключил трек
+        if (gen != _generation) return; // the user already changed the track
         logInfo(
           'player',
           'ссылка получена за '
@@ -912,13 +874,13 @@ class PlaybackController extends Notifier<PlaybackState>
       if (autoplay) {
         _fireTrackStart(track);
       } else {
-        // Загрузили, но не играем — события «трек пошёл» ждут первого play.
+        // Loaded but not playing: track-started events wait for the first play.
         _pendingStart = track;
       }
       if (autoplay) logInfo('player', 'играю', now: true);
-      // play() у just_audio завершается НЕ когда началось воспроизведение, а
-      // когда трек доиграл (или его поставили на паузу). Ждать его нельзя:
-      // `loading` тогда висит всю песню, а кнопка play остаётся спиннером.
+      // just_audio's play() completes NOT when playback starts but when the
+      // track ends or pauses. Waiting on it leaves `loading` up all song and
+      // the play button a spinner.
       if (autoplay) unawaited(_player.play());
     } catch (e) {
       if (gen != _generation) return;
@@ -930,10 +892,9 @@ class PlaybackController extends Notifier<PlaybackState>
     }
   }
 
-  /// Недоступный трек — дальше по очереди (`skipUnplayable` с ПК).
-  ///
-  /// Без этого очередь встаёт намертво: DRM-трек не заиграет никогда, а
-  /// «дальше» пришлось бы жать руками на каждом.
+  /// An unavailable track moves on along the queue. Without this the queue
+  /// stalls: a DRM track never plays, and next would need pressing by hand on
+  /// each.
   void _skipUnplayable(
     Track failed,
     String code, {
@@ -941,29 +902,28 @@ class PlaybackController extends Notifier<PlaybackState>
     required int skipped,
   }) {
     final q = _st.queue;
-    // Куда идти дальше, решаем ДО слов: тост «пропускаем» на очереди из одного
-    // трека обещал бы то, чего не будет.
+    // Where to go next is decided BEFORE saying anything: a skipping toast on a
+    // one-track queue promises what won't happen.
     //
-    // Восстановление сессии на паузе (`autoplay: false`) скипом не считается:
-    // играть никто не просил, и листать очередь самим на старте приложения
-    // нельзя — ошибка просто остаётся на экране.
+    // Restoring a session on pause (`autoplay: false`) isn't a skip: nobody
+    // asked to play, and I can't flip through the queue at launch, so the error
+    // just stays on screen.
     final canSkip = autoplay && q.length > 1 && skipped + 1 < q.length;
 
     final l = globalL10n;
     if (l != null) {
-      // Тост тоже один на цепочку. На ПК их по одному на пропущенный трек, но
-      // там их разгребает стек тостов, а у нас `ScaffoldMessenger` показывает
-      // строго по одному и ставит остальные в очередь: человек полминуты
-      // смотрел бы на плывущие мимо плашки вместо музыки.
+      // One toast per chain: `ScaffoldMessenger` shows strictly one at a time
+      // and queues the rest, so half a minute of plates would float by instead
+      // of music.
       final (String, ToastKind)? say = switch ((canSkip, skipped)) {
         (true, 0) => (
           isDrmError(code) ? l.playerSkipDrm : l.playerSkipUnavailable,
           ToastKind.info,
         ),
         (true, _) => null,
-        // Перебрали всю очередь и не заиграл ни один.
+        // Went through the whole queue and none played.
         (false, > 0) => (l.playerNoPlayable, ToastKind.error),
-        // Пропускать было некуда — тогда важна сама причина.
+        // Nowhere to skip, so the reason itself matters.
         (false, _) => (describePlayError(l, code), ToastKind.error),
       };
       if (say != null) {
@@ -973,37 +933,34 @@ class PlaybackController extends Notifier<PlaybackState>
 
     if (!canSkip) return;
     markSwapDir(1);
-    // Не ждём: цепочка скипов накручивала бы вложенные await на всю длину
-    // очереди, а тому, кто позвал первый `_load`, ждать конца перебора незачем.
+    // No waiting: a skip chain would nest awaits the length of the queue, and
+    // whoever called the first `_load` has no reason to wait for the whole run.
     unawaited(_load((_st.index + 1) % q.length, skipped: skipped + 1));
   }
 
-  /// «Трек пошёл» — тем, кто считает прослушивание.
-  ///
-  /// Зовётся на успешном старте, а при восстановлении сессии на паузе — из
-  /// [commandPlay], когда звук действительно пойдёт (см. [_pendingStart]).
+  /// Track started, for those counting plays. Called on a successful start, or
+  /// for a session restored on pause from [commandPlay], when sound really goes
+  /// (see [_pendingStart]).
   void _fireTrackStart(Track track) {
     _pendingStart = null;
-    // Волне пора решать, догружать ли пачку и не ушёл ли человек из неё.
-    // Трек, который не заиграл, для подбора не событие.
+    // Time for the wave to decide on loading a batch and whether the listener
+    // left it. A track that never played is no event for picks.
     ref.read(waveProvider.notifier).onTrackStart(track);
-    // Last.fm — тем же событием: «сейчас играет» имеет смысл слать только про
-    // трек, который действительно заиграл, и отсюда же начинается отсчёт
-    // времени для скроббла.
+    // Last.fm on the same event: now playing makes sense only for a track
+    // really playing, and the scrobble's time count starts here.
     ref.read(lastfmProvider.notifier).onTrackStart(track);
   }
 
-  /// Сообщить волне, сколько наиграл трек, с которого сейчас уходим.
-  ///
-  /// [next] — тот, на который переключаемся: повторный заход на тот же трек
-  /// (перезапуск после `stop()`, перемотка в начало) уходом не считается, иначе
-  /// волна засчитала бы его как пролистнутый.
+  /// Tells the wave how much the track being left has played. [next] is the
+  /// track being changed to: coming back to the same one (a restart after
+  /// `stop()`, a seek to the start) isn't leaving, or the wave would count it
+  /// as skipped.
   void _reportWaveTrackEnd(Track next) {
     final prev = _st.track;
     if (prev == null || prev.id == next.id) return;
-    // Уходим с трека, который так и не заиграл (цепочка авто-скипов): слушать
-    // его было нечего, а `_player.duration` всё ещё от прошлого — подбор
-    // получил бы второй, выдуманный отзыв о нём (см. [_loadedId]).
+    // Leaving a track that never played (an auto-skip chain): nothing was
+    // heard, and `_player.duration` is still the last one's, which would give
+    // picks a second, made-up review (see [_loadedId]).
     if (prev.id != _loadedId) return;
     final total = _player.duration;
     if (total == null || total <= Duration.zero) return;
@@ -1011,11 +968,11 @@ class PlaybackController extends Notifier<PlaybackState>
   }
 
   void _onCompleted() {
-    // Трек доиграл до конца — засчитываем, если ещё не: короткий мог и не
-    // попасть на тик с порогом.
+    // The track played out, so it counts if it hasn't: a short one may have
+    // missed the threshold tick.
     _credit();
-    // Таймер сна «до конца трека» бьёт и повтор, и переход по очереди: его для
-    // того и ставили — чтобы после ЭТОГО трека стало тихо.
+    // An end of track sleep timer beats both repeat and advancing: that's what
+    // it's for, silence after THIS track.
     if (ref.read(sleepTimerProvider).mode == SleepMode.endOfTrack) {
       _player.seek(Duration.zero);
       _player.pause();
@@ -1023,7 +980,7 @@ class PlaybackController extends Notifier<PlaybackState>
       return;
     }
     if (_st.repeat == PlayerRepeat.one) {
-      _credited = false; // следующий круг засчитывается заново
+      _credited = false; // the next round counts anew
       if (_st.track case final track?) {
         ref.read(lastfmProvider.notifier).onTrackStart(track);
       }
@@ -1036,16 +993,16 @@ class PlaybackController extends Notifier<PlaybackState>
       _queueEnded = true;
       _player.seek(Duration.zero);
       _player.pause();
-      // Короткий трек мог кончиться раньше, чем продолжение запросили, — или
-      // оно уже в пути и перейдёт на пачку само (см. [_queueEnded]).
+      // A short track may end before a continuation was asked, or it's in
+      // flight and will move on by itself (see [_queueEnded]).
       _maybeAutoSimilar();
       return;
     }
     next();
   }
 
-  /// Дальше по очереди. Про перемешку тут ничего не знают: она уже переставила
-  /// саму очередь (см. [toggleShuffle]), и «следующий» всегда следующий.
+  /// On along the queue. Shuffle is unknown here: it already rearranged the
+  /// queue itself (see [toggleShuffle]), so next is always next.
   Future<void> next() async {
     if (_pc case final pc?) return pc.next();
     final q = _st.queue;
@@ -1053,9 +1010,9 @@ class PlaybackController extends Notifier<PlaybackState>
       cancelSwapSilent();
       return;
     }
-    // Последний трек и включены «Авто похожие»: вместо закольцовки ждём
-    // продолжение — пачка перейдёт на себя сама. Если запрос для этого трека уже
-    // отработал впустую, ведём себя как раньше.
+    // Last track with auto similar on: instead of looping I wait for the
+    // continuation, which moves on by itself. If this track's request already
+    // came back empty, I act as usual.
     final track = _st.track;
     if (track != null &&
         _st.index == q.length - 1 &&
@@ -1068,14 +1025,14 @@ class PlaybackController extends Notifier<PlaybackState>
       cancelSwapSilent();
       return;
     }
-    // Направление задаём явно: на закольцовке (последний → первый) сравнение
-    // номеров дало бы «назад».
+    // Direction set explicitly: on a loop (last to first) comparing indices
+    // would say backwards.
     markSwapDir(1);
     await _load((_st.index + 1) % q.length);
   }
 
-  /// Назад: первые 3 секунды — к предыдущему треку, дальше — в начало текущего
-  /// (привычное поведение транспорта).
+  /// Previous: in the first 3 seconds to the previous track, after that to the
+  /// start of this one.
   Future<void> prev() async {
     if (_pc case final pc?) return pc.prev();
     if (_st.queue.isEmpty) {
@@ -1083,8 +1040,8 @@ class PlaybackController extends Notifier<PlaybackState>
       return;
     }
     if (_player.position > const Duration(seconds: 3)) {
-      // Трек не меняется — снимаем «не анимировать» сами: жест был, а смены
-      // не вышло, и флаг достался бы следующей, настоящей смене.
+      // The track doesn't change, so I clear the no-animate flag myself: there
+      // was a gesture with no change, and it would land on the next real one.
       cancelSwapSilent();
       await _player.seek(Duration.zero);
       return;
@@ -1092,11 +1049,9 @@ class PlaybackController extends Notifier<PlaybackState>
     await prevTrack();
   }
 
-  /// Предыдущий трек — без «первые 3 секунды в начало текущего».
-  ///
-  /// Нужен карусели миниплеера («Соседние треки»): человек тянет к себе
-  /// карточку, которую видит, и привести она обязана именно её. Отмотка в
-  /// начало на середине трека выглядела бы там как сорвавшийся жест.
+  /// Previous track with no first-3-seconds rule. For the mini player's
+  /// carousel: the user pulls in the card they see and must get just that.
+  /// Seeking to the start would look like a failed gesture.
   Future<void> prevTrack() async {
     if (_pc case final pc?) return pc.jumpTo(state.index - 1);
     final q = _st.queue;
@@ -1123,7 +1078,7 @@ class PlaybackController extends Notifier<PlaybackState>
     _reportToPc();
   }
 
-  /// Своё поменялось — ПК, если он показывает нас, узнаёт (`pc_remote.dart`).
+  /// Mine changed, so the computer learns if it's showing this phone.
   void _reportToPc() => ref.read(pcRemoteProvider.notifier).reportSoon();
 
   void cycleRepeat() {
@@ -1136,9 +1091,9 @@ class PlaybackController extends Notifier<PlaybackState>
     _st = _st.copyWith(repeat: nextMode);
   }
 
-  /// Перемешка переставляет саму очередь, а не подсовывает случайный номер в
-  /// [next] — иначе список в шторке очереди врал бы о том, что пойдёт дальше.
-  /// Выключение возвращает запомненный порядок.
+  /// Shuffle rearranges the queue itself rather than handing [next] a random
+  /// index, or the queue sheet would lie about what's next. Turning it off
+  /// returns the saved order.
   void toggleShuffle() {
     if (_pc case final pc?) {
       unawaited(pc.toggleShuffle());
@@ -1152,8 +1107,8 @@ class PlaybackController extends Notifier<PlaybackState>
         _st = _st.copyWith(shuffle: false);
         return;
       }
-      // Играющий трек ищем в исходном порядке по id: он остаётся тем же, меняется
-      // только его номер.
+      // I find the playing track in the original order by id: it stays the
+      // same, only its index changes.
       final current = _st.track;
       final at = current == null
           ? -1
@@ -1177,16 +1132,15 @@ class PlaybackController extends Notifier<PlaybackState>
       ..setTrack(_st.track, queueIndex: 0);
   }
 
-  /// Перейти к треку очереди по номеру (экран очереди, список в шторке).
+  /// Goes to a queue track by index.
   Future<void> jumpTo(int index) async {
     if (_pc case final pc?) return pc.jumpTo(index);
     if (index < 0 || index >= _st.queue.length) return;
     await _load(index);
   }
 
-  /// Перетащить трек. Индексы — в семантике `ReorderableListView`: [to]
-  /// считается ДО изъятия строки, поэтому при движении вниз он на единицу
-  /// больше настоящего.
+  /// Drags a track. Indices follow `ReorderableListView`: [to] counts BEFORE
+  /// the row is removed, so moving down it's one above the real one.
   void reorder(int from, int to) {
     if (_pc case final pc?) {
       unawaited(pc.reorder(from, to));
@@ -1199,9 +1153,8 @@ class PlaybackController extends Notifier<PlaybackState>
     q.insert(target, q.removeAt(from));
 
     final index = indexAfterReorder(_st.index, from, target);
-    // Порядок поменяли руками — снимок «до перемешки» устарел: выключение
-    // перемешки должно вернуть то, что человек собрал последним, а не то, что
-    // было до неё.
+    // The order was changed by hand, so the pre-shuffle snapshot is stale:
+    // turning shuffle off must return what was last arranged.
     if (_origQueue != null) _origQueue = q;
     _st = _st.copyWith(queue: q, index: index);
     _handler
@@ -1209,22 +1162,20 @@ class PlaybackController extends Notifier<PlaybackState>
       ..setTrack(_st.track, queueIndex: index);
   }
 
-  /// Дописать трек в конец очереди — порт десктопного `addToQueue`
-  /// (`enqueue(..., 'end')`). Возвращает `false`, если трек в очереди уже стоит:
-  /// второй раз он туда не встаёт, и вызывающему есть о чём сказать.
+  /// Adds a track to the queue's end. Returns `false` if it's already queued:
+  /// it doesn't go in twice, and the caller has something to say.
   bool addToQueue(Track track) => queueTracks([track]) > 0;
 
-  /// Поставить трек сразу после текущего — порт `playNextInQueue`
-  /// (`enqueue(..., 'next')`). Уже стоящий в очереди трек не дублируется, а
-  /// переезжает на новое место.
+  /// Puts a track right after the current one. One already queued moves rather
+  /// than duplicates.
   void playNext(Track track) => queueTracksNext([track]);
 
-  /// «В очередь» пачкой — весь список из меню плейлиста (десктопный
-  /// `addTracksToQueue`). Возвращает, сколько треков реально встало: уже
-  /// стоящие в очереди пропускаются, и вызывающему есть о чём сказать.
+  /// Adds a batch to the queue, as with a whole list from the playlist menu.
+  /// Returns how many really went in: queued ones are skipped, and the caller
+  /// has something to say.
   ///
-  /// Пустую очередь дополнять нечего — набор просто начинает играть, как и на
-  /// десктопе; [source] тогда становится источником очереди.
+  /// An empty queue has nothing to extend, so the batch just starts playing,
+  /// and [source] becomes the queue's source.
   int queueTracks(List<Track> tracks, {PlaySource? source}) {
     if (_pc case final pc?) return pc.enqueue(_dedup(tracks), source: source);
     final batch = _dedup(tracks);
@@ -1240,8 +1191,8 @@ class PlaybackController extends Notifier<PlaybackState>
     ];
     if (add.isEmpty) return 0;
     final q = [..._st.queue, ...add];
-    // Снимок «до перемешки» пополняем тоже: иначе выключение перемешки
-    // откатило бы очередь к состоянию без добавленных треков.
+    // The pre-shuffle snapshot grows too, or turning shuffle off would drop the
+    // added tracks.
     final orig = _origQueue;
     if (orig != null) _origQueue = [...orig, ...add];
     _st = _st.copyWith(queue: q);
@@ -1249,9 +1200,8 @@ class PlaybackController extends Notifier<PlaybackState>
     return add.length;
   }
 
-  /// «Играть следующими» пачкой (десктопный `playTracksNext`). Возвращает, для
-  /// скольких треков это что-то изменило: играющий из пачки выпадает, он уже
-  /// звучит.
+  /// Play next for a batch. Returns for how many it changed something: the
+  /// playing one drops from the batch, it's already sounding.
   int queueTracksNext(List<Track> tracks, {PlaySource? source}) {
     if (_pc case final pc?) {
       return pc.enqueue(_dedup(tracks), next: true, source: source);
@@ -1265,8 +1215,8 @@ class PlaybackController extends Notifier<PlaybackState>
     final current = _st.track;
     final (q, index) = queueWithNextAll(_st.queue, _st.index, batch);
     if (identical(q, _st.queue)) return 0;
-    // Снимок «до перемешки» правим тем же способом: в нём тот же играющий трек,
-    // просто в другом порядке.
+    // The pre-shuffle snapshot gets the same edit: it has the same playing
+    // track in a different order.
     final orig = _origQueue;
     if (orig != null) {
       final at = current == null
@@ -1281,8 +1231,8 @@ class PlaybackController extends Notifier<PlaybackState>
     return batch.where((t) => t.id != current?.id).length;
   }
 
-  /// Пачка без повторов, в исходном порядке: один и тот же трек мог прийти из
-  /// списка дважды, а в очереди ему хватит одного места.
+  /// A batch with no repeats, in original order: a list may send one track
+  /// twice, and the queue needs one place.
   List<Track> _dedup(List<Track> tracks) {
     final seen = <String>{};
     return [
@@ -1291,12 +1241,11 @@ class PlaybackController extends Notifier<PlaybackState>
     ];
   }
 
-  /// Подменить трек в очереди — «Сменить площадку» заменила запись библиотеки,
-  /// и очередь не должна ссылаться на исчезнувший трек.
+  /// Replaces a track in the queue: Change platform replaced the library entry,
+  /// and the queue shouldn't point at a gone track.
   ///
-  /// Позицию воспроизведения не трогаем: это замена ЗАПИСИ, а не «слушать
-  /// сейчас» (так же на десктопе). Текущий стрим доигрывает, а дальше очередь
-  /// возьмёт трек уже с новой площадки.
+  /// Playback position stays: this replaces a RECORD. The current stream plays
+  /// out, and later the queue takes the track from the new platform.
   void replaceInQueue(String oldId, Track next) {
     if (!_st.queue.any((t) => t.id == oldId)) return;
     final q = [
@@ -1312,42 +1261,44 @@ class PlaybackController extends Notifier<PlaybackState>
     }
     _st = _st.copyWith(queue: q);
     _handler.setQueue(q);
-    // Подменили играющий — обновляем и то, что показано в шторке уведомления:
-    // сам звук при этом не трогается.
+    // The playing one was replaced, so what the shade shows updates too; the
+    // sound isn't touched.
     if (_st.track?.id == next.id) {
       _handler.setTrack(_st.track, queueIndex: _st.index);
     }
   }
 
-  /// Убрать трек из очереди (смахивание строки). Порт `removeFromQueue`.
+  /// Removes a track from the queue (a row swipe).
   Future<void> removeAt(int index) async {
     if (_pc case final pc?) return pc.removeAt(index);
     final q = [..._st.queue];
     if (index < 0 || index >= q.length) return;
     if (q.length == 1) {
-      // Последний — очередь пуста, плеер сбрасываем. Её строки (и очередь до
-      // очистки) остаются для «Продолжить» — дописываем то, что ждёт записи.
+      // The last one: the queue is empty and the player resets. Its rows (and
+      // the queue before clearing) stay for a resume, so I write what's
+      // waiting.
       _flushSession();
       await commandStop();
       await _player.stop();
-      // Восстанавливать в плеер после перезапуска нечего, а запись при пустой
-      // очереди ничего не пишет — помечаем сессию явно, иначе удалённый трек
-      // возвращался. Волна тоже закончилась: её очередь только что убрали.
+      // Nothing to restore after a restart, and writing an empty queue writes
+      // nothing, so I mark the session explicitly, or a removed track would
+      // come back. The wave ended too: its queue is gone.
       ref.read(sessionProvider.notifier).markCleared();
       ref.read(waveProvider.notifier).endSession();
       return;
     }
     final current = _st.index;
     final removed = q.removeAt(index);
-    // Из снимка «до перемешки» смахнутый трек тоже убираем, иначе выключение
-    // перемешки вернуло бы его в очередь.
+    // The swiped track also leaves the pre-shuffle snapshot, or turning shuffle
+    // off would bring it back.
     final orig = _origQueue;
     if (orig != null) {
       final at = orig.indexWhere((t) => t.id == removed.id);
       if (at >= 0) _origQueue = [...orig]..removeAt(at);
     }
     if (index == current) {
-      // Удалили играющий — играем тот, что встал на его место (или последний).
+      // The playing one was removed, so I play what took its place (or the
+      // last).
       final next = index.clamp(0, q.length - 1);
       _st = _st.copyWith(queue: q, index: next);
       _handler.setQueue(q);
@@ -1361,7 +1312,7 @@ class PlaybackController extends Notifier<PlaybackState>
       ..setTrack(_st.track, queueIndex: shifted);
   }
 
-  /// Очистить очередь, оставив играющий трек. Воспроизведение не рвём.
+  /// Clears the queue, keeping the playing track. Playback isn't broken.
   void clearExceptCurrent() {
     if (_pc case final pc?) {
       unawaited(pc.clearExceptCurrent());
@@ -1369,7 +1320,7 @@ class PlaybackController extends Notifier<PlaybackState>
     }
     final track = _st.track;
     if (track == null) return;
-    // Повторная очистка не должна перетереть полную очередь урезанной.
+    // Clearing again mustn't overwrite the full queue with a cut one.
     _preClearQueue ??= _st.queue.length > 1 ? _st.queue : null;
     _origQueue = null;
     _st = _st.copyWith(queue: [track], index: 0);
@@ -1378,10 +1329,9 @@ class PlaybackController extends Notifier<PlaybackState>
       ..setTrack(track, queueIndex: 0);
   }
 
-  // --- Connect: звук переезжает между телефоном и ПК (`pc_remote.dart`)
+  // --- Connect: sound moves between the phone and the computer
 
-  /// Своя сессия как есть — её забирает ПК («Играть на ПК»). `null` — очереди
-  /// нет.
+  /// My session as it is, taken by the computer. `null` if there's no queue.
   SessionData? localSession() {
     final track = _st.track;
     if (track == null) return null;
@@ -1397,12 +1347,13 @@ class PlaybackController extends Notifier<PlaybackState>
     );
   }
 
-  /// Длительность своего трека — для ПК, который его показывает.
+  /// My track's duration, for the computer showing it.
   Duration get localDuration =>
       _player.duration ?? _st.track?.duration ?? Duration.zero;
 
-  /// Своё — на паузу: звук ушёл на ПК. Загрузка в полёте больше не наша: без
-  /// отмены она, упав, сама перешла бы к следующему треку и заиграла здесь.
+  /// Mine goes on pause: the sound went to the computer. A load in flight isn't
+  /// mine any more: uncancelled, on failure it would advance by itself and play
+  /// here.
   Future<void> pauseLocal() {
     ++_generation;
     if (_st.loading) {
@@ -1412,21 +1363,21 @@ class PlaybackController extends Notifier<PlaybackState>
     return _player.pause();
   }
 
-  // --- PlaybackCommands: команды из шторки, с экрана блокировки, с гарнитуры
+  // --- PlaybackCommands: from the shade, lock screen and headset
 
   @override
   Future<void> commandPlay() async {
     if (_pc case final pc?) return pc.play();
-    // Идёт загрузка нового трека — играть нечего: источник в плеере ещё от
-    // прошлого, и play() вернул бы в уши именно его. Загрузка доиграет до
-    // старта сама.
+    // A new track is loading, so there's nothing to play: the player's source
+    // is still the last one, and play() would bring just that back. The load
+    // starts it by itself.
     if (_st.loading) return;
-    // После stop() (смахнули шторку) источник у just_audio уже отпущен —
-    // «играть» должно перезапустить трек, а не молча ничего не сделать.
+    // After stop() (the shade was swiped) just_audio's source is released, so
+    // play must restart the track rather than silently do nothing.
     final track = _st.track;
     if (_player.processingState == ProcessingState.idle && track != null) {
-      // Трек так и не заиграл (восстановленная сессия без сети) — снова с той
-      // же позиции, а не с начала.
+      // The track never played (a restored session with no network), so again
+      // from that position, not the start.
       await _load(
         _st.index,
         startAt: _loadedId != track.id && _loadingAt > Duration.zero
@@ -1435,11 +1386,11 @@ class PlaybackController extends Notifier<PlaybackState>
       );
       return;
     }
-    // Сессию восстановили на паузе и вот сейчас её пустили — самое время
-    // сказать об этом волне и Last.fm.
+    // A session restored on pause was just started: the moment to tell the wave
+    // and Last.fm.
     final pending = _pendingStart;
     if (pending != null) _fireTrackStart(pending);
-    unawaited(_player.play()); // см. комментарий в _load
+    unawaited(_player.play()); // see the note in _load
   }
 
   @override
@@ -1467,10 +1418,10 @@ class PlaybackController extends Notifier<PlaybackState>
 
   @override
   Future<void> commandStop() async {
-    ++_generation; // отменяем резолв, который может быть в полёте
-    _origQueue = null; // возвращать нечего: очереди больше нет
-    // Очередь уходит, а режимы повтора и перемешивания — нет: это настройки
-    // плеера, а не свойство конкретной очереди.
+    ++_generation; // cancels a resolve that may be in flight
+    _origQueue = null; // nothing to return to: the queue is gone
+    // The queue goes, but repeat and shuffle don't: they're player settings,
+    // not a queue's property.
     _st = PlaybackState(repeat: _st.repeat, shuffle: _st.shuffle);
     _handler
       ..setResolving(false)

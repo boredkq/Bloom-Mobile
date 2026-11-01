@@ -1,8 +1,5 @@
-/// Полноэкранный плеер. Раскладка — по референсу: шапка (свернуть / «Играет
-/// из» / меню), большая обложка, название и артист по
-/// центру, прогресс, транспорт отдельным блоком, под ним ряд инструментов.
-///
-/// Вид (цвета, плёнки, радиус) — токены десктопного Bloom.
+/// Full player: a header (collapse, playing from, menu), a large cover, title
+/// and artist, progress, transport as its own block, and a tool row below.
 library;
 
 import 'package:flutter/material.dart';
@@ -52,32 +49,28 @@ import 'speed_sheet.dart';
 import 'track_swap.dart';
 import 'vinyl_disc.dart';
 
-/// Радиус обложки в плеере — заметно круглее блоков (как в референсе).
+/// Cover radius in the player, much rounder than blocks.
 const double _coverRadius = 20;
 
-/// Просвет между пилюлей источника и круглыми кнопками шапки.
+/// Gap between the source pill and the header's round buttons.
 const double _headerGap = 8;
 
-/// Что уходит в буфер по тапу на название: «Название — Артист», как на ПК
-/// (`TitleCopyOnClick`: `title + ' — ' + artist`). Артиста нет — одно название,
-/// иначе в буфере оставалось бы висящее тире.
+/// What a tap on the title copies: "Title — Artist". With no artist, just the
+/// title, or a dangling dash stays.
 String trackCopyText(Track track) {
   final artist = track.artist.trim();
   return artist.isEmpty ? track.name : '${track.name} — $artist';
 }
 
-/// Содержимое плеера во весь экран.
+/// Player content full screen. Not a screen or route: the panel ([PlayerSheet])
+/// builds it inside the growing card and clips it until it reaches the edges.
+/// So layout always counts on the FULL screen, however much shows, or it would
+/// squeeze mid-expansion and jump at the end. And it closes with
+/// [collapsePlayerSheet], not `pop`.
 ///
-/// Не экран и не маршрут: его строит панель ([PlayerSheet]) внутри растущей
-/// карточки и обрезает своим окном, пока та не дошла до краёв. Отсюда два
-/// следствия. Раскладка всегда считается по ПОЛНОМУ экрану, сколько бы от неё
-/// сейчас ни было видно, — иначе на середине разворота она сжималась бы и в
-/// конце прыгала. А закрывается плеер не `pop`, а [collapsePlayerSheet]: своего
-/// маршрута у него нет.
-///
-/// `Scaffold` тут нужен не ради раскладки, а ради тостов: `ScaffoldMessenger`
-/// показывает их на последнем собранном `Scaffold`, и без своего они выезжали
-/// бы на каркасе — то есть ПОД панелью.
+/// `Scaffold` is here for toasts: `ScaffoldMessenger` shows them on the last
+/// built `Scaffold`, and with no own one they'd come out on the shell, UNDER
+/// the panel.
 class FullPlayerBody extends ConsumerStatefulWidget {
   const FullPlayerBody({super.key});
 
@@ -89,9 +82,9 @@ class _FullPlayerBodyState extends ConsumerState<FullPlayerBody> {
   @override
   void initState() {
     super.initState();
-    // Открытие плеера — в журнал, сразу на диск. Экран тяжёлый: размытия,
-    // тень обложки, анимации. Если процесс умирает молча где-то здесь, а не на
-    // звуке, разобрать это можно только по тому, доехала строка или нет.
+    // Opening the player goes to the log, straight to disk. The screen is
+    // heavy: blurs, the cover's shadow, animations. If the process dies
+    // silently here rather than on sound, this line is the only clue.
     logInfo('ui', 'открыт полноэкранный плеер', now: true);
   }
 
@@ -105,22 +98,21 @@ class _FullPlayerBodyState extends ConsumerState<FullPlayerBody> {
     final swipes = ref.watch(swipeProvider).of(SwipeZone.player);
 
     return Scaffold(
-      // Заливка темы остаётся под фоном плеера: сам фон её накрывает целиком, а
-      // в режиме «Нет» её и видно. Прозрачным `Scaffold` делать нельзя — сквозь
-      // него просвечивало бы то, над чем лежит панель.
+      // The theme's fill stays under the player's background, which covers it
+      // fully, and in none mode it's what shows. `Scaffold` can't be clear:
+      // what the panel lies over would show through.
       backgroundColor: t.bg,
-      // Тяги вниз здесь нет: панель ловит её сама, снаружи содержимого — иначе
-      // жест пришлось бы заводить дважды и они спорили бы за палец.
+      // No pull down here: the panel catches it outside the content, or two
+      // gestures would fight for the finger.
       //
-      // Горизонтальный жест ловится со всего экрана, а едут от него обложка и
-      // подписи: тянуть плеер целиком незачем — шапка и транспорт к треку не
-      // относятся. Своя ловушка прогресса ниже перебивает этот жест, как и
-      // положено ближнему детектору.
+      // The horizontal gesture is caught across the screen but moves only the
+      // cover and captions: header and transport aren't about the track. The
+      // progress trap below overrides it, as a nearer detector should.
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Фон — настройка «Плеер → Фон плеера». Ниже содержимого и выше
-          // заливки: плёнки блоков (`ovlBg`) обязаны проступать на нём.
+          // Background per the player setting. Below the content and above the
+          // fill: block films (`ovlBg`) must show on it.
           const PlayerBackdrop(),
           _body(context, state, track, lyricsOpen, lyricsMode, swipes),
         ],
@@ -128,7 +120,7 @@ class _FullPlayerBodyState extends ConsumerState<FullPlayerBody> {
     );
   }
 
-  /// Содержимое плеера поверх фона.
+  /// Player content over the background.
   Widget _body(
     BuildContext context,
     PlaybackState state,
@@ -138,11 +130,11 @@ class _FullPlayerBodyState extends ConsumerState<FullPlayerBody> {
     SwipePair swipes,
   ) {
     return TrackFlick(
-      // Жест обязан ловиться СО ВСЕГО экрана, а не только там, где под пальцем
-      // что-то нарисовано: по бокам от квадратной обложки и в просветах колонки
-      // содержимого нет, и `deferToChild` пропускал жест насквозь — к панели под
-      // нами. Та в режиме «Соседние треки» едет целой карточкой, и вбок уезжал
-      // весь развёрнутый плеер (он это и поймал).
+      // The gesture must be caught ACROSS the screen, not just where
+      // something's drawn: beside a square cover and in the column's gaps
+      // there's no content, and `deferToChild` let it through to the panel
+      // below, which with neighbours on moves as a whole card, carrying the
+      // open player sideways.
       behavior: HitTestBehavior.opaque,
       onLeft: track == null || swipes.left == SwipeAction.none
           ? null
@@ -163,16 +155,15 @@ class _FullPlayerBodyState extends ConsumerState<FullPlayerBody> {
               fromFlick: true,
             ),
       builder: (context, shift) => SafeArea(
-        // Низ — не `SafeArea`, а [bottomEdgeInset]: ряд инструментов
-        // обязан кончаться там же, где кромка таб-бара под списком,
-        // иначе открытие плеера выглядит как прыжок раскладки. Заодно
-        // на iOS полный вырез под home indicator (34) поднял бы весь низ
-        // заметно выше, чем на андроиде.
+        // The bottom uses [bottomEdgeInset], not `SafeArea`: the tool row must
+        // end where the tab bar's edge does under a list, or opening the player
+        // looks like a layout jump. The full iOS home indicator inset (34)
+        // would also lift everything well above Android.
         bottom: false,
         child: track == null
             ? const SizedBox.shrink()
             : Padding(
-                // Сверху воздух: шапка не должна липнуть к статус-бару.
+                // Air on top: the header shouldn't stick to the status bar.
                 padding: EdgeInsets.fromLTRB(
                   16,
                   14,
@@ -183,17 +174,14 @@ class _FullPlayerBodyState extends ConsumerState<FullPlayerBody> {
                   children: [
                     _Header(track: track, state: state),
                     const SizedBox(height: 16),
-                    // Обложка по центру свободного места — или текст на её
-                    // месте, если выбран вид «вместо обложки». В виде
-                    // «поверх» обложка остаётся, а текст ложится на неё
-                    // самой карточкой (см. `_Cover`).
-                    // Именно `Expanded`, а не `Flexible`: панель текста —
-                    // скролл, и по свободным ограничениям он берёт высоту
-                    // по СОДЕРЖИМОМУ. Пока текст грузится, содержимое —
-                    // одна строчка «Загрузка текста…», колонка схлопывалась
-                    // и весь низ экрана уезжал вверх (поймал он). Обложке
-                    // это ничего не меняет: её `Center` и раньше занимал
-                    // всё свободное место.
+                    // Cover centred in the free space, or text in its place in
+                    // replace mode. In over mode the cover stays and the text
+                    // lies on it as a card (see `_Cover`).
+                    //
+                    // `Expanded`, not `Flexible`: the text panel scrolls, and
+                    // under loose constraints takes its height from content.
+                    // While loading that's one line, so the column collapsed
+                    // and the bottom rode up.
                     Expanded(
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 260),
@@ -216,15 +204,14 @@ class _FullPlayerBodyState extends ConsumerState<FullPlayerBody> {
                               ),
                       ),
                     ),
-                    // Отступы вокруг названия одинаковые: оно должно стоять
-                    // ровно посередине между обложкой и прогрессом. Снизу
-                    // те же ~24 набегают из полей вокруг имени артиста, этой
-                    // восьмёрки и верхней половины ловушки прогресса
-                    // (`_Progress.slack`).
+                    // Equal gaps around the title: it should stand right
+                    // between cover and progress. Below, the same ~24 comes
+                    // from the margins around the artist's name, this eight and
+                    // the upper half of the progress trap (`_Progress.slack`).
                     const SizedBox(height: 24),
-                    // Подписи отзываются вдвое слабее обложки: они уже
-                    // самой карточки, и на одном с ней ходу успевали бы
-                    // улететь за край раньше неё.
+                    // Captions respond half as strongly as the cover: they're
+                    // narrower than the card and at its pace would fly off the
+                    // edge first.
                     FlickSlide(
                       shift: shift,
                       amplitude: 0.5,
@@ -247,20 +234,19 @@ class _FullPlayerBodyState extends ConsumerState<FullPlayerBody> {
 class _Header extends ConsumerWidget {
   const _Header({required this.track, required this.state});
 
-  /// Текущий трек — он уходит в меню под тремя точками.
+  /// The current track, for the three-dot menu.
   final Track track;
 
-  /// Состояние плеера: пилюле нужны источник очереди и флаг перемешки.
+  /// Player state: the pill needs the queue's source and the shuffle flag.
   final PlaybackState state;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
-    // На своём фоне шапка красится ТЕМ ЖЕ, чем блоки транспорта и инструментов
-    // (`ovlBg` + `ovlLine`): сплошная плашка темы (`pill`) на цветном фоне
-    // читается чёрной нашлёпкой рядом с полупрозрачным низом — он это и
-    // заметил. Без фона всё остаётся как было: плёнка в три процента поверх
-    // заливки темы — это почти та же заливка, только тусклее.
+    // On its own background the header takes the SAME colour as the transport
+    // and tool blocks (`ovlBg` plus `ovlLine`): a solid theme plate (`pill`)
+    // reads as a black patch beside the translucent bottom. With no background
+    // a 3% film over the theme fill is nearly the same fill, only dimmer.
     final bg = ref.watch(playerBgProvider);
     final fill = bg.isNone ? null : t.ovlBg;
     final line = bg.isNone ? null : t.ovlLine;
@@ -272,18 +258,18 @@ class _Header extends ConsumerWidget {
           iconSize: 23,
           background: fill,
           borderColor: line,
-          // Своя заливка обычно гасит стекло, но здесь это поверхность темы, а
-          // не состояние: при включённой «Прозрачности» шапке стекло положено.
+          // An own fill usually turns glass off, but this is a theme surface
+          // rather than a state, so with transparency on the header gets glass.
           glass: true,
-          // Не `pop`: плеер — слой каркаса, а не маршрут (см. `PlayerSheet`).
+          // Not `pop`: the player is a shell layer, not a route (see
+          // `PlayerSheet`).
           onTap: collapsePlayerSheet,
         ),
-        // Пилюля источника — та же плёнка и та же высота, что у круглых кнопок
-        // по краям: шапка читается одной ровной строкой, а не ступенькой. Имя
-        // источника бывает длинным, поэтому она забирает весь остаток ширины и
-        // ужимается по содержимому уже внутри. Просветы по бокам обязательны:
-        // без них длинное имя раздувает пилюлю впритык к кружкам, и все три
-        // плёнки слипаются в одну полосу.
+        // Source pill: the same film and height as the round buttons at the
+        // edges, so the header reads as one even row. Names can be long, so it
+        // takes all the remaining width and shrinks inside. Side gaps are a
+        // must: otherwise a long name swells the pill against the circles, and
+        // all three films merge into a strip.
         const SizedBox(width: _headerGap),
         Expanded(
           child: SourcePill(
@@ -307,18 +293,17 @@ class _Header extends ConsumerWidget {
   }
 }
 
-/// Текст на месте обложки — вид «вместо обложки».
-///
-/// Занимает ВСЁ свободное место колонки, а не квадрат обложки: строк на экран
-/// влезает заметно больше, и ради этого вид и заводился.
+/// Text in place of the cover. It takes ALL of the column's free space rather
+/// than the cover's square, fitting many more lines, which is the point of this
+/// mode.
 class _LyricsPane extends StatelessWidget {
   const _LyricsPane({super.key});
 
   @override
   Widget build(BuildContext context) => const LyricsView(
     padding: EdgeInsets.fromLTRB(8, 24, 8, 24),
-    // Своя раскладка: крупнее и по левому краю — коробка тут во всю ширину
-    // экрана, а не квадрат обложки (см. `LyricsLayout`).
+    // Its own layout, larger and left-aligned: the box is the screen's width,
+    // not the cover's square (see `LyricsLayout`).
     layout: LyricsLayout.replace,
   );
 }
@@ -328,50 +313,45 @@ class _Cover extends ConsumerWidget {
 
   final PlaybackState state;
 
-  /// Панель текста поверх обложки открыта — вид «поверх обложки».
+  /// The text panel over the cover is open.
   final bool lyricsOpen;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final track = state.track!;
-    // Пластинка (`playerStyle: 'vinyl'` с ПК): круглая обложка, вращение и
-    // тёмная этикетка по центру.
+    // Vinyl: a round cover, spinning, with a dark label in the centre.
     final vinyl = ref.watch(playerStyleProvider).isVinyl;
     return LayoutBuilder(
       builder: (context, box) {
         final side = box.biggest.shortestSide;
-        // Круг — тот же радиус, доведённый до половины стороны: всё, что
-        // обрезается рамкой обложки (сама картинка, панель текста), становится
-        // круглым разом.
+        // The circle is the same radius taken to half the side, so all the
+        // cover frame clips (picture, text panel) turns round at once.
         final radius = vinyl ? side / 2 : _coverRadius;
-        // Крутим ТОЛЬКО пока идёт звук — десктопное `vinyl-paused`
-        // (`animation-play-state:paused`). Состояние берём у самого плеера, а
-        // не у `PlaybackState`: там его нет, а пауза из шторки и с гарнитуры
-        // обязана останавливать диск так же, как кнопка на экране.
+        // Spins ONLY while sound plays. The state comes from the player itself,
+        // not `PlaybackState`, which lacks it: a pause from the shade or
+        // headset must stop the disc too.
         final spinning = ref.watch(playingNowProvider);
         return Stack(
           children: [
-            // Слои смены трека клипует сама рамка обложки, а картинки внутри
-            // идут БЕЗ своего радиуса: иначе уезжающая показывала бы
-            // скруглённый угол посреди кадра.
+            // The cover's frame clips the track change layers, and pictures
+            // inside have NO radius of their own, or the leaving one shows a
+            // rounded corner mid-frame.
             SizedBox(
               width: side,
               height: side,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(radius),
                 child: VinylSpin(
-                  // Вращается вся стопка слоёв смены трека, а не одна текущая
-                  // картинка: иначе приезжающая обложка встала бы ровно, а
-                  // уезжающая продолжала крутиться — два разных движения в
-                  // одном кадре.
+                  // The whole stack of change layers spins, not just the
+                  // current picture, or the arriving cover stands straight
+                  // while the leaving one spins: two motions in one frame.
                   enabled: vinyl,
                   spinning: spinning,
                   child: TrackSwap(
                     id: track.id,
                     fade: true,
                     child: Cover(
-                      // Своя обложка из «Кастомизации» важнее обложки трека —
-                      // десктопный `coverOverride` (с учётом режима).
+                      // A custom cover from customization beats the track's.
                       url: ref.watch(playerCoverProvider),
                       size: side,
                       radius: 0,
@@ -380,9 +360,8 @@ class _Cover extends ConsumerWidget {
                 ),
               ),
             ),
-            // Этикетка — порт `.ps-cover.vinyl-mode::after`. Стоит НАД
-            // обложкой, но под панелью текста (на ПК у неё z-index 3) и, само
-            // собой, не крутится вместе с диском.
+            // The label stands OVER the cover but under the text panel, and
+            // doesn't spin with the disc.
             if (vinyl)
               Positioned(
                 left: 0,
@@ -391,10 +370,9 @@ class _Cover extends ConsumerWidget {
                 height: side,
                 child: Center(child: VinylLabel(size: side * VinylLabel.share)),
               ),
-            // Панель текста поверх обложки — порт `.lyrics-panel` с ПК: та же
-            // подложка (цвет блока, 96%) и то же появление (прозрачность плюс
-            // лёгкий наплыв). Рисуется ВСЕГДА, видимость даёт прозрачность:
-            // иначе анимации не из чего играть.
+            // Text panel over the cover: the block's colour at 96%, appearing
+            // with a fade and a slight zoom. ALWAYS drawn, visibility by
+            // opacity, or the animation has nothing to play.
             Positioned(
               left: 0,
               top: 0,
@@ -416,8 +394,8 @@ class _Cover extends ConsumerWidget {
                         color: context.bloom.blockColor.withValues(alpha: 0.96),
                         child: LyricsView(
                           live: lyricsOpen,
-                          // A disc keeps the lines off its edge: the PC's 52
-                          // on a 380 disc.
+                          // A disc keeps the lines off its edge: 52 on a 380
+                          // disc.
                           padding: vinyl
                               ? EdgeInsets.all(side * 0.14)
                               : const EdgeInsets.fromLTRB(14, 36, 14, 16),
@@ -446,48 +424,44 @@ class _TitleBlock extends ConsumerWidget {
     final track = state.track!;
     final theme = Theme.of(context).textTheme;
 
-    // По имени артиста уходим на его страницу — как из меню трека; артистов в
-    // строке несколько — сперва шторка с выбором. На месте имени может стоять
-    // ошибка воспроизведения: тогда строка просто текст. Одиночного артиста
-    // без точного id открывать тоже нечем.
+    // The artist's name leads to their page, as from the track menu; with
+    // several in the row, a sheet to pick first. A playback error may stand in
+    // the name's place, and then the row is plain text. A lone artist with no
+    // exact id can't open either.
     final canOpen = state.error == null && canOpenTrackArtist(track);
 
-    // Куда прижаты название с артистом — настройка «Выравнивание заголовка»
-    // (порт десктопного `titleAlign`, там это классы `.title-left/.title-right`
-    // на `#playerContent`).
+    // Where title and artist are aligned, per the setting.
     final align = ref.watch(titleAlignProvider);
 
-    // В состоянии лежит КОД ошибки — разворачиваем его в фразу здесь, при
-    // отрисовке (см. `play_error.dart`).
+    // The state holds an error CODE, expanded to a phrase here at paint time.
     final error = state.error;
     final subtitle = Text(
       error == null ? track.artist : describePlayError(context.l, error),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       textAlign: align.text,
-      // Крупнее общей подписи (13): в плеере под названием стоит одна
-      // строка, и она должна читаться с руки.
+      // Larger than the shared caption (13): there's one line under the title
+      // here, and it should read at arm's length.
       style: theme.bodyMedium?.copyWith(
         fontSize: 18,
         color: state.error != null ? t.danger : null,
       ),
     );
 
-    // Ловушка под палец шире самой строки — но только со СВОБОДНОЙ стороны:
-    // прижатый заголовок обязан начинаться там же, где полоса прогресса и время
-    // под ней, а лишние 20 px по краю утаскивали бы его внутрь. По центру
-    // отступ остаётся с обеих сторон: там он ничего не двигает, только держит
-    // строку от краёв.
+    // The touch trap is wider than the row, but only on the FREE side: an
+    // aligned title must start where the progress bar and time do, and an extra
+    // 20 px would pull it in. Centred, the margin stays on both sides, moving
+    // nothing and just keeping the row off the edges.
     final pad = switch (align) {
       TitleAlign.left => const EdgeInsets.only(right: 20),
       TitleAlign.center => const EdgeInsets.symmetric(horizontal: 20),
       TitleAlign.right => const EdgeInsets.only(left: 20),
     };
 
-    // Слои подписи занимают всю ширину колонки — иначе слайд считался бы от
-    // ширины самого текста и короткое название ехало бы заметно меньше
-    // длинного. Куда встают сами строки внутри — дело колонки: строка, которая
-    // влезла, шириной равна тексту, и одним `textAlign` её не подвинуть.
+    // Caption layers take the column's full width, or the slide counts from the
+    // text's width and a short title moves much less than a long one. Where
+    // rows sit inside is the column's job: a row that fits is as wide as its
+    // text, and `textAlign` alone can't move it.
     return SizedBox(
       width: double.infinity,
       child: TrackSwap(
@@ -495,17 +469,16 @@ class _TitleBlock extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: align.cross,
           children: [
-            // Тап по названию копирует «Название — Артист» (порт
-            // `TitleCopyOnClick` с ПК). Ловушка шире самой строки — по бокам, а
-            // не по высоте: сверху и снизу отступы выверены, лишние пиксели
-            // сдвинули бы весь блок.
+            // A tap on the title copies "Title — Artist". The trap is wider
+            // than the row at the sides, not in height: vertical gaps are
+            // exact, and extra pixels would move the block.
             GestureDetector(
               onTap: () => _copy(context, track),
               behavior: HitTestBehavior.opaque,
               child: Padding(
                 padding: pad,
-                // Название бежит, если не влезло, — порт `MarqueeTitle` с ПК.
-                // На ходу строка идёт от левого края, в покое — по настройке.
+                // The title scrolls if it doesn't fit: from the left while
+                // moving, per the setting at rest.
                 child: MarqueeText(
                   track.name,
                   align: align.text,
@@ -513,8 +486,8 @@ class _TitleBlock extends ConsumerWidget {
                 ),
               ),
             ),
-            // Отступ до имени даёт сама ловушка под палец: одной строкой текста
-            // в 19 px по центру экрана попасть тяжело.
+            // The touch trap gives the gap to the name: one 19 px line of text
+            // mid-screen is hard to hit.
             GestureDetector(
               onTap: canOpen
                   ? () => openTrackArtist(context, ref, track)
@@ -522,11 +495,11 @@ class _TitleBlock extends ConsumerWidget {
               behavior: HitTestBehavior.opaque,
               child: Padding(
                 padding: pad + const EdgeInsets.symmetric(vertical: 7),
-                // Перед именем — аватарки артистов с площадки. На месте имени
-                // может стоять ошибка воспроизведения: к ней картинки не
-                // относятся. Ряд ужимается по содержимому, чтобы вставать по
-                // выравниванию колонкой, а имя внутри остаётся гибким — иначе
-                // длинная строка выпирала бы за экран вместо многоточия.
+                // The platform's artist avatars go before the name. A playback
+                // error may stand there, and pictures don't belong to it. The
+                // row shrinks to its content so it aligns as a column, while
+                // the name inside stays flexible, or a long one would overflow
+                // rather than ellipsize.
                 child: state.error != null
                     ? subtitle
                     : Row(
@@ -544,7 +517,7 @@ class _TitleBlock extends ConsumerWidget {
     );
   }
 
-  /// «Название — Артист» в буфер, как на ПК.
+  /// Copies "Title — Artist".
   Future<void> _copy(BuildContext context, Track track) async {
     if (track.name.isEmpty) return;
     final l = context.l;
@@ -564,25 +537,20 @@ class _TitleBlock extends ConsumerWidget {
 class _Progress extends ConsumerStatefulWidget {
   const _Progress();
 
-  /// Толщина дорожки обычного типа и высота ловушки под палец.
+  /// Track thickness of the standard type and the touch trap's height. A slider
+  /// with no knob or halo shrinks to its track, and 5 px can't be hit by a
+  /// finger. I stretch it to [hit]: the track draws centred and the press
+  /// catches on the whole area.
   ///
-  /// Слайдер без кружка и без ореола ужимается по высоте до самой дорожки, а в
-  /// 5 px пальцем не попасть — перемотать получалось, только ткнув точно в
-  /// полоску. Растягиваем его на [hit]: дорожку он рисует по центру своей
-  /// высоты, а нажатие ловит всей площадью.
-  ///
-  /// Ловушка одна на все типы слайдера, хотя дорожки у них разной толщины
-  /// (`sliderTrackHeight`, самая высокая — волна в 28): иначе смена типа
-  /// двигала бы под собой времена и весь низ плеера.
+  /// One trap for all slider types, though tracks differ (`sliderTrackHeight`,
+  /// tallest is wave at 28), or changing type would shift the times and the
+  /// player's bottom.
   static const double trackHeight = 5;
 
-  /// Пустота, которая при этом остаётся над и под дорожкой внутри ловушки.
-  ///
-  /// Ловушка симметричная, а вот воздух вокруг дорожки — нет: снизу к пустоте
-  /// прибавляется ещё и верхний отступ строки времён (у `bodyMedium` над
-  /// цифрами есть свой межстрочный запас), и провал под полоской выходит явно
-  /// шире, чем над ней. Поэтому [slack] держим по нижней стороне, а недостачу
-  /// сверху добирает `SizedBox` перед прогрессом.
+  /// The empty space left over and under the track inside the trap. The trap is
+  /// symmetric, the air around the track isn't: below, the time row's top
+  /// margin adds to it. So [slack] is kept on the lower side, and the
+  /// `SizedBox` before progress makes up the top.
   static const double slack = 12;
 
   static const double hit = trackHeight + slack * 2;
@@ -592,21 +560,19 @@ class _Progress extends ConsumerStatefulWidget {
 }
 
 class _ProgressState extends ConsumerState<_Progress> {
-  /// Позиция под пальцем, пока тянут (мс). Пока она не null — дорожка и время
-  /// слева живут от неё, а не от плеера.
-  ///
-  /// Иначе `Slider` (он управляемый) рисует то, что пришло из стрима, и
-  /// заливка отпрыгивает назад к фактической позиции — резинка. Перематываем
-  /// один раз, на отпускании: seek по сетевому стриму дорогой, а на каждый
-  /// кадр перетаскивания их набегают десятки.
+  /// Position under the finger while dragging, ms. While not null, the track
+  /// and left time follow it rather than the player. Otherwise the controlled
+  /// `Slider` draws what the stream sends and the fill snaps back like elastic.
+  /// I seek once, on release: a seek on a network stream is costly, and a drag
+  /// has dozens of frames.
   double? _drag;
 
   Future<void> _commit(double v) async {
     await ref
         .read(playbackProvider.notifier)
         .seek(Duration(milliseconds: v.round()));
-    // Отпускаем только после самой перемотки: до неё стрим отдаёт ещё старую
-    // позицию, и полоска моргнула бы назад.
+    // Released only after the seek itself: until then the stream still gives
+    // the old position, and the bar would blink back.
     if (mounted) setState(() => _drag = null);
   }
 
@@ -617,12 +583,11 @@ class _ProgressState extends ConsumerState<_Progress> {
         ref.watch(playheadProvider).value ??
         (position: Duration.zero, total: Duration.zero);
 
-    // Картинка ползунка декодируется асинхронно: пока её нет (или её не
-    // выбирали), дорожка живёт без пуговки, как и раньше.
+    // The knob picture decodes asynchronously: until then, or if none was
+    // picked, the track has no knob.
     final thumb = ref.watch(sliderThumbProvider).value;
     final style = ref.watch(sliderStyleProvider);
-    // Узор волны — свой на каждый трек, как на ПК (`regenWave` на смену
-    // трека); id и есть зерно.
+    // The wave pattern is one per track; the id is the seed.
     final seed = ref.watch(playbackProvider.select((s) => s.track?.id)) ?? '';
 
     final max = head.total.inMilliseconds.toDouble();
@@ -638,11 +603,10 @@ class _ProgressState extends ConsumerState<_Progress> {
         SizedBox(
           height: _Progress.hit,
           child: SliderTheme(
-            // Вид дорожки и пуговки — целиком из типа слайдера (настройка
-            // «Плеер → Слайдер»). У обычного типа это ровно то, что было:
-            // дорожка в 5 (толще общей тройки — это главный орган управления
-            // экрана, а не строка настройки) и без кружка, если в
-            // «Кастомизации» не выбрали картинку ползунка.
+            // Track and knob look come wholly from the slider type. The
+            // standard one is a 5 track (thicker than the usual: it's the
+            // screen's main control), with no circle unless a knob picture was
+            // picked.
             data: bloomSliderTheme(
               SliderTheme.of(context),
               style: style,
@@ -658,21 +622,22 @@ class _ProgressState extends ConsumerState<_Progress> {
             ),
           ),
         ),
-        // Времена стоят сразу под ловушкой: весь воздух до дорожки они
-        // получают из её нижней половины (`_Progress.slack`).
+        // Times stand right under the trap: they get all the air to the track
+        // from its lower half (`_Progress.slack`).
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
-          // Плашка «Далее» стоит СЛОЕМ поверх строки времён, а не третьей
-          // ячейкой в ней: в ряду её центр съезжал бы вслед за шириной времён
-          // («1:45» против «1:02:33»), а она обязана стоять ровно посреди
-          // экрана. Ряд задаёт слою ширину, плашка — высоту.
+          // The Next plate is a LAYER over the time row, not a third cell in
+          // it: in a row its centre would follow the times' width (1:45 against
+          // 1:02:33), and it must stand mid-screen. The row gives the layer its
+          // width, the plate its height.
           child: Stack(
             alignment: Alignment.center,
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Тем же цветом, что артист под названием (`bodyMedium`).
+                  // The same colour as the artist under the title
+                  // (`bodyMedium`).
                   Text(
                     mmss(Duration(milliseconds: value.round())),
                     style: theme.bodyMedium,
@@ -680,8 +645,8 @@ class _ProgressState extends ConsumerState<_Progress> {
                   Text(mmss(head.total), style: theme.bodyMedium),
                 ],
               ),
-              // Поля — запас под времена: длинное название ужимается
-              // многоточием, а не наезжает на цифры.
+              // Margins keep room for the times: a long title ellipsizes rather
+              // than running over the numbers.
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 62),
                 child: _NextUpPill(),
@@ -694,23 +659,17 @@ class _ProgressState extends ConsumerState<_Progress> {
   }
 }
 
-/// Плашка «Далее: <трек>» под слайдером — что заиграет после текущего.
+/// Next plate under the slider: what plays after this. The queue is hidden in a
+/// sheet, so this is the only way to see it. No plate when nothing's next
+/// (`nextTrack`) or the setting is off, leaving no empty space.
 ///
-/// Своя, десктопной пары нет: на ПК очередь стоит колонкой рядом с плеером и
-/// следующий трек виден в ней сам, а у нас она спрятана в шторку. Плашки нет
-/// вовсе, когда дальше ничего (`nextTrack`) или настройку выключили — пустое
-/// место под слайдером не оставляем.
-///
-/// Тап открывает очередь, как пилюля источника в шапке: перематывать вперёд
-/// есть чем (кнопка транспорта прямо под ней), а вот увидеть, что дальше
-/// целым списком, больше неоткуда. Обложка и подпись — те же, что у пилюли:
-/// две плашки на одном экране обязаны читаться одинаково.
+/// A tap opens the queue, like the header's source pill. Cover and caption
+/// match that pill, so two plates on one screen read alike.
 class _NextUpPill extends ConsumerWidget {
   const _NextUpPill();
 
-  /// Сторона обложки. Меньше, чем в пилюле источника (28): та стоит в шапке
-  /// вровень с круглыми кнопками, а эта живёт в строке времён и переросшей
-  /// раздвигала бы весь низ плеера.
+  /// Cover side. Smaller than the source pill's (28): this lives in the time
+  /// row, and taller it would push the player's bottom apart.
   static const double _cover = 19;
 
   @override
@@ -727,12 +686,10 @@ class _NextUpPill extends ConsumerWidget {
         shape: StadiumBorder(side: BorderSide(color: t.ovlLine)),
         clipBehavior: Clip.antiAlias,
         child: Padding(
-          // Слева поля ВДВОЕ больше, чем сверху и снизу, — та же поправка, что
-          // в пилюле источника: край плашки скруглён, и квадрат обложки,
-          // отодвинутый от него «поровну», упирается углами в саму дугу
-          // (при высоте 27 её левый край на высоте угла обложки проходит по
-          // 3.9 px — ровно там, где стоял отступ в 4). Справа воздуха больше:
-          // там текст, а не картинка.
+          // The left margin is TWICE the top and bottom, the same correction as
+          // in the source pill: the plate's edge is rounded, and a cover set
+          // evenly from it hits the arc with its corners. More air on the
+          // right, for text.
           padding: const EdgeInsets.fromLTRB(9, 4, 13, 4),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -789,16 +746,17 @@ class _Transport extends ConsumerWidget {
     final state = ref.watch(playbackProvider);
     final ctrl = ref.read(playbackProvider.notifier);
 
-    // Режим повтора различаем бейджем, а не подменой иконки (как на ПК): сама
-    // кнопка всегда repeat, сверху справа — «список» для всей очереди и «1» для
-    // одного трека.
+    // Repeat mode shows by a badge rather than a swapped icon: the button is
+    // always repeat, with a list mark for the whole queue and 1 for one track
+    // at the top right.
     final repeatMark = switch (state.repeat) {
       PlayerRepeat.all => BloomIcon(Bi.list, size: 9, color: t.accentText),
       PlayerRepeat.one => Text(
         '1',
         style: TextStyle(
           fontSize: 8,
-          // Цифра оптически сидит выше центра — прижимаем высотой строки.
+          // The digit sits optically above centre, so I press it down with line
+          // height.
           height: 1.2,
           fontWeight: FontWeight.w700,
           color: t.accentText,
@@ -841,20 +799,18 @@ class _Transport extends ConsumerWidget {
   }
 }
 
-/// Кнопка таймера сна. Отдельным виджетом, а не строчкой в [_Tools]: пока
-/// таймер идёт, состояние тикает раз в секунду, и перерисовывать из-за этого
-/// весь ряд инструментов незачем.
-///
-/// Идущий таймер показывает остаток ВМЕСТО луны — тем же приёмом, что кнопка
-/// скорости показывает `1.25×`.
+/// Sleep timer button. A separate widget rather than a line in [_Tools]: a
+/// running timer ticks each second, and the whole tool row shouldn't repaint
+/// for it. A running timer shows time left INSTEAD of the moon, as the speed
+/// button shows `1.25×`.
 class _SleepButton extends ConsumerWidget {
   const _SleepButton();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sleep = ref.watch(sleepTimerProvider);
-    // Метка нужна своя: остаток вместо иконки скринридер прочёл бы как голое
-    // «23:14», без единого слова о том, что это вообще такое.
+    // Needs its own label: time left in place of an icon would read as a bare
+    // 23:14 to a screen reader.
     return Semantics(
       button: true,
       label: context.l.playerSleep,
@@ -873,8 +829,8 @@ class _SleepButton extends ConsumerWidget {
   }
 }
 
-/// «Играть на» (Connect): куда идёт звук — этот телефон или компьютер. Есть,
-/// только пока ПК на связи; горит, пока звук на ПК.
+/// Play on (Connect): whether sound goes to this phone or the computer. There
+/// only while the computer is connected, lit while sound is on it.
 class _PlayOnButton extends ConsumerWidget {
   const _PlayOnButton();
 
@@ -940,20 +896,20 @@ class _FlatIcon extends StatelessWidget {
   final double size;
   final bool active;
 
-  /// Свой цвет иконки вместо обычного — у ♡ в избранном он красный.
+  /// Own icon colour instead of the usual: a favourite's ♡ is red.
   final Color? color;
 
-  /// Мини-бейдж в кружке акцента поверх иконки (перенос .cc-badge с ПК): им
-  /// различаем режимы кнопки, чтобы не подменять саму иконку.
+  /// A mini badge in an accent circle over the icon, telling modes apart
+  /// without swapping the icon.
   final Widget? mark;
 
-  /// Надпись ВМЕСТО иконки — перенос `.cc-cap` с ПК: кнопка скорости при
-  /// значении не 1× показывает само значение, а не спидометр.
+  /// A caption INSTEAD of the icon: at a speed other than 1× the button shows
+  /// the value.
   final String? label;
 
-  /// Ширина коробки надписи. Фиксированная, а не по тексту: иначе ряд
-  /// инструментов расходился бы на каждой смене скорости. Длинное значение
-  /// (`1.35×`) внутри неё поджимается [FittedBox].
+  /// Caption box width. Fixed, not by text, or the tool row would shift on
+  /// every speed change. A long value (`1.35×`) shrinks inside through
+  /// [FittedBox].
   static const double _labelWidth = 34;
 
   @override
@@ -1016,10 +972,9 @@ class _FlatIcon extends StatelessWidget {
   }
 }
 
-/// Ряд инструментов — две пилюли по краям: слева то, что про сам трек (♡, ⊕ и
-/// текст), справа то, что про прослушивание (скорость и сон). Кнопки очереди
-/// тут нет: очередь открывает пилюля источника в шапке (тап), а долгое нажатие
-/// на ней уводит на сам источник.
+/// Tool row: two pills at the edges, left about the track (♡, ⊕ and lyrics),
+/// right about listening (speed and sleep). No queue button: a tap on the
+/// header's source pill opens the queue, and a long press leads to the source.
 class _Tools extends ConsumerWidget {
   const _Tools();
 
@@ -1031,13 +986,11 @@ class _Tools extends ConsumerWidget {
     final isFav = ref.watch(
       libraryProvider.select((lib) => lib.isFav(track.id)),
     );
-    // Скорость: пока она 1×, кнопка — обычный спидометр; иначе на её месте
-    // само значение, как `cc-cap` в десктопном транспорте.
+    // Speed: at 1× a plain speedometer; otherwise the value in its place.
     final rate = ref.watch(speedProvider).rate;
     final lyricsOpen = ref.watch(lyricsOpenProvider);
-    // Кнопки «Т» нет, пока текст не нашёлся, — как на ПК
-    // (`useLyricsBtnVisible`). Открытую панель кнопка переживает в любом
-    // случае: иначе её было бы нечем закрыть.
+    // No lyrics button until lyrics are found. It survives an open panel in any
+    // case, or there'd be nothing to close it with.
     final lyricsFound = ref.watch(lyricsProvider).status == LyricsStatus.ready;
 
     return Row(
@@ -1051,9 +1004,6 @@ class _Tools extends ConsumerWidget {
               color: isFav ? t.sysFavIco : null,
               onTap: () => ref.read(libraryProvider.notifier).toggleFav(track),
             ),
-            // Именно addCircle, а не plus: в solar_icons 0.1.0 `plus` и `minus`
-            // сидят на одном коде 0xec4a и рисуются знаком «±» из
-            // калькуляторной группы.
             _FlatIcon(
               icon: Bi.addCircle,
               size: 25,

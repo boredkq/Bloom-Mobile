@@ -1,14 +1,9 @@
-/// Пикер скорости — шторка по кнопке-спидометру в ряду инструментов плеера.
+/// Speed picker sheet, from the speedometer button in the player's tool row:
+/// three preset cards (0.75×, 1×, 1.25×), a custom speed bar with marks every
+/// 0.25× and a Nightcore switch (pitch follows tempo). A solid background.
 ///
-/// Порт десктопного `SpeedPicker.tsx`: три карточки-пресета (0.75× / 1× /
-/// 1.25×), полоса произвольной скорости с засечками каждые 0.25× и тумблер
-/// «Nightcore» (питч едет за темпом). На ПК это всплывашка у кнопки; на телефоне
-/// — шторка снизу, по выбору пользователя, и фон у неё СПЛОШНОЙ (не размытая
-/// обложка, как у меню трека) — он попросил именно так.
-///
-/// Значения уходят в `speed_store`, на плеер их ставит `PlaybackController`.
-/// Шторка не закрывается ни по пресету, ни по тумблеру: скорость подбирают на
-/// слух, и каждый раз открывать её заново незачем.
+/// Values go to `speed_store`, and `PlaybackController` applies them. The sheet
+/// doesn't close on a preset or switch: speed gets picked by ear.
 library;
 
 import 'package:flutter/material.dart';
@@ -21,8 +16,8 @@ import '../../../shared/ui/bloom_sheet.dart';
 import '../speed_store.dart';
 
 void showSpeedSheet(BuildContext context) {
-  // Корневой навигатор и стекло затемнения — общие у всех наших шторок
-  // (`showBloomModal`): иначе таб-бар и миниплеер остаются поверх затемнения.
+  // The root navigator and dimming glass, as for all my sheets, or the tab bar
+  // and mini player stay over the dimming.
   showBloomModal<void>(context: context, builder: (_) => const _SpeedSheet());
 }
 
@@ -125,7 +120,7 @@ class _SpeedSheet extends ConsumerWidget {
   }
 }
 
-/// Карточка-пресет: залита акцентом, когда стоит именно она.
+/// Preset card, accent-filled when it's the one set.
 class _PresetCard extends StatelessWidget {
   const _PresetCard({
     required this.value,
@@ -154,11 +149,9 @@ class _PresetCard extends StatelessWidget {
   );
 }
 
-/// Засечки под полосой — каждые 0.25×, совпавшие с пресетами крупнее.
-///
-/// Полоса поджата с краёв на пол-бегунка (так Slider считает дорожку), поэтому
-/// и засечки живут в тех же границах: иначе крайние риски не сойдутся с
-/// центром бегунка в упоре.
+/// Marks under the bar every 0.25×, those matching presets larger. The bar is
+/// inset by half a knob (how Slider computes its track), so the marks live in
+/// the same bounds, or the outer ones miss the knob's centre at the stops.
 class _Ticks extends StatelessWidget {
   const _Ticks();
 

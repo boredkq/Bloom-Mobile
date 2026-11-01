@@ -1,12 +1,10 @@
-/// Таймер сна — шторка по кнопке-луне в ряду инструментов плеера.
+/// Sleep timer sheet, from the moon button in the player's tool row: presets,
+/// until the end of the track, a custom time bar, +5 minutes on a running timer
+/// and a fade switch. A solid background; it doesn't close on each tap, since
+/// time isn't picked on the first try.
 ///
-/// Своя вещь, десктопного оригинала нет: пресеты, «до конца трека», полоса
-/// своего времени, «+5 минут» у идущего таймера и тумблер плавного затухания.
-/// Подача — как у шторки скорости (`speed_sheet`): фон сплошной, шторка не
-/// закрывается на каждый тап, потому что время подбирают не с первого раза.
-///
-/// Всё, что она делает, — зовёт `sleep_timer_store`; паузу и громкость крутит
-/// `PlaybackController`.
+/// It only calls `sleep_timer_store`; `PlaybackController` handles pause and
+/// volume.
 library;
 
 import 'package:flutter/material.dart';
@@ -58,8 +56,8 @@ class _SleepSheet extends ConsumerWidget {
                     child: _PresetCard(
                       minutes: preset.inMinutes,
                       active: running && sleep.choice == preset,
-                      // Тап по уже выбранному пресету снимает таймер: ради
-                      // отмены незачем искать отдельную кнопку.
+                      // A tap on the selected preset clears the timer: no need
+                      // to look for a cancel button.
                       onTap: () => running && sleep.choice == preset
                           ? ctrl.cancel()
                           : ctrl.start(preset),
@@ -132,8 +130,8 @@ class _SleepSheet extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
-                  // «+5 минут» осмысленно только у идущего времени: у «до
-                  // конца трека» продлевать нечего.
+                  // +5 minutes makes sense only for running time: until the end
+                  // of the track has nothing to extend.
                   if (running) ...[
                     Expanded(
                       child: BloomButton(
@@ -182,8 +180,8 @@ class _SleepSheet extends ConsumerWidget {
   }
 }
 
-/// Пресет: число крупно, «мин» под ним. Залит акцентом, когда таймер идёт
-/// именно на это время.
+/// Preset: a large number with min under it, accent-filled when the timer runs
+/// on this time.
 class _PresetCard extends StatelessWidget {
   const _PresetCard({
     required this.minutes,
@@ -228,7 +226,7 @@ class _PresetCard extends StatelessWidget {
   );
 }
 
-/// «До конца трека» — широкая плашка под рядом пресетов.
+/// Until the end of the track, a wide plate under the presets.
 class _EndOfTrackCard extends StatelessWidget {
   const _EndOfTrackCard({required this.active, required this.onTap});
 

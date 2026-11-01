@@ -1,16 +1,12 @@
-/// Мост между плеером и системой: шторка уведомлений, экран блокировки,
-/// кнопки гарнитуры, фоновое воспроизведение.
+/// Bridge between the player and the system: notification shade, lock screen,
+/// headset buttons, background playback.
 ///
-/// Хендлер намеренно ГЛУПЫЙ: он владеет [AudioPlayer] и транслирует его
-/// состояние наружу, но сам ничего не решает. Любая команда извне (кнопка в
-/// шторке, щелчок на наушниках, Bluetooth руля) уходит в [PlaybackCommands] —
-/// то есть в `PlaybackController`, который один знает про очередь, shuffle,
-/// repeat и резолв стрима. Иначе логика перехода расползлась бы по двум местам
-/// и «дальше» из шторки играло бы не то, что «дальше» в приложении.
+/// The handler is DUMB on purpose: it owns [AudioPlayer] and broadcasts its
+/// state but decides nothing. Any outside command goes to [PlaybackCommands],
+/// so next in the shade and next in the app play the same thing.
 ///
-/// Владелец [AudioPlayer] теперь здесь, а не в `audioPlayerProvider`: плеер
-/// должен пережить закрытие UI (свернули приложение — Flutter-движок могут
-/// прибить, а сервис остаётся).
+/// It owns the player because playback must outlive the UI: Flutter's engine
+/// can be killed while the service stays.
 library;
 
 import 'dart:async';
@@ -24,7 +20,7 @@ import '../../core/entities/entities.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/log/bloom_log.dart';
 
-/// Что хендлер умеет попросить у плеера. Реализует `PlaybackController`.
+/// What the handler can ask of the player. `PlaybackController` implements it.
 abstract class PlaybackCommands {
   Future<void> commandPlay();
   Future<void> commandPause();
@@ -35,27 +31,26 @@ abstract class PlaybackCommands {
   Future<void> commandToggleFav();
 }
 
-/// Имя своей кнопки «лайк» — с ним она возвращается в [BloomAudioHandler.customAction].
+/// Name of the like button, returned to [BloomAudioHandler.customAction].
 const _favAction = 'fav';
 
-/// iOS: звёздочка на экране блокировки (`NowPlayingLike` в `AppDelegate.swift`).
-/// Своих кнопок audio_service на iOS не показывает, поэтому лайк там идёт
-/// мимо него, через системный `likeCommand`.
+/// iOS: the lock screen star. audio_service shows no custom buttons there, so
+/// the like goes past it through the system `likeCommand`.
 const _iosLike = MethodChannel('bloom/like');
 
 class BloomAudioHandler extends BaseAudioHandler with SeekHandler {
   final AudioPlayer player = AudioPlayer();
 
-  /// Проставляется контроллером при старте. До этого момента (первые кадры)
-  /// команд извне быть не может — играть ещё нечего.
+  /// Set by the controller at launch. Before that there's nothing to play, so
+  /// no outside commands.
   PlaybackCommands? commands;
 
-  /// Мы резолвим ссылку на стрим ПЕРЕД `setUrl`, и всё это время just_audio
-  /// сидит в `idle`. Без этого флага шторка на секунду показывала бы
-  /// остановленный плеер посреди перехода на следующий трек.
+  /// I resolve the stream link BEFORE `setUrl`, with just_audio sitting `idle`
+  /// all the while. Without this flag the shade would show a stopped player
+  /// mid-change.
   bool _resolving = false;
 
-  /// Играющий трек в любимых — сердечко в шторке залито.
+  /// The playing track is a favourite: the shade's heart is filled.
   bool _fav = false;
 
   BloomAudioHandler() {
@@ -67,14 +62,13 @@ class BloomAudioHandler extends BaseAudioHandler with SeekHandler {
     player.playbackEventStream.listen(
       _broadcast,
       onError: (Object e, StackTrace st) {
-        // Ошибка платформы — единственное место, где слышно про сбой самого
-        // ExoPlayer: остальное приложение видит только «трек не заиграл». Без
-        // записи в журнал «у него музыка лагает» так и осталось бы догадкой.
+        // The only place that hears about a failure of ExoPlayer itself; the
+        // rest of the app just sees a track not starting.
         logError('player', 'сбой воспроизведения', e);
         _broadcast(player.playbackEvent);
       },
     );
-    // playing меняется без playbackEvent — иначе кнопка в шторке залипает.
+    // `playing` changes with no playbackEvent, or the shade's button sticks.
     player.playingStream.listen((_) => _broadcast(player.playbackEvent));
   }
 
@@ -86,20 +80,18 @@ class BloomAudioHandler extends BaseAudioHandler with SeekHandler {
     ProcessingState.completed: AudioProcessingState.completed,
   };
 
-  /// Что в шторку уехало последним — чтобы писать в журнал только изменения.
+  /// What went to the shade last, so the log gets only changes.
   String? _lastReported;
 
   void _broadcast(PlaybackEvent event) {
-    // На время резолва плеер стоит на паузе намеренно (чтобы не доигрывал
-    // прошлый трек), но для шторки переход — это по-прежнему «играет»: иначе
-    // кнопка на каждой смене трека моргала бы в play и обратно.
+    // The player pauses on purpose while resolving, so the last track doesn't
+    // play on, but to the shade it's still playing: the button would blink on
+    // every change.
     final playing = _resolving || player.playing;
-    // Каждая смена состояния — в журнал, сразу на диск.
-    //
-    // Это последняя точка, которую видит Dart перед тем, как дело уходит
-    // целиком в нативную сторону: на `playing=true` система переводит службу в
-    // передний план и вешает шторку, и если процесс умирает там, никакой
-    // ошибки в Dart не будет — будет тишина после этой строки.
+    // Every state change goes to the log, straight to disk. This is the last
+    // point Dart sees before it all goes native: on `playing=true` the system
+    // takes the service to the foreground and shows the shade, and if the
+    // process dies there, the log ends at this line with no error.
     final report = '${player.processingState.name} · playing=$playing';
     if (report != _lastReported) {
       _lastReported = report;
@@ -111,9 +103,9 @@ class BloomAudioHandler extends BaseAudioHandler with SeekHandler {
           MediaControl.skipToPrevious,
           if (playing) MediaControl.pause else MediaControl.play,
           MediaControl.skipToNext,
-          // Своё действие, а не кнопка уведомления: audio_service кладёт его в
-          // custom actions сессии, и шторку из них собирает сама система. Это
-          // Android 13+; на старых версиях кнопки не будет вовсе.
+          // A custom action rather than a notification button: audio_service
+          // puts it in the session's custom actions, and the system builds the
+          // shade from them. Android 13+; older versions have no button.
           MediaControl.custom(
             androidIcon: _fav
                 ? 'drawable/ic_notif_heart_filled'
@@ -129,7 +121,7 @@ class BloomAudioHandler extends BaseAudioHandler with SeekHandler {
           MediaAction.seekForward,
           MediaAction.seekBackward,
         },
-        // Три кнопки в свёрнутой шторке — как на десктопе.
+        // Three buttons in the collapsed shade.
         androidCompactActionIndices: const [0, 1, 2],
         processingState: _resolving
             ? AudioProcessingState.loading
@@ -143,14 +135,14 @@ class BloomAudioHandler extends BaseAudioHandler with SeekHandler {
     );
   }
 
-  /// Контроллер сообщает, что ушёл резолвить ссылку (или закончил).
+  /// The controller says it went off to resolve a link, or finished.
   void setResolving(bool value) {
     if (_resolving == value) return;
     _resolving = value;
     _broadcast(player.playbackEvent);
   }
 
-  /// Контроллер сообщает, в любимых ли играющий трек.
+  /// The controller says whether the playing track is a favourite.
   void setFav(bool value) {
     if (_fav == value) return;
     _fav = value;
@@ -167,13 +159,13 @@ class BloomAudioHandler extends BaseAudioHandler with SeekHandler {
             : globalL10n?.taAddToFavorites ?? 'Like',
       });
     } on PlatformException {
-      // Не ответил канал — звёздочка просто не обновится.
+      // The channel didn't answer: the star just won't update.
     } on MissingPluginException {
-      // Тесты.
+      // Tests.
     }
   }
 
-  /// Что показывать в шторке и на экране блокировки.
+  /// What the shade and lock screen show.
   void setTrack(Track? track, {int? queueIndex}) {
     if (track == null) {
       mediaItem.add(null);
@@ -185,7 +177,7 @@ class BloomAudioHandler extends BaseAudioHandler with SeekHandler {
     }
   }
 
-  /// Очередь целиком — её видят Android Auto и «список» в шторке.
+  /// The whole queue, seen by Android Auto and the shade's list.
   void setQueue(List<Track> tracks) {
     queue.add(tracks.map(_toMediaItem).toList());
   }
@@ -195,8 +187,8 @@ class BloomAudioHandler extends BaseAudioHandler with SeekHandler {
     title: track.name,
     artist: track.artist,
     album: track.album,
-    // Ноль у площадки значит «не знаю»: отдав его, мы получили бы в шторке
-    // намертво пустую полосу прогресса.
+    // Zero from a platform means unknown: passing it on gives the shade a dead
+    // progress bar.
     duration: track.duration > Duration.zero ? track.duration : null,
     artUri: _artUri(track.cover),
   );
@@ -207,9 +199,8 @@ class BloomAudioHandler extends BaseAudioHandler with SeekHandler {
     return Uri.file(cover);
   }
 
-  // Всё, что ниже, приходит СНАРУЖИ: шторка, экран блокировки, гарнитура.
-  // Фолбэк на голый player — на случай команды до того, как контроллер
-  // подключился.
+  // All below comes from OUTSIDE: shade, lock screen, headset. The fallback to
+  // the bare player covers a command before the controller connects.
 
   @override
   Future<void> play() => commands?.commandPlay() ?? player.play();
@@ -246,8 +237,8 @@ class BloomAudioHandler extends BaseAudioHandler with SeekHandler {
     await super.stop();
   }
 
-  /// Смахнули приложение из недавних — глушим звук и убираем шторку, иначе
-  /// остаётся играющее уведомление от закрытого приложения.
+  /// The app was swiped from recents: I stop the sound and remove the shade, or
+  /// a closed app keeps a playing notification.
   @override
   Future<void> onTaskRemoved() => stop();
 }

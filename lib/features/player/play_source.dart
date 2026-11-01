@@ -1,17 +1,17 @@
-/// Источник очереди: откуда набрано то, что играет, — раздел библиотеки,
-/// альбом или плейлист площадки, страница артиста, выдача поиска, витрина
-/// главной, одиночный трек.
+/// Queue source: where what's playing came from, being a library section, a
+/// platform album or playlist, an artist page, search results, a home shelf or
+/// a single track.
 ///
-/// В сессии лежит картой того же вида, что `Player.source` ПК:
-/// `{kind, id, name, cover, …}` — `playlist` (свои списки, `lib`/`fav`),
-/// `history`, `collection`, `artist`, `wave` (+ `mode`), `search`, `track` и
-/// витрины. Неизвестный вид читается как [PlainSource] по `name`.
+/// The session stores it as a map `{kind, id, name, cover, …}`: `playlist` (own
+/// lists, `lib`, `fav`), `history`, `collection`, `artist`, `wave` (plus
+/// `mode`), `search`, `track` and shelves. An unknown kind reads as
+/// [PlainSource] by `name`.
 ///
-/// Отличие от ПК: у разделов библиотеки в памяти храним ТОЛЬКО id, а подпись и
-/// картинку пилюля берёт из библиотеки на месте — плейлист могут переименовать
-/// прямо во время воспроизведения. Имя и обложку в карту дописывает сессия при
-/// записи (`session_store.dart`). У сетов площадок наоборот: снимок обязателен,
-/// перечитать альбом SoundCloud без сети неоткуда.
+/// For library sections memory holds ONLY the id, and the pill takes caption
+/// and picture from the library: a playlist can be renamed during playback. The
+/// session adds name and cover to the map on write. Platform sets are the
+/// reverse: a snapshot is a must, with no way to re-read a SoundCloud album
+/// offline.
 library;
 
 import '../../core/entities/entities.dart';
@@ -20,9 +20,8 @@ import '../wave/wave_types.dart';
 sealed class PlaySource {
   const PlaySource();
 
-  /// Ключ «играет ли ЭТОТ список» — по нему плитка сета и строка списка
-  /// показывают эквалайзер (`SetEqualizer`). У всего, чему плитки нет (поиск,
-  /// витрина, одиночный трек), он просто ни с чем не совпадает.
+  /// The key to whether THIS list is playing, used by set tiles and list rows
+  /// for the equalizer. For things with no tile it just matches nothing.
   String get id;
 
   Map<String, dynamic> toJson();
@@ -84,8 +83,8 @@ sealed class PlaySource {
   }
 }
 
-/// Раздел библиотеки: `all` / `fav` / `history` либо пользовательский плейлист.
-/// Открывается маршрутом `/library/list/:id`. В карте ПК «Все треки» — `lib`.
+/// Library section: `all`, `fav`, `history` or a user playlist. Opens by route
+/// `/library/list/:id`. In the map all tracks is `lib`.
 final class LibSource extends PlaySource {
   const LibSource(this.listId);
 
@@ -103,8 +102,8 @@ final class LibSource extends PlaySource {
   };
 }
 
-/// Альбом или плейлист площадки — тот самый [Playlist], которым открывали
-/// страницу: по нему пилюля и вернёт на неё.
+/// Platform album or playlist: the same [Playlist] that opened the page, and
+/// the pill returns to it.
 final class SetSource extends PlaySource {
   const SetSource(this.set);
 
@@ -113,8 +112,8 @@ final class SetSource extends PlaySource {
   @override
   String get id => set.id;
 
-  /// `album` — мобильный ключ (ПК его не пишет): страница альбома и плейлиста
-  /// грузится разными запросами, а у SoundCloud по id их не различить.
+  /// `album` is a key only this app writes: album and playlist pages load by
+  /// different requests, and on SoundCloud ids can't tell them apart.
   @override
   Map<String, dynamic> toJson() => {
     'kind': 'collection',
@@ -125,7 +124,7 @@ final class SetSource extends PlaySource {
   };
 }
 
-/// Страница артиста: «Воспроизвести», карусель популярных, список треков.
+/// Artist page: Play, the popular carousel, the track list.
 final class ArtistSource extends PlaySource {
   const ArtistSource(this.artist);
 
@@ -144,12 +143,11 @@ final class ArtistSource extends PlaySource {
   };
 }
 
-/// Волна: очередь набирает не список, а подбор. Своей страницы у неё нет,
-/// поэтому [id] ни с какой плиткой не совпадает; [mode] нужен, чтобы после
-/// перезапуска подхватить сеанс тем же способом, каким он начинался.
+/// The wave: picks fill the queue, not a list. It has no page, so [id] matches
+/// no tile; [mode] resumes the session after a restart the way it began.
 ///
-/// Подпись приходит уже переведённой — переводить её потом некому: пилюлю
-/// рисуют по снимку, снятому суткам раньше.
+/// The caption comes translated: the pill may draw from a snapshot taken a day
+/// earlier.
 final class WaveSource extends PlaySource {
   const WaveSource({required this.label, required this.mode});
 
@@ -168,23 +166,23 @@ final class WaveSource extends PlaySource {
   };
 }
 
-/// Значок источника, у которого своей картинки нет.
+/// Icon of a source with no picture.
 enum PlainSourceIcon { search, clock, chart, note }
 
-/// Источник без своей страницы: выдача поиска, витрина главной, «Недавно
-/// слушали», одиночный трек. Подпись приходит уже переведённой — переводить её
-/// некому: пилюля рисуется через сутки после того, как трек поставили.
+/// A source with no page: search results, a home shelf, a single track. The
+/// caption comes translated: the pill may draw a day after the track was
+/// started.
 ///
-/// Вид (`kind` карты ПК) — начало [id] до двоеточия: `search:…`, `wrapped:…`,
-/// `discover:…`, `forYou`; одиночный трек — `track`, как на ПК.
+/// The kind is the start of [id] before the colon: `search:…`, `wrapped:…`,
+/// `discover:…`, `forYou`; a single track is `track`.
 final class PlainSource extends PlaySource {
   const PlainSource({required this.id, required this.label, this.cover});
 
-  /// Выдача поиска. [label] — «Поиск: запрос».
+  /// Search results. [label] is the caption with the query.
   PlainSource.search(String query, String label)
     : this(id: 'search:$query', label: label);
 
-  /// Одиночный трек, запущенный вне списка (топ профиля, меню трека).
+  /// A single track started outside a list (profile top, track menu).
   PlainSource.single(Track track)
     : this(id: 'track:${track.id}', label: track.name, cover: track.cover);
 
@@ -193,7 +191,7 @@ final class PlainSource extends PlaySource {
 
   final String label;
 
-  /// Своя картинка, если есть (обложка одиночного трека).
+  /// Own picture if any (a single track's cover).
   final String? cover;
 
   String get kind => id.split(':').first;

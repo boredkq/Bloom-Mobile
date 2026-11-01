@@ -1,14 +1,11 @@
-/// Рисовка типов слайдера — порт `shared/styles/sliders-telemetry.css`
-/// (`body.slider-thin/-ios/-wave`) и `features/player/lib/waveSlider.ts`.
+/// Drawing of slider types, all through `Slider`'s own shapes
+/// (`SliderTrackShape`, `SliderComponentShape`) rather than a layout over the
+/// track: the slider knows where the knob is and moves it under the finger, and
+/// a parallel layout would drift every frame. The touch trap, drag and tap on
+/// the track come free.
 ///
-/// Всё делаем формами самого `Slider` (`SliderTrackShape`/
-/// `SliderComponentShape`), а не своей раскладкой поверх дорожки: слайдер знает,
-/// где сейчас пуговка, и двигает её под пальцем — любая параллельная разметка
-/// разъезжалась бы с ней на каждом кадре. Заодно ловушка под палец, перетаскивание
-/// и тап по дорожке остаются даровыми.
-///
-/// Один вход на всех — [bloomSliderTheme]: и плеер, и превью в настройках берут
-/// оформление отсюда, чтобы картинка в шторке не разошлась с настоящей.
+/// One entry for all, [bloomSliderTheme]: the player and the settings preview
+/// take their look from here so they can't diverge.
 library;
 
 import 'dart:math' as math;
@@ -20,10 +17,8 @@ import '../../../app/theme/tokens.dart';
 import '../../customization/ui/image_thumb.dart';
 import '../slider_style_store.dart';
 
-/// Высота дорожки для каждого типа.
-///
-/// Волна — не дорожка, а полоса столбиков (на ПК `height:28px`), поэтому и
-/// высота у неё под столбики. Тонкая — десктопные 1.5 px.
+/// Track height per type. Wave isn't a track but a strip of bars, so its height
+/// is for bars; thin is 1.5 px.
 double sliderTrackHeight(SliderStyle style) => switch (style) {
   SliderStyle.standard => 5,
   SliderStyle.thin => 1.5,
@@ -31,13 +26,11 @@ double sliderTrackHeight(SliderStyle style) => switch (style) {
   SliderStyle.wave => 28,
 };
 
-/// Оформление слайдера прогресса под выбранный тип.
+/// Progress slider look for the picked type. [thumbImage] is the knob photo
+/// from customization. It overrides the type's knob but not wave, which has no
+/// knob: the edge of the filled bars shows the position.
 ///
-/// [thumbImage] — фото пуговки из «Кастомизации». Оно перебивает пуговку типа
-/// (как на ПК, где фото показывается при любом типе), но не волну: там пуговки
-/// нет вовсе — позицию показывает граница залитых столбиков.
-///
-/// [waveSeed] — зерно узора волны, по одному на трек (см. [WaveTrackShape]).
+/// [waveSeed] is the wave pattern's seed, one per track (see [WaveTrackShape]).
 SliderThemeData bloomSliderTheme(
   SliderThemeData base, {
   required SliderStyle style,
@@ -66,13 +59,12 @@ SliderThemeData bloomSliderTheme(
     inactiveTrackColor: style == SliderStyle.wave
         ? waveRestColor(tokens)
         : tokens.track,
-    // Ореол под пальцем не нужен нигде (заливок в Bloom нет).
+    // No halo under the finger anywhere: Bloom has no such fills.
     overlayShape: SliderComponentShape.noOverlay,
   );
 }
 
-/// Круглая пуговка тонкого типа: 10 px акцентом (десктопные
-/// `body.slider-thin .ps-bar-thumb`, но без их тени).
+/// Round knob of the thin type: 10 px in the accent.
 class DotSliderThumb extends SliderComponentShape {
   const DotSliderThumb({this.size = 10});
 
@@ -102,8 +94,7 @@ class DotSliderThumb extends SliderComponentShape {
   }
 }
 
-/// Вертикальная капля iOS-типа: 4×28 акцентом (десктопные
-/// `body.slider-ios .ps-bar-thumb`, но без их тени).
+/// Vertical drop of the iOS type: 4×28 in the accent.
 class CapsuleSliderThumb extends SliderComponentShape {
   const CapsuleSliderThumb({this.width = 4, this.height = 28});
 
@@ -138,15 +129,12 @@ class CapsuleSliderThumb extends SliderComponentShape {
   }
 }
 
-/// Дорожка iOS-типа: два капсульных сегмента с прозрачным зазором у пуговки.
-///
-/// На ПК зазор вырезан из дорожки (`--ios-gap:6px`, `::before` слева от
-/// ползунка и подрезанная заливка справа) — здесь то же самое, только сегменты
-/// рисуются прямо, без вырезания.
+/// iOS type track: two capsule segments with a clear gap at the knob, drawn
+/// directly rather than cut out.
 class IosTrackShape extends SliderTrackShape with BaseSliderTrackShape {
   const IosTrackShape({this.gap = 6});
 
-  /// Пустота с каждой стороны пуговки (десктопный `--ios-gap`).
+  /// Empty space on each side of the knob.
   final double gap;
 
   @override
@@ -176,8 +164,8 @@ class IosTrackShape extends SliderTrackShape with BaseSliderTrackShape {
 
     final radius = Radius.circular(rect.height / 2);
     final canvas = context.canvas;
-    // Сегмент рисуем, только если после зазора от него что-то осталось: у краёв
-    // дорожки он вырождается, и капсула в минус ширины дала бы кляксу.
+    // A segment is drawn only if something's left after the gap: at the track's
+    // ends it degenerates, and a negative-width capsule would be a blot.
     void segment(double left, double right, Color color) {
       if (right - left <= 0) return;
       canvas.drawRRect(
@@ -194,26 +182,23 @@ class IosTrackShape extends SliderTrackShape with BaseSliderTrackShape {
   }
 }
 
-/// Дорожка-волна: столбики вместо полосы, до позиции — акцентом, дальше —
-/// плёнкой.
-///
-/// Узор — порт `regenWave`: та же огибающая из трёх синусов со случайными
-/// фазами плюс дрожание. Отличие одно, и оно намеренное: фазы берутся не из
-/// `Math.random()` на каждую смену трека, а из [seed] (id трека) — в
-/// декларативном UI художник зовётся на каждый кадр перемотки, и «свежий»
-/// случай перерисовывал бы волну заново десятки раз в секунду.
+/// Wave track: bars instead of a strip, accent up to the position and film
+/// beyond. The pattern is an envelope of three sines with random phases plus
+/// jitter. Phases come from [seed] (the track id) rather than fresh randomness:
+/// the painter runs every frame of a seek, and new random values would redraw
+/// the wave dozens of times a second.
 class WaveTrackShape extends SliderTrackShape with BaseSliderTrackShape {
   const WaveTrackShape({required this.seed});
 
-  /// Зерно узора: один трек — один рисунок.
+  /// Pattern seed: one track, one drawing.
   final int seed;
 
-  /// Шаг столбика (сам столбик + просвет). На ПК столбиков ровно 120 на всю
-  /// ширину плеера; на телефоне полоса вдвое уже, и фиксированное число
-  /// схлопнуло бы их в кашу — держим постоянным шаг, а число считаем от ширины.
+  /// Bar step (the bar plus the gap). I keep the step constant and compute the
+  /// count from the width: a fixed count would collapse into mush on a narrow
+  /// strip.
   static const double pitch = 5;
 
-  /// Просвет между столбиками (десктопный `bw - 1.5`).
+  /// Gap between bars.
   static const double slit = 1.5;
 
   @override
@@ -260,8 +245,8 @@ class WaveTrackShape extends SliderTrackShape with BaseSliderTrackShape {
     }
 
     draw(Paint()..color = sliderTheme.inactiveTrackColor!);
-    // Залитую часть рисуем теми же столбиками под обрезкой по позиции — так
-    // столбик на границе делится, а не перекрашивается целиком.
+    // The filled part is the same bars under a clip at the position, so the bar
+    // on the edge splits rather than recolours whole.
     final split = thumbCenter.dx - rect.left;
     if (split > 0) {
       canvas.save();
@@ -272,10 +257,8 @@ class WaveTrackShape extends SliderTrackShape with BaseSliderTrackShape {
   }
 }
 
-/// Высоты столбиков волны — порт `regenWave` из `waveSlider.ts`.
-///
-/// На ПК высоты (2..21) считаны под полосу в 28 px; [height] масштабирует их
-/// под свою — превью в настройках ниже плеерной полосы.
+/// Wave bar heights. They're computed for a 28 px strip; [height] scales them,
+/// since the settings preview is lower than the player's.
 List<double> waveBars(int seed, int count, double height) {
   final rnd = math.Random(seed);
   final s1 = rnd.nextDouble() * 10;
@@ -295,11 +278,8 @@ List<double> waveBars(int seed, int count, double height) {
   ];
 }
 
-/// Цвет незалитых столбиков волны.
-///
-/// Общая дорожка (`track`, плёнка 4%) для столбиков слишком тиха — они тоньше
-/// полосы и на ней просто пропадают. На ПК под это заведена своя ручка
-/// `--wave-rest-a` (плёнка 10%), берём её же.
+/// Colour of unfilled wave bars. The shared track (`track`, a 4% film) is too
+/// quiet for bars, thinner than a strip, so they get a 10% film.
 Color waveRestColor(BloomTokens tokens) =>
     (tokens.isLight ? const Color(0xFF000000) : const Color(0xFFFFFFFF))
         .withValues(alpha: 0.1);

@@ -1,13 +1,10 @@
-/// Фон полноэкранного плеера: размытая обложка или градиент по её цвету.
+/// Full player background: a blurred cover or a gradient from its colour. It
+/// lies UNDER all the player's content and over the theme fill; blocks are
+/// painted with a thin `ovlBg` film, tinted by it rather than covering it.
 ///
-/// Слой лежит ПОД всем содержимым плеера и поверх заливки темы. Блоки плеера
-/// (транспорт, ряд инструментов) красятся плёнкой `ovlBg` в считанные проценты
-/// — они и должны проступать на фоне подкрашенными, а не закрывать его собой.
-///
-/// Рисуется внутри плеера, а не под панелью: панель растёт из карточки
-/// миниплеера и обрезает содержимое своим окном — так фон приезжает вместе с
-/// плеером и ровно по его границам, без второго слоя, который надо было бы
-/// гасить синхронно с разворотом.
+/// Drawn inside the player, not under the panel: the panel grows out of the
+/// mini player card and clips its content, so the background arrives with the
+/// player, with no second layer to fade in step.
 library;
 
 import 'dart:ui' as ui;
@@ -21,62 +18,55 @@ import '../../customization/custom_store.dart';
 import '../../customization/ui/app_background.dart';
 import '../player_bg_store.dart';
 
-/// Размытие фоновой обложки, σ. Крупное: узнаваться должна не картинка, а её
-/// цветовые пятна — иначе за подписями и кнопками остаётся каша из деталей.
+/// Blur of the background cover, sigma. Large: colour patches should show, not
+/// the picture, or details turn to mush behind captions and buttons.
 const double kPlayerBgBlur = 42;
 
-/// Насколько кадр увеличен под размытием. Размытие «съедает» кромки, и без
-/// запаса по краям экрана видна размазанная рамка.
+/// How much the frame is scaled under the blur, which eats the edges: with no
+/// margin a smeared frame shows at the screen edges.
 const double kPlayerBgScale = 1.18;
 
-/// Затемнение размытой обложки: сверху, посередине и у нижней кромки.
-///
-/// Неравномерное: внизу стоят транспорт и ряд инструментов, и белым значкам на
-/// светлой обложке нужен запас контраста; вверху — одна шапка.
-///
-/// Заметно легче первой версии (0.46/0.56/0.72): на ТЁМНОЙ обложке — а таких
-/// половина — размытая картинка и без плёнки почти чёрная, и фон читался как
-/// выключенный (поймал он на «утекай»).
+/// Dimming of a blurred cover: top, middle and bottom. Uneven: the transport
+/// and tool row at the bottom need contrast for white icons on a light cover,
+/// with only the header on top. Kept light: half of covers are dark, and
+/// blurred they're almost black even with no film, reading as if the background
+/// were off.
 const List<double> kPlayerBgDim = [0.30, 0.40, 0.62];
 
-/// То же затемнение для ЧЁТКОЙ обложки ([CoverBgFx.dim]).
-///
-/// Плотнее размытого: размытие само по себе стирает детали, а под чёткой
-/// картинкой у подписей и значков остаётся контрастная мелочь — рисунок на
-/// обложке, буквы, лица. Разница по всей длине примерно одна восьмая — плёнка
-/// остаётся мягкой, картинку видно.
+/// The same dimming for a SHARP cover ([CoverBgFx.dim]). Denser than blurred:
+/// blur erases details by itself, while under a sharp picture captions and
+/// icons keep contrasty details like drawings, letters and faces. About an
+/// eighth more throughout, so the picture still shows.
 const List<double> kPlayerBgDimSharp = [0.38, 0.48, 0.70];
 
-/// Насыщенность и яркость размытой обложки плюс подъём чёрного.
-///
-/// Плёнкой сверху тёмную обложку не спасти — её можно только вытянуть саму:
-/// множитель поднимает всё разом, слагаемое отрывает чёрное от фона темы
-/// (у него светлота 0.04), а насыщенность возвращает цвет, который съедает
-/// размытие, усредняя соседние пиксели.
+/// Saturation and brightness of a blurred cover, plus a lift of black. A film
+/// on top can't save a dark cover, it has to be pulled up itself: the
+/// multiplier lifts everything, the term tears black from the theme's
+/// background, and saturation returns colour the blur averaged away.
 const double kPlayerBgSaturation = 1.25;
 const double kPlayerBgBrightness = 1.12;
 const double kPlayerBgLift = 0.05;
 
-/// Сколько длится перекрашивание фона на смене трека. Заметно дольше самой
-/// смены обложки (420 мс): фон во весь экран, и на её скорости он мигал бы.
+/// How long the background takes to recolour on a track change. Much longer
+/// than the cover's change (420 ms): it's full screen, and at that speed it
+/// would blink.
 const Duration kPlayerBgFade = Duration(milliseconds: 620);
 
-/// Обложка, от которой считается фон: своя из «Кастомизации» важнее обложки
-/// трека — тот же порядок, что у самой обложки в плеере (`coverOverride`).
+/// The cover the background comes from: a custom one from customization beats
+/// the track's, in the same order as the player's cover.
 String? playerBgCover(WidgetRef ref) => ref.watch(playerCoverProvider);
 
-/// Цвета градиента режима «Цвет» сверху вниз.
-///
-/// Верх — сам цвет обложки, низ уходит в цвет темы, но НЕ доходит до него: с
-/// чистым `bg` внизу нижняя треть экрана выглядела бы так, будто фон выключен.
+/// Gradient colours in colour mode, top to bottom. The top is the cover's
+/// colour; the bottom heads for the theme's colour but doesn't reach it, or the
+/// lower third would look as if the background were off.
 List<Color> playerBgGradient(Color color, Color bg) => [
   color,
   Color.lerp(color, bg, 0.5)!,
   Color.lerp(color, bg, 0.88)!,
 ];
 
-/// Границы этих цветов. Середина смещена вверх: обложка занимает верхнюю
-/// половину экрана, и цвет должен держаться на ней, а гаснуть уже под ней.
+/// Stops for those colours. The middle sits high: the cover takes the screen's
+/// upper half, and the colour should hold on it and fade below.
 const List<double> kPlayerBgStops = [0, 0.5, 1];
 
 class PlayerBackdrop extends ConsumerWidget {
@@ -87,9 +77,9 @@ class PlayerBackdrop extends ConsumerWidget {
     final mode = ref.watch(playerBgProvider);
     if (mode.isNone) return const SizedBox.shrink();
     final cover = playerBgCover(ref);
-    // Своя граница перерисовки: под фоном каждую секунду тикает время и ползёт
-    // полоса прогресса, а размывать картинку и пересчитывать градиент на каждый
-    // их кадр незачем.
+    // Own repaint boundary: under the background time ticks each second and the
+    // progress bar creeps, and blurring and recomputing for each of their
+    // frames isn't needed.
     return RepaintBoundary(
       child: switch (mode) {
         PlayerBg.cover => _CoverWash(cover: cover),
@@ -101,17 +91,13 @@ class PlayerBackdrop extends ConsumerWidget {
   }
 }
 
-/// Режим «Фон приложения»: та же картинка, что лежит фоном под всем
-/// приложением, с её же размытием и затемнением («как в приложении» — его
-/// слово).
+/// App background mode: the same picture that lies under the whole app, with
+/// its blur and dimming. Redrawn INSIDE the player, not seen through: the
+/// player's `Scaffold` covers what's below. It shares layers with the app's
+/// ([BackgroundLayers]), or the picture would flinch when the player opens.
 ///
-/// Рисуем её ЗАНОВО внутри плеера, а не показываем сквозь: `Scaffold` плеера
-/// красит собой всё, что под ним, и настоящий слой `#bgl` остаётся за кадром.
-/// Слои общие с ним ([BackgroundLayers]) — иначе на открытии плеера картинка
-/// дрогнула бы размытием или затемнением.
-///
-/// Картинку успели снять с фона (или удалить из библиотеки) — фона просто нет,
-/// как в режиме «Нет»: настройку не трогаем, вернут фон — вернётся и он.
+/// If the picture was removed there's just no background, as in none mode; the
+/// setting stays, and it returns with the picture.
 class _AppWash extends ConsumerWidget {
   const _AppWash();
 
@@ -125,12 +111,10 @@ class _AppWash extends ConsumerWidget {
   }
 }
 
-/// Режим «Цвет»: градиент от доминанта обложки к цвету темы.
-///
-/// Цвет считается асинхронно (картинку надо загрузить и просканировать),
-/// поэтому первый кадр честно рисуется цветом темы, а приезжающий доминант
-/// вплывает [kPlayerBgFade]. Тем же переходом фон перекрашивается на смене
-/// трека — [TweenAnimationBuilder] сам стартует от того, что сейчас на экране.
+/// Colour mode: a gradient from the cover's dominant to the theme's colour. The
+/// colour comes asynchronously, so the first frame is the theme's colour and
+/// the dominant fades in over [kPlayerBgFade]. The same transition recolours on
+/// a track change: [TweenAnimationBuilder] starts from what's on screen.
 class _ColorWash extends ConsumerWidget {
   const _ColorWash({required this.cover});
 
@@ -139,8 +123,8 @@ class _ColorWash extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
-    // Обложки нет или её не прочитать — целимся в цвет темы: градиент от него
-    // же к нему же невидим, и фон просто не появляется.
+    // No cover or unreadable: I aim at the theme's colour, so a gradient from
+    // it to itself is invisible and no background appears.
     final target = ref.watch(playerBgColorProvider(cover)).value ?? t.bg;
     return TweenAnimationBuilder<Color?>(
       tween: ColorTween(end: target),
@@ -160,12 +144,10 @@ class _ColorWash extends ConsumerWidget {
   }
 }
 
-/// Режим «Обложка»: та же картинка во весь экран — размытая, притемнённая или
-/// как есть, смотря что выбрано в «Эффекте фона обложки» ([CoverBgFx]).
-///
-/// Кадры сменяются наплывом, а не подменой: [AnimatedSwitcher] по ссылке на
-/// обложку. Затемнение стоит СНАРУЖИ переключателя — иначе на середине наплыва
-/// две плёнки складывались бы и фон проваливался в чёрный.
+/// Cover mode: the picture full screen, blurred, dimmed or as is, per
+/// [CoverBgFx]. Frames fade through [AnimatedSwitcher] by the cover link.
+/// Dimming stands OUTSIDE the switcher, or two films add up mid-fade and the
+/// background falls into black.
 class _CoverWash extends ConsumerWidget {
   const _CoverWash({required this.cover});
 
@@ -180,34 +162,30 @@ class _CoverWash extends ConsumerWidget {
         AnimatedSwitcher(
           duration: kPlayerBgFade,
           child: KeyedSubtree(
-            // Смена эффекта — тоже наплыв, а не подмена: ключ у кадра общий с
-            // обложкой. Без этого картинка прыгала бы из размытой в чёткую
-            // одним кадром прямо под открытой шторкой выбора.
+            // Changing the effect also fades: the frame's key includes the
+            // cover. Otherwise the picture jumps from blurred to sharp in one
+            // frame right under the open picker sheet.
             key: ValueKey((cover, fx)),
             child: CoverBgImage(image: coverImage(cover), fx: fx),
           ),
         ),
-        // «Оригинал» — чистая обложка: плёнки нет вовсе, это и есть весь
-        // вариант.
+        // Original is a clean cover with no film at all; that's the whole
+        // option.
         if (!fx.isOriginal) IgnorePointer(child: _Dim(fx: fx)),
       ],
     );
   }
 }
 
-/// Сама картинка во весь отведённый ей прямоугольник.
+/// The picture itself, filling its rectangle. Blur, scale and colour correction
+/// are only for [CoverBgFx.blur]: scale hides a smeared edge that doesn't exist
+/// without blur, and correction restores the colour blur eats. They'd only
+/// spoil a sharp cover.
 ///
-/// Размытие, увеличение и цветокоррекция — только у [CoverBgFx.blur]:
-/// увеличение прячет размазанную кромку, которой без размытия нет, а
-/// цветокоррекция вытягивает цвет, который съедает само размытие. Чёткой
-/// обложке всё это только испортило бы картинку.
-///
-/// Публичный (и берёт готовый [ImageProvider], а не ссылку) ради теста: сеть в
-/// тестах молчит, и подсунуть картинку иначе нечем — а проверять тут надо
-/// именно РАЗМЕР. Первая версия его и провалила: `AnimatedSwitcher` кладёт
-/// детей в `Stack` со СВОБОДНЫМИ ограничениями, `Image` без заданных сторон
-/// брал размер самой картинки, и вместо фона во весь экран посреди него стоял
-/// размытый квадрат — на тёмной обложке этого было просто не видно.
+/// Public and taking a ready [ImageProvider] for a test, since the network is
+/// silent there and SIZE is what needs checking: `AnimatedSwitcher` puts
+/// children in a `Stack` with LOOSE constraints, and an `Image` with no sides
+/// would take the picture's own size.
 class CoverBgImage extends StatelessWidget {
   const CoverBgImage({super.key, required this.image, required this.fx});
 
@@ -226,8 +204,8 @@ class CoverBgImage extends StatelessWidget {
     );
     if (fx.isBlur) {
       picture = ImageFiltered(
-        // `TileMode.decal` дал бы прозрачную кромку; `clamp` растягивает
-        // крайние пиксели, а увеличение сверху уводит саму кромку за экран.
+        // `TileMode.decal` would give a clear edge; `clamp` stretches the last
+        // pixels, and the scale takes the edge itself off screen.
         imageFilter: ui.ImageFilter.blur(
           sigmaX: kPlayerBgBlur,
           sigmaY: kPlayerBgBlur,
@@ -242,11 +220,8 @@ class CoverBgImage extends StatelessWidget {
   }
 }
 
-/// Насыщенность × яркость + подъём чёрного одной матрицей.
-///
-/// Веса яркости каналов — те же, что у CSS-фильтра `saturate` (и у фона
-/// карточки миниплеера). Слагаемое идёт в шкале 0–255: столько прибавляется к
-/// каналу ПОСЛЕ умножения.
+/// Saturation × brightness plus a black lift, in one matrix. The term is on a
+/// 0–255 scale, added to a channel AFTER multiplying.
 ColorFilter playerBgFilter() {
   const lr = 0.2126;
   const lg = 0.7152;
@@ -264,11 +239,10 @@ ColorFilter playerBgFilter() {
   ]);
 }
 
-/// Плёнка поверх обложки. Чёрная, а не цвета темы: под ней картинка, а не
-/// поверхность интерфейса, и тон темы подкрашивал бы её.
-///
-/// Меняется вместе с эффектом ([kPlayerBgDimSharp] под чёткой картинкой), и
-/// меняется ПЛАВНО: без наплыва выбор в шторке переключал бы плотность рывком.
+/// Film over the cover. Black rather than the theme's colour: under it is a
+/// picture, not a UI surface, and the theme's tone would tint it. It changes
+/// with the effect ([kPlayerBgDimSharp] under a sharp picture), SMOOTHLY:
+/// otherwise a choice in the sheet jumps the density.
 class _Dim extends StatelessWidget {
   const _Dim({required this.fx});
 
@@ -277,7 +251,8 @@ class _Dim extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return TweenAnimationBuilder<double>(
-      // Гоняем одну долю, а не три цвета: между наборами она и вся разница.
+      // I run one share rather than three colours: it's the whole difference
+      // between the sets.
       tween: Tween(begin: 0, end: fx.isBlur ? 0 : 1),
       duration: kPlayerBgFade,
       curve: Curves.easeOut,

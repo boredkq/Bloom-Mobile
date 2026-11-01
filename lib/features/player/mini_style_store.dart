@@ -1,18 +1,9 @@
-/// Вид миниплеера — порт группы «Мини-плеер» из десктопного
-/// `settings/model/playerViewStore.ts` (`mpBgMode`, `mpProgress`,
-/// `mpCoverShape`, `mpRounded`).
+/// Mini player look: card background, progress indicators, cover shape and
+/// corner rounding, plus buttons ([MiniButton]) and neighbours
+/// ([MiniStyle.neighbors]).
 ///
-/// Перенесены четыре настройки: фон карточки, индикаторы прогресса, форма
-/// обложки и скругление границ. Пресеты и набор кнопок — следующим заходом.
-///
-/// Своего на телефоне два: набор кнопок ([MiniButton]) и «Соседние треки»
-/// ([MiniStyle.neighbors]) — на ПК миниплеер занимает всю ширину окна, и ни
-/// того, ни другого там взяться не может.
-///
-/// Скругление на ПК — тумблер (обычный радиус ↔ pill). Здесь четыре ступени:
-/// карточка над таб-баром лежит на самом виду, и между «квадратной» и
-/// «пилюлей» есть за что зацепиться — промежуточные ступени на ПК просто
-/// некуда было положить.
+/// The card lies in plain view above the tab bar, so rounding has four steps
+/// rather than two.
 library;
 
 import 'dart:ui' show Color;
@@ -22,48 +13,47 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/store/json_store.dart' show jsonStoreProvider;
 import '../settings/cover_accent.dart';
 
-/// Фон карточки.
+/// Card background.
 enum MiniBg {
-  /// Плашка темы — то же, что у остального «хрома».
+  /// The theme's plate, like the rest of the chrome.
   theme,
 
-  /// Заливка тёмным доминантом обложки.
+  /// A fill of the cover's dark dominant colour.
   coverColor,
 
-  /// Сама обложка картинкой под содержимым.
+  /// The cover itself as a picture under the content.
   cover,
 }
 
-/// Форма обложки в карточке.
+/// Cover shape in the card.
 enum MiniCoverShape { rounded, circle }
 
-/// Скругление углов карточки.
+/// Card corner rounding.
 enum MiniRadius {
-  /// Прямые углы.
+  /// Square corners.
   none,
 
-  /// Половина радиуса темы.
+  /// Half the theme radius.
   soft,
 
-  /// Радиус темы — как у остальных плашек.
+  /// The theme radius, like other plates.
   rounded,
 
-  /// Пилюля: скругление в половину высоты.
+  /// A pill: rounding of half the height.
   pill,
 }
 
-/// Индикаторы прогресса — набор, а не выбор: они не спорят друг с другом
-/// (десктопный `mpProgress`, мульти-выбор).
+/// Progress indicators are a set, not a choice: they don't conflict.
 class MiniProgress {
   const MiniProgress({this.line = true, this.fill = false, this.ring = false});
 
-  /// Линия по нижней кромке карточки.
+  /// Line along the card's bottom edge.
   final bool line;
 
-  /// Заливка фона слева направо.
+  /// Background fill from left to right.
   final bool fill;
 
-  /// Кольцо вокруг обложки.
+  /// Ring around the cover.
   final bool ring;
 
   MiniProgress copyWith({bool? line, bool? fill, bool? ring}) => MiniProgress(
@@ -73,20 +63,18 @@ class MiniProgress {
   );
 }
 
-/// Что именно включает/выключает строка в шторке «Индикаторы прогресса».
+/// What a row in the progress indicators sheet toggles.
 enum MiniProgressKind { line, fill, ring }
 
-/// Кнопка в карточке. Порядок — тот, в каком они стоят в строке справа от
-/// подписи (и в каком идут строки шторки). «Лайк» открывает группу: он не про
-/// перемотку, и разрывать им трио prev–play–next нельзя.
+/// A button in the card, in row order. Like opens the group: it isn't about
+/// skipping, and shouldn't split previous, play and next.
 ///
-/// На ПК прячется только «Лайк» (`mpHide.fav`), трио перемотки там неснимаемо:
-/// в широком баре ему всегда есть место. На телефоне место как раз и кончается
-/// — карточка шириной с экран, и выбор «что важнее» тут настоящий.
+/// The card is as wide as the screen and room runs out, so choosing what
+/// matters is real.
 enum MiniButton { fav, prev, play, next }
 
-/// Умолчание — трио перемотки, как карточка выглядела до настройки. «Лайк»
-/// выключен: включённым он ужал бы подпись у всех, кто настройку не открывал.
+/// The default is the skip trio. Like is off: on, it would squeeze the caption
+/// for everyone who never opened the setting.
 const Set<MiniButton> kDefaultMiniButtons = {
   MiniButton.prev,
   MiniButton.play,
@@ -109,12 +97,8 @@ class MiniStyle {
   final MiniRadius radius;
   final Set<MiniButton> buttons;
 
-  /// Соседние треки: карточка сужается, а из-за её краёв выглядывают карточки
-  /// предыдущего и следующего трека, и вся тройка едет за пальцем — карусель.
-  ///
-  /// Своей настройки на ПК нет и взяться ей неоткуда: там миниплеер — полоса во
-  /// всю ширину окна, листать её нечем и краёв, из-за которых выглядывать, у
-  /// неё тоже нет.
+  /// Neighbours: the card narrows, the previous and next tracks' cards peek out
+  /// at its edges, and all three follow the finger as a carousel.
   final bool neighbors;
 
   bool has(MiniProgressKind kind) => switch (kind) {
@@ -155,8 +139,8 @@ class MiniStyleController extends Notifier<MiniStyle> {
       bg: _enumFromJson(MiniBg.values, raw['bg'], MiniBg.theme),
       progress: progress is Map
           ? MiniProgress(
-              // Ключа могло не быть вовсе (первая сборка с настройкой) —
-              // тогда берём умолчание, а не «выключено».
+              // The key may be missing altogether, so I take the default, not
+              // off.
               line: progress['line'] as bool? ?? true,
               fill: progress['fill'] as bool? ?? false,
               ring: progress['ring'] as bool? ?? false,
@@ -172,16 +156,16 @@ class MiniStyleController extends Notifier<MiniStyle> {
         raw['radius'],
         MiniRadius.rounded,
       ),
-      // Ключа нет — умолчание; пустой список — это ВЫБОР «ни одной кнопки», и
-      // подменять его умолчанием нельзя.
+      // No key takes the default; an empty list is a CHOICE of no buttons and
+      // must not be replaced.
       buttons: raw['buttons'] is List
           ? {
               for (final button in MiniButton.values)
                 if ((raw['buttons']! as List).contains(button.name)) button,
             }
           : kDefaultMiniButtons,
-      // Именно `is`, а не приведение: в файле могло лежать что угодно (правили
-      // руками), а падать на входе из-за вида карточки нельзя.
+      // `==`, not a cast: the file could hold anything, and a card's look can't
+      // crash a launch.
       neighbors: raw['neighbors'] == true,
     );
   }
@@ -234,9 +218,8 @@ class MiniStyleController extends Notifier<MiniStyle> {
   }
 }
 
-/// Значение перечисления из хранилища. Битую или незнакомую запись (правили
-/// файл руками, откат на старую сборку) молча заменяем умолчанием — вид
-/// карточки не повод ронять запуск.
+/// Enum value from the store. A broken or unknown entry silently becomes the
+/// default: a card's look is no reason to crash a launch.
 T _enumFromJson<T extends Enum>(List<T> values, Object? raw, T fallback) {
   for (final value in values) {
     if (value.name == raw) return value;
@@ -244,11 +227,10 @@ T _enumFromJson<T extends Enum>(List<T> values, Object? raw, T fallback) {
   return fallback;
 }
 
-/// Тёмный доминант обложки — фон карточки в режиме «Цвет обложки».
-///
-/// Ключ — сама ссылка на обложку, а не трек: карточка может показывать свою
-/// картинку из «Кастомизации», и считать цвет надо с той, что видно. `null` —
-/// обложки нет или её не удалось прочитать; тогда фон остаётся плашкой темы.
+/// The cover's dark dominant, the card background in cover colour mode. The key
+/// is the cover link, not the track: the card may show a custom picture, and
+/// the colour must come from what's visible. `null`: no cover or unreadable, so
+/// the theme's plate stays.
 final miniCoverColorProvider = FutureProvider.autoDispose
     .family<Color?, String?>((ref, cover) async {
       final hsl = await extractCoverHsl(cover);

@@ -1,10 +1,6 @@
-/// Вид плеера — порт настроек из десктопного `settings/model/playerViewStore.ts`.
-///
-/// Осей три — выравнивание заголовка (`titleAlign`), вид очереди (`queueView`)
-/// и плашка «Далее» (`nextUp`, своя); на ПК рядом живут стиль плеера,
-/// положение очереди и прочее, чего у нас нет. Хранилище заведено сразу общим (`playerView`), а не ключом
-/// на настройку: остальные оси переносятся сюда же, и переезжать потом с
-/// одиночного ключа значило бы терять уже выбранное.
+/// Player view settings: title alignment, queue view and the Next plate. One
+/// store (`playerView`) rather than a key per setting, so more can join with no
+/// move that loses choices.
 library;
 
 import 'package:flutter/widgets.dart' show CrossAxisAlignment, TextAlign;
@@ -12,8 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/store/json_store.dart' show jsonStoreProvider;
 
-/// Где в плеере стоит название трека с артистом. Умолчание — по центру, как на
-/// ПК (`DEFAULTS.titleAlign`).
+/// Where the track title and artist stand in the player. Centred by default.
 enum TitleAlign {
   left,
   center,
@@ -25,8 +20,8 @@ enum TitleAlign {
     TitleAlign.right => TextAlign.right,
   };
 
-  /// Как встают сами строки в колонке подписи. Одного [text] мало: строка,
-  /// которая влезла, шириной равна тексту — двигать её приходится колонкой.
+  /// How rows sit in the caption column. [text] isn't enough: a row that fits
+  /// is as wide as its text, so the column has to move it.
   CrossAxisAlignment get cross => switch (this) {
     TitleAlign.left => CrossAxisAlignment.start,
     TitleAlign.center => CrossAxisAlignment.center,
@@ -42,8 +37,8 @@ class TitleAlignController extends Notifier<TitleAlign> {
   @override
   TitleAlign build() {
     final raw = ref.read(jsonStoreProvider).readMap('playerView');
-    // Незнакомое значение (правили файл руками, откат на старую сборку) молча
-    // заменяем умолчанием — выравнивание не повод ронять запуск.
+    // An unknown value silently becomes the default: alignment is no reason to
+    // crash a launch.
     for (final v in TitleAlign.values) {
       if (v.name == raw['titleAlign']) return v;
     }
@@ -52,8 +47,8 @@ class TitleAlignController extends Notifier<TitleAlign> {
 
   void set(TitleAlign align) {
     state = align;
-    // Пишем поверх прочитанного, а не голым объектом: когда в `playerView`
-    // приедут соседние настройки, они не должны стираться сменой заголовка.
+    // Written over what was read, not as a bare object, so neighbouring
+    // settings in `playerView` survive.
     final store = ref.read(jsonStoreProvider);
     store.write('playerView', {
       ...store.readMap('playerView'),
@@ -62,11 +57,9 @@ class TitleAlignController extends Notifier<TitleAlign> {
   }
 }
 
-/// Вид списка очереди — порт десктопного `queueView`.
-///
-/// [normal] — плоский список, как было. [extended] — тот же список, разбитый
-/// на «Прослушано» / «Сейчас играет» / «Далее»; играющий трек в нём закреплён,
-/// а перетаскивание не выходит за пределы своей секции.
+/// Queue list view. [normal] is a flat list. [extended] splits it into Played,
+/// Now playing and Next; the playing track is pinned there, and a drag stays
+/// inside its section.
 enum QueueView {
   normal,
   extended;
@@ -82,8 +75,8 @@ class QueueViewController extends Notifier<QueueView> {
   @override
   QueueView build() {
     final raw = ref.read(jsonStoreProvider).readMap('playerView');
-    // Умолчание десктопное — `normal`; незнакомое значение молча заменяем им
-    // же, ровно как у выравнивания заголовка.
+    // `normal` by default; an unknown value silently becomes it, as with title
+    // alignment.
     for (final v in QueueView.values) {
       if (v.name == raw['queueView']) return v;
     }
@@ -100,12 +93,9 @@ class QueueViewController extends Notifier<QueueView> {
   }
 }
 
-/// Показывать ли под слайдером плашку «Далее: …» — трек, который заиграет
-/// после текущего.
-///
-/// Десктопной пары у настройки нет: там очередь стоит колонкой рядом с
-/// плеером, и следующий трек виден в ней сам. На телефоне очередь — шторка, и
-/// узнать, что дальше, можно только открыв её.
+/// Whether to show the Next plate under the slider: the track due after this
+/// one. The queue is a sheet on a phone, so otherwise finding out means opening
+/// it.
 final nextUpProvider = NotifierProvider<NextUpController, bool>(
   NextUpController.new,
 );
@@ -114,8 +104,7 @@ class NextUpController extends Notifier<bool> {
   @override
   bool build() {
     final raw = ref.read(jsonStoreProvider).readMap('playerView')['nextUp'];
-    // Умолчание — включено: плашка приехала вместе с настройкой, и выключенной
-    // по умолчанию её бы просто никто не увидел.
+    // On by default: off, nobody would ever see it.
     return raw is bool ? raw : true;
   }
 
