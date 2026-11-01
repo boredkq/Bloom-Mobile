@@ -1,21 +1,15 @@
-/// «Скачать файлом» — второе скачивание, как на десктопе.
+/// Saving as a file. An offline copy lives inside the app, while this file
+/// lands where the user finds it without Bloom.
 ///
-/// На ПК их два: `sc_download` сохраняет трек файлом через диалог, а
-/// `offline_download` кладёт копию в невидимый кеш профиля. Здесь так же:
-/// офлайн-копия живёт внутри приложения (см. `offline_store.dart`), а этот файл
-/// ложится туда, где человек его найдёт и без Bloom.
+/// The platform decides where. On Android, shared Music/Bloom: system players
+/// see it and it survives uninstalling. Shared storage takes writes only
+/// through MediaStore, so Kotlin does it ([MediaStoreSaver]). On iOS, the app's
+/// `Documents`, shown in Files: there's no shared library for third-party apps,
+/// so the file stays in the sandbox but in view. No native code, it's an
+/// ordinary directory.
 ///
-/// Куда именно — решает платформа, и они тут не равны:
-/// - Android: общая «Музыка/Bloom». Файл видят системные плееры, и он
-///   переживает удаление приложения. Писать в общую память с десятки можно
-///   только через MediaStore, поэтому запись делает Kotlin ([MediaStoreSaver]).
-/// - iOS: `Documents` приложения — папка, которую система показывает в
-///   «Файлах». Общей медиатеки для сторонних приложений там нет вовсе, так что
-///   файл остаётся в песочнице, зато на виду: его можно отправить дальше или
-///   перетащить. Нативный код не нужен, это обычный каталог.
-///
-/// Диалога «куда сохранить» нет намеренно: на телефоне он мучителен и для
-/// плейлиста целиком работает плохо, поэтому папка всегда одна.
+/// No where to save dialog on purpose: it's painful on a phone and works badly
+/// for a whole playlist, so there's one folder.
 library;
 
 import 'dart:io';
@@ -35,19 +29,17 @@ import 'offline_store.dart';
 
 const MethodChannel _channel = MethodChannel('bloom/downloads');
 
-/// Есть ли на этой платформе куда сохранить файл «наружу».
+/// Whether this platform has anywhere outside to save a file.
 bool get canSaveFiles => Platform.isAndroid || Platform.isIOS;
 
-/// Куда, по-человечески, — для снекбара и подписей.
+/// Where, in plain words, for the snack bar and captions.
 String saveTargetLabel(AppLocalizations l) =>
     Platform.isIOS ? l.fdPathIos : l.fdPathAndroid;
 
-/// Сохранить трек файлом. Возвращает путь для показа пользователю; `null` —
-/// файл лёг в место по умолчанию, и назвать его человеческим языком (см.
-/// [saveTargetLabel]) должен уже UI.
-///
-/// Уже скачанный офлайн трек второй раз не качается — файл просто копируется
-/// из кеша (и, разумеется, из кеша не пропадает).
+/// Saves a track as a file. Returns a path to show the user; `null` means it
+/// landed in the default place, and the UI names that (see [saveTargetLabel]).
+/// An already downloaded offline track isn't fetched again: the file just
+/// copies from the cache, staying there.
 Future<String?> saveTrackAsFile(
   WidgetRef ref,
   Track track, {
@@ -70,8 +62,8 @@ Future<String?> saveTrackAsFile(
     if (stream == null) {
       throw const DownloadFailure(DownloadFailureKind.notDownloadable);
     }
-    // Временный каталог: файл живёт ровно до переноса в медиатеку, а система
-    // вправе подчистить его сама, если перенос не случится.
+    // Temp directory: the file lives until moved to the media library, and the
+    // system may clean it up if that doesn't happen.
     final tmp = await getTemporaryDirectory();
     final file = await fetchAudioToFile(
       url: stream.url,
@@ -84,8 +76,8 @@ Future<String?> saveTrackAsFile(
     deleteSource = true;
   }
 
-  // Имя даём своё: у офлайн-копии оно уже с разведением дублей («… (2).mp3»),
-  // а в целевой папке дубли разводятся заново и по ней.
+  // My own name: an offline copy's already has duplicate numbering, and the
+  // target folder separates duplicates anew.
   final ext = sourcePath.split('.').last.toLowerCase();
   final filename = '${trackFileBase(track)}.$ext';
 
@@ -103,13 +95,12 @@ Future<String?> saveTrackAsFile(
   return saved;
 }
 
-/// «Скачать обложку» — порт десктопного `cover_download`. Ложится рядом с
-/// треками: на Android — «Изображения/Bloom» (в «Музыке» галерея картинку не
-/// покажет), на iOS — та же папка приложения в «Файлах». Возвращает путь так же,
-/// как [saveTrackAsFile].
+/// Saves a cover, next to tracks: on Android Pictures/Bloom (a gallery doesn't
+/// show pictures in Music), on iOS the same folder in Files. Returns a path as
+/// [saveTrackAsFile] does.
 ///
-/// В треке обложка хранится уменьшенной (под строку списка), поэтому сначала
-/// просим крупную версию той же картинки, а не вышло — берём как есть.
+/// A track keeps a small cover for list rows, so I ask for a large version of
+/// the picture first, and take it as is if that fails.
 Future<String?> saveCoverAsFile(Track track) async {
   final cover = track.cover;
   if (cover == null || cover.isEmpty) {
@@ -150,9 +141,9 @@ Future<String?> saveCoverAsFile(Track track) async {
   });
 }
 
-/// Крупная версия сетевой обложки, при отказе — исходная ссылка.
+/// A larger version of a network cover; on refusal, the original link.
 Future<Uint8List> _fetchCover(String url) async {
-  // Referer — как на ПК: CDN SoundCloud без него иногда отвечает 403.
+  // Referer: SoundCloud's CDN sometimes answers 403 without it.
   const headers = {'Referer': 'https://soundcloud.com/'};
   final big = largeCoverUrl(url);
   if (big != url) {
@@ -162,7 +153,7 @@ Future<Uint8List> _fetchCover(String url) async {
           .timeout(const Duration(seconds: 15));
       if (r.statusCode == 200 && r.bodyBytes.isNotEmpty) return r.bodyBytes;
     } catch (_) {
-      // Крупной нет — ниже возьмём ту, что показывали.
+      // No large one: below I take the one shown.
     }
   }
   final r = await http
@@ -174,8 +165,8 @@ Future<Uint8List> _fetchCover(String url) async {
   return r.bodyBytes;
 }
 
-/// Ссылка на ту же обложку крупнее. Размер у всех трёх площадок сидит прямо в
-/// URL: Яндекс — `/400x400`, SoundCloud — `-t500x500`, YouTube — `=w544-h544`.
+/// A link to the same cover, larger. All three platforms keep size right in the
+/// URL: Yandex `/400x400`, SoundCloud `-t500x500`, YouTube `=w544-h544`.
 @visibleForTesting
 String largeCoverUrl(String url) {
   if (url.contains('avatars.yandex.net')) {
@@ -190,7 +181,7 @@ String largeCoverUrl(String url) {
   return url;
 }
 
-/// Расширение по сигнатуре байтов — как `ext` в десктопном `download_cover`.
+/// Extension by the bytes' signature.
 String _imageExt(Uint8List b) {
   if (b.length >= 4 && b[0] == 0x89 && b[1] == 0x50) return 'png';
   if (b.length >= 12 &&
@@ -203,13 +194,10 @@ String _imageExt(Uint8List b) {
   return 'jpg';
 }
 
-/// iOS: кладём файл в `Documents` приложения — ту самую папку, которую система
-/// показывает в «Файлах» (за это отвечают `UIFileSharingEnabled` и
-/// `LSSupportsOpeningDocumentsInPlace` в Info.plist).
-///
-/// Нативный код тут не нужен: это обычный каталог приложения. Общей медиатеки,
-/// как `Музыка/Bloom` на Android, у iOS для сторонних приложений нет — отсюда
-/// файл человек уже сам утаскивает куда хочет.
+/// iOS: the file goes to the app's `Documents`, the folder the system shows in
+/// Files (`UIFileSharingEnabled` and `LSSupportsOpeningDocumentsInPlace` make
+/// that so). It's an ordinary directory with no native code, and the user moves
+/// the file on from here.
 Future<String?> _saveToVisibleDir(
   File source,
   String filename,
@@ -218,7 +206,7 @@ Future<String?> _saveToVisibleDir(
   final dir = await appVisibleDir();
   if (!dir.existsSync()) await dir.create(recursive: true);
 
-  // Два трека могут называться одинаково — разводим, как и в офлайн-кеше.
+  // Two tracks may share a name, so they're separated, as in the offline cache.
   final dot = filename.lastIndexOf('.');
   final base = dot > 0 ? filename.substring(0, dot) : filename;
   final ext = dot > 0 ? filename.substring(dot) : '';
@@ -229,24 +217,22 @@ Future<String?> _saveToVisibleDir(
     i++;
   }
 
-  // Именно копия, а не переезд: источником может быть офлайн-копия, которая
-  // нужна плееру на своём месте.
+  // A copy, not a move: the source may be an offline copy the player needs in
+  // place.
   await source.copy(target.path);
   if (deleteSource) {
     try {
       await source.delete();
     } catch (_) {
-      // Временный файл не удалился — система подчистит его сама.
+      // The temp file wasn't removed, so the system will clean it up.
     }
   }
   return null;
 }
 
-/// Сохранить файлами весь список. Возвращает число неудач.
-///
-/// Ссылки резолвятся покадрово и с паузами — по той же причине, что и в
-/// офлайн-пакете: подписанный CDN-URL живёт минуты, а поток резолвов площадка
-/// начинает отбивать.
+/// Saves a whole list as files. Returns the number of failures. Links resolve
+/// one at a time with pauses, as in an offline batch: a signed CDN URL lives
+/// minutes, and a platform starts refusing a stream of resolves.
 Future<({int total, int failed})> saveListAsFiles(
   WidgetRef ref,
   String sourceId,
@@ -276,8 +262,8 @@ Future<({int total, int failed})> saveListAsFiles(
   return (total: pending.length, failed: failed);
 }
 
-/// Почему файл не сохранился. Текста тут нет намеренно — язык интерфейса
-/// известен только UI (`describeSaveError` в `offline_actions.dart`).
+/// Why a file wasn't saved. No text on purpose: only the UI knows the language
+/// (`describeSaveError`).
 enum DownloadFailureKind {
   notDownloadable,
   needPermission,
@@ -290,11 +276,11 @@ class DownloadFailure implements Exception {
 
   final DownloadFailureKind kind;
 
-  /// Текст от платформы для `unknown` — Android присылает своё сообщение.
+  /// The platform's text for `unknown`: Android sends its own message.
   final String? detail;
 }
 
-/// Разобрать пойманное исключение в причину.
+/// Parses a caught exception into a reason.
 DownloadFailure readableSaveError(Object e) {
   if (e is DownloadFailure) return e;
   if (e is PlatformException) {
