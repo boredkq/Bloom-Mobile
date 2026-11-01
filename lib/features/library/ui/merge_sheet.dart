@@ -1,13 +1,9 @@
-/// Шторка «Объединить с…»: выбрать плейлисты, из которых собрать новый.
+/// Merge with sheet: picks playlists to build a new one from. A name (filled in
+/// until touched), multi-select of other playlists, Remove duplicates (on by
+/// default), Delete sources (off by default), and a line counting the result.
 ///
-/// Порт десктопной `MergeModal` — тот же состав: имя (подставляется само, пока
-/// его не тронули), мультивыбор остальных плейлистов, «Убрать дубликаты» (по
-/// умолчанию включено) и «Удалить исходные» (по умолчанию нет), плюс строка со
-/// счётом того, что получится.
-///
-/// Сама шторка ничего не создаёт: она возвращает решение, а плейлист собирает
-/// вызывающий — как и «+» библиотеки (`showCreatePlaylistSheet`). Иначе после
-/// создания было бы некуда уйти: навигация живёт снаружи шторки.
+/// The sheet creates nothing: it returns a decision and the caller builds the
+/// playlist, since navigation lives outside the sheet.
 library;
 
 import 'package:flutter/material.dart';
@@ -23,7 +19,7 @@ import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../merge.dart';
 
-/// Что человек выбрал в шторке.
+/// What the user picked in the sheet.
 class _MergePlan {
   const _MergePlan({
     required this.name,
@@ -34,14 +30,14 @@ class _MergePlan {
 
   final String name;
 
-  /// Плейлисты, которые подмешиваем к исходному, в порядке выбора.
+  /// Playlists mixed into the source, in pick order.
   final List<String> ids;
 
   final bool dedup;
   final bool deleteSources;
 }
 
-/// Открыть шторку и собрать плейлист по её итогу.
+/// Opens the sheet and builds the playlist from its result.
 Future<void> showMergeSheet(
   BuildContext context,
   WidgetRef ref,
@@ -49,7 +45,7 @@ Future<void> showMergeSheet(
 ) async {
   final messenger = ScaffoldMessenger.of(context);
   final l10n = context.l;
-  // Объединять не с чем — говорим об этом сразу, а не пустой шторкой.
+  // Nothing to merge with: I say so at once rather than an empty sheet.
   final others = _mergeable(ref.read(libraryProvider), source);
   if (others.isEmpty) {
     messenger.toast(l10n.mgNothingToMerge, kind: ToastKind.info);
@@ -92,9 +88,8 @@ Future<void> showMergeSheet(
   );
 }
 
-/// С чем вообще можно объединять: все плейлисты, кроме самого исходного.
-/// Импортированные альбомы не исключаем — в отличие от «добавить трек», здесь
-/// альбом не правится, а читается.
+/// What can be merged: all playlists but the source itself. Imported albums
+/// stay: unlike adding a track, an album here is read, not edited.
 List<UserPlaylist> _mergeable(LibraryState lib, UserPlaylist source) => [
   for (final pl in lib.playlists)
     if (pl.id != source.id) pl,
@@ -111,12 +106,12 @@ class _MergeBody extends ConsumerStatefulWidget {
 
 class _MergeBodyState extends ConsumerState<_MergeBody> {
   late final TextEditingController _name = TextEditingController(
-    // Имя по умолчанию — как на ПК: «Вечер +». Пока его не тронули, оно
-    // остаётся подсказкой, а не выбором человека.
+    // Default name, the source's plus a sign. Until touched it stays a hint
+    // rather than the user's choice.
     text: '${widget.source.name} +',
   );
 
-  /// Выбранные плейлисты в порядке нажатия: он же и порядок склейки.
+  /// Picked playlists in press order, which is also the merge order.
   final List<String> _picked = [];
 
   bool _dedup = true;
@@ -130,8 +125,8 @@ class _MergeBodyState extends ConsumerState<_MergeBody> {
 
   void _submit() {
     final name = _name.text.trim();
-    // Молча ничего не делать нельзя: галочка нажата, значит человек ждёт
-    // результата — говорим, чего для него не хватает.
+    // Silently doing nothing won't do: the tick was pressed, so the user
+    // expects a result, and I say what's missing.
     if (_picked.isEmpty) {
       ScaffoldMessenger.of(
         context,
@@ -171,8 +166,8 @@ class _MergeBodyState extends ConsumerState<_MergeBody> {
           onChanged: (_) => setState(() {}),
           onSubmit: _submit,
         ),
-        // Счёт того, что получится, — сразу под именем: он меняется от каждой
-        // отметки, и видеть его надо там же, где отмечаешь.
+        // The result's count right under the name: it changes with each mark,
+        // and should show where you mark.
         SheetCaption(
           _picked.isEmpty
               ? context.l.mgPickHint
@@ -240,7 +235,7 @@ class _PlaylistRow extends StatelessWidget {
   final int tracks;
   final Iterable<String?> covers;
 
-  /// Номер в порядке склейки; `-1` — не выбран.
+  /// Number in merge order; `-1` if not picked.
   final int order;
 
   final VoidCallback onTap;

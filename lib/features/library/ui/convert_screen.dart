@@ -1,14 +1,11 @@
-/// Экран «Перенести на площадку»: ищет треки плейлиста на выбранной площадке и
-/// собирает из найденного новый плейлист.
+/// Transfer to platform screen: searches a playlist's tracks on the picked
+/// platform and builds a new playlist from what's found. The platform is picked
+/// in the menu sheet and the scan starts at once: an extra pick-then-press step
+/// adds only a press.
 ///
-/// Порт десктопной `ConvertModal`, но фазы поделены иначе: площадку выбирают
-/// ещё в шторке меню (`showConvertSheet`), а экран сразу начинает скан — на
-/// телефоне лишний шаг «выберите площадку → нажмите Перенести» ничего не
-/// добавляет, кроме нажатия.
-///
-/// Обложку исходного плейлиста копии НЕ отдаём (на ПК отдают): у нас это файл в
-/// каталоге приложения, и два плейлиста на одну картинку означали бы, что
-/// удаление любого из них оставляет второй без обложки.
+/// The source's cover isn't given to the copy: it's a file in the app's
+/// directory, and with two playlists on one picture, deleting either would
+/// leave the other with none.
 library;
 
 import 'package:flutter/material.dart';
@@ -33,7 +30,7 @@ import '../../../shared/ui/track_actions.dart';
 import '../convert_playlist.dart';
 import '../../../shared/ui/glass.dart';
 
-/// Шторка выбора площадки, за которой открывается сам перенос.
+/// Platform picker sheet, followed by the transfer itself.
 Future<void> showConvertSheet(
   BuildContext context,
   WidgetRef ref,
@@ -53,9 +50,9 @@ Future<void> showConvertSheet(
       title: context.l.cvTitle,
       subtitle: playlist.name,
     ),
-    // Закрываем шторку её же навигатором (снаружи `Navigator.of` найдёт
-    // навигатор вкладки), а экран переноса открываем корневым — он должен
-    // накрыть и таб-бар с миниплеером.
+    // The sheet closes through its own navigator (from outside `Navigator.of`
+    // finds the tab's), and the transfer screen opens with the root one, to
+    // cover the tab bar and mini player.
     child: Builder(
       builder: (sheetContext) => SheetPanel(
         children: [
@@ -92,7 +89,7 @@ class ConvertScreen extends ConsumerStatefulWidget {
 
   final UserPlaylist playlist;
 
-  /// Состав исходного плейлиста в его собственном порядке.
+  /// Source playlist's contents in its own order.
   final List<Track> tracks;
 
   final MusicSource target;
@@ -109,8 +106,8 @@ class _ConvertScreenState extends ConsumerState<ConvertScreen> {
   int _done = 0;
   bool _scanning = true;
 
-  /// Экран закрыли — скан обязан остановиться: он ходит в сеть по треку за
-  /// треком, и доедать сотню запросов в никуда незачем.
+  /// Once the screen closes the scan must stop: it hits the network track by
+  /// track, and a hundred requests to nowhere aren't needed.
   bool _closed = false;
 
   @override
@@ -152,7 +149,7 @@ class _ConvertScreenState extends ConsumerState<ConvertScreen> {
   void _decide(String srcId, ConvertDecision decision) =>
       setState(() => _decisions = {..._decisions, srcId: decision});
 
-  /// Массово принять лучшего кандидата везде, где он есть, — включая спорные.
+  /// Takes the best candidate everywhere there is one, doubtful ones included.
   void _takeBest() => setState(() {
     _decisions = {
       for (final item in _items)
@@ -167,8 +164,8 @@ class _ConvertScreenState extends ConsumerState<ConvertScreen> {
     if (tracks.isEmpty) return;
     final l10n = context.l;
     final messenger = ScaffoldMessenger.of(context);
-    // Роутер берём ДО закрытия экрана: после `pop` этот context уже отвязан от
-    // дерева, и уйти по нему в созданный плейлист не выйдет.
+    // I take the router BEFORE closing the screen: after `pop` this context has
+    // left the tree and can't navigate to the new playlist.
     final router = GoRouter.of(context);
     final name = _name.text.trim().isEmpty ? _autoName : _name.text.trim();
     final created = ref
@@ -323,7 +320,7 @@ class _Scanning extends StatelessWidget {
   }
 }
 
-/// Строка итога по одному треку: что нашли и что с ним будет.
+/// Result row for one track: what was found and what happens to it.
 class _ItemRow extends StatelessWidget {
   const _ItemRow({
     required this.item,
@@ -357,8 +354,8 @@ class _ItemRow extends StatelessWidget {
       },
     };
 
-    // Выбирать не из чего у тех, кто уже на площадке или не нашёлся вовсе:
-    // строка тогда просто рассказывает, что с треком будет.
+    // Nothing to pick from for those already on the platform or not found: the
+    // row just tells what happens.
     final canChoose = item.cands.isNotEmpty;
 
     return Padding(
@@ -397,7 +394,7 @@ class _ItemRow extends StatelessWidget {
     );
   }
 
-  /// Шторка решения по треку: кандидаты, «оставить оригинал», «пропустить».
+  /// Decision sheet for a track: candidates, keep original, skip.
   Future<void> _choose(BuildContext context) async {
     final l = context.l;
     await showBloomSheetChild<void>(
@@ -407,8 +404,8 @@ class _ItemRow extends StatelessWidget {
         title: item.src.name,
         subtitle: item.src.artist,
       ),
-      // Закрывать шторку — её же навигатором: снаружи `Navigator.of` нашёл бы
-      // навигатор страницы и закрыл сам перенос.
+      // The sheet closes through its own navigator: from outside `Navigator.of`
+      // would find the page's and close the transfer itself.
       child: Builder(
         builder: (sheetContext) => Column(
           mainAxisSize: MainAxisSize.min,

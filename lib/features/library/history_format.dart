@@ -1,10 +1,7 @@
-/// Подписи «Истории» — порт десктопных `historyLabel` и `historyTime`
-/// (`features/library/lib/formatCount.ts`).
-///
-/// Заголовок группы: «Сегодня» / «Вчера» / «N дней назад» / «Неделю назад» /
-/// «15 марта». Дни считаются КАЛЕНДАРНЫЕ, а не по 86 400 000 мс: иначе
-/// прослушивание в 00:30 попадало бы во «вчера» до самого обеда, а в поясах с
-/// переводом часов границы дней уезжают ещё и на час.
+/// History captions. A group header: Today, Yesterday, N days ago, A week ago
+/// or a date. Days are CALENDAR days rather than 86,400,000 ms: otherwise a
+/// play at 00:30 would land in yesterday until noon, and with clock changes day
+/// edges move an hour too.
 library;
 
 import 'package:flutter/material.dart';
@@ -12,13 +9,13 @@ import 'package:intl/intl.dart';
 
 import '../../core/l10n/l10n.dart';
 
-/// Номер календарного дня — считаем в UTC от той же тройки Y-M-D, чтобы
-/// вычитание не зависело от длины местных суток.
+/// Calendar day number, in UTC from the same Y-M-D triple, so subtraction
+/// doesn't depend on local day length.
 int _dayNumber(DateTime local) =>
     DateTime.utc(local.year, local.month, local.day).millisecondsSinceEpoch ~/
     Duration.millisecondsPerDay;
 
-/// Заголовок группы для записи истории, сделанной в [at].
+/// Group header for a history entry made at [at].
 String historyLabel(BuildContext context, DateTime at, {DateTime? now}) {
   final l = context.l;
   final days = _dayNumber(now ?? DateTime.now()) - _dayNumber(at);
@@ -26,14 +23,14 @@ String historyLabel(BuildContext context, DateTime at, {DateTime? now}) {
   if (days == 1) return l.histYesterday;
   if (days < 7) return l.histDaysAgo(days);
   if (days < 14) return l.histWeekAgo;
-  // «15 марта» — без года, как на десктопе: дальше двух недель точная дата
-  // важнее, чем «сколько прошло», а год в истории на 200 записей не нужен.
+  // A date with no year: past two weeks the exact date matters more than how
+  // long ago, and a year isn't needed in a 200-entry history.
   return DateFormat.MMMMd(
     Localizations.localeOf(context).toString(),
   ).format(at);
 }
 
-/// «18:32» у строки истории. Формат берём у Material: он знает и локаль, и
-/// системную настройку 12/24 часа — на телефоне это ожидаемее жёстких 24.
+/// Time on a history row. Material's format knows the locale and the system's
+/// 12/24 hour setting.
 String historyTime(BuildContext context, DateTime at) =>
     TimeOfDay.fromDateTime(at).format(context);

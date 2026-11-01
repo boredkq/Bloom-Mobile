@@ -1,19 +1,15 @@
-/// Авто-обновление плейлистов — порт `AutoRefresh` ПК.
+/// Playlist auto-update. Marked playlists are visited in turn and get new
+/// tracks from their sources (`pl.sources`, possibly several, from different
+/// platforms), so any playlist with ties is a candidate.
 ///
-/// Отмеченные плейлисты обходятся по очереди и получают новые треки из своих
-/// источников (`pl.sources` — как на ПК, их может быть несколько и с разных
-/// площадок), так что кандидат — любой плейлист с привязками.
+/// The mark is the playlist's own flag ([UserPlaylist.autoRefresh]); the
+/// schedule (on, period, at launch) is settings; when the last pass was and how
+/// it ended per playlist are database kv (`autoRefresh.last`,
+/// `autoRefresh.runs`).
 ///
-/// Раскладка как на ПК: отметка — флажок самого плейлиста
-/// ([UserPlaylist.autoRefresh]), расписание (вкл., период, «при запуске») —
-/// настройки, а когда был последний проход и чем кончился у каждого плейлиста
-/// — `kv` базы (`autoRefresh.last`, `autoRefresh.runs`).
-///
-/// Расписание живёт таймером внутри процесса: разбудить приложение, когда его
-/// закрыли, нечем — фоновых задач у нас нет. Поэтому проход случается либо при
-/// запуске («Проверять при запуске»), либо пока приложение открыто; `lastRun`
-/// хранится на диске, и после долгого перерыва первый же тик увидит, что срок
-/// вышел.
+/// The schedule is a timer inside the process: nothing can wake a closed app.
+/// So a pass happens at launch or while the app is open; `lastRun` is on disk,
+/// and after a long gap the first tick sees it's overdue.
 library;
 
 import 'dart:async';
@@ -28,20 +24,20 @@ import '../../core/l10n/l10n.dart';
 import '../../shared/ui/bloom_toast.dart';
 import 'refresh_playlist.dart';
 
-/// Варианты периода (минуты) — те же, что в сегмент-переключателе на ПК.
+/// Period options, in minutes.
 const List<int> kPlAutoIntervals = [30, 60, 180, 720, 1440];
 
-/// Ключи `kv` — те же, что у ПК.
+/// kv keys.
 const String _kLast = 'autoRefresh.last';
 const String _kRuns = 'autoRefresh.runs';
 
-/// Пауза перед стартовым проходом: площадкам надо успеть подняться.
+/// Pause before the launch pass: platforms need time to come up.
 const Duration _onStartDelay = Duration(seconds: 12);
 
-/// Как часто смотрим, не пора ли обновлять.
+/// How often I check whether an update is due.
 const Duration _tick = Duration(minutes: 1);
 
-/// Чем кончился последний проход по конкретному плейлисту.
+/// How the last pass over one playlist ended.
 class PlAutoRun {
   const PlAutoRun({required this.at, this.added = 0, this.failed = false});
 
@@ -81,14 +77,14 @@ class PlAutoState {
   final int everyMin;
   final bool onStart;
 
-  /// Когда закончился последний проход — от него считается следующий.
+  /// When the last pass ended; the next counts from it.
   final int lastRun;
 
-  /// Последнее обновление каждого плейлиста — и руками тоже, как на ПК.
+  /// Last update of each playlist, by hand too.
   final Map<String, PlAutoRun> runs;
 
-  /// Идёт проход: `null` — простой, иначе id обновляемого плейлиста (пустая
-  /// строка — проход только что стартовал).
+  /// A pass is on: `null` is idle, otherwise the updating playlist's id (an
+  /// empty string means it just started).
   final String? busy;
 
   bool get running => busy != null;
@@ -111,7 +107,7 @@ class PlAutoState {
   );
 }
 
-/// Итог прохода — для тех, кто его запустил руками.
+/// A pass's result, for those who started it by hand.
 class PlAutoSweep {
   const PlAutoSweep({
     this.added = 0,
@@ -120,15 +116,15 @@ class PlAutoSweep {
     this.skipped = false,
   });
 
-  /// Всего добавлено треков.
+  /// Total tracks added.
   final int added;
 
-  /// В скольких плейлистах что-то появилось.
+  /// Playlists in which something appeared.
   final int changed;
 
   final int failed;
 
-  /// Проход не запускался: нечего обновлять или уже идёт.
+  /// The pass didn't start: nothing to update, or one is running.
   final bool skipped;
 }
 
@@ -146,7 +142,7 @@ class PlAutoController extends Notifier<PlAutoState> {
   PlAutoState build() {
     final raw = ref.read(jsonStoreProvider).readMap('plAuto');
     final everyMin = (raw['everyMin'] as num?)?.toInt();
-    // Плейлисты, которых больше нет, забываются.
+    // Playlists that are gone get forgotten.
     final alive = {for (final p in ref.read(libraryProvider).playlists) p.id};
     final saved = _db.getMap(_kRuns);
     final runs = <String, PlAutoRun>{};
@@ -178,8 +174,8 @@ class PlAutoController extends Notifier<PlAutoState> {
     _db.set(_kLast, at);
   }
 
-  /// Запомнить, чем кончилось обновление плейлиста: [added] `null` — ни один
-  /// источник не ответил. Обновление руками считается тоже, как на ПК.
+  /// Remembers how a playlist's update ended: a `null` [added] means no source
+  /// answered. Updates by hand count too.
   void record(String id, int? added) {
     final runs = {
       ...state.runs,
@@ -193,10 +189,10 @@ class PlAutoController extends Notifier<PlAutoState> {
     _saveRuns(runs);
   }
 
-  // ── Настройки ───────────────────────────────────────────────────────────
+  // ── Settings ────────────────────────────────────────────────────────────
 
-  /// Включение сдвигает отсчёт: иначе давно не обновлявшаяся библиотека
-  /// ушла бы в проход прямо в момент нажатия тумблера.
+  /// Turning on moves the count, or a library long without updates would start
+  /// a pass as the switch is pressed.
   void setEnabled(bool value) {
     state = state.copyWith(enabled: value);
     if (value) _setLastRun(DateTime.now().millisecondsSinceEpoch);
@@ -213,33 +209,31 @@ class PlAutoController extends Notifier<PlAutoState> {
     _saveSettings();
   }
 
-  // ── Цели ────────────────────────────────────────────────────────────────
+  // ── Targets ─────────────────────────────────────────────────────────────
 
-  /// Плейлисты, которым есть откуда тянуть треки.
+  /// Playlists with somewhere to pull tracks from.
   List<UserPlaylist> candidates() => ref
       .read(libraryProvider)
       .playlists
       .where((p) => p.sources.isNotEmpty)
       .toList();
 
-  /// Отмеченные для автообновления.
+  /// Those marked for auto-update.
   List<UserPlaylist> targets() =>
       candidates().where((p) => p.autoRefresh).toList();
 
-  // ── Проход ──────────────────────────────────────────────────────────────
+  // ── Pass ────────────────────────────────────────────────────────────────
 
-  /// Обойти отмеченные плейлисты по очереди.
-  ///
-  /// [silent] — фоновый проход по расписанию: молчим, пока ничего не нашли.
-  /// Запущенный руками показывает живой тост с прогрессом.
+  /// Visits the marked playlists in turn. [silent] is a scheduled pass, quiet
+  /// until it finds something. One started by hand shows a live progress toast.
   Future<PlAutoSweep> runSweep({bool silent = false}) async {
     if (state.running) return const PlAutoSweep(skipped: true);
     final targets = this.targets();
     if (targets.isEmpty) return const PlAutoSweep(skipped: true);
 
     final messenger = bloomMessengerKey.currentState;
-    // Проход по расписанию говорит из таймера, когда своего экрана у него нет,
-    // — язык берётся у глобального мессенджера (см. `globalL10n`).
+    // A scheduled pass speaks from a timer with no screen of its own, so the
+    // language comes from the global messenger (see `globalL10n`).
     final l10n = globalL10n;
     final toast = silent || l10n == null
         ? null
@@ -292,9 +286,9 @@ class PlAutoController extends Notifier<PlAutoState> {
     return result;
   }
 
-  // ── Расписание ──────────────────────────────────────────────────────────
+  // ── Schedule ────────────────────────────────────────────────────────────
 
-  /// Поднять фоновый таймер. Идемпотентно: зовётся один раз из `main`.
+  /// Starts the background timer. Idempotent, called once from `main`.
   void startScheduler() {
     if (_scheduled) return;
     _scheduled = true;

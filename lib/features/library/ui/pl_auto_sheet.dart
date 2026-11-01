@@ -1,9 +1,7 @@
-/// Шторка «Авто-обновление плейлистов» — порт десктопного `PlAutoDrawer`.
-///
-/// Состав тот же: расписание (тумблер, период, «проверять при запуске»), список
-/// плейлистов с источниками и «Обновить сейчас». Отличие одно — кнопка обхода
-/// закрывает шторку: прогресс на телефоне показывает живой тост, а он лежит
-/// ПОД шторкой и из-под неё не виден.
+/// Playlist auto-update sheet: the schedule (switch, period, check at launch),
+/// the list of playlists with sources, and Update now. That button closes the
+/// sheet: a live toast shows progress, lying UNDER the sheet where it can't be
+/// seen.
 library;
 
 import 'package:flutter/material.dart';
@@ -18,11 +16,11 @@ import '../../../shared/ui/bloom_sheet.dart';
 import '../pl_auto_store.dart';
 import '../../settings/ui/settings_rows.dart';
 
-/// «30 мин» / «3 ч» — подпись периода (десктопный `fmtEvery`).
+/// Period caption.
 String _fmtEvery(AppLocalizations l, int min) =>
     min < 60 ? l.paEveryMinutes(min) : l.paEveryHours((min / 60).round());
 
-/// «2 ч назад» — когда плейлист обновлялся в последний раз.
+/// When a playlist last updated, as time ago.
 String _ago(AppLocalizations l, int at) {
   final min = ((DateTime.now().millisecondsSinceEpoch - at) / 60000)
       .round()
@@ -36,9 +34,8 @@ String _ago(AppLocalizations l, int at) {
 
 Future<void> showPlAutoSheet(BuildContext context, WidgetRef ref) {
   final auto = ref.read(plAutoProvider.notifier);
-  // Первое открытие: отмечаем всё, что можно обновлять. Пустой список целей
-  // означал бы неактивную кнопку «Обновить сейчас» на ровном месте — на ПК
-  // цели набираются мышью в сайдбаре, здесь набирать их неоткуда.
+  // First opening: I mark all that can update. An empty target list would mean
+  // an inactive Update now out of nowhere, with nowhere else to pick targets.
   final candidates = auto.candidates();
   if (ref.read(plAutoProvider).lastRun == 0 &&
       !candidates.any((p) => p.autoRefresh)) {
@@ -160,7 +157,7 @@ class _PlAutoBody extends ConsumerWidget {
   }
 }
 
-/// Шапка: иконка обновления, заголовок и чипы состояния — как `mpl-hero` на ПК.
+/// Header: an update icon, title and state chips.
 class _Hero extends ConsumerWidget {
   const _Hero({required this.selected, required this.candidates});
 

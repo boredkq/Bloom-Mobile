@@ -1,17 +1,13 @@
-/// Секция «Источники обновления» в правке плейлиста — порт десктопного
-/// `PlSourcesEditor`.
+/// Refresh sources section of a playlist's edit: shows tied collections
+/// (playlists, albums, likes of any platform) and ties a new one by a pasted
+/// link. Tie resolves it the same way as import (`resolveCollectionUrl`),
+/// checking it's a collection and getting its id, title and owner.
 ///
-/// Показывает привязанные коллекции (плейлисты/альбомы/лайки любых площадок) и
-/// даёт привязать новую вставкой ссылки: по «Привязать» ссылка резолвится тем
-/// же путём, что и импорт (`resolveCollectionUrl`), — так проверяем, что это
-/// вообще коллекция, и заодно забираем её id, название и владельца.
+/// The parent's draft ([ListEditor]) writes only on ✓, like name and cover: the
+/// network is hit at once, the tie isn't.
 ///
-/// Черновик живёт у родителя ([ListEditor]) и записывается только по ✓, как имя
-/// и обложка: сеть здесь дёргается сразу, а вот сама привязка — нет.
-///
-/// На странице правки секции больше нет: она стоит за кнопкой в шапке и
-/// открывается шторкой ([showPlSourcesSheet]) — между обложкой и треками она
-/// разрывала список и читалась как довесок к первой строке.
+/// It lives behind a header button as a sheet ([showPlSourcesSheet]): between
+/// cover and tracks it split the list.
 library;
 
 import 'package:flutter/material.dart';
@@ -30,9 +26,9 @@ import '../../../shared/ui/platform_logo.dart';
 import '../import_url.dart';
 import 'create_playlist_sheet.dart' show detectLinkSource;
 
-/// Открыть источники шторкой. Правки уходят наверх [onChanged] по мере дела, а
-/// не по закрытию: шторку бросают и свайпом, и «назад», и терять привязки на
-/// этом нельзя. В сам плейлист они всё так же попадают только по ✓ страницы.
+/// Opens sources as a sheet. Edits go up through [onChanged] as they happen,
+/// not on closing: the sheet gets dismissed by swipe and Back, and ties can't
+/// be lost that way. They still reach the playlist only on the page's ✓.
 Future<void> showPlSourcesSheet(
   BuildContext context, {
   required List<PlSourceRef> sources,
@@ -44,8 +40,8 @@ Future<void> showPlSourcesSheet(
   );
 }
 
-/// Черновик источников на время жизни шторки: страница под ней уже не
-/// перестраивается, и обновлять список привязок некому.
+/// Source draft for the sheet's life: the page below doesn't rebuild, and
+/// nobody else would update the list of ties.
 class _PlSourcesSheet extends StatefulWidget {
   const _PlSourcesSheet({required this.sources, required this.onChanged});
 
@@ -86,7 +82,7 @@ class PlSourcesEditor extends ConsumerStatefulWidget {
 class _PlSourcesEditorState extends ConsumerState<PlSourcesEditor> {
   final _url = TextEditingController();
 
-  /// Идёт резолв вставленной ссылки.
+  /// Resolving a pasted link.
   bool _busy = false;
 
   @override
@@ -98,7 +94,7 @@ class _PlSourcesEditorState extends ConsumerState<PlSourcesEditor> {
   Future<void> _add() async {
     final url = _url.text.trim();
     if (url.isEmpty || _busy) return;
-    // Та же ссылка — дубль и без сети.
+    // The same link is a duplicate with no network.
     if (widget.sources.any((s) => s.url == url)) {
       showToast(context, context.l.psDuplicate, kind: ToastKind.warn);
       return;
@@ -108,7 +104,7 @@ class _PlSourcesEditorState extends ConsumerState<PlSourcesEditor> {
       final found = await resolveCollectionUrl(ref.read(registryProvider), url);
       if (!mounted) return;
       setState(() => _busy = false);
-      // Другая ссылка на ту же коллекцию — тоже дубль: сверяем по id.
+      // Another link to the same collection is a duplicate too, checked by id.
       if (widget.sources.any((s) => s.id == found.source.id)) {
         showToast(context, context.l.psDuplicate, kind: ToastKind.warn);
         return;

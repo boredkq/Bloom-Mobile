@@ -1,26 +1,21 @@
-/// Свои треки: файлы с телефона, добавленные плюсом в шапке «Всех треков».
+/// Local tracks: files from the phone, added by the plus in the all tracks
+/// header.
 ///
-/// Порт десктопных `importTracks` + `add_files`/`make_track` из
-/// `folder_watcher.rs`. Отличия от ПК, сделанные осознанно:
+/// No folders: an app has no shared file system to watch, so only single files
+/// picked in the system dialog.
 ///
-/// - **папок нет.** На десктопе за папками следит `notify`, и одиночный файл
-///   там частный случай общего механизма. На телефоне общей файловой системы,
-///   за которой можно следить, у приложения нет — остаются ровно одиночные
-///   файлы, выбранные человеком в системном диалоге.
-/// - **теги читает не Dart.** Пакета-тегочиталки не тянем (как не тянули ради
-///   уведомлений и скачивания): на Android это `MediaMetadataRetriever`, на
-///   iOS — `AVAsset`, оба уже умеют mp3/flac/m4a/ogg и отдают встроенную
-///   обложку. Байты через канал не гоняем: нативная сторона сама кладёт
-///   обложку в `covers/`, а в Dart едет имя файла.
-/// - **id стабильный, но не от пути**, как `lf`+md5(path) на ПК, а `lf`+md5
-///   от КЛЮЧА (см. [localTrackKey]): в режиме «помнить путь» это выданный
-///   системой `content://`, в режиме копии — «имя|размер» исходника. Иначе
-///   повторное добавление того же файла давало бы второй трек: у копии каждый
-///   раз новое имя.
+/// Dart doesn't read tags: on Android it's `MediaMetadataRetriever`, on iOS
+/// `AVAsset`, both handle mp3, flac, m4a and ogg and give the embedded cover.
+/// No bytes over the channel: the native side stores the cover and Dart gets a
+/// file name.
 ///
-/// Файл трека живёт в одном из двух мест, см. [LocalImportMode]. В `sourceData`
-/// хранится ИМЯ файла копии, а не путь: контейнер приложения на iOS переезжает
-/// между запусками (та же причина, что у обложек и офлайн-копий).
+/// The id is stable but not from a path: `lf` plus md5 of the KEY (see
+/// [localTrackKey]). In remember path mode that's the system's `content://`, in
+/// copy mode the source's name and size. Otherwise adding a file again gives a
+/// second track, since a copy gets a new name each time.
+///
+/// The file lives in one of two places ([LocalImportMode]). `sourceData` keeps
+/// the copy's NAME, not a path: the iOS app container moves between launches.
 library;
 
 import 'dart:convert';
@@ -37,15 +32,14 @@ import '../../core/store/cover_store.dart';
 import '../../core/store/library_store.dart';
 import '../../core/store/settings_store.dart';
 
-/// Тот же канал, что у файла пресетов: обе стороны — системные диалоги файлов,
-/// заводить второй канал ради двух методов незачем.
+/// The same channel as preset files: both are system file dialogs, and two
+/// methods don't merit a second one.
 const MethodChannel _channel = MethodChannel('bloom/files');
 
 Directory? _dir;
 
-/// Готовит каталог своих треков (`tracks/` внутри данных приложения). Зовётся
-/// из `main()` до первого кадра: дальше путь нужен синхронно, прямо в `_load`
-/// плеера.
+/// Prepares the local tracks directory. Called from `main()` before the first
+/// frame: afterwards the path is needed synchronously, in the player's `_load`.
 Future<void> initLocalTracks() async {
   final root = await appPrivateDir();
   final dir = Directory('${root.path}/tracks');
@@ -53,51 +47,49 @@ Future<void> initLocalTracks() async {
     if (!dir.existsSync()) await dir.create(recursive: true);
     _dir = dir;
   } catch (_) {
-    // Нет прав на запись — режим копии просто не сработает, остальное живо.
+    // No write rights: copy mode just won't work, the rest lives.
   }
 }
 
-/// Каталог копий; `null` — он не поднялся.
+/// Copies directory; `null` if it didn't come up.
 String? localTracksDirPath() => _dir?.path;
 
-/// Свой ли это трек. Именно по источнику И по данным: `MusicSource.fromId`
-/// отдаёт `local` любому id без префикса площадки, а играть можно только то,
-/// за чем стоит файл.
+/// Whether this is a local track, by source AND data: `MusicSource.fromId`
+/// gives `local` to any id with no platform prefix, and only what has a file
+/// behind it can play.
 bool isLocalTrack(Track track) =>
     track.source == MusicSource.local && track.sourceData?['key'] is String;
 
-/// Ключ дедупа: по нему считается id и по нему же нативная сторона отсеивает
-/// уже добавленное.
+/// Dedupe key: the id is computed from it, and the native side filters out
+/// what's already added by it.
 String? localTrackKey(Track track) {
   final key = track.sourceData?['key'];
   return key is String ? key : null;
 }
 
-/// Сквозной id своего трека — `lf:` + md5 ключа. Префикс как на ПК; хеш свой
-/// (там — по звуку файла), но свои файлы между устройствами и не ездят.
+/// A local track's global id: `lf:` plus md5 of the key. Local files don't
+/// travel between devices.
 String localTrackId(String key) =>
     'lf:${md5.convert(utf8.encode(key.toLowerCase()))}';
 
-/// Ключи всего, что уже добавлено: нативной стороне, чтобы не копировать и не
-/// разбирать файл, который в библиотеке и так есть.
+/// Keys of all that's added, so the native side doesn't copy or parse a file
+/// already in the library.
 ///
-/// Считаем по «Всем трекам», а не по всему хранилищу: удалённый свой трек
-/// остаётся в `tracks`, пока на него ссылается история, и по хранилищу выходило
-/// бы, что файл «уже добавлен», — импорт молча отсеял бы его, и вернуть трек
-/// после удаления стало бы нечем. Библиотека тут полный список: лайк и плейлист
-/// кладут трек в неё сами.
+/// Counted over all tracks rather than the whole store: a deleted local track
+/// stays in `tracks` while history refers to it, and by the store a file would
+/// look added, so import would silently drop it with no way to bring it back.
+/// The library is a full list here: a like or a playlist puts a track in it.
 List<String> knownLocalKeys(LibraryState lib) => [
   for (final id in lib.inLib.keys)
     if (lib.tracks[id] case final track?) ?localTrackKey(track),
 ];
 
-/// Где лежит файл своего трека: `file://` копии внутри приложения либо
-/// `content://` исходника. `null` — трек не свой, каталог не поднялся или
-/// копию уже стёрли.
+/// Where a local track's file is: a copy's `file://` or the source's
+/// `content://`. `null` if it isn't local, the directory didn't come up or the
+/// copy was erased.
 ///
-/// Для `content://` существование не проверяем: узнать это можно только
-/// открыв поток, и делать это на каждый `_load` дороже, чем один раз честно
-/// упасть в ошибку плеера.
+/// No existence check for `content://`: that means opening a stream, and doing
+/// so on every `_load` costs more than failing once in a player error.
 Uri? localTrackUri(Track track) {
   if (!isLocalTrack(track)) return null;
   final file = track.sourceData?['file'];
@@ -111,12 +103,12 @@ Uri? localTrackUri(Track track) {
   return uri is String ? Uri.tryParse(uri) : null;
 }
 
-/// «Артист - Название» из имени файла — тот же фолбэк, что в `make_track` на
-/// ПК: у файла без тегов имя обычно единственное, что о нём известно.
+/// Artist and title from a file name: for a file with no tags the name is often
+/// all that's known.
 ({String artist, String name}) splitFileName(String fileName) {
   var stem = fileName;
   final dot = stem.lastIndexOf('.');
-  // Точка первым символом — не расширение, а скрытый файл.
+  // A dot in first place isn't an extension but a hidden file.
   if (dot > 0) stem = stem.substring(0, dot);
   final sep = stem.indexOf(' - ');
   if (sep < 0) return (artist: '', name: stem.trim());
@@ -132,8 +124,8 @@ String? _norm(Object? value) {
   return s.isEmpty ? null : s;
 }
 
-/// Год из тега: у vorbis/mp4 там обычно полная дата («2019-04-05»), и на ПК от
-/// неё точно так же берут первые четыре цифры.
+/// Year from a tag: vorbis and mp4 usually hold a full date (2019-04-05), so I
+/// take the first four digits.
 String? _year(Object? value) {
   final raw = _norm(value);
   if (raw == null) return null;
@@ -141,11 +133,9 @@ String? _year(Object? value) {
   return match?.group(0);
 }
 
-/// Ответ нативной стороны → трек библиотеки. Порт `fromLocal` + `make_track`:
-/// пустой тег заменяется тем, что удалось вытащить из имени файла, а совсем
-/// безымянному артисту достаётся «Неизвестный».
-///
-/// `null` — запись битая (без ключа играть нечего).
+/// Native answer to a library track. An empty tag gives way to what the file
+/// name yields, and a nameless artist gets the unknown label. `null` for a
+/// broken entry: with no key there's nothing to play.
 Track? localTrackFromEntry(Object? raw, {required String unknownArtist}) {
   if (raw is! Map) return null;
   final key = _norm(raw['key']);
@@ -172,8 +162,7 @@ Track? localTrackFromEntry(Object? raw, {required String unknownArtist}) {
     cover: cover == null ? null : localCoverRef(cover),
     album: _norm(raw['album']),
     year: _year(raw['year']),
-    // Несколько жанров в одном теге разделяются `;` или нулём — режем так же,
-    // как lofty-часть на ПК.
+    // Several genres in a tag are split by `;` or a null.
     genres: genre == null
         ? const []
         : [
@@ -190,29 +179,27 @@ Track? localTrackFromEntry(Object? raw, {required String unknownArtist}) {
   );
 }
 
-/// Чем кончился поход в системный диалог.
+/// How the trip to the system dialog ended.
 enum LocalImportStatus {
-  /// Диалог закрыли, ничего не выбрав, — говорить не о чем.
+  /// The dialog was closed with nothing picked: nothing to say.
   cancelled,
 
-  /// Файлы выбрали, но добавить нечего: всё это уже в библиотеке либо не
-  /// читается (десктопный `lib.import.nothingAdded`).
+  /// Files were picked, with nothing to add: all already in the library or
+  /// unreadable.
   nothing,
 
-  /// Добавили.
+  /// Added.
   added,
 
-  /// Диалога нет или он ответил ошибкой.
+  /// No dialog, or it answered with an error.
   failed,
 }
 
 typedef LocalImportResult = ({LocalImportStatus status, int added});
 
-/// Выбрать свои файлы и положить их в библиотеку.
-///
-/// Всё тяжёлое (копирование, чтение тегов, обложка) делает нативная сторона —
-/// она же отсеивает дубли по [knownLocalKeys]: гонять мегабайты и разбирать
-/// теги ради трека, который в библиотеке уже есть, незачем.
+/// Picks local files and puts them in the library. The native side does the
+/// heavy work (copying, tags, cover) and filters duplicates by
+/// [knownLocalKeys], so megabytes don't move for a track already there.
 Future<LocalImportResult> importLocalTracks(
   WidgetRef ref,
   AppLocalizations l,
@@ -237,7 +224,7 @@ Future<LocalImportResult> importLocalTracks(
   } on PlatformException {
     return (status: LocalImportStatus.failed, added: 0);
   } on MissingPluginException {
-    // Платформа без нативной стороны (тесты, десктоп).
+    // A platform with no native side (tests).
     return (status: LocalImportStatus.failed, added: 0);
   }
   if (entries == null) return (status: LocalImportStatus.cancelled, added: 0);
@@ -248,19 +235,17 @@ Future<LocalImportResult> importLocalTracks(
   ];
   if (batch.isEmpty) return (status: LocalImportStatus.nothing, added: 0);
 
-  // Новые треки уходят наверх «Всех треков» — там сортировка по времени
-  // добавления, и `addToLibrary` ставит им время больше всех прежних.
+  // New tracks go on top of all tracks: it's sorted by add time, and
+  // `addToLibrary` gives them a later time than any before.
   final added = ref.read(libraryProvider.notifier).addToLibrary(batch);
   return added == 0
       ? (status: LocalImportStatus.nothing, added: 0)
       : (status: LocalImportStatus.added, added: added);
 }
 
-/// Убрать за удалённым своим треком: копию внутри приложения и её обложку — с
-/// диска, разрешение на чужой файл — вернуть системе.
-///
-/// Сам файл пользователя НЕ трогаем: ровно как `remove_file` на ПК, где
-/// стирается только копия, сделанная режимом «В Bloom».
+/// Cleans up after a deleted local track: the app's copy and its cover from
+/// disk, and the permission to the user's file back to the system. The user's
+/// file itself is NOT touched.
 Future<void> forgetLocalTracks(Iterable<Track> tracks) async {
   for (final track in tracks) {
     if (!isLocalTrack(track)) continue;
@@ -272,7 +257,7 @@ Future<void> forgetLocalTracks(Iterable<Track> tracks) async {
           final copy = File('${dir.path}/$file');
           if (copy.existsSync()) await copy.delete();
         } catch (_) {
-          // Не удалилась — это просто мусор в каталоге, не повод падать.
+          // Not removed is just junk in the directory, no reason to crash.
         }
       }
     }
@@ -281,26 +266,24 @@ Future<void> forgetLocalTracks(Iterable<Track> tracks) async {
       try {
         await _channel.invokeMethod<void>('releaseAudio', {'uri': uri});
       } on PlatformException {
-        // Разрешение уже отозвано или его не было — нам всё равно.
+        // Permission already revoked or never there: doesn't matter.
       } on MissingPluginException {
-        // Платформа без нативной стороны.
+        // A platform with no native side.
       }
     }
     await deleteCover(track.cover);
   }
 }
 
-/// Свои треки среди [ids] — вызывающему обычно известны только id удаляемого.
+/// Local tracks among [ids]: a caller usually knows only the ids.
 List<Track> localTracksOf(LibraryState lib, Iterable<String> ids) => [
   for (final id in ids)
     if (lib.tracks[id] case final Track track when isLocalTrack(track)) track,
 ];
 
-/// Ошибка «файла больше нет»: `content://` протух (файл удалили, карту
-/// вынули), копию стёрли мимо приложения.
-///
-/// Своим типом ради текста: `state.error` показывается человеку как есть, а
-/// `StateError` дописал бы к нему «Bad state:».
+/// File gone error: `content://` went stale (file deleted, card removed), or
+/// the copy was erased outside the app. Its own type for the text:
+/// `state.error` shows as is, and `StateError` would add "Bad state:".
 class LocalFileGone implements Exception {
   const LocalFileGone();
 

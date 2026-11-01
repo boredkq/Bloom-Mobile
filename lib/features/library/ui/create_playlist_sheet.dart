@@ -1,15 +1,11 @@
-/// Шторка «+» библиотеки — порт десктопного меню `LibAddMenu`.
+/// The library's plus sheet. Two views: main (a name field and an Import row)
+/// and import (a link field, a target choice, From file, Back). The tick on the
+/// right shows only when the field has something.
 ///
-/// Два вида, как на ПК: главный (поле имени + строка «Импорт») и импорт (поле
-/// ссылки, выбор цели, «Из файла», «Назад»). Галочка справа появляется только
-/// когда в поле что-то есть — там это `plName.trim() && <button>`.
+/// No cover at creation: it's set in the playlist itself.
 ///
-/// Чего с ПК нет: «Связать папку» — следить на телефоне не за чем, одиночные
-/// файлы добавляются плюсом в шапке «Всех треков» (`local_tracks.dart`).
-/// Обложки при создании нет и на ПК — её ставят уже в самом плейлисте.
-///
-/// «Из файла» цель НЕ учитывает, как и на ПК: файл переноса сам состоит из
-/// плейлистов, вкладывать их в выбранный некуда.
+/// From file ignores the target: a transfer file is itself made of playlists,
+/// with no way to nest them in the chosen one.
 library;
 
 import 'package:flutter/material.dart';
@@ -28,33 +24,31 @@ import '../../../shared/ui/platform_logo.dart';
 import '../import_file.dart';
 import '../import_url.dart';
 
-/// Чем кончилась шторка.
+/// How the sheet ended.
 sealed class _Outcome {
   const _Outcome();
 }
 
-/// Ввели имя — плейлист создаёт вызывающий, ему же потом в него уходить.
+/// A name was entered: the caller creates the playlist, and then goes to it.
 class _NameEntered extends _Outcome {
   const _NameEntered(this.name);
   final String name;
 }
 
-/// Импорт по ссылке уже случился внутри шторки: он асинхронный и со своим
-/// спиннером.
+/// A link import already happened inside the sheet: it's asynchronous, with its
+/// own spinner.
 class _Imported extends _Outcome {
   const _Imported(this.result);
   final ImportResult result;
 }
 
-/// Выбрали «Из файла». Сам импорт делает вызывающий: системный диалог на ПК
-/// открывается уже ПОСЛЕ закрытия меню, и висящая над ним шторка выглядела бы
-/// зависшей.
+/// From file was picked. The caller does the import: the system dialog opens
+/// after the menu closes, and a sheet hanging over it would look stuck.
 class _FileRequested extends _Outcome {
   const _FileRequested();
 }
 
-/// Площадка по виду ссылки — только для значка в поле (порт
-/// `detectLinkProvider`, без сети).
+/// Platform by a link's look, only for the icon in the field; no network.
 MusicSource? detectLinkSource(String url) {
   final u = url.trim();
   if (u.isEmpty) return null;
@@ -73,8 +67,7 @@ MusicSource? detectLinkSource(String url) {
   return null;
 }
 
-/// Открыть шторку «+». Созданный плейлист сразу открывается — как на ПК, где
-/// `createNamedPlaylist` выбирает его в библиотеке.
+/// Opens the plus sheet. A created playlist opens right away.
 Future<void> showCreatePlaylistSheet(
   BuildContext context,
   WidgetRef ref,
@@ -96,14 +89,14 @@ Future<void> showCreatePlaylistSheet(
         importResultText(l10n, result),
         kind: result.added == 0 ? ToastKind.info : ToastKind.success,
       );
-      // В созданный плейлист уходим, как и при обычном создании; при импорте
-      // «во все треки» / «в любимые» уходить некуда.
+      // I go to the created playlist, as with ordinary creation; importing into
+      // all tracks or favourites has nowhere to go.
       if (result.createdId != null && context.mounted) {
         context.go('/library/list/${result.createdId}');
       }
     case _FileRequested():
-      // Никуда не уходим: в файле плейлистов может быть сколько угодно, и
-      // открывать наугад один из них незачем. Тост показывает сам поток.
+      // Going nowhere: a file may hold any number of playlists, and opening one
+      // at random makes no sense. The flow shows the toast.
       await importPlaylistFile(ref, messenger, l10n);
   }
 }
@@ -237,7 +230,7 @@ class _AddBodyState extends ConsumerState<_AddBody> {
         hint: context.l.cpLinkHint,
         autofocus: true,
         busy: _busy,
-        // Значок площадки внутри поля — как только ссылка узнана.
+        // Platform icon in the field, once the link is recognised.
         trailing: switch (detectLinkSource(_url.text)) {
           final source? => PlatformLogo(source, size: 18),
           null => null,
@@ -274,9 +267,8 @@ class _AddBodyState extends ConsumerState<_AddBody> {
                 Bi.heartBold,
                 null,
               ),
-              // Плейлисты стоят с обложками — как в шторке «Добавить в
-              // плейлист»: свой список узнаётся по картинке быстрее, чем по
-              // названию, а одинаковый значок у всех не различает ничего.
+              // Playlists show with covers: an own list is known by its picture
+              // faster than by name, and one icon for all tells nothing apart.
               for (final p in playlists)
                 (
                   ImportTarget(ImportTargetKind.playlist, playlistId: p.id),

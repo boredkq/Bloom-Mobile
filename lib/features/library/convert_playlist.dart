@@ -1,36 +1,34 @@
-/// «Перенести на площадку» — копия плейлиста, собранная из треков другой
-/// площадки.
+/// Transfer to platform: a copy of a playlist built from another platform's
+/// tracks. Each track is searched by title and artist, and [rankMatches] ranks
+/// the results. Confident matches go in by themselves; doubtful and missing
+/// ones wait for the user.
 ///
-/// Порт десктопного `convertPlaylist.ts`: каждый трек ищется на целевой
-/// площадке по «название + артист», выдача ранжируется общим матчером
-/// ([rankMatches]). Уверенные совпадения подставляются сами, спорные и
-/// ненайденные ждут решения человека. Исходный плейлист не меняется — результат
-/// это ВСЕГДА новый плейлист (в отличие от «Сменить площадку», которая заменяет
-/// запись библиотеки на месте).
+/// The source playlist doesn't change: the result is ALWAYS a new playlist,
+/// unlike Change platform, which replaces the library entry in place.
 library;
 
 import '../../core/entities/entities.dart';
 import '../../core/providers/match.dart';
 import '../../core/providers/music_provider.dart';
 
-/// Сколько кандидатов показываем в ручном выборе.
+/// Candidates shown in manual choice.
 const int kConvertCandLimit = 5;
 
-/// Сколько треков ищем одновременно — щадим API площадок. Последовательный скан
-/// сотни треков ощущался бы вечностью, а полный параллелизм упирается в лимиты.
+/// Tracks searched at once, sparing platform APIs. One by one a hundred tracks
+/// feels endless, and full parallel hits limits.
 const int kConvertConcurrency = 3;
 
 enum ConvertStatus {
-  /// Трек уже на целевой площадке — переносить нечего.
+  /// Already on the target platform, nothing to transfer.
   same,
 
-  /// Найдено уверенно (счёт ≥ [kAutoMatchScore]).
+  /// Found confidently (score ≥ [kAutoMatchScore]).
   exact,
 
-  /// Кандидаты есть, но ни один не уверенный — нужен ручной выбор.
+  /// There are candidates, none confident: manual choice needed.
   ambiguous,
 
-  /// Ничего похожего либо площадка ответила ошибкой.
+  /// Nothing similar, or the platform answered with an error.
   notfound,
 }
 
@@ -42,44 +40,43 @@ class ConvertItem {
     this.failed = false,
   });
 
-  /// Исходный трек из плейлиста.
+  /// The source track from the playlist.
   final Track src;
 
   final ConvertStatus status;
 
-  /// Отранжированные кандидаты (пусто у `same` и `notfound`).
+  /// Ranked candidates (empty for `same` and `notfound`).
   final List<ScoredMatch> cands;
 
-  /// Площадка ответила ошибкой — это не то же самое, что честное «не нашлось».
+  /// The platform answered with an error, which differs from an honest nothing
+  /// found.
   final bool failed;
 }
 
-/// Чем трек войдёт в новый плейлист.
+/// What the track enters the new playlist as.
 sealed class ConvertDecision {
   const ConvertDecision();
 }
 
-/// Оставить исходный трек как есть.
+/// Keeps the source track as is.
 class KeepOriginal extends ConvertDecision {
   const KeepOriginal();
 }
 
-/// Взять найденную версию с целевой площадки.
+/// Takes the version found on the target platform.
 class TakeMatch extends ConvertDecision {
   const TakeMatch(this.track);
   final Track track;
 }
 
-/// Не включать трек в новый плейлист.
+/// Leaves the track out of the new playlist.
 class SkipTrack extends ConvertDecision {
   const SkipTrack();
 }
 
-/// Прогнать треки через поиск на целевой площадке.
-///
-/// [onProgress] зовётся после КАЖДОГО трека — для полосы прогресса.
-/// [cancelled] прерывает скан: уже обработанные возвращаются, остальные не
-/// запрашиваются (экран закрыли — сеть не молотит впустую).
+/// Runs tracks through search on the target platform. [onProgress] fires after
+/// EACH track, for the progress bar. [cancelled] stops the scan: done ones
+/// return and the rest aren't requested.
 Future<List<ConvertItem>> scanPlaylistConversion(
   MusicProvider provider,
   List<Track> tracks, {
@@ -106,8 +103,8 @@ Future<List<ConvertItem>> scanPlaylistConversion(
     } catch (_) {
       failed = true;
     }
-    // Своя же выдача может вернуть треки других площадок — берём только те, что
-    // реально с целевой.
+    // A platform's results may include other platforms' tracks, so I take only
+    // those really from the target.
     final cands = rankMatches(
       [
         for (final t in found)
@@ -129,8 +126,8 @@ Future<List<ConvertItem>> scanPlaylistConversion(
     );
   }
 
-  // Пул воркеров: порядок результатов сохраняется (пишем по индексу), но
-  // запросов в полёте не больше [kConvertConcurrency].
+  // Worker pool: result order holds (written by index), with at most
+  // [kConvertConcurrency] requests in flight.
   Future<void> worker() async {
     while (true) {
       if (cancelled?.call() ?? false) return;
@@ -153,8 +150,8 @@ Future<List<ConvertItem>> scanPlaylistConversion(
   return out.whereType<ConvertItem>().toList();
 }
 
-/// Что подставляется само: уверенное совпадение — новой версией, всё
-/// остальное остаётся оригиналом, пока человек не решит иначе.
+/// What goes in by itself: a confident match as the new version; the rest stays
+/// original until the user decides otherwise.
 Map<String, ConvertDecision> defaultDecisions(List<ConvertItem> items) => {
   for (final item in items)
     item.src.id: item.status == ConvertStatus.exact && item.cands.isNotEmpty
@@ -162,7 +159,7 @@ Map<String, ConvertDecision> defaultDecisions(List<ConvertItem> items) => {
         : const KeepOriginal(),
 };
 
-/// Состав нового плейлиста по принятым решениям, в порядке исходного.
+/// The new playlist's contents by accepted decisions, in source order.
 List<Track> convertResult(
   List<ConvertItem> items,
   Map<String, ConvertDecision> decisions,
@@ -171,12 +168,12 @@ List<Track> convertResult(
     ?switch (decisions[item.src.id] ?? const KeepOriginal()) {
       TakeMatch(:final track) => track,
       KeepOriginal() => item.src,
-      // Пропущенный не попадает в список вовсе — null-элемент выпадает.
+      // A skipped track isn't in the list at all: the null element drops.
       SkipTrack() => null,
     },
 ];
 
-/// Сколько треков куда попало — строка со счётом под списком.
+/// How many went where, for the count line under the list.
 ({int moved, int kept, int skipped}) convertStats(
   List<ConvertItem> items,
   Map<String, ConvertDecision> decisions,

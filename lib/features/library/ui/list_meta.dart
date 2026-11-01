@@ -1,9 +1,7 @@
-/// Подпись списка под названием: «177 треков · 🖫 1/177 · 1ч 23м».
-///
-/// Одним виджетом, а не тремя кусками по месту, из-за ширины: на плитке
-/// библиотеки полная строка не влезает, и счётчик тогда сокращается до голого
-/// числа («177 · 🖫 1/177 · 1ч 23м»). Решать это порознь в шапке, на плитке и
-/// в шторке — три разных обрезки одной и той же строки.
+/// A list's caption under its title: track count, offline count and total time.
+/// One widget because of width: on a library tile the full line won't fit and
+/// the count shortens to a bare number. Header, tile and sheet deciding apart
+/// would be three clippings of one line.
 library;
 
 import 'package:flutter/material.dart';
@@ -27,21 +25,20 @@ class ListMeta extends ConsumerWidget {
     this.showDuration = true,
   });
 
-  /// Состав списка: по нему считаются и офлайн-тег, и общее время.
+  /// List contents, for the offline tag and total time.
   final List<Track> tracks;
 
-  /// Число треков, если оно берётся не из [tracks] — на плитке счётчик идёт по
-  /// составу плейлиста, даже когда сами треки ещё не подняты из библиотеки.
+  /// Track count when not from [tracks]: a tile counts the playlist's contents
+  /// even before the tracks come up from the library.
   final int? count;
 
-  /// Стиль подписи. По умолчанию — `bodyMedium` шапки списка; на плитках
-  /// подпись мельче, а в шторке она поверх обложки и своего цвета.
+  /// Caption style. The list header's `bodyMedium` by default; smaller on
+  /// tiles, and its own colour in a sheet.
   final TextStyle? style;
 
   final bool showCount;
 
-  /// Сколько из списка уже на устройстве. Только у своих плейлистов: у «Всех
-  /// треков» / «Любимых» на десктопе этого тега нет.
+  /// How many of the list are on the device, for own playlists only.
   final bool showOffline;
 
   final bool showDuration;
@@ -58,8 +55,8 @@ class ListMeta extends ConsumerWidget {
             tracks,
           )
         : null;
-    // Индикатор «доступно офлайн»: скачан целиком — «офлайн», частично —
-    // «N/M», ни одного трека нет — тега нет вовсе (порт `PlaylistOfflineTag`).
+    // Offline indicator: all downloaded shows offline, some shows N/M, none
+    // shows no tag.
     final offline = status == null || !status.any
         ? null
         : status.all
@@ -86,11 +83,10 @@ class ListMeta extends ConsumerWidget {
         String? counter;
         if (showCount) {
           final n = count ?? tracks.length;
-          // Хвост (тег и время) не режется: ради него счётчик и ужимается.
-          // Ширина неизвестна (виджет в бесконечном Row) — тогда полная форма,
-          // как было до появления времени.
-          // Значок не масштабируется вместе с текстом (`applyTextScaling` у
-          // `Icon` по умолчанию выключен) — его ширина ровно `iconSize`.
+          // The tail (tag and time) isn't cut: the count shrinks for it. With
+          // unknown width (an infinite Row) the full form. The icon doesn't
+          // scale with text (`applyTextScaling` is off by default on `Icon`),
+          // so its width is exactly `iconSize`.
           final tail =
               (offline == null
                   ? 0
@@ -108,7 +104,7 @@ class ListMeta extends ConsumerWidget {
         }
 
         if (counter != null) {
-          // Даже голое число ужимается многоточием, если плитка совсем узкая.
+          // Even a bare number ellipsizes if the tile is very narrow.
           parts.add(
             Flexible(
               child: Text(
@@ -123,7 +119,7 @@ class ListMeta extends ConsumerWidget {
         if (offline != null) {
           separator();
           parts.addAll([
-            // Та же дискета, что в строке трека и в теге плейлиста на десктопе.
+            // The diskette, as in a track row.
             BloomIcon(Bi.diskette, size: iconSize, color: style?.color),
             const SizedBox(width: iconGap),
             Text(offline, style: style),
@@ -134,8 +130,9 @@ class ListMeta extends ConsumerWidget {
           parts.add(Text(duration, style: style));
         }
 
-        // Показывать нечего — строка всё равно занимает свою высоту: в шапке списка она задана снаружи, и
-        // выброшенная подпись растянула бы отступ до ряда действий.
+        // With nothing to show the line still takes its height: it's set from
+        // outside in the list header, and a dropped caption would stretch the
+        // gap to the action row.
         if (parts.isEmpty) return Text(' ', style: style);
         return Row(mainAxisSize: MainAxisSize.min, children: parts);
       },

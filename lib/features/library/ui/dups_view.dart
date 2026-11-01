@@ -1,13 +1,10 @@
-/// Инлайн-режим «Найти дубли»: вместо списка треков — те же треки, но
-/// сгруппированные по повторам.
+/// Inline Find duplicates mode: the list's tracks grouped by repeats. The
+/// list's header stays, since it's still that playlist. A strip on top has the
+/// count and Remove all duplicates, with groups below: the first in each is
+/// marked keep, and extras go one by one or by group.
 ///
-/// Порт десктопного `DupsInline`: шапка списка остаётся на месте (это всё ещё
-/// тот же плейлист), а сам список подменяется — сверху полоса со счётом и
-/// «Удалить все дубли», ниже группы, в каждой первый помечен «оставить», а
-/// лишние можно убрать поштучно или группой.
-///
-/// Убирает режим только из ПЛЕЙЛИСТА: трек уходит из списка, но остаётся в
-/// библиотеке. Удаление насквозь — это «Все треки», туда режим не заводят.
+/// The mode removes only from a PLAYLIST: a track leaves the list and stays in
+/// the library. All tracks deletes throughout, so the mode doesn't go there.
 library;
 
 import 'package:flutter/material.dart';
@@ -24,23 +21,23 @@ import '../../../shared/ui/bloom_toast.dart';
 import '../dups.dart';
 import '../../../shared/ui/glass.dart';
 
-/// Слайвер с полосой и группами. Живёт внутри `CustomScrollView` треклиста —
-/// поэтому не экран, а именно слайвер.
+/// A sliver with the strip and groups, living in the track list's
+/// `CustomScrollView`.
 class DupsSliver extends ConsumerWidget {
   const DupsSliver({super.key, required this.listId, required this.tracks});
 
-  /// Плейлист, в котором ищем: из него же и убираем.
+  /// The playlist being searched, also what gets removed from.
   final String listId;
 
-  /// Пул для поиска — состав списка в его собственном порядке.
+  /// Search pool: the list's contents in its own order.
   final List<Track> tracks;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final lib = ref.watch(libraryProvider);
     final plays = ref.watch(playStatsProvider).playCount;
-    // Считаем от свежего состава: убрали копию — группа пересобралась, пустые
-    // ушли сами (на десктопе это тот же `useMemo` по пулу).
+    // Counted from fresh contents: remove a copy and the group rebuilds, with
+    // empty ones gone by themselves.
     final groups = dupGroups(tracks, plays: plays, addedAt: lib.inLib);
     final extra = extraDups(groups);
 
@@ -69,8 +66,8 @@ class DupsSliver extends ConsumerWidget {
   }
 }
 
-/// Убрать копии из плейлиста — с «Отменить», как и любое другое удаление в
-/// списке: снимок библиотеки возвращает и состав, и порядок разом.
+/// Removes copies from the playlist, with Undo like any list removal: the
+/// library snapshot restores contents and order at once.
 void removeDups(
   BuildContext context,
   WidgetRef ref,
@@ -155,7 +152,7 @@ class _Group extends StatelessWidget {
 
   final List<Track> group;
 
-  /// Свои прослушивания трека — из журнала.
+  /// The track's own plays, from the log.
   final int Function(String id) plays;
   final VoidCallback onDelete;
   final ValueChanged<Track> onDeleteOne;
@@ -213,7 +210,7 @@ class _Row extends StatelessWidget {
   final Track track;
   final int plays;
 
-  /// Тот, кого предлагается оставить, — первый в группе.
+  /// The one suggested to keep, first in its group.
   final bool keep;
 
   final VoidCallback onDelete;
