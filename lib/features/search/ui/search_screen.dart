@@ -226,7 +226,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 ),
                 const SizedBox(width: 8),
                 CircleIconButton(
-                  icon: Bi.wave,
+                  icon: Bi.soundwave,
                   onTap: () => showRecognitionSheet(context, ref),
                 ),
                 const SizedBox(width: 8),

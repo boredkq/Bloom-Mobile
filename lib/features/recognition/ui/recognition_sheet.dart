@@ -9,7 +9,6 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/providers/registry.dart';
 import '../../../features/player/player_controller.dart';
-import '../../../features/player/play_source.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
@@ -92,16 +91,7 @@ class _RecognitionContentState extends ConsumerState<_RecognitionContent>
           .searchAll(res.searchPhrase);
       if (searchResults.tracks.isNotEmpty && mounted) {
         final track = searchResults.tracks.first;
-        await ref
-            .read(playbackProvider.notifier)
-            .playTrack(
-              track,
-              source: PlaySource(
-                type: PlaySourceType.search,
-                id: 'recognition:${res.searchPhrase}',
-                title: res.title,
-              ),
-            );
+        await ref.read(playbackProvider.notifier).play(track);
       } else if (mounted) {
         showToast(context, 'Трек не найден на подключенных площадках');
       }
@@ -227,7 +217,7 @@ class _PulseWaves extends StatelessWidget {
                   ],
                 ),
                 child: Center(
-                  child: BloomIcon(Bi.wave, color: t.accentText, size: 34),
+                  child: BloomIcon(Bi.soundwave, color: t.accentText, size: 34),
                 ),
               ),
             ],
