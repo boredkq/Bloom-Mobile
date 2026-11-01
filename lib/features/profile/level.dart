@@ -1,10 +1,8 @@
-/// Уровень слушателя — порт уровня `Stats::recount` ПК.
-///
-/// XP: 10 за засчитанное прослушивание; 50 за день, когда Bloom открывали или
-/// что-то слушали, +10 за каждый день подряд перед ним (до +50); 100 / 250 /
-/// 500 за бронзу / серебро / золото достижения. С уровня L на L + 1 — 100·L.
-/// XP нигде не хранится: пересчитывается из строк, поэтому «Очистить
-/// статистику» может отложить то, что они дали (kv `level.banked`).
+/// Listener's level. XP: 10 per counted play; 50 per day Bloom was opened or
+/// something played, +10 for each day in a row before it (up to +50); 100, 250
+/// and 500 for an achievement's bronze, silver and gold. From level L to L + 1
+/// takes 100·L. XP isn't stored: it recounts from rows, so a stats clear can
+/// bank what they gave (kv `level.banked`).
 library;
 
 import 'package:flutter/foundation.dart';
@@ -22,8 +20,8 @@ import 'stats.dart';
 
 const int kXpPerPlay = 10;
 const int kXpPerDay = 50;
-const int _kXpPerRunDay = 10; // каждый день подряд перед этим…
-const int _kRunCap = 5; // …но не больше стольких
+const int _kXpPerRunDay = 10; // each day in a row before this…
+const int _kRunCap = 5; // …but no more than this many
 const List<int> kTierXp = [100, 250, 500];
 
 const String _kBanked = 'level.banked';
@@ -44,20 +42,19 @@ class LevelInfo {
   final int level;
   final int xp;
 
-  /// XP, с которых начался этот уровень, и с которых начнётся следующий.
+  /// XP this level began at, and where the next begins.
   final int from;
   final int to;
 
-  /// Сколько дали прослушивания, дни, достижения и отложенное при очистке.
+  /// What plays, days, achievements and the banked at clearing gave.
   final int plays;
   final int days;
   final int ach;
   final int banked;
 }
 
-/// Уровень по строкам: [plays] прослушиваний, дни [days] (`YYYY-MM-DD`,
-/// когда открывали или слушали), взятые ступени [achievements], отложенные
-/// [banked].
+/// Level by rows: [plays] plays, days [days] (`YYYY-MM-DD`, when opened or
+/// played), tiers taken [achievements], banked [banked].
 LevelInfo computeLevel({
   required int plays,
   required Iterable<String> days,
@@ -100,7 +97,7 @@ LevelInfo computeLevel({
 final levelProvider = Provider<LevelInfo>(
   (ref) => computeLevel(
     plays: ref.watch(playLogProvider).events.length,
-    // День засчитан, если приложение открывали или что-то слушали.
+    // A day counts if the app was opened or something played.
     days: [
       ...ref.watch(playStatsProvider).perDay.keys,
       ...ref.watch(daysProvider).visited,
@@ -110,7 +107,7 @@ final levelProvider = Provider<LevelInfo>(
   ),
 );
 
-/// Отложенные XP (kv `level.banked`). Пишет их только [StatsClearController].
+/// Banked XP (kv `level.banked`), written only by [StatsClearController].
 final levelBankedProvider = NotifierProvider<LevelBankedController, int>(
   LevelBankedController.new,
 );
@@ -127,7 +124,7 @@ class LevelBankedController extends Notifier<int> {
   }
 }
 
-/// «Очистить статистику» в шторке статистики.
+/// Clear stats, in the stats sheet.
 final statsClearProvider = NotifierProvider<StatsClearController, void>(
   StatsClearController.new,
 );
@@ -136,9 +133,8 @@ class StatsClearController extends Notifier<void> {
   @override
   void build() {}
 
-  /// Одной транзакцией, как `Stats::clear` ПК: прослушивания, дни и отметки
-  /// достижений. [keepLevel] откладывает XP, которые они дали, — уровень
-  /// остаётся, где был.
+  /// In one transaction: plays, days and achievement marks. [keepLevel] banks
+  /// the XP they gave, so the level stays.
   void clear({required bool keepLevel}) {
     final banked = keepLevel ? ref.read(levelProvider).xp : 0;
     final db = ref.read(dbProvider);
@@ -149,8 +145,8 @@ class StatsClearController extends Notifier<void> {
       ref.read(levelBankedProvider.notifier)._bank(banked);
       SyncLog(db).markCleared(banked);
     });
-    // Витрины главной собраны по сидам из стёртого топа — пересобираем сразу
-    // (на ПК их сбрасывает сигнал `Stats::cleared`).
+    // Home shelves are built on seeds from the erased top, so they rebuild at
+    // once.
     ref.read(forYouProvider.notifier).reset();
     ref.read(similarToProvider.notifier).reset();
   }

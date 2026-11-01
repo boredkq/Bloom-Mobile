@@ -1,12 +1,10 @@
-/// Аватар профиля: своя картинка либо заглушка с человечком.
+/// Profile avatar: an own picture or a stand-in figure. One widget for the home
+/// header's button, the profile page's header and the editor's preview, so the
+/// profile comes as a parameter: the editor draws a DRAFT with it.
 ///
-/// Один виджет на все места — кнопка в шапке главной, шапка страницы профиля,
-/// превью в редакторе, — поэтому профиль приходит параметром: редактор рисует
-/// им ЧЕРНОВИК, а не то, что уже сохранено.
-///
-/// Размер задаётся снаружи [SizedBox], а не внутри: при перелёте кнопка шапки
-/// превращается в большой аватар страницы, и распорка с фиксированной стороной
-/// внутри летящей копии не дала бы ей вырасти.
+/// Size comes from an outer [SizedBox]: in flight the header's button becomes
+/// the page's large avatar, and a fixed side inside the flying copy would stop
+/// it growing.
 library;
 
 import 'package:flutter/material.dart';
@@ -28,16 +26,16 @@ class ProfileAvatar extends StatelessWidget {
   final UserProfile profile;
   final double size;
 
-  /// Метка перелёта на страницу профиля; `null` — никуда не летим.
+  /// Flight tag to the profile page; `null` means no flight.
   final Object? flightTag;
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
     final image = coverImage(profile.avatar);
-    // Своей картинки нет — тот же приём, что у пустой обложки: сплошная тёмная
-    // заливка и приглушённый знак поверх. Только знак тут человечек, а не bloom:
-    // на месте лица логотип читался бы как «трек без обложки».
+    // No own picture: as with an empty cover, a solid dark fill and a muted
+    // mark on top. The mark is a figure rather than Bloom's: a logo in a face's
+    // place reads as a track with no cover.
     final Widget face = image == null
         ? ColoredBox(
             color: t.coverEmpty,
@@ -57,8 +55,7 @@ class ProfileAvatar extends StatelessWidget {
       child: CoverHero(
         tag: flightTag,
         shape: BorderRadius.circular(size / 2),
-        // Кольца вокруг аватара нет: он его не хочет — ни акцентного, ни
-        // своего цветом (десктопная «Обводка» на телефон не переехала).
+        // No ring around the avatar, accent or coloured.
         child: ClipOval(child: face),
       ),
     );

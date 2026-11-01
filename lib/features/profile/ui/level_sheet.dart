@@ -1,9 +1,7 @@
-/// Уровень на профиле — порт `LevelBadge` и `LevelModal` ПК.
-///
-/// [LevelBadge] — щит в акценте с номером перед ником; тап открывает шторку:
-/// щит, «Уровень N», строка о нём, полоса XP со щитом следующего уровня на
-/// конце, сколько до него и из чего XP набираются — с тем, сколько дал каждый
-/// источник. Наград нет.
+/// Level on the profile. [LevelBadge] is an accent shield with the number
+/// before the nick; a tap opens the sheet: the shield, Level N, a line about
+/// it, an XP bar with the next level's shield at its end, how far to go, and
+/// where XP comes from with each source's amount. No rewards.
 library;
 
 import 'package:flutter/material.dart';
@@ -22,14 +20,14 @@ import '../../settings/ui/settings_rows.dart';
 Future<void> showLevelSheet(BuildContext context) =>
     showBloomSheetChild<void>(context: context, child: const LevelSheet());
 
-/// Щит с номером. Меняется только число; длинным числам — шрифт мельче, щит
-/// не растёт.
+/// Shield with a number. Only the number changes; long numbers get a smaller
+/// font, and the shield doesn't grow.
 class LevelBadge extends ConsumerWidget {
   const LevelBadge({super.key, this.size = 28, this.level, this.onTap});
 
   final double size;
 
-  /// Свой номер — щит следующего уровня на полосе; `null` — текущий.
+  /// Own number: the next level's shield on the bar; `null` is the current.
   final int? level;
 
   final VoidCallback? onTap;
@@ -47,7 +45,8 @@ class LevelBadge extends ConsumerWidget {
         alignment: Alignment.center,
         children: [
           BloomIcon(Bi.shieldMinimalisticBold, size: size, color: t.accent),
-          // Щит тяжелее сверху: число чуть выше середины.
+          // The shield is heavier on top: the number stands a bit above the
+          // middle.
           Transform.translate(
             offset: Offset(0, -size * 0.03),
             child: Text(
@@ -110,7 +109,8 @@ class LevelSheet extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 22),
-        // Полоса: сколько пройдено в этом уровне, щит следующего на конце.
+        // The bar: progress through this level, with the next one's shield at
+        // the end.
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Container(

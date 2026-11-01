@@ -1,7 +1,6 @@
-/// Заливка обложки профиля — порт `BannerFill` ПК: своя картинка, иначе цвет,
-/// градиент под углом или («Авто») тон обложки самого слушаемого трека.
-///
-/// Профиль передаётся снаружи: редактор рисует так же свой черновик.
+/// Profile banner fill: an own picture, else a colour, an angled gradient or
+/// (Auto) the tone of the most played track's cover. The profile comes from
+/// outside, as the editor draws its draft too.
 library;
 
 import 'dart:math' show cos, sin, pi;
@@ -15,8 +14,8 @@ import '../../settings/cover_accent.dart';
 import '../profile_store.dart';
 import '../stats.dart';
 
-/// Тёмный тон обложки для «Авто» — та же полоса, что у фона миниплеера (на
-/// ПК обе берут `darkOf`). Кеш до перезапуска: скан — это загрузка картинки.
+/// Dark cover tone for Auto, the same band as the mini player's background.
+/// Cached until restart: scanning means loading a picture.
 final _autoToneProvider = FutureProvider.family<Color?, String?>((
   ref,
   cover,
@@ -46,13 +45,14 @@ class ProfileBannerFill extends ConsumerWidget {
         to = profile.bannerColor2;
       case BannerColorMode.auto:
         final cover = ref.watch(profileStatsProvider.select((s) => s.topCover));
-        // Пока тон не посчитан (или слушать ещё нечего) — свой цвет профиля.
+        // Until the tone is computed (or nothing's played yet) the profile's
+        // own colour.
         from = ref.watch(_autoToneProvider(cover)).value ?? from;
         to = Color.lerp(from, t.blockColor, 0.65)!;
         angle = 135;
     }
-    // CSS-угол считается от «вверх» по часовой стрелке, у [Alignment] ось Y
-    // смотрит вниз — отсюда разворот знаков.
+    // The CSS angle counts clockwise from up, while [Alignment]'s Y axis points
+    // down: hence the flipped signs.
     final a = angle * pi / 180;
     final dx = sin(a);
     final dy = -cos(a);

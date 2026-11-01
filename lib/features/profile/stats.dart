@@ -1,12 +1,10 @@
-/// Расчёт статистики профиля — порт `Stats::details/recount` ПК.
+/// Profile stats. Sources: the play log ([PlayStats], how many times and when
+/// each track played, per day) and the days table ([DaysState], app time).
+/// Nothing's stored; all is counted on the fly.
 ///
-/// Источники: журнал прослушиваний ([PlayStats] — сколько раз и когда слушали
-/// каждый трек, по дням) и таблица дней ([DaysState] — время в приложении).
-/// Ничего своего не персистится — всё считается на лету.
-///
-/// Разбивка по площадкам берётся из ПРЕФИКСА id, а не из поля трека: треки
-/// площадок живут в памяти, и после перезапуска половина записей истории уже не
-/// резолвится в объект — иначе в «где слушали чаще» остался бы один SoundCloud.
+/// The platform breakdown comes from the id's PREFIX rather than a track's
+/// field: after a restart half the history entries no longer resolve to an
+/// object, and it would leave only SoundCloud.
 library;
 
 import 'package:flutter/material.dart';
@@ -45,7 +43,7 @@ class ProfileStats {
     required this.activity,
   });
 
-  /// Сколько треков в библиотеке — единственное число не из истории.
+  /// Tracks in the library, the only number not from history.
   final int libraryTracks;
 
   final int totalPlays;
@@ -53,36 +51,36 @@ class ProfileStats {
   final int uniqueTracks;
   final int uniqueArtists;
 
-  /// Средняя длина прослушанного трека, секунды.
+  /// Average length of a played track, seconds.
   final int avgSec;
 
-  /// На сколько дней растянута история — знаменатель «в среднем за день».
+  /// Days history spans, the denominator of per day averages.
   final int daySpan;
 
   final int recordDay;
   final DateTime? recordDate;
 
-  /// Дней, в которые вообще что-то слушали.
+  /// Days with any listening at all.
   final int activeDays;
 
-  /// Дней подряд с прослушиваниями, считая от сегодня.
+  /// Days in a row with listening, counted from today.
   final int streak;
 
-  /// Самая длинная серия дней с прослушиваниями за всё время — по ней
-  /// достижение «Серия»: пропущенный день не отнимает взятую ступень (и её XP).
+  /// The longest all-time run of listening days, for the Streak achievement: a
+  /// missed day doesn't take a tier (or its XP) away.
   final int longestStreak;
 
   final int appSec;
 
   final List<TrackPlays> topTracks;
 
-  /// Обложка самого слушаемого трека (из тех, у кого она есть).
+  /// Cover of the most played track that has one.
   final String? topCover;
 
   final List<ArtistPlays> topArtists;
   final List<SourcePlays> bySource;
 
-  /// Прослушивания по дням — для графика и теплокарты.
+  /// Plays per day.
   final Map<String, int> activity;
 
   String? get favArtist => topArtists.isEmpty ? null : topArtists.first.name;
@@ -109,8 +107,8 @@ class ProfileStats {
       totalPlays += plays;
 
       final source = MusicSource.fromId(entry.id);
-      // Трек — из библиотеки, а если его там уже нет, его снимок из базы: иначе
-      // всё, что человек слушал, но не сохранил, выпало бы из топов.
+      // A track from the library, or if it's gone its database snapshot:
+      // otherwise everything heard but not saved drops from the tops.
       final track = resolveHistoryTrack(entry.id, lib, journal);
       final seconds = (track?.duration.inSeconds ?? 0) * plays;
       final was = sources[source] ?? (plays: 0, seconds: 0);
@@ -123,11 +121,12 @@ class ProfileStats {
       if (entry.firstTs > 0 && entry.firstTs < firstTs) firstTs = entry.firstTs;
       if (entry.lastTs > lastTs) lastTs = entry.lastTs;
 
-      // Дальше нужен сам трек: без него нечего показать в топах.
+      // The track itself is needed from here: without it the tops have nothing
+      // to show.
       if (track == null) continue;
       rows.add(TrackPlays(track, plays));
-      // Обложка для «Авто» у баннера профиля: больше всех прослушиваний, при
-      // равенстве — слушанный позже (тот же запрос, что на ПК).
+      // Cover for the profile banner's Auto: most plays, on ties the one played
+      // later.
       final cover = track.cover;
       if (cover != null &&
           cover.isNotEmpty &&
@@ -186,11 +185,11 @@ class ProfileStats {
   }
 }
 
-/// Дни [keys] (`YYYY-MM-DD`) по возрастанию, без повторов.
+/// Days [keys] (`YYYY-MM-DD`), ascending with no repeats.
 List<DateTime> sortedDays(Iterable<String> keys) =>
     [for (final k in keys) ?DateTime.tryParse(k)]..sort();
 
-/// Самая длинная серия дней подряд среди [keys].
+/// The longest run of consecutive days in [keys].
 int longestRun(Iterable<String> keys) {
   var longest = 0, run = 0;
   DateTime? prev;
@@ -202,12 +201,12 @@ int longestRun(Iterable<String> keys) {
   return longest;
 }
 
-/// Следующий календарный день — через конструктор, а не +24 ч: на переходе
-/// на летнее время сутки бывают в 23 и 25 часов.
+/// The next calendar day, through the constructor rather than +24 h: on clock
+/// changes a day has 23 or 25 hours.
 DateTime nextDay(DateTime d) => DateTime(d.year, d.month, d.day + 1);
 
-/// Дней подряд с прослушиваниями. Отсчёт от сегодня, но если сегодня ещё не
-/// слушали — от вчера: иначе стрик обнулялся бы каждое утро (десктопный грейс).
+/// Days in a row with listening. Counted from today, but from yesterday if
+/// nothing's played yet today, or the streak would zero every morning.
 int _streak(Map<String, int> log) {
   final now = DateTime.now();
   DateTime back(DateTime d) => DateTime(d.year, d.month, d.day - 1);
@@ -229,10 +228,9 @@ final profileStatsProvider = Provider<ProfileStats>((ref) {
   );
 });
 
-/// «Nч Nм» / «N мин» — десктопный `fmtDurLong`.
-///
-/// Берёт `BuildContext`, а не готовый `AppLocalizations`: зовут её из вёрстки
-/// десятками мест, и лишний аргумент там был бы шумом.
+/// Long duration text. Takes a `BuildContext` rather than ready
+/// `AppLocalizations`: it's called from dozens of layout spots, where an extra
+/// argument would be noise.
 String fmtDurLong(BuildContext context, int seconds) {
   final l = context.l;
   if (seconds <= 0) return l.statsZeroMinutes;
@@ -241,7 +239,7 @@ String fmtDurLong(BuildContext context, int seconds) {
   return h > 0 ? l.statsHoursMinutes(h, m) : l.statsMinutes(m);
 }
 
-/// «м:сс» — средняя длина трека.
+/// `m:ss`, average track length.
 String fmtClock(int seconds) {
   final m = seconds ~/ 60;
   final s = (seconds % 60).toString().padLeft(2, '0');

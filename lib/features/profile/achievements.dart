@@ -1,14 +1,10 @@
-/// Достижения профиля — порт достижений `Stats::recount` ПК.
+/// Profile achievements. The list is declarative: each has three thresholds
+/// (bronze, silver, gold) and a function getting its number from computed
+/// stats. Values AREN'T stored; only unlock dates go in database kv (`ach.at`,
+/// keys `id:tier`), to show when earned and pop up once.
 ///
-/// Список декларативный: у каждого достижения три порога (бронза/серебро/
-/// золото) и функция, достающая своё число из уже посчитанной статистики.
-/// Значения НЕ хранятся — считаются на лету; в kv базы ложатся только даты
-/// разблокировки (`ach.at`, ключи `id:тир`, как на ПК), чтобы показать
-/// «получено 12 августа» и один раз всплыть уведомлением.
-///
-/// Первый прогон «засеивает» уже выполненное молча (`ach.seeded`): иначе
-/// слушатель с историей при первом же открытии получил бы пачку уведомлений
-/// разом.
+/// The first run seeds what's done silently (`ach.seeded`), or a listener with
+/// history gets a pile of notifications at once.
 library;
 
 import 'package:flutter/material.dart';
@@ -35,7 +31,7 @@ Color tierColor(AchTier tier) => switch (tier) {
   AchTier.gold => const Color(0xFFFFD24A),
 };
 
-/// Единица метрики — влияет только на подпись прогресса.
+/// Metric unit; affects only the progress caption.
 enum AchUnit { count, time }
 
 const int _h = 3600;
@@ -54,19 +50,19 @@ class AchDef {
   final String id;
   final BloomGlyph icon;
 
-  /// Название и подпись резолвятся при отрисовке: таблица собирается один раз
-  /// на весь процесс и обязана пережить смену языка.
+  /// Name and caption resolve at paint time: the table builds once per process
+  /// and must outlive a language change.
   final String Function(AppLocalizations l) name;
   final String Function(AppLocalizations l) description;
   final AchUnit unit;
 
-  /// Три порога по возрастанию.
+  /// Three thresholds, ascending.
   final List<int> tiers;
 
   final int Function(ProfileStats stats) value;
 }
 
-/// Тот же состав и те же пороги, что на десктопе.
+/// The achievement list.
 final List<AchDef> kAchievements = [
   AchDef(
     id: 'listener',
@@ -124,7 +120,7 @@ final List<AchDef> kAchievements = [
   ),
 ];
 
-/// Посчитанное достижение — всё, что нужно карточке.
+/// A computed achievement, all a card needs.
 class AchProgress {
   const AchProgress({
     required this.def,
@@ -136,10 +132,10 @@ class AchProgress {
   final AchDef def;
   final int value;
 
-  /// Сколько порогов пройдено, 0..3.
+  /// Thresholds passed, 0..3.
   final int tierReached;
 
-  /// Доля до следующего порога; у взятого целиком — 1.
+  /// Share to the next threshold; 1 when fully taken.
   final double ratio;
 
   AchTier? get tier => tierReached > 0 ? kTierOrder[tierReached - 1] : null;
@@ -174,17 +170,17 @@ final achievementsProvider = Provider<List<AchProgress>>(
   (ref) => buildAchievements(ref.watch(profileStatsProvider)),
 );
 
-/// Ключ разблокировки: достижение и номер порога.
+/// Unlock key: achievement and threshold number.
 String tierKey(String id, int tierIndex) => '$id:$tierIndex';
 
 @immutable
 class UnlockedAchievements {
   const UnlockedAchievements({this.at = const {}, this.seeded = false});
 
-  /// `id:тир` → когда получено.
+  /// `id:tier` to when earned.
   final Map<String, int> at;
 
-  /// Прошёл ли молчаливый первый прогон.
+  /// Whether the silent first run passed.
   final bool seeded;
 }
 
@@ -215,9 +211,9 @@ class AchievementsController extends Notifier<UnlockedAchievements> {
     });
   }
 
-  /// Свести хранимое с текущим прогрессом. Возвращает НОВЫЕ разблокировки
-  /// (достижение и номер взятого тира) — на первом прогоне список пуст,
-  /// сколько бы всего ни засеялось.
+  /// Reconciles what's stored with current progress. Returns NEW unlocks
+  /// (achievement and tier taken); on the first run the list is empty, however
+  /// much got seeded.
   List<({AchProgress ach, AchTier tier})> sync(List<AchProgress> list) {
     final next = {...state.at};
     final fresh = <({AchProgress ach, AchTier tier})>[];
@@ -239,8 +235,7 @@ class AchievementsController extends Notifier<UnlockedAchievements> {
     return wasSeeded ? fresh : const [];
   }
 
-  /// Сброс вместе со статистикой. Отметка первого прогона остаётся, как на
-  /// ПК: ступени, взятые заново, — уже новость.
+  /// Reset with the stats. The first run mark stays: tiers taken anew are news.
   void clear() {
     state = UnlockedAchievements(seeded: state.seeded);
     _save();

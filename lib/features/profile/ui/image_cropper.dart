@@ -1,13 +1,10 @@
-/// Кроп картинки для профиля — порт десктопного `ImageCropper.tsx`.
+/// Picture crop for the profile: a frame (a circle for the avatar, a rectangle
+/// by aspect for the banner), dragging, a pinch and a scale slider, on
+/// [CustomPaint]. Initial scale is cover (the picture fills the frame), and the
+/// slider goes down to fit whole.
 ///
-/// Там canvas с рамкой (круг для аватара, прямоугольник по аспекту для
-/// обложки), перетаскивание и ползунок масштаба; тут то же самое на
-/// [CustomPaint], только тянуть можно ещё и щипком. Начальный масштаб —
-/// cover (картинка закрывает рамку), ползунок вниз доходит до «вписать
-/// целиком», как на десктопе.
-///
-/// Обрезок рендерится в отдельный слой и сохраняется файлом приложения; в
-/// профиль уходит только `local:<имя>`.
+/// The crop renders to a separate layer and saves as an app file; only
+/// `local:<name>` goes in the profile.
 library;
 
 import 'dart:io';
@@ -23,12 +20,11 @@ import '../../../shared/ui/atoms.dart';
 
 enum CropShape { circle, rect }
 
-/// Выбрать картинку из галереи, обрезать и положить к себе.
-/// Возвращает значение поля (`local:...`) или `null`, если бросили на любом шаге.
-///
-/// [aspect] — высота/ширина рамки (для [CropShape.rect]).
-/// [output] — ширина результата в пикселях: рамка на экране мельче, и хранить
-/// её один в один значило бы получить мыло на большом аватаре.
+/// Picks a gallery picture, crops it and stores it. Returns the field value
+/// (`local:...`), or `null` if abandoned at any step. [aspect] is the frame's
+/// height over width (for [CropShape.rect]). [output] is the result's width in
+/// pixels: the screen frame is smaller, and keeping it one to one means mush on
+/// a large avatar.
 Future<String?> pickAndCropImage(
   BuildContext context, {
   required CropShape shape,
@@ -75,11 +71,11 @@ class _CropPage extends StatefulWidget {
 class _CropPageState extends State<_CropPage> {
   ui.Image? _image;
 
-  /// Масштаб относительно cover: 1 — картинка ровно закрывает рамку.
+  /// Scale relative to cover: 1 means the picture just fills the frame.
   double _zoom = 1;
   Offset _offset = Offset.zero;
 
-  /// Считаются по размеру области под картинку — она известна только в build.
+  /// Counted from the picture area's size, known only in build.
   Size _canvas = Size.zero;
   Size _frame = Size.zero;
   double _cover = 1;
@@ -112,7 +108,7 @@ class _CropPageState extends State<_CropPage> {
     super.dispose();
   }
 
-  /// Рамка и масштабы под текущий размер области.
+  /// Frame and scales for the area's current size.
   void _measure(Size canvas) {
     final image = _image;
     if (image == null || canvas == _canvas) return;
@@ -144,7 +140,7 @@ class _CropPageState extends State<_CropPage> {
     _minZoom = (fit / _cover).clamp(0.05, 1.0);
   }
 
-  /// Прямоугольник, в котором сейчас лежит картинка (в координатах области).
+  /// Rectangle the picture lies in now, in area coordinates.
   Rect _imageRect() {
     final image = _image!;
     final w = image.width * _cover * _zoom;
@@ -289,8 +285,7 @@ class _CropPageState extends State<_CropPage> {
   }
 }
 
-/// Картинка, затемнение вокруг рамки и сама рамка — то же, что рисует
-/// десктопный `draw()`.
+/// The picture, dimming around the frame and the frame itself.
 class _CropPainter extends CustomPainter {
   const _CropPainter({
     required this.image,
@@ -314,7 +309,7 @@ class _CropPainter extends CustomPainter {
       Paint()..filterQuality = FilterQuality.medium,
     );
 
-    // Затемнение всего, кроме рамки: дырка вырезается even-odd.
+    // Dims all but the frame: an even-odd hole.
     final hole = Path()
       ..addRect(full)
       ..addPath(
@@ -337,7 +332,7 @@ class _CropPainter extends CustomPainter {
     }
     canvas.drawRect(frame, line);
 
-    // Уголки — по ним видно, куда тянуть картинку.
+    // Corners, showing where to drag the picture.
     final corner = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3
