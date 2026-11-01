@@ -1,15 +1,14 @@
-/// Телефон — пульт ПК (Connect): пока ПК в сети и играл позже телефона, на
-/// экране то, что играет там, и все кнопки жмут там. Звук остаётся на том
-/// устройстве, где играло последним, — как в Spotify; перенести его — «Играть
-/// на».
+/// The phone as the computer's remote (Connect): while the computer is online
+/// and played later than the phone, the screen shows what plays there and all
+/// buttons press there. Sound stays on the device it played on last; Play on
+/// moves it.
 ///
-/// Своё состояние телефона (очередь, сессия) при этом не трогается: связь
-/// пропала — телефон снова показывает своё. Сторона ПК — `Connect`
-/// (`src/devices/Connect.cpp`) и поток событий API.
+/// The phone's own state (queue, session) stays untouched: if the link drops,
+/// the phone shows its own again.
 ///
-/// И наоборот: пока звук здесь, телефон шлёт ПК своё состояние
-/// (`/v1/connect/state`), ПК его показывает (`Player::mirror`), а что нажали на
-/// ПК, приходит сюда событием `command`.
+/// The reverse too: while sound is here, the phone sends its state to the
+/// computer (`/v1/connect/state`), which shows it, and what's pressed there
+/// arrives as a `command` event.
 library;
 
 import 'dart:async';
@@ -27,11 +26,10 @@ import '../player/play_source.dart';
 import '../player/player_controller.dart';
 import '../player/session_store.dart' show SessionData;
 
-/// Когда на этом устройстве последний раз шёл звук, мс — та же отметка, что
-/// `connect.played` ПК. Пишет плеер.
+/// When sound last played on this device, ms. The player writes it.
 const String kConnectPlayed = 'connect.played';
 
-/// Что играет на ПК.
+/// What plays on the computer.
 @immutable
 class PcPlayback {
   const PcPlayback({
@@ -43,11 +41,11 @@ class PcPlayback {
     required this.liked,
   });
 
-  /// Очередь, номер, режимы, источник — в том виде, что у своего плеера.
+  /// Queue, index, modes and source, in the form of my own player.
   final PlaybackState playback;
   final bool playing;
 
-  /// Позиция, сказанная ПК, и когда это было: дальше она идёт сама.
+  /// Position the computer gave and when: it moves on by itself after that.
   final Duration position;
   final DateTime positionAt;
   final Duration duration;
@@ -61,7 +59,7 @@ class PcPlayback {
   }
 }
 
-/// `null` — телефон не пульт: играет своё.
+/// `null`: the phone isn't a remote and plays its own.
 final pcRemoteProvider = NotifierProvider<PcRemoteController, PcPlayback?>(
   PcRemoteController.new,
 );
@@ -71,18 +69,18 @@ class PcRemoteController extends Notifier<PcPlayback?> {
 
   PcClient? _client;
 
-  /// Последнее, что сказал ПК; `null` — ещё не спрашивали.
+  /// Last thing the computer said; `null` if not asked yet.
   _Pc? _pc;
   StreamSubscription<bool>? _ownPlaying;
   Timer? _refetch;
 
-  /// Звук забрали сюда («Играть на телефоне»): телефон не пульт, пока ПК сам
-  /// снова не заиграет.
+  /// Sound was taken here: the phone isn't a remote until the computer plays
+  /// again itself.
   bool _pinned = false;
   int _pinnedAt = 0;
 
-  /// Своё, сказанное ПК: очередь (по ней видно, слать ли её снова) и было ли
-  /// «звук здесь».
+  /// Mine as told to the computer: the queue (showing whether to send it again)
+  /// and whether sound is here.
   List<Track>? _sentQueue;
   bool _reported = false;
   Timer? _report;
@@ -98,9 +96,9 @@ class PcRemoteController extends Notifier<PcPlayback?> {
     return null;
   }
 
-  // ── Связь (её держит PcController) ─────────────────────────────────────
+  // ── Link (held by PcController) ─────────────────────────────────────────
 
-  /// Открылся поток событий ПК.
+  /// The computer's event stream opened.
   void attach(PcClient client) {
     _client = client;
     _sentQueue = null;
@@ -112,7 +110,7 @@ class PcRemoteController extends Notifier<PcPlayback?> {
     unawaited(_fetch());
   }
 
-  /// Поток оборвался: телефон снова сам по себе.
+  /// The stream dropped: the phone is on its own again.
   void detach() {
     _client = null;
     _pc = null;
@@ -127,7 +125,8 @@ class PcRemoteController extends Notifier<PcPlayback?> {
 
   void onEvent(PcEvent e) {
     final d = e.data;
-    // Звук двигают с ПК: двигает всё равно телефон, он знает обе очереди.
+    // Sound is moved from the computer, but the phone does it, knowing both
+    // queues.
     if (e.name == 'connect') {
       switch (d['do']) {
         case 'take':
@@ -154,7 +153,7 @@ class PcRemoteController extends Notifier<PcPlayback?> {
         _setPosition(pc, d);
         final index = _int(d['index'], -1);
         final id = (d['track'] as Map?)?['id'];
-        // Очередь поменялась не нашим событием — берём её целиком заново.
+        // The queue changed by no event of mine, so I take it whole again.
         if (_int(d['queueLength'], 0) != pc.tracks.length ||
             index < 0 ||
             index >= pc.tracks.length ||
@@ -171,12 +170,12 @@ class PcRemoteController extends Notifier<PcPlayback?> {
       default:
         return;
     }
-    // Пока ПК показывает нас, его «играет» — это мы.
+    // While the computer shows this phone, its playing is mine.
     if (pc.playing && !pc.mirrorsMe) pc.at = BloomDb.now();
     _decide();
   }
 
-  /// Нажатое на ПК, пока он показывает нас: делаем у себя.
+  /// Pressed on the computer while it shows this phone: carried out here.
   void _carryOut(Map<String, Object?> d) {
     final p = ref.read(playbackProvider.notifier);
     List<Track> tracks() => [
@@ -205,7 +204,8 @@ class PcRemoteController extends Notifier<PcPlayback?> {
       case 'remove':
         unawaited(p.removeAt(index));
       case 'move':
-        // У ПК `to` — место после переноса, у нас — до изъятия строки.
+        // The computer's `to` is the place after moving, mine is before the row
+        // is removed.
         final from = _int(d['from'], -1), to = _int(d['to'], -1);
         if (from >= 0 && to >= 0) p.reorder(from, to > from ? to + 1 : to);
       case 'shuffle':
@@ -233,10 +233,10 @@ class PcRemoteController extends Notifier<PcPlayback?> {
     }
   }
 
-  // ── Своё — ПК ──────────────────────────────────────────────────────────
+  // ── Mine to the computer ────────────────────────────────────────────────
 
-  /// Своё поменялось (трек, очередь, пауза, перемотка): сказать ПК, если звук
-  /// здесь. Пачка правок подряд уходит одним разом.
+  /// Mine changed (track, queue, pause, seek): tells the computer if sound is
+  /// here. A burst of edits goes as one.
   void reportSoon() {
     if (_client == null || state != null) return;
     _report?.cancel();
@@ -262,7 +262,7 @@ class PcRemoteController extends Notifier<PcPlayback?> {
         'shuffle': own.shuffle,
         'repeat': own.repeat.name,
         'source': own.source?.toJson() ?? const {},
-        // Очередь — только когда поменялась: её могут быть сотни треков.
+        // The queue only when it changed: it may be hundreds of tracks.
         if (!identical(own.queue, _sentQueue)) ...{
           'tracks': [for (final t in own.queue) t.toJson()],
           'orig': [for (final t in own.orig) t.toJson()],
@@ -283,9 +283,10 @@ class PcRemoteController extends Notifier<PcPlayback?> {
     }
   }
 
-  // ── «Играть на» ────────────────────────────────────────────────────────
+  // ── Play on ─────────────────────────────────────────────────────────────
 
-  /// Звук — сюда: очередь ПК с той же секунды играет на телефоне, ПК замолкает.
+  /// Sound comes here: the computer's queue plays on the phone from that
+  /// second, and the computer goes quiet.
   Future<void> playHere() async {
     final client = _client;
     if (client == null) return;
@@ -324,8 +325,8 @@ class PcRemoteController extends Notifier<PcPlayback?> {
     }
   }
 
-  /// Звук — на ПК: своя сессия с той же секунды играет там, телефон замолкает
-  /// и становится пультом.
+  /// Sound goes to the computer: my session plays there from that second, and
+  /// the phone goes quiet and becomes a remote.
   Future<void> playOnPc() async {
     final client = _client;
     final playback = ref.read(playbackProvider.notifier);
@@ -356,7 +357,7 @@ class PcRemoteController extends Notifier<PcPlayback?> {
     }
   }
 
-  // ── Команды ────────────────────────────────────────────────────────────
+  // ── Commands ────────────────────────────────────────────────────────────
 
   Future<void> toggle() {
     _pc?.playing = !(_pc?.playing ?? false);
@@ -383,7 +384,7 @@ class PcRemoteController extends Notifier<PcPlayback?> {
   Future<void> removeAt(int index) =>
       _post('/v1/queue/remove', {'index': index});
 
-  /// Индексы — как у своего [PlaybackController.reorder] (`to` до изъятия).
+  /// Indices as in my [PlaybackController.reorder] (`to` before removal).
   Future<void> reorder(int from, int to) =>
       _post('/v1/queue/move', {'from': from, 'to': to > from ? to - 1 : to});
 
@@ -403,7 +404,7 @@ class PcRemoteController extends Notifier<PcPlayback?> {
     'shuffle': shuffle,
   });
 
-  /// Сколько встанет — заранее не знаем: ПК сам отсеет стоящие в очереди.
+  /// How many go in isn't known ahead: the computer drops those already queued.
   int enqueue(List<Track> tracks, {bool next = false, PlaySource? source}) {
     if (tracks.isEmpty) return 0;
     unawaited(
@@ -437,7 +438,7 @@ class PcRemoteController extends Notifier<PcPlayback?> {
   Future<void> _post(String path, [Map<String, Object?>? body]) async {
     final client = _client;
     if (client == null) return;
-    _pc?.at = BloomDb.now(); // что нажали здесь — играло на ПК
+    _pc?.at = BloomDb.now(); // what's pressed here played on the computer
     try {
       await client.json(
         'POST',
@@ -450,7 +451,7 @@ class PcRemoteController extends Notifier<PcPlayback?> {
     }
   }
 
-  // ── Внутреннее ─────────────────────────────────────────────────────────
+  // ── Internal ────────────────────────────────────────────────────────────
 
   void _fetchSoon() {
     _refetch?.cancel();
@@ -486,9 +487,9 @@ class PcRemoteController extends Notifier<PcPlayback?> {
     }
   }
 
-  /// Пульт ли телефон. Своё играет — нет: не обрываем то, что в ушах. Иначе —
-  /// если ПК играет или играл позже. Став пультом, телефон им и остаётся, пока
-  /// жива связь: всё, что жмут здесь, играет там.
+  /// Whether the phone is a remote. Not if its own is playing: I don't break
+  /// what's in the ears. Otherwise, if the computer plays or played later. Once
+  /// a remote it stays so while the link lives: all pressed here plays there.
   void _decide() {
     final pc = _pc;
     if (pc == null || _client == null) {
@@ -496,13 +497,14 @@ class PcRemoteController extends Notifier<PcPlayback?> {
       return;
     }
     final ownPlaying = ref.read(audioPlayerProvider).playing;
-    // ПК показывает нас — звук здесь.
+    // The computer shows this phone, so sound is here.
     if (pc.mirrorsMe) {
       _local();
       return;
     }
-    // Забрали сюда — пока ПК сам не заиграет, звук тут.
-    // Пару секунд после переноса ПК ещё доигрывает — это не «заиграл сам».
+    // Taken here: until the computer plays by itself, sound is here. For a
+    // couple of seconds after a move it's still finishing, which isn't playing
+    // by itself.
     if (_pinned &&
         pc.playing &&
         !ownPlaying &&
@@ -537,12 +539,13 @@ class PcRemoteController extends Notifier<PcPlayback?> {
     );
   }
 
-  /// Звук здесь: на экране своё, и ПК узнаёт, что показывать.
+  /// Sound is here: the screen shows mine, and the computer learns what to
+  /// show.
   void _local() {
     final was = state;
     state = null;
-    // Только на переходе: каждое событие ПК — не повод слать своё снова
-    // (на него ПК ответил бы событием же — и так по кругу).
+    // Only on the transition: each computer event is no reason to send mine
+    // again (it would answer with an event, and round it goes).
     if (was != null || !_reported) reportSoon();
   }
 
@@ -569,7 +572,7 @@ class PcRemoteController extends Notifier<PcPlayback?> {
   static int _int(Object? v, int fallback) => v is num ? v.toInt() : fallback;
 }
 
-/// Изменчивое состояние ПК внутри контроллера; наружу — [PcPlayback].
+/// The computer's changing state inside the controller; outside, [PcPlayback].
 class _Pc {
   List<Track> tracks = const [];
   int index = -1;
@@ -582,9 +585,10 @@ class _Pc {
   DateTime positionAt = DateTime.now();
   Duration duration = Duration.zero;
 
-  /// Когда на ПК играло последним, мс.
+  /// When it last played on the computer, ms.
   int at = 0;
 
-  /// ПК сейчас показывает этот телефон (`active` — наш id): его «играет» — наше.
+  /// The computer now shows this phone (`active` is my id): its playing is
+  /// mine.
   bool mirrorsMe = false;
 }

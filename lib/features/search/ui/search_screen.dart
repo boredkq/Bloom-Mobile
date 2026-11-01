@@ -1,15 +1,13 @@
-/// Страница поиска: поле-пилюля и круглая кнопка площадки; под ними большие
-/// вкладки (все, треки, артисты, альбомы, плейлисты), как в библиотеке и в
-/// поиске на ПК, ниже — выдача.
+/// Search page: a pill field and a round platform button; big tabs under them
+/// (all, tracks, artists, albums, playlists), and results below.
 ///
-/// О площадках экран не знает: спрашивает [ProviderRegistry.searchAll] и
-/// рисует нейтральные сущности. Вкладки делят УЖЕ полученную выдачу, а не
-/// ходят в сеть заново — провайдер отдаёт все разделы за один прогон.
+/// The screen knows nothing of platforms: it asks [ProviderRegistry.searchAll]
+/// and draws neutral entities. Tabs split results ALREADY received, with no
+/// network trip: a provider gives all sections in one run.
 ///
-/// Сюда же вставляют ссылки: как на десктопе, поле поиска — единственная точка
-/// импорта. Похожая на ссылку строка идёт в `resolveUrlAny` вместо поиска, и
-/// трек/артист/плейлист/альбом превращается в одну карточку выдачи; artist's
-/// or a listener's link opens their page at once.
+/// Links get pasted here too: a string that looks like a link goes to
+/// `resolveUrlAny` instead of search, and a track, playlist or album becomes
+/// one result card; an artist's or a listener's link opens their page at once.
 library;
 
 import 'package:flutter/material.dart';
@@ -35,8 +33,9 @@ import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/skeleton.dart';
 import '../recent_store.dart';
 
-/// Похожа ли строка на ссылку. Домены ловим и без протокола — вставляют и так.
-/// Точный разбор всё равно за площадкой, здесь только выбор ветки.
+/// Whether a string looks like a link. Domains get caught with no protocol too,
+/// since that's how they get pasted. The exact parsing is the platform's; this
+/// only picks the branch.
 bool looksLikeUrl(String query) =>
     RegExp(r'^https?://', caseSensitive: false).hasMatch(query) ||
     RegExp(
@@ -44,7 +43,7 @@ bool looksLikeUrl(String query) =>
       caseSensitive: false,
     ).hasMatch(query);
 
-/// Зарезолвленная ссылка → выдача из одной карточки.
+/// A resolved link as results of one card.
 SearchResults _resolvedToResults(ResolvedUrl resolved) => switch (resolved) {
   ResolvedTrack(:final track) => SearchResults(tracks: [track]),
   ResolvedArtist(:final artist) => SearchResults(artists: [artist]),
@@ -95,16 +94,16 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   bool _loading = false;
   String? _error;
 
-  /// Был ли уже прогон. Нужен, чтобы отличать «ещё не искали» от «искали и не
-  /// нашли»: реестр гасит ошибки провайдеров в пустую выдачу, и без этого
-  /// флага неудачный поиск выглядел как нетронутый экран.
+  /// Whether there's been a run, telling not searched yet from found nothing:
+  /// the registry turns provider errors into empty results, and with no flag a
+  /// failed search looks like an untouched screen.
   bool _searched = false;
 
-  /// Номер запроса: ответ на устаревший поиск не должен перебить свежий.
+  /// Query number: an answer to a stale search mustn't override a fresh one.
   int _generation = 0;
 
-  /// Запрос, по которому стоит ВЫДАЧА, — не то же, что текст в поле: его уже
-  /// правят под следующий поиск, а очередь набирается из того, что на экране.
+  /// Query the RESULTS stand for, not the field's text: that's being edited for
+  /// the next search, and the queue comes from what's on screen.
   String _lastQuery = '';
 
   @override
@@ -117,9 +116,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   Future<void> _search() async {
     final query = _controller.text.trim();
     if (query.isEmpty) return;
-    // Запоминаем на старте, как на десктопе: запрос попадает в недавние даже
-    // если выдача пустая — повторить его с опечаткой куда полезнее, чем
-    // набирать заново.
+    // Remembered at the start, so a query lands in recents even with empty
+    // results: repeating a typo beats typing it all again.
     ref.read(recentSearchesProvider.notifier).push(query);
     final gen = ++_generation;
     setState(() {
@@ -129,9 +127,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     });
 
     try {
-      // Ссылка — сперва резолв. Не разобрали (чужая площадка не подключена,
-      // опечатка) — молча падаем в обычный поиск: строка ведь введена в поле
-      // поиска, и выдача по ней полезнее пустого экрана с ошибкой.
+      // A link resolves first. If unparsed (a platform not connected, a typo)
+      // it silently falls to ordinary search: the string was typed in a search
+      // field, and results beat an empty error screen.
       if (looksLikeUrl(query)) {
         final found = await ref.read(registryProvider).resolveUrlAny(query);
         if (!mounted || gen != _generation) return;
@@ -175,10 +173,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   void _go(SearchTab tab) => setState(() => _tab = tab);
 
-  /// Тап по недавнему запросу: подставить его в поле и сразу искать.
-  ///
-  /// Клавиатуру убираем — она заняла бы полэкрана над свежей выдачей, а
-  /// править подставленный запрос обычно и не нужно.
+  /// A tap on a recent query: fills the field and searches right away. The
+  /// keyboard goes: it would take half the screen over fresh results, and a
+  /// filled query rarely needs editing.
   void _applyRecent(String query) {
     _controller.value = TextEditingValue(
       text: query,
@@ -199,9 +196,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
             child: Row(
               children: [
-                // Своим табом поиск — корень ветки, и возвращаться ему некуда:
-                // стрелки тогда нет вовсе, а поле занимает всю ширину. Открытый
-                // страницей главной — стрелка на месте.
+                // As its own tab search is a branch root with nowhere to
+                // return: no arrow, and the field takes the whole width. Opened
+                // as a page, the arrow is there.
                 if (Navigator.of(context).canPop()) ...[
                   CircleIconButton(
                     icon: Bi.arrowLeft,
@@ -223,9 +220,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                // Смена площадки перезапускает поиск: выдача целиком принадлежит
-                // выбранному источнику, показывать под новым логотипом старые
-                // строки нельзя.
+                // A platform change restarts the search: results belong wholly
+                // to the chosen source, and old rows can't show under a new
+                // logo.
                 _PlatformButton(onPicked: _search),
               ],
             ),
@@ -257,9 +254,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       );
     }
     if (_results.isEmpty) {
-      // До первого запроса вместо заглушки — недавние. После неудачного поиска
-      // их не показываем: ответ «ничего не нашлось» относится к тому, что ввели,
-      // и подменять его историей значит прятать результат.
+      // Before the first query, recents in place of a stand-in. Not after a
+      // failed search: nothing found answers what was typed, and swapping in
+      // history hides that result.
       final recents = ref.watch(recentSearchesProvider);
       final items = ref.watch(recentItemsProvider);
       if (!_searched && (recents.isNotEmpty || items.isNotEmpty)) {
@@ -315,14 +312,12 @@ class _SearchField extends StatelessWidget {
   );
 }
 
-/// Недавнее на пустом экране поиска: сперва открытые карточки лентой, под ними
-/// запросы строками — порт десктопного выпадающего списка истории, разложенного
-/// на два блока (мешать их по свежести, как `mergedRecents` на ПК, здесь нечем:
-/// времени мы не храним).
+/// Recent on an empty search screen: opened cards as a strip first, queries as
+/// rows below.
 ///
-/// Запросы именно строками, а не чипами-пилюлями: запрос бывает длинным («бой с
-/// тенью 3 саундтрек»), и в пилюлю такой влезает только многоточием — а узнают
-/// прошлый запрос как раз по хвосту.
+/// Queries are rows rather than pills: a query can be long (бой с тенью 3
+/// саундтрек), a pill shows only an ellipsis, and a past query gets recognised
+/// by its tail.
 class _RecentPanel extends ConsumerWidget {
   const _RecentPanel({
     required this.queries,
@@ -337,7 +332,7 @@ class _RecentPanel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ListView(
-      // Снизу — бары каркаса: они плавают над содержимым.
+      // Room below for the shell's bars, floating over the content.
       padding: EdgeInsets.fromLTRB(8, 4, 8, 12 + bottomBarsInset(context)),
       children: [
         if (items.isNotEmpty) ...[
@@ -345,8 +340,8 @@ class _RecentPanel extends ConsumerWidget {
             title: context.l.searchRecentOpened,
             onClear: () => ref.read(recentItemsProvider.notifier).clear(),
           ),
-          // Высота — как у ленты плейлистов в выдаче: карточки те же и рядом с
-          // ней стоять им одинаково.
+          // Height as in the results' playlist strip: the same cards, standing
+          // alike.
           EntityCarousel(
             height: 194,
             itemCount: items.length,
@@ -386,12 +381,11 @@ class _RecentHeader extends StatelessWidget {
   );
 }
 
-/// Карточка недавно открытого: обложка (у артиста — кружок), название и тип.
-///
-/// Своя, а не [SetCard]/[ArtistCard]/[TrackCard]: в одной ленте стоят разные
-/// сущности, и им нужен общий силуэт и общий жест удаления. Подпись — тип, а не
-/// автор: обложка с названием и так узнаются, а вот «это альбом или трек» по
-/// ним не понять.
+/// A recently opened card: a cover (a circle for an artist), a title and type.
+/// Its own rather than [SetCard], [ArtistCard] or [TrackCard]: one strip holds
+/// different entities, needing one silhouette and one remove gesture. The
+/// caption is the type, not the author: cover and title are recognisable, but
+/// not whether it's an album or a track.
 class _RecentCard extends ConsumerWidget {
   const _RecentCard({required this.item});
 
@@ -439,11 +433,9 @@ class _RecentCard extends ConsumerWidget {
   }
 }
 
-/// Открыть недавнее: страница артиста или сета, трек — просто играет (страницы
-/// у него нет). Запись при этом поднимается наверх, как `openRecentItem` на ПК.
-///
-/// Повторного запроса к площадке не нужно: в списке лежит та же сущность, что
-/// пришла в выдаче, — с обложкой, владельцем и `sourceData` для стрима.
+/// Opens a recent item: an artist or set page, while a track just plays. The
+/// entry rises to the top. No request to the platform: the list holds the
+/// entity from results, with cover, owner and `sourceData`.
 void _openRecent(BuildContext context, WidgetRef ref, RecentItem item) {
   ref.read(recentItemsProvider.notifier).push(item);
   switch (item) {
@@ -458,7 +450,7 @@ void _openRecent(BuildContext context, WidgetRef ref, RecentItem item) {
   }
 }
 
-/// Шторка одного действия — «Убрать из недавних» для карточки под долгим тапом.
+/// One-action sheet: Remove from recent, for a long-pressed card.
 Future<void> _removeRecent(
   BuildContext context,
   WidgetRef ref,
@@ -544,11 +536,9 @@ class _PlatformButton extends ConsumerWidget {
   }
 }
 
-/// Шторка выбора источника поиска.
-///
-/// Площадки идут отдельными карточками с просветом между ними, а не пунктами
-/// одного блока: логотипы у брендов разноцветные и на общей панели читались как
-/// каша. Заголовка нет — знак и название площадки говорят сами за себя.
+/// Search source picker sheet. Platforms are separate cards with gaps rather
+/// than one block's items: brand logos are multicoloured, and on one panel read
+/// as mush. No title: the mark and name say it.
 Future<void> _pickSource(
   BuildContext context,
   WidgetRef ref,
@@ -594,11 +584,9 @@ const int _tracksPreview = 4;
 /// The gap over a kind's own tab, as in the library.
 const double _tabTop = 18;
 
-/// Записать открытую из выдачи карточку в «недавно открытые».
-///
-/// Зовётся из плиток выдачи — они же общие с главной и библиотекой, поэтому
-/// запись идёт не внутри плитки, а через её `onOpen`: недавние копит ровно
-/// поиск, как `openActions.ts` на десктопе.
+/// Records a card opened from results. Called from result tiles, which home and
+/// the library share, so through its `onOpen` rather than inside: only search
+/// keeps recents.
 void _remember(WidgetRef ref, RecentItem item) =>
     ref.read(recentItemsProvider.notifier).push(item);
 
@@ -613,7 +601,7 @@ class _ResultsView extends ConsumerWidget {
   final SearchResults results;
   final SearchTab tab;
 
-  /// Запрос — он же подпись источника в пилюле плеера («Поиск: …»).
+  /// The query, also the source caption in the player's pill.
   final String query;
 
   /// A section's caption in "all" leads to its kind's tab.
@@ -760,8 +748,8 @@ class _SearchSkeleton extends StatelessWidget {
   }
 }
 
-/// Заготовка «Всё»: подпись и превью треков, затем ленты артистов и альбомов —
-/// тот же порядок секций, что в [_ResultsView].
+/// Skeleton for All: a caption and track previews, then artist and album
+/// strips, in [_ResultsView]'s section order.
 class _AllSkeleton extends StatelessWidget {
   const _AllSkeleton();
 

@@ -1,9 +1,7 @@
-/// «Настройки → Компьютер»: сопряжение с Bloom на ПК и синхронизация —
-/// телефонная пара раздела «Интеграции → Телефон» ПК.
-///
-/// Каркас — [PlatformPage], как у площадок и Last.fm: значок посреди экрана,
-/// статус под ним, действия внизу. Не сопряжён — под значком шаги, как
-/// подключить; сопряжён — «Синхронизировать сейчас» и «Отключить».
+/// Computer settings page: pairing with Bloom there and sync. The frame is
+/// [PlatformPage], like platforms and Last.fm: an icon mid-screen, a status
+/// below, actions at the bottom. Not paired shows steps for connecting; paired
+/// shows Sync now and Disconnect.
 library;
 
 import 'dart:async';
@@ -108,7 +106,7 @@ class PcSettingsScreen extends ConsumerWidget {
     return tail == null ? head : '$head\n$tail';
   }
 
-  /// Сегодня — время, раньше — дата и время.
+  /// Today shows the time, earlier the date and time.
   static String _when(BuildContext context, int ms) {
     final at = DateTime.fromMillisecondsSinceEpoch(ms);
     final now = DateTime.now();
@@ -120,7 +118,7 @@ class PcSettingsScreen extends ConsumerWidget {
   }
 }
 
-/// Не сопряжён: как подключить — шаги прямо на странице.
+/// Not paired: how to connect, steps right on the page.
 class _HowTo extends StatelessWidget {
   const _HowTo();
 
@@ -166,9 +164,9 @@ String pairMessage(AppLocalizations l, PairResult r, String name) =>
       PairResult.failed => l.pcErrFailed,
     };
 
-// ── Сканер ─────────────────────────────────────────────────────────────────
+// ── Scanner ───────────────────────────────────────────────────────────────
 
-/// Камера во весь экран: первый QR Bloom — сопряжение, и назад.
+/// Full-screen camera: the first Bloom QR pairs, and back.
 class PcScanScreen extends ConsumerStatefulWidget {
   const PcScanScreen({super.key});
 
@@ -181,10 +179,10 @@ class _PcScanScreenState extends ConsumerState<PcScanScreen> {
     formats: const [BarcodeFormat.qrCode],
   );
 
-  /// Код уже взят и идёт сопряжение — остальные кадры не в счёт.
+  /// A code is taken and pairing is under way, so other frames don't count.
   bool _busy = false;
 
-  /// Последний не-Bloom код: про него уже сказали, второй раз не надо.
+  /// Last non-Bloom code: already told about it, no need twice.
   String? _rejected;
 
   @override
@@ -238,7 +236,7 @@ class _PcScanScreenState extends ConsumerState<PcScanScreen> {
               ),
             ),
           ),
-          // Рамка, куда навести код.
+          // Frame to aim a code into.
           Center(
             child: Container(
               width: 240,
@@ -293,9 +291,10 @@ class _PcScanScreenState extends ConsumerState<PcScanScreen> {
   }
 }
 
-// ── Код ────────────────────────────────────────────────────────────────────
+// ── Code ──────────────────────────────────────────────────────────────────
 
-/// Шторка «Ввести код»: найти ПК с открытым окном сопряжения, потом шесть цифр.
+/// Enter code sheet: finds a computer with the pairing window open, then six
+/// digits.
 Future<void> _enterCode(BuildContext context) =>
     showBloomSheetChild<void>(context: context, child: const _CodeSheet());
 
@@ -308,7 +307,7 @@ class _CodeSheet extends ConsumerStatefulWidget {
 
 class _CodeSheetState extends ConsumerState<_CodeSheet> {
   final TextEditingController _code = TextEditingController();
-  List<FoundPc>? _found; // null — ищем
+  List<FoundPc>? _found; // null while searching
   bool _busy = false;
   String? _error;
 
@@ -397,7 +396,8 @@ class _CodeSheetState extends ConsumerState<_CodeSheet> {
         ),
       );
     }
-    // Обычно ПК один; если окно открыто на двух — берём первый ответивший.
+    // Usually there's one computer; with the window open on two, the first to
+    // answer.
     final pc = found.first;
     return Padding(
       padding: EdgeInsets.fromLTRB(

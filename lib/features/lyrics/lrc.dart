@@ -1,5 +1,4 @@
-/// Timed lyrics (LRC): `[mm:ss.xx]text` rows, read as the PC's `Lyrics::apply`
-/// reads them.
+/// Timed lyrics (LRC): `[mm:ss.xx]text` rows.
 library;
 
 /// One line of timed lyrics.

@@ -1,17 +1,16 @@
-/// Синхронизация с ПК — «Настройки → Компьютер».
+/// Sync with the computer. The phone pairs with Bloom there (a QR or a code
+/// from its Connect phone screen) and then goes to it by itself: at launch, on
+/// return and on leaving, every couple of minutes while open, and by a button.
+/// With the computer offline, a round quietly skips. The round itself is
+/// [syncWithPc].
 ///
-/// Телефон сопрягается с Bloom на ПК (QR или код с экрана «Подключить
-/// телефон») и дальше сам ходит к нему: при запуске, при возвращении в
-/// приложение и уходе из него, раз в пару минут, пока приложение открыто, и по
-/// кнопке. ПК не в сети — круг тихо пропускается. Сам круг — [syncWithPc].
+/// While the app is on screen and the computer answers, the phone holds its
+/// event stream: `sync` means it has something new and a round goes at once; an
+/// own edit goes a couple of seconds after writes settle.
 ///
-/// Пока приложение на экране и ПК отвечает, телефон держит его поток событий:
-/// ПК говорит «sync», когда у него появилось новое, — круг идёт сразу; своя
-/// правка уходит через пару секунд после того, как записи улеглись.
-///
-/// Связка с ПК лежит в kv `sync.pc` (ключ телефона — только здесь, ПК держит
-/// его хеш), время последнего удачного круга — `sync.at`. «Сбросить всё»
-/// уносит обе вместе с базой.
+/// The link lies in kv `sync.pc` (the phone's key only here, the computer holds
+/// its hash), the last good round's time in `sync.at`. Reset everything takes
+/// both with the database.
 library;
 
 import 'dart:async';
@@ -40,34 +39,35 @@ import 'pc_remote.dart';
 const String _kLink = 'sync.pc';
 const String _kAt = 'sync.at';
 
-/// Как часто ходить к ПК, пока приложение на экране.
+/// How often to go to the computer while the app is on screen.
 const Duration _kEvery = Duration(minutes: 2);
 
-/// Своя правка уходит на ПК, когда записи в базу столько молчат.
+/// An own edit goes when database writes have been quiet this long.
 const Duration _kEditSettle = Duration(seconds: 2);
 
-/// Поток событий ПК оборвался — через сколько пробовать снова.
+/// How soon to retry after the event stream dropped.
 const Duration _kRetry = Duration(seconds: 15);
 
 enum PcStatus {
-  /// Не сопряжён или круг ещё не ходил.
+  /// Not paired, or no round yet.
   idle,
   syncing,
 
-  /// Последний круг прошёл.
+  /// The last round passed.
   ok,
 
-  /// ПК не нашёлся в сети.
+  /// The computer wasn't found on the network.
   offline,
 
-  /// ПК больше не пускает: отключил телефон, сброшен или это другой ПК.
+  /// The computer won't let in any more: it disconnected the phone, was reset
+  /// or is another computer.
   repair,
 
-  /// Что-то сломалось посреди круга.
+  /// Something broke mid-round.
   failed,
 }
 
-/// Чем кончилось сопряжение.
+/// How pairing ended.
 enum PairResult { ok, notBloom, unreachable, wrong, closed, tooMany, failed }
 
 @immutable
@@ -82,10 +82,10 @@ class PcState {
   final PcLink? link;
   final PcStatus status;
 
-  /// Поток событий ПК открыт: ПК на связи прямо сейчас (Connect).
+  /// The event stream is open: the computer is connected right now (Connect).
   final bool live;
 
-  /// Последний удачный круг, мс; 0 — не было.
+  /// Last good round, ms; 0 if none.
   final int lastSync;
 
   bool get paired => link != null;
@@ -111,16 +111,17 @@ class PcController extends Notifier<PcState> {
   Timer? _timer;
   AppLifecycleListener? _life;
 
-  /// Поток событий ПК; `null` — не держим (ПК не отвечал, приложение скрыто).
+  /// The computer's event stream; `null` if not held (no answer, or the app
+  /// hidden).
   StreamSubscription<PcEvent>? _live;
   StreamSubscription<SqliteUpdate>? _writes;
   Timer? _settle, _retry;
   bool _shown = true;
 
-  /// Круг попросили, пока шёл другой, — пройти ещё раз следом.
+  /// A round was asked for while another ran: go again right after.
   bool _again = false;
 
-  /// Докуда ПК принял наше после последнего круга.
+  /// How far the computer took ours after the last round.
   ({int seq, int play})? _pushed;
 
   @override
@@ -139,7 +140,7 @@ class PcController extends Notifier<PcState> {
     );
   }
 
-  /// Расписание — из `main()`, на всё время процесса.
+  /// The schedule, from `main()`, for the process's whole life.
   void start() {
     _timer ??= Timer.periodic(_kEvery, (_) => sync());
     _life ??= AppLifecycleListener(
@@ -147,9 +148,9 @@ class PcController extends Notifier<PcState> {
         _shown = true;
         sync();
       },
-      // Ушёл из приложения — отдаём сделанное сразу: Android может убить
-      // процесс в фоне, и до следующего запуска ПК бы его не увидел. Поток
-      // событий в фоне не держим.
+      // Leaving the app sends what's done at once: Android may kill a
+      // background process, and the computer wouldn't see it until the next
+      // launch. The event stream isn't held in background.
       onHide: () {
         _shown = false;
         _closeLive();
@@ -160,8 +161,8 @@ class PcController extends Notifier<PcState> {
     unawaited(Future<void>.delayed(const Duration(seconds: 3), sync));
   }
 
-  /// Один круг. Без связки или когда ПК уже отказал в доступе — ничего; во
-  /// время другого круга — ещё один следом за ним.
+  /// One round. Nothing with no link or when the computer already refused;
+  /// during another round, one more right after.
   Future<void> sync({bool force = false}) async {
     final link = state.link;
     if (link == null) return;
@@ -210,7 +211,8 @@ class PcController extends Notifier<PcState> {
       logError('sync', 'круг с ПК сломался: $e', st);
       state = state.copyWith(status: PcStatus.failed);
     }
-    // Не дошли — то, что просили следом, сделает следующий круг по расписанию.
+    // Didn't get there: what was asked to follow goes with the next scheduled
+    // round.
     _again = false;
   }
 
@@ -240,9 +242,10 @@ class PcController extends Notifier<PcState> {
     if (state.live) state = state.copyWith(live: false);
   }
 
-  /// Связь оборвалась: ПК закрыли, сеть пропала, телефон отключили там.
-  /// Пока приложение на экране — круг через [_kRetry]: он и скажет, что
-  /// случилось, и, если ПК на месте, снова откроет поток.
+  /// The link dropped: the computer closed, the network went or the phone was
+  /// disconnected there. While the app is on screen a round comes after
+  /// [_kRetry]: it says what happened, and reopens the stream if the computer
+  /// is there.
   void _liveLost(String why) {
     _live = null;
     ref.read(pcRemoteProvider.notifier).detach();
@@ -267,9 +270,9 @@ class PcController extends Notifier<PcState> {
     }
   }
 
-  /// Запись в базу: своя правка или прослушивание уйдут, когда записи
-  /// улягутся. Без потока событий ПК, скорее всего, недоступен — ждём
-  /// расписания, а не ищем его на каждую правку.
+  /// A database write: an own edit or play goes when writes settle. With no
+  /// event stream the computer is likely unavailable, so I wait for the
+  /// schedule rather than search on every edit.
   void _onWrite(SqliteUpdate u) {
     if (_live == null) return;
     if (u.tableName != 'changes' && u.tableName != 'plays') return;
@@ -277,13 +280,14 @@ class PcController extends Notifier<PcState> {
     _settle = Timer(_kEditSettle, () {
       final link = state.link, pushed = _pushed;
       if (link == null || pushed == null) return;
-      // Записи круга (пришедшее с ПК) сюда тоже попадают — но они не свои.
+      // A round's writes (what came from the computer) land here too, but they
+      // aren't mine.
       final own = SyncLog(_db).head(link.device, ownOnly: true);
       if (own.seq > pushed.seq || own.play > pushed.play) sync();
     });
   }
 
-  /// Сопряжение по тексту QR-кода с экрана ПК.
+  /// Pairing by the QR's text from the computer's screen.
   Future<PairResult> pairQr(String text) async {
     final offer = PairOffer.parse(text);
     if (offer == null) return PairResult.notBloom;
@@ -299,7 +303,7 @@ class PcController extends Notifier<PcState> {
     );
   }
 
-  /// ПК с открытым окном «Подключить телефон» — для ввода кода.
+  /// A computer with Connect phone open, for entering a code.
   Future<List<FoundPc>> findForCode() =>
       findPcs(wait: const Duration(seconds: 2));
 
@@ -313,7 +317,7 @@ class PcController extends Notifier<PcState> {
     ),
   );
 
-  /// Забыть ПК. На ПК телефон остаётся в списке, пока его не отключат там.
+  /// Forgets the computer. There the phone stays listed until disconnected.
   void unpair() {
     _closeLive();
     _pushed = null;
@@ -349,10 +353,10 @@ class PcController extends Notifier<PcState> {
 
   static Future<String> _name() async => (await deviceName()) ?? 'Phone';
 
-  /// Что изменил круг — перечитать в памяти.
+  /// What a round changed, to re-read in memory.
   void _reread(Set<String> touched, bool cleared) {
     bool any(List<String> kinds) => kinds.any(touched.contains);
-    // Дизлайки волна перечитывает сама вслед за библиотекой.
+    // The wave re-reads dislikes itself after the library.
     if (any(['list', 'item', 'follow', 'track', 'rekey', 'dislike']) ||
         cleared) {
       ref.read(libraryProvider.notifier).reload();

@@ -1,21 +1,12 @@
-/// Недавнее в поиске: запросы и открытые карточки — порт десктопных
-/// `bloom_recent_searches` и `bloom_recent_items`
-/// (`features/search/model/store.ts`).
+/// Recent in search: queries and opened cards. Queries are plain strings, with
+/// no timestamp: they're two separate blocks here, each in its own order.
 ///
-/// Запросы хранятся строками, а не `{q, ts}` как на ПК: время там нужно ровно
-/// для того, чтобы в выпадающем списке смешать запросы с открытыми карточками
-/// по свежести. У нас это два отдельных блока, каждый в своём порядке, и метка
-/// времени осталась бы мёртвым полем.
+/// Opened ones are WHOLE entities: `Track`, `Artist` and `Playlist` already do
+/// JSON, and such an entry opens a page by the same call as from results, with
+/// cover, owner and `sourceData`, and no request to the platform.
 ///
-/// Открытые лежат ЦЕЛЫМИ сущностями, а не десктопным снимком
-/// `{kind, providerId, id, title, cover}`: `Track`/`Artist`/`Playlist` и так
-/// умеют в JSON, и по такой записи страница открывается ровно тем же вызовом,
-/// что из выдачи, — с обложкой, владельцем и `sourceData` для стрима, без
-/// повторного запроса к площадке.
-///
-/// Это ИСТОРИЯ, а не настройка: в `kSettingsKeys` ключи не входят (на ПК они
-/// тоже вне `SETTINGS_KEYS`), сброс настроек их не трогает — стирает только
-/// полный сброс.
+/// This is HISTORY, not a setting: its keys aren't in `kSettingsKeys`, so a
+/// settings reset leaves them and only a full reset erases them.
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,10 +14,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/entities/entities.dart';
 import '../../core/store/json_store.dart' show jsonStoreProvider;
 
-/// Сколько запросов помним — как `RS_MAX` на десктопе.
+/// Queries remembered.
 const int kRecentSearchMax = 8;
 
-/// Сколько открытых карточек помним — как `RI_MAX` на десктопе.
+/// Opened cards remembered.
 const int kRecentItemMax = 12;
 
 const String _key = 'recentSearches';
@@ -44,10 +35,9 @@ class RecentSearchesController extends Notifier<List<String>> {
 
   void _save() => ref.read(jsonStoreProvider).write(_key, state);
 
-  /// Запомнить запрос: наверх, без дублей, не длиннее [kRecentSearchMax].
-  ///
-  /// Повтор ищем без учёта регистра, но в списке остаётся ПОСЛЕДНЕЕ написание —
-  /// так же, как на ПК: пользователь только что набрал именно его.
+  /// Remembers a query: on top, no duplicates, up to [kRecentSearchMax]. A
+  /// repeat is found ignoring case, but the LATEST spelling stays: the user
+  /// just typed it.
   void push(String query) {
     final q = query.trim();
     if (q.isEmpty) return;
@@ -73,15 +63,14 @@ class RecentSearchesController extends Notifier<List<String>> {
   }
 }
 
-/// Открытая из выдачи карточка. Треки сюда попадают тоже — на десктопе у
-/// `RecentItem` для этого есть `kind: 'track'`, — но открытием считается
-/// запуск: страницы у трека нет.
+/// A card opened from results. Tracks land here too, with opening meaning
+/// starting: a track has no page.
 sealed class RecentItem {
   const RecentItem();
 
-  /// Ключ дедупа. Тип в нём обязателен: id альбома и его заглавного трека у
-  /// Яндекса различаются только префиксом сущности, а на SoundCloud плейлист и
-  /// трек нумеруются каждый со своего счётчика и вполне могут совпасть.
+  /// Dedupe key. The type is a must: on Yandex an album's and its title track's
+  /// ids differ only by the entity prefix, and on SoundCloud a playlist and
+  /// track count from separate counters and may match.
   String get key;
 
   Map<String, dynamic> toJson();
@@ -129,8 +118,7 @@ final class RecentArtist extends RecentItem {
   Map<String, dynamic> toJson() => {'kind': 'artist', 'data': artist.toJson()};
 }
 
-/// Альбом или плейлист — как и везде, одной сущностью с флагом
-/// [Playlist.isAlbum].
+/// Album or playlist, one entity as everywhere, flagged by [Playlist.isAlbum].
 final class RecentSet extends RecentItem {
   const RecentSet(this.set);
 
@@ -161,10 +149,9 @@ class RecentItemsController extends Notifier<List<RecentItem>> {
     for (final item in state) item.toJson(),
   ]);
 
-  /// Запомнить открытое: наверх, без дублей, не длиннее [kRecentItemMax].
-  ///
-  /// Свежая запись затирает прежнюю целиком: у карточки из выдачи полей
-  /// обычно больше, чем у той же сущности, попавшей в список неделю назад.
+  /// Remembers what's opened: on top, no duplicates, up to [kRecentItemMax]. A
+  /// fresh entry overwrites the old whole: a card from results usually has more
+  /// fields than the same entity a week ago.
   void push(RecentItem item) {
     state = [
       item,
