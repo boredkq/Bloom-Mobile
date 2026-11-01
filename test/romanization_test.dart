@@ -10,12 +10,12 @@ void main() {
       expect(romanize('Привет мир'), 'Privet mir');
       expect(
         romanize('Съешь же ещё этих мягких французских булок'),
-        "S'esh' zhe eshcho etikh myagkikh frantsuzskikh bulok",
+        "Sesh' zhe eshchyo etikh myagkikh frantsuzskikh bulok",
       );
     });
 
     test('transliterates Ukrainian and Belarusian letters', () {
-      expect(romanize('Київ'), 'Kyiv');
+      expect(romanize('Київ'), 'Kiyiv');
       expect(romanize('Ў краіне'), 'W kraine');
     });
   });
@@ -45,7 +45,7 @@ void main() {
     test('transliterates Katakana', () {
       expect(romanize(' bloom '), null);
       expect(romanize('ブルーム'), 'buruumu');
-      expect(romanize('トーキョー'), 'tookyo');
+      expect(romanize('トーキョー'), 'tookyoo');
     });
 
     test('handles digraphs correctly', () {

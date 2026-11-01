@@ -21,10 +21,11 @@ String? romanize(String text) {
       continue;
     }
 
-    // 2. Japanese Hiragana (3041..3096) and Katakana (30A1..30FA)
+    // 2. Japanese Hiragana (3041..3096), Katakana (30A1..30FA), and Chōonpu (30FC)
     if ((code >= 0x3041 && code <= 0x3096) ||
-        (code >= 0x30A1 && code <= 0x30FA)) {
-      final (romaji, consumed) = _romanizeKana(text, i);
+        (code >= 0x30A1 && code <= 0x30FA) ||
+        code == 0x30FC) {
+      final (romaji, consumed) = _romanizeKana(text, i, sb.toString());
       sb.write(romaji);
       changed = true;
       i += consumed;
@@ -165,7 +166,19 @@ String _romanizeHangulSyllable(int code) {
 
 // ============================ Japanese Kana ============================
 
-(String, int) _romanizeKana(String text, int index) {
+(String, int) _romanizeKana(String text, int index, [String? previousOutput]) {
+  final ch = text[index];
+
+  // Chōonpu (ー) prolongs the preceding vowel
+  if (ch == 'ー') {
+    if (previousOutput != null && previousOutput.isNotEmpty) {
+      for (var j = previousOutput.length - 1; j >= 0; j--) {
+        final c = previousOutput[j].toLowerCase();
+        if ('aeiou'.contains(c)) return (c, 1);
+      }
+    }
+    return ('', 1);
+  }
   // Check 2-character digraphs first (e.g., きゃ -> kya)
   if (index + 1 < text.length) {
     final pair = text.substring(index, index + 2);
@@ -174,7 +187,6 @@ String _romanizeHangulSyllable(int code) {
   }
 
   // Small tsu gemination (っ / ッ)
-  final ch = text[index];
   if (ch == 'っ' || ch == 'ッ') {
     if (index + 1 < text.length) {
       final (nextRomaji, _) = _romanizeKana(text, index + 1);
