@@ -1,10 +1,9 @@
-/// Каркас приложения: таб-бар, миниплеер над ним, полноэкранный плеер
-/// поверх всего.
+/// App shell: the tab bar, the mini player above it, the full player over
+/// everything.
 ///
-/// Бары лежат поверх содержимого (`extendBody`), а не отрезают ему низ: поля
-/// вокруг карточки миниплеера прозрачные, и сквозь них видно список. Цена —
-/// каждому скроллу нужен нижний запас в высоту баров, иначе последние строки
-/// остаются под ними навсегда: он берётся из [bottomBarsInset].
+/// The bars lie over the content (`extendBody`): the margins around the mini
+/// player card are clear and the list shows through. So every scroll needs
+/// [bottomBarsInset] at its end, or the last rows stay under the bars.
 library;
 
 import 'dart:async';
@@ -67,8 +66,8 @@ class _BloomShellState extends ConsumerState<BloomShell> {
   void initState() {
     super.initState();
     _life;
-    // Первый прогон — молчаливый: он же засеивает уже выполненные достижения.
-    // Из `initState` провайдер трогать нельзя, ждём кадр.
+    // The first run is silent: it also seeds achievements already earned. A
+    // provider can't be touched from `initState`, so I wait a frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _sync();
@@ -135,15 +134,13 @@ class _BloomShellState extends ConsumerState<BloomShell> {
     });
   }
 
-  /// Достижения ловятся здесь, а не на вкладке профиля: иначе они «получались»
-  /// бы только когда пользователь до неё дошёл (та же причина, по которой на
-  /// десктопе вотчер живёт в `App`).
+  /// Achievements are caught here, not on the profile page, or they'd only be
+  /// earned once the user went there.
   void _sync() {
     final fresh = ref
         .read(unlockedAchievementsProvider.notifier)
         .sync(ref.read(achievementsProvider));
-    // Тосты не налезают друг на друга: `ScaffoldMessenger` держит очередь и
-    // показывает следующий, когда догорит предыдущий.
+    // `ScaffoldMessenger` queues toasts, so they don't overlap.
     for (final item in fresh) {
       ScaffoldMessenger.of(context).toast(
         context.l.achUnlockedToast(
@@ -161,25 +158,23 @@ class _BloomShellState extends ConsumerState<BloomShell> {
     ref.listen(achievementsProvider, (_, _) => _sync());
     final shell = widget.shell;
     final scaffold = Scaffold(
-      // Картинка фона лежит под каркасом — тогда своей заливки у него нет.
+      // The background picture lies under the shell, which then has no fill.
       backgroundColor: ref.watch(backgroundOnProvider)
           ? Colors.transparent
           : t.bg,
       extendBody: true,
       body: shell,
-      // Бары именно в `bottomNavigationBar`, а не колонкой в `body`: только так
-      // плавающий тост встаёт НАД миниплеером, а не поверх него. На раскладку
-      // это не влияет — Scaffold точно так же отдаёт им низ, а телу остаток.
+      // The bars go in `bottomNavigationBar`, not a column in `body`: only then
+      // does a floating toast land ABOVE the mini player.
       //
-      // Группа стекла у баров СВОЯ, отдельная от страницы: они лежат поверх
-      // списка, и с общим снимком подложки уходящие под них строки в размытие
-      // бы не попали.
+      // The bars have their own glass group: they lie over the list, and with a
+      // shared snapshot the rows passing under them wouldn't blur.
       bottomNavigationBar: GlassGroup(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Место под карточку миниплеера: саму карточку рисует панель
-            // плеера — она из карточки вырастает и лежит поверх баров.
+            // Room for the mini player card; the player panel draws the card
+            // itself, growing out of it over the bars.
             const MiniCardSlot(),
             _NavBar(
               style: ref.watch(settingsProvider).navStyle,
@@ -201,17 +196,17 @@ class _BloomShellState extends ConsumerState<BloomShell> {
     return ValueListenableBuilder<bool>(
       valueListenable: playerSheetOpen,
       builder: (context, open, child) => PopScope(
-        // Развёрнутый плеер съедает системную «назад». Своего маршрута у него
-        // нет, и без этого «назад» ушла бы мимо: свернула бы страницу под
-        // панелью или закрыла приложение, оставив плеер во весь экран.
+        // The open player takes the system Back. It has no route of its own, so
+        // Back would otherwise close the page under the panel or the app,
+        // leaving the player full screen.
         canPop: !open,
         onPopInvokedWithResult: (didPop, _) {
           if (!didPop) collapsePlayerSheet();
         },
         child: child!,
       ),
-      // Панель лежит ПОВЕРХ каркаса вместе с барами: она и есть карточка
-      // миниплеера, только выросшая, и накрывать таб-бар обязана сама.
+      // The panel lies OVER the shell with the bars: it is the mini player card
+      // grown up, and has to cover the tab bar itself.
       child: Stack(
         fit: StackFit.expand,
         children: [scaffold, const PlayerSheet()],
@@ -220,38 +215,29 @@ class _BloomShellState extends ConsumerState<BloomShell> {
   }
 }
 
-/// Высота панели таб-бара вместе с её нижним вырезом — столько занимает низ
-/// экрана под карточкой миниплеера.
-///
-/// По ней панель плеера считает своё место в покое, поэтому число обязано
-/// совпадать с тем, что бар раскладывает у себя (см. [_NavBar.build]): высота
-/// ряда иконок плюс отступ, которым он выводит себя из системного выреза.
+/// Height of the tab bar panel with its bottom inset: what the screen's bottom
+/// takes under the mini player card. The player panel computes its rest
+/// position from this, so it must match the bar's own layout ([_NavBar.build]).
 double navBarInset(BuildContext context, NavBarStyle style) => switch (style) {
   NavBarStyle.floating ||
   NavBarStyle.pill => kNavBarFloatHeight + bottomEdgeInset(context),
   _ => kNavBarHeight + bottomSafeInset(context),
 };
 
-// ─── Переключение вкладок ───────────────────────────────────────────────────
+// ─── Switching tabs ──────────────────────────────────────────────────────
 
-/// Смена вкладки. Вдвое короче перехода страниц (450 мс): там шаг вглубь, а
-/// здесь ответ на тап по бару — растворение должно успеть кончиться раньше,
-/// чем палец дойдёт до следующего таба.
+/// Tab change. Half the page transition: this answers a tap, and the fade
+/// should end before the finger reaches the next tab.
 const Duration kTabTransition = Duration(milliseconds: 220);
 
-/// Контейнер веток каркаса: вкладки сменяют друг друга растворением.
+/// Holds the shell's branches; tabs replace each other with a fade.
+/// `StatefulShellRoute.indexedStack` switches in one frame. This works the same
+/// way (all branches stay in the tree, `Offstage` and `TickerMode` on inactive
+/// ones, state survives), but two show during the transition.
 ///
-/// Готовый `StatefulShellRoute.indexedStack` меняет вкладку одним кадром —
-/// здесь тот же `IndexedStack` по смыслу (все ветки живут в дереве,
-/// `Offstage` + `TickerMode` у неактивных, состояние вкладки переживает
-/// переключение), но на время перехода видно сразу две: уходящая гаснет,
-/// приходящая проявляется.
-///
-/// Кривые — общие со страницами ([kPageFadeIn], [kPageFadeOut]), а вот
-/// длительность своя, [kTabTransition]: страница уезжает в глубину, и ей
-/// уместно идти степенно, а таб-бар отвечает под пальцем. Сдвига нет
-/// намеренно — у вкладок нет общей оси, а под перелётом обложки горизонталь
-/// спорила бы с ним (см. `detailPageTransition`).
+/// Curves are shared with pages ([kPageFadeIn], [kPageFadeOut]), the length is
+/// its own, [kTabTransition]. No slide on purpose: tabs share no axis, and it
+/// would fight a cover flight (see `detailPageTransition`).
 class BranchCrossfade extends StatefulWidget {
   const BranchCrossfade({
     super.key,
@@ -268,15 +254,14 @@ class BranchCrossfade extends StatefulWidget {
 
 class _BranchCrossfadeState extends State<BranchCrossfade>
     with SingleTickerProviderStateMixin {
-  // Стартует «догоревшим»: первый кадр приложения — вкладка уже на месте,
-  // растворять нечего.
+  // Starts finished: on the app's first frame the tab is already in place.
   late final AnimationController _fade = AnimationController(
     vsync: this,
     duration: kTabTransition,
     value: 1,
   );
 
-  /// Ветка, с которой ушли. Её ещё рисуют, пока не догорит [_fade].
+  /// The branch being left, still drawn until [_fade] ends.
   int _leaving = 0;
 
   @override
@@ -296,8 +281,7 @@ class _BranchCrossfadeState extends State<BranchCrossfade>
 
   @override
   Widget build(BuildContext context) {
-    // Раскладка как у `IndexedStack`: свободные ограничения, выравнивание по
-    // началу — ветка сама занимает отданное каркасом место.
+    // Laid out like `IndexedStack`: loose constraints, aligned to the start.
     return AnimatedBuilder(
       animation: _fade,
       builder: (context, _) => Stack(
@@ -316,14 +300,15 @@ class _BranchCrossfadeState extends State<BranchCrossfade>
         : 0.0;
 
     return Offstage(
-      // Уходящая гаснет за первую четверть перехода — дальше её незачем
-      // раскладывать и красить, хотя переход ещё идёт.
+      // The leaving branch fades over the first quarter; after that there's no
+      // reason to lay it out or paint it.
       offstage: opacity == 0,
       child: TickerMode(
         enabled: active,
         child: IgnorePointer(
           ignoring: !active,
-          // `Opacity` при 1 не заводит слой — на покое это обычная ветка.
+          // `Opacity` at 1 makes no layer, so at rest this is an ordinary
+          // branch.
           child: Opacity(opacity: opacity, child: widget.children[i]),
         ),
       ),
@@ -340,38 +325,36 @@ class _NavSpec {
     this.motion = _NavMotion.wiggle,
   });
 
-  /// Подпись резолвится при отрисовке, а не при сборке списка: таблица табов
-  /// статическая и переживает смену языка.
+  /// The label resolves at paint time: the tab table is static and outlives a
+  /// language change.
   final String Function(AppLocalizations l) label;
   final BloomGlyph icon;
   final BloomGlyph activeIcon;
 
-  /// Чем иконка отвечает на выбор своей вкладки — см. [_NavMotion].
+  /// How the icon answers its tab being picked; see [_NavMotion].
   final _NavMotion motion;
 }
 
-/// Высота ряда иконок у прижатых к низу стилей.
+/// Height of the icon row in edge-hugging styles.
 const double kNavBarHeight = 58;
 
-/// Высота плавающих стилей. Больше прижатых намеренно: панель кончается до
-/// краёв экрана, и в тех же 58 она на фоне пустых полей вокруг читается
-/// мельче, чем бар во всю ширину.
+/// Height of floating styles. Taller on purpose: the panel stops short of the
+/// edges, and at 58 it reads smaller against the empty margins than a
+/// full-width bar.
 const double kNavBarFloatHeight = 68;
 
-/// Размер глифа в баре. У плавающих крупнее — вслед за высотой панели, иначе
-/// прибавка уходит в пустые поля над иконками и бар выглядит просто рыхлым.
+/// Glyph size in the bar. Larger in floating styles, following the panel
+/// height, or the extra goes to empty space above the icons and the bar looks
+/// loose.
 const double _kNavIcon = 24;
 const double _kNavFloatIcon = 27;
 
-/// Те же глифы, когда под ними стоит подпись. Высота панели с подписями НЕ
-/// меняется (его слово), поэтому место строке освобождает сама иконка: бар
-/// остаётся на своей линии, что бы ни было выбрано, и списки под ним не
-/// перекладываются.
+/// The same glyphs with a label under them. The panel height doesn't change
+/// with labels, so the icon itself makes room: the bar keeps its line and lists
+/// below don't shift.
 ///
-/// У [NavLabels.active] ужимается ОДИН активный таб — тот, под которым строка
-/// и появилась. Ужимать заодно и соседей нельзя: подписи под ними нет, и
-/// мелкие глифы посреди пустого места читаются как сбой, а не как ряд (поймал
-/// он на первой же сборке).
+/// With [NavLabels.active] only the active tab shrinks. Small glyphs with no
+/// label under them read as a glitch.
 const double _kNavIconText = 19;
 const double _kNavFloatIconText = 21;
 
@@ -391,13 +374,13 @@ class _NavBar extends StatelessWidget {
   /// The tabs in display order, see [NavTab].
   final List<NavTab> tabs;
 
-  /// Чем помечен активный таб, см. [_NavMark].
+  /// What marks the active tab; see [_NavMark].
   final NavIndicator indicator;
 
-  /// Подписи под иконками, см. [NavLabels].
+  /// Labels under the icons; see [NavLabels].
   final NavLabels labels;
 
-  /// Знак Bloom на месте иконки «Главной», см. [SettingsState.navHomeLogo].
+  /// Bloom mark in place of the home icon; see [SettingsState.navHomeLogo].
   final bool homeLogo;
 
   /// The open shell branch ([NavTab.index]), not a slot in the bar: the order
@@ -406,7 +389,7 @@ class _NavBar extends StatelessWidget {
 
   final ValueChanged<NavTab> onTap;
 
-  /// Неактивный таб — outline, активный — bold (правило Solar).
+  /// An inactive tab is outline, the active one bold.
   static final _items = <NavTab, _NavSpec>{
     NavTab.home: _NavSpec(
       label: (l) => l.navHome,
@@ -438,10 +421,9 @@ class _NavBar extends StatelessWidget {
     final height = floating ? kNavBarFloatHeight : kNavBarHeight;
     final slot = tabs.indexWhere((tab) => tab.index == branch);
 
-    // Прижатые стили отличаются друг от друга только радиусом верхних углов.
-    // У «Купола» он вдвое больше темы и не мельче 28: на слабом радиусе темы он
-    // иначе повторял бы «Скруглённый», ради которого его и заводили отдельным
-    // видом.
+    // Edge-hugging styles differ only in the top corner radius. Dome's is twice
+    // the theme's and at least 28, or on a small radius it would repeat
+    // Rounded.
     final topRadius = switch (style) {
       NavBarStyle.rounded => math.max(t.radius, 10.0),
       NavBarStyle.dome => math.max(t.radius * 2, 28.0),
@@ -450,14 +432,14 @@ class _NavBar extends StatelessWidget {
     final radius = switch (style) {
       NavBarStyle.bar || NavBarStyle.rounded || NavBarStyle.dome =>
         BorderRadius.vertical(top: Radius.circular(topRadius)),
-      // Капсула круглая по определению, а не по теме: её углы — всегда половина
-      // высоты, а не общий радиус приложения.
+      // A capsule is round by definition: its corners are always half the
+      // height, not the theme radius.
       NavBarStyle.pill => BorderRadius.circular(height / 2),
       NavBarStyle.floating => BorderRadius.circular(t.radius),
     };
-    // Скругление панели одним числом — его повторяет подложка активного таба.
-    // У прижатого бара углов нет вовсе, и брать оттуда ноль незачем: подложка
-    // тогда берёт радиус темы, как все прочие плашки приложения.
+    // Panel rounding as one number, repeated by the active tab's plate. A flat
+    // bar has no corners, so the plate takes the theme radius like other
+    // plates.
     final corner = switch (style) {
       NavBarStyle.bar => t.radius,
       NavBarStyle.rounded || NavBarStyle.dome => topRadius,
@@ -465,9 +447,8 @@ class _NavBar extends StatelessWidget {
       NavBarStyle.floating => t.radius,
     };
 
-    // Ряд у всех стилей один: табы делят ширину поровну. Капсула от плавающей
-    // панели отличается только радиусом — иконки в ней стоят там же, а не
-    // жмутся к середине.
+    // One row for all styles: tabs split the width evenly. A capsule differs
+    // from the floating panel only by radius, with icons in the same places.
     final row = Row(
       children: [
         for (var i = 0; i < tabs.length; i++)
@@ -485,9 +466,9 @@ class _NavBar extends StatelessWidget {
       ],
     );
 
-    // Ряд с пометкой активного таба. Пометка ЛЕЖИТ ПОД иконками и едет между
-    // табами сама — тогда переключение читается как переезд выделения, а не как
-    // две вспышки. Выключена — остаётся голый ряд, как было всегда.
+    // The row with the active tab's mark. The mark lies UNDER the icons and
+    // travels between tabs itself, so a switch reads as the selection moving,
+    // not two flashes. Off, it's a bare row.
     final content = SizedBox(
       height: height,
       child: indicator == NavIndicator.none
@@ -507,23 +488,22 @@ class _NavBar extends StatelessWidget {
     );
 
     switch (style) {
-      // Прижатые к низу: заливка уходит под системный вырез, ряд иконок из
-      // него выводит нижний отступ ([bottomSafeInset]).
+      // Edge-hugging: the fill goes under the system inset, and the bottom
+      // padding lifts the icon row out of it ([bottomSafeInset]).
       case NavBarStyle.bar:
       case NavBarStyle.rounded:
       case NavBarStyle.dome:
         final rounded = topRadius > 0;
-        // Заливка одна на все четыре стиля — та же `pill`, что у шапки главной
-        // и строк настроек: бары обязаны читаться как элементы интерфейса, а
-        // не как продолжение фона. В стекле она полупрозрачна, и сквозь бар
-        // видно уходящий под него список.
+        // One fill for all styles, `pill`: bars have to read as UI elements,
+        // not a continuation of the background. In glass it's translucent and
+        // the list shows through.
         return GlassBox(
-          // Не мельче 10 у «Скруглённого»: на нуле темы он ничем не
-          // отличался бы от обычного.
+          // At least 10 for Rounded: at a theme radius of zero it would look
+          // like the plain bar.
           borderRadius: radius,
-          // При скруглении рамка обязана быть одинаковой со всех сторон —
-          // нижняя всё равно уходит за край экрана; у прямого бара линия
-          // только сверху, поэтому ему нужна своя форма.
+          // A rounded shape needs an equal border on all sides, and the bottom
+          // one goes off screen anyway; the straight bar has a line only on
+          // top, so it needs its own shape.
           borderSide: rounded ? BorderSide(color: t.ovlLine) : null,
           shape: rounded ? null : Border(top: BorderSide(color: t.ovlLine)),
           child: Padding(
@@ -532,9 +512,9 @@ class _NavBar extends StatelessWidget {
           ),
         );
 
-      // Плавающие: панель кончается до низа экрана, вырез системы отдан
-      // просвету под ней ([bottomEdgeInset]) — иначе она села бы на жестовую
-      // полосу.
+      // Floating: the panel stops short of the bottom, and the system inset
+      // goes to the gap under it ([bottomEdgeInset]), or it would sit on the
+      // gesture bar.
       case NavBarStyle.floating:
       case NavBarStyle.pill:
         return Padding(
@@ -554,33 +534,28 @@ class _NavBar extends StatelessWidget {
   }
 }
 
-// ─── Пометка активного таба ─────────────────────────────────────────────────
+// ─── Active tab mark ─────────────────────────────────────────────────────
 
-/// Поле подложки внутри доли таба — одно на все четыре стороны: подложка
-/// занимает почти всю долю, как в телеге, и остаётся ровный просвет что между
-/// соседями, что до краёв панели. Потолка ширины нет — доля таба и есть её мера.
+/// Plate margin inside a tab's share, one for all sides: the plate takes nearly
+/// the whole share, with an even gap to neighbours and panel edges. No width
+/// cap, the share is its measure.
 const double _kPillPad = 5;
 
-/// Просвет от нижней кромки ряда до точки и линии.
-///
-/// Кромка ряда, а не панели: у прижатых стилей заливка уходит ещё и под
-/// системный вырез, и от края экрана пометка стоит дальше — зато она везде на
-/// одном расстоянии от иконок, под которыми и стоит.
+/// Gap from the row's bottom edge to the dot and line. The row's edge rather
+/// than the panel's, so the mark stays the same distance from the icons in
+/// every style.
 const double _kMarkGap = 5;
 
-/// Точка под иконкой.
+/// Dot under the icon.
 const double _kDotSize = 5;
 
-/// Линия под иконкой. Короткая и по центру доли, а не во всю её ширину: у
-/// «Капсулы» и «Купола» крайние линии срезало бы скруглением панели.
+/// Line under the icon. Short and centred: in Capsule and Dome the panel's
+/// rounding would cut the outer ones.
 const Size _kLineSize = Size(22, 3);
 
-/// Пометка активного таба: подложка, точка или линия — смотря по
-/// [NavIndicator].
-///
-/// Отдельным слоем под рядом иконок, а не фоном самого таба: так она едет от
-/// таба к табу одним движением. Едет в такт со сменой вкладки
-/// ([kTabTransition]) — пометка и содержимое обязаны прийти вместе.
+/// Active tab mark: a plate, dot or line per [NavIndicator]. A separate layer
+/// under the icon row rather than a tab's background, so it travels in one
+/// motion, in step with the tab change ([kTabTransition]).
 class _NavMark extends StatelessWidget {
   const _NavMark({
     required this.kind,
@@ -589,16 +564,15 @@ class _NavMark extends StatelessWidget {
     required this.corner,
   });
 
-  /// Вид пометки; [NavIndicator.none] сюда не доходит — там слоя нет вовсе.
+  /// Mark kind; [NavIndicator.none] never gets here, it has no layer.
   final NavIndicator kind;
 
-  /// Место активного таба в ряду; −1 — активного таба в баре нет.
+  /// Active tab's place in the row; −1 when the bar has no active tab.
   final int slot;
   final int count;
 
-  /// Скругление самой панели бара: подложка повторяет его, а не берёт радиус
-  /// темы. Так у капсулы она капсула, у купола — купол, а у прижатого бара
-  /// остаётся спокойный прямоугольник со скруглением темы.
+  /// The bar panel's rounding, repeated by the plate: a capsule's is a capsule,
+  /// a dome's a dome, and a flat bar keeps a calm rectangle.
   final double corner;
 
   @override
@@ -613,9 +587,8 @@ class _NavMark extends StatelessWidget {
 
         return Stack(
           children: [
-            // Едет вся доля таба целиком, а внутри неё пометка стоит на своём
-            // месте: у подложки это поля со всех сторон, у точки и линии — низ
-            // ряда. Одно движение на все три вида.
+            // The whole tab share travels, with the mark placed inside it. One
+            // motion for all three kinds.
             AnimatedPositioned(
               duration: kTabTransition,
               curve: Curves.easeOutCubic,
@@ -628,13 +601,13 @@ class _NavMark extends StatelessWidget {
                   padding: const EdgeInsets.all(_kPillPad),
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      // Плёнка `iconBg` — та же, что под круглыми кнопками
-                      // шапки: подложка обязана читаться как элемент бара, а не
-                      // как второй бар внутри бара.
+                      // The `iconBg` film, as under the header's round buttons:
+                      // the plate has to read as part of the bar, not a second
+                      // bar inside it.
                       color: t.iconBg,
-                      // Потолок в половину высоты: за ним скругление всё равно
-                      // упирается в капсулу, а у «Купола» радиус панели заметно
-                      // больше самой подложки.
+                      // Capped at half the height: past that the rounding hits
+                      // a capsule anyway, and Dome's panel radius is much
+                      // larger than the plate.
                       borderRadius: BorderRadius.circular(
                         math.min(
                           corner,
@@ -644,9 +617,8 @@ class _NavMark extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Точка и линия — в акценте, а не плёнкой: подложка большая и
-                // ей хватает еле заметной заливки, а пометка в пять пикселей на
-                // той же плёнке просто не читалась бы.
+                // Dot and line use the accent, not a film: a big plate can do
+                // with a faint fill, a five-pixel mark can't.
                 NavIndicator.dot => _Mark(
                   size: const Size(_kDotSize, _kDotSize),
                   radius: _kDotSize / 2,
@@ -667,7 +639,7 @@ class _NavMark extends StatelessWidget {
   }
 }
 
-/// Точка или линия у нижней кромки доли таба.
+/// Dot or line at the bottom edge of a tab's share.
 class _Mark extends StatelessWidget {
   const _Mark({required this.size, required this.radius, required this.color});
 
@@ -694,51 +666,47 @@ class _Mark extends StatelessWidget {
   );
 }
 
-// ─── Оживление иконок бара ──────────────────────────────────────────────────
+// ─── Bar icon motion ─────────────────────────────────────────────────────
 
-/// Наплыв outline→bold и цвета. В такт со сменой самой вкладки
-/// ([kTabTransition]): бар и содержимое обязаны идти одним темпом, иначе
-/// заливка глифа договаривает уже поверх новой страницы.
+/// Outline to bold and colour blend. In step with the tab change
+/// ([kTabTransition]), or the glyph finishes filling over the new page.
 const Duration kNavMorph = kTabTransition;
 
-/// Чем иконка отвечает на выбор своей вкладки. Жест — свой на глиф, а не общий
-/// на бар: одно и то же движение на всех трёх иконках выглядит как дёрганье
-/// бара, а не как отклик конкретной.
+/// How the icon answers its tab being picked. Per glyph: one motion on every
+/// icon looks like the bar twitching, not one icon responding.
 enum _NavMotion {
-  /// Качок вправо-влево с затуханием. Домик и ящик библиотеки стоят на
-  /// «земле» — им идёт качнуться, как задетой вещи.
+  /// A damped wiggle. The house and library box stand on the ground, so they
+  /// suit a nudge.
   wiggle,
 
-  /// Оборот вокруг центра — шестерёнке настроек. Она круглая и симметричная:
-  /// поворот на ней читается как вращение, а качок — как перекос.
+  /// A turn around the centre, for the settings gear: it's round and symmetric,
+  /// so a wiggle would read as a skew.
   spin,
 }
 
-/// Отклик живёт отдельно от наплыва и заметно дольше него: это ответ под
-/// пальцем, ему нормально догорать уже после того, как вкладка встала.
+/// Lasts longer than the blend: it answers the finger and can finish after the
+/// tab has settled.
 const Duration kNavWiggle = Duration(milliseconds: 380);
 const Duration kNavSpin = Duration(milliseconds: 520);
 
-/// Размах первого взмаха качка.
+/// Amplitude of the wiggle's first swing.
 const double kWiggleMax = 9 * math.pi / 180;
 
-/// Затухающий качок: три полувзмаха — вправо, влево, вправо. Взмахи даёт
-/// синус, а множитель `(1 − t)` их гасит и ровно в конце обнуляет угол, так
-/// что иконка успокаивается сама, а не сбрасывается в ноль рывком.
+/// Damped wiggle: three half-swings. The sine gives the swings and `(1 − t)`
+/// damps them to exactly zero at the end, so the icon settles with no jump.
 double _wiggleAngle(double t) =>
     kWiggleMax * math.sin(t * math.pi * 3) * (1 - t);
 
-/// Оборот с выбегом: стартует быстро и тормозит к концу — шестерёнку будто
-/// крутанули пальцем, а не провернули мотором. Полный круг, а не половина:
-/// зубцы у неё частые, и на половине глаз не поймёт, что она вернулась.
+/// A turn that runs out: fast start, slowing to the end, like a gear flicked by
+/// a finger. A full circle: its teeth are dense, and after half a turn the eye
+/// can't tell it came back.
 double _spinAngle(double t) => 2 * math.pi * Curves.easeOutCubic.transform(t);
 
-/// Подпись под иконкой: мельче всего, что есть в теме, — в доле таба стоит
-/// строка вроде «Настройки», и на обычном мелком тексте она стала бы
-/// многоточием.
+/// Label under the icon, the smallest text there is: a word like Settings would
+/// ellipsize at the usual small size.
 const double _kNavLabelSize = 10.5;
 
-/// Просвет между глифом и подписью.
+/// Gap between glyph and label.
 const double _kNavLabelGap = 3;
 
 class _NavItem extends StatefulWidget {
@@ -755,16 +723,16 @@ class _NavItem extends StatefulWidget {
   final _NavSpec spec;
   final bool active;
 
-  /// Вместо пары глифов — знак Bloom (настройка [SettingsState.navHomeLogo]).
+  /// Bloom mark instead of the glyph pair ([SettingsState.navHomeLogo]).
   final bool mark;
 
-  /// Глиф без подписи под ним.
+  /// Glyph with no label under it.
   final double iconSize;
 
-  /// Глиф, под которым стоит подпись, — мельче обычного, см. [_kNavIconText].
+  /// Glyph with a label under it, smaller; see [_kNavIconText].
   final double textIconSize;
 
-  /// Подписи под иконками, см. [NavLabels].
+  /// Labels under the icons; see [NavLabels].
   final NavLabels labels;
   final VoidCallback onTap;
 
@@ -773,15 +741,15 @@ class _NavItem extends StatefulWidget {
 }
 
 class _NavItemState extends State<_NavItem> with TickerProviderStateMixin {
-  /// 0 — покой, 1 — активный таб. Стартует «доехавшим»: на первом кадре
-  /// приложения наплывать неоткуда.
+  /// 0 is rest, 1 the active tab. Starts finished: on the first frame there's
+  /// nothing to blend from.
   late final AnimationController _morph = AnimationController(
     vsync: this,
     duration: kNavMorph,
     value: widget.active ? 1 : 0,
   );
 
-  /// Жест иконки: качок или оборот, смотря по [_NavSpec.motion].
+  /// The icon's gesture: wiggle or turn, per [_NavSpec.motion].
   late final AnimationController _react = AnimationController(
     vsync: this,
     duration: widget.spec.motion == _NavMotion.spin ? kNavSpin : kNavWiggle,
@@ -807,9 +775,9 @@ class _NavItemState extends State<_NavItem> with TickerProviderStateMixin {
   }
 
   void _tap() {
-    // Повторный тап по своей же вкладке не меняет `active` (и жеста из
-    // `didUpdateWidget` не будет), но что-то делает — сбрасывает ветку в
-    // корень. Отвечаем на него тем же жестом, иначе тап выглядит потерянным.
+    // A second tap on the current tab doesn't change `active`, so
+    // `didUpdateWidget` plays nothing, but it does reset the branch to its
+    // root. I answer with the same gesture, or the tap looks lost.
     if (widget.active) _react.forward(from: 0);
     widget.onTap();
   }
@@ -821,22 +789,21 @@ class _NavItemState extends State<_NavItem> with TickerProviderStateMixin {
       button: true,
       selected: widget.active,
       label: widget.spec.label(context.l),
-      // Без подложки и без ряби: активный таб отличается заливкой глифа
-      // (bold вместо outline) и цветом акцента — этого достаточно, а
-      // material-ripple на голом фоне читается как посторонний круг.
+      // No plate or ripple: the active tab shows by the bold glyph and accent,
+      // and a ripple on a bare background reads as a stray circle.
       child: Pressable(
         onTap: _tap,
         child: AnimatedBuilder(
           animation: Listenable.merge([_morph, _react]),
           builder: (context, _) {
-            // В покое контроллер стоит на 1 (жест доигран), и обе формы там
-            // дают ту же картинку, что при 0: качок обнулён затуханием, а
-            // оборот — это полный круг. Отдельного «покоя» заводить не надо.
+            // At rest the controller is at 1, and both forms give the same
+            // picture as at 0: the wiggle is damped to zero and the turn is a
+            // full circle. No separate rest state needed.
             final angle = widget.spec.motion == _NavMotion.spin
                 ? _spinAngle(_react.value)
                 : _wiggleAngle(_react.value);
-            // Крутится и качается ОДИН глиф, а не столбик с подписью: наклонная
-            // строка текста читается как сбой раскладки, а не как отклик.
+            // Only the glyph turns and wiggles, not the column with the label:
+            // tilted text reads as a layout glitch.
             final glyph = Transform.rotate(
               angle: angle,
               child: _icons(t, _iconSize()),
@@ -852,12 +819,10 @@ class _NavItemState extends State<_NavItem> with TickerProviderStateMixin {
     );
   }
 
-  /// Размер глифа.
-  ///
-  /// У [NavLabels.active] он едет между обычным и ужатым вместе с наплывом
-  /// ([kNavMorph]): таб, под которым проявляется строка, освобождает ей место
-  /// сам, а тот, с которого ушли, ровно так же возвращается к обычному глифу.
-  /// Разъехаться они не могут — оба движения ведёт один контроллер.
+  /// Glyph size. With [NavLabels.active] it moves between normal and shrunk
+  /// along with the blend ([kNavMorph]): the tab gaining a label makes room
+  /// itself, the one left returns. One controller drives both, so they can't
+  /// drift apart.
   double _iconSize() => switch (widget.labels) {
     NavLabels.none => widget.iconSize,
     NavLabels.always => widget.textIconSize,
@@ -866,12 +831,9 @@ class _NavItemState extends State<_NavItem> with TickerProviderStateMixin {
           (widget.textIconSize - widget.iconSize) * _morph.value.clamp(0, 1),
   };
 
-  /// Подпись под глифом.
-  ///
-  /// У [NavLabels.active] строки под неактивными табами НЕ ЗАНИМАЮТ места:
-  /// пустой отступ под мелким глифом читается как повисшая в воздухе иконка, а
-  /// не как ряд (его слово по первой сборке). Строка раскрывается вместе с
-  /// глифом — от нулевой высоты, а не проявляется в готовой дырке.
+  /// Label under the glyph. With [NavLabels.active] labels under inactive tabs
+  /// take NO room: an empty gap under a small glyph reads as an icon hanging in
+  /// the air. The label opens with the glyph from zero height.
   Widget _label(BloomTokens t) {
     final m = _morph.value.clamp(0.0, 1.0);
     final open = widget.labels == NavLabels.always ? 1.0 : m;
@@ -879,15 +841,15 @@ class _NavItemState extends State<_NavItem> with TickerProviderStateMixin {
 
     return ClipRect(
       child: Align(
-        // Верхом к глифу: строка выезжает из-под иконки вниз, а не
-        // проявляется, обрезанная с обеих сторон.
+        // Top-aligned to the glyph: the label comes down from under the icon,
+        // rather than clipped on both sides.
         alignment: Alignment.topCenter,
         heightFactor: open,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(2, _kNavLabelGap, 2, 0),
           child: Opacity(
-            // Текст догоняет раскрытие: на полпути строка уже заняла место, но
-            // ещё бледна — иначе она въезжает в ряд готовой и бьёт по глазам.
+            // The text follows the opening: halfway it has its room but is
+            // still pale, or it enters the row fully formed and hits the eye.
             opacity: open,
             child: Text(
               widget.spec.label(context.l),
@@ -898,8 +860,7 @@ class _NavItemState extends State<_NavItem> with TickerProviderStateMixin {
                 fontSize: _kNavLabelSize,
                 height: 1.15,
                 fontWeight: FontWeight.w500,
-                // Тот же наплыв цвета, что у глифа: подпись и иконка — одна
-                // вещь.
+                // The glyph's colour blend: label and icon are one thing.
                 color: Color.lerp(t.text, t.accent, m),
               ),
             ),
@@ -909,23 +870,18 @@ class _NavItemState extends State<_NavItem> with TickerProviderStateMixin {
     );
   }
 
-  /// Два слоя друг на друге: bold проявляется поверх outline.
-  ///
-  /// Кривые подобраны так, чтобы слои перекрывались, а не разошлись в
-  /// середине: outline держится первую треть на полной непрозрачности и
-  /// уходит, когда заливка уже набрала вес. Иначе на половине перехода
-  /// суммарная альфа контура проседает и иконка на кадр тускнеет.
+  /// Two layers: bold fades in over outline. The curves overlap: outline holds
+  /// full opacity for the first third and leaves once the fill has weight, or
+  /// the combined alpha dips and the icon dims for a frame.
   Widget _icons(BloomTokens t, double size) {
     final m = _morph.value;
-    // Покой — полный контраст (`text`), а не приглушённый `iconFgSb`: в баре
-    // всего три глифа, и тусклые они читаются как выключенные. Активный таб
-    // и без разницы в яркости виден — по заливке и акценту.
+    // Full contrast at rest (`text`), not muted `iconFgSb`: dim glyphs read as
+    // disabled. The active tab shows by its fill and accent anyway.
     final color = Color.lerp(t.text, t.accent, m)!;
-    // Знак бренда парой глифов не бывает: он нарисован одной заливкой, и
-    // наплывать в нём нечему — выбранность показывает тот же цвет, что у
-    // остальных табов. Чуть мельче глифа: звезда занимает свой квадрат почти
-    // целиком, а у Solar внутри бокса есть поля, и в равном размере знак в
-    // ряду выпирал бы.
+    // The brand mark has no glyph pair: it's one fill with nothing to blend, so
+    // selection shows by colour alone. A bit smaller: the star nearly fills its
+    // square while icons have margins in the box, so at equal size it would
+    // stick out.
     if (widget.mark) return BloomMark(size: size * 0.86, color: color);
     final fill = Curves.easeOut.transform(m);
     final line = 1 - const Interval(0.35, 1).transform(m);

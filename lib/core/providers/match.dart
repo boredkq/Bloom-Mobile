@@ -1,21 +1,17 @@
-/// Сопоставление одного и того же трека на РАЗНЫХ площадках.
+/// Matches one track across DIFFERENT platforms, for Change platform (best
+/// candidate) and Transfer to platform (a ranked list, with doubtful ones going
+/// to manual choice).
 ///
-/// Порт десктопного `features/providers/lib/match.ts` — общий матчер для
-/// «Сменить площадку» (нужен лучший кандидат) и «Перенести на площадку» (нужен
-/// ранжированный список: спорное уходит человеку на ручной выбор).
-///
-/// Счёт = 0.65 × похожесть названия + 0.35 × похожесть артиста, с поправкой на
-/// длительность. Названия и артисты считаются по-разному намеренно:
-/// - название сравнивается симметрично (Жаккар): лишние слова у кандидата
-///   («… (Sped Up)», «… — Live») ДОЛЖНЫ штрафоваться, это чаще всего другая
-///   версия;
-/// - артист — по вложенности: «Artist A, Artist B» на одной площадке и
-///   «Artist A» на другой — тот же трек, штрафовать не за что.
+/// Score = 0.65 × title similarity + 0.35 × artist similarity, adjusted by
+/// duration. Title and artist differ on purpose: the title is symmetric
+/// (Jaccard), since extra words like (Sped Up) or Live usually mean another
+/// version and should cost; the artist is by containment, since "Artist A,
+/// Artist B" and "Artist A" are the same track.
 library;
 
 import '../entities/entities.dart';
 
-/// Нормализация: нижний регистр, без скобочных уточнений, только буквы и цифры.
+/// Normalizes: lower case, no bracketed notes, only letters and digits.
 String _norm(String s) => s
     .toLowerCase()
     .replaceAll('ё', 'е')
@@ -23,7 +19,7 @@ String _norm(String s) => s
     .replaceAll(RegExp(r'[^a-zа-я0-9]+'), ' ')
     .trim();
 
-/// Шумовые слова, которые сами по себе не делают трек другим.
+/// Noise words that don't make a track different.
 const Set<String> _noise = {
   'feat',
   'ft',
@@ -54,40 +50,37 @@ Set<String> _tokens(String s) => {
     if (w.isNotEmpty && !_noise.contains(w)) w,
 };
 
-/// Жаккар по множествам токенов (1 — совпали полностью, 0 — не пересеклись).
+/// Jaccard over token sets (1 is a full match, 0 no overlap).
 double _jaccard(Set<String> a, Set<String> b) {
   if (a.isEmpty || b.isEmpty) return 0;
   final inter = a.intersection(b).length;
   return inter / (a.length + b.length - inter);
 }
 
-/// Вложенность: доля меньшего множества, попавшая в большее.
+/// Containment: share of the smaller set found in the larger.
 double _containment(Set<String> a, Set<String> b) {
   if (a.isEmpty || b.isEmpty) return 0;
   return a.intersection(b).length / (a.length < b.length ? a.length : b.length);
 }
 
-/// Расхождение длительности, после которого счёт почти обнуляется.
+/// Duration difference past which the score nearly zeroes.
 const Duration _hardDurDelta = Duration(seconds: 20);
 
-/// Расхождение, за которое лишь слегка штрафуем (разные мастеринги, тишина в
-/// конце).
+/// Difference that costs only a little (other masters, trailing silence).
 const Duration _softDurDelta = Duration(seconds: 5);
 
-/// Счёт похожести кандидата на исходный трек, 0..1.
-///
-/// Длительность — множитель, а не слагаемое: расхождение больше
-/// [_hardDurDelta] почти всегда означает другую вещь (микс, часовая сборка,
-/// «slowed»), и никакое совпадение названий этого не перевешивает. Если
-/// длительность неизвестна хотя бы у одного — множитель не применяем.
+/// Candidate's similarity to the source track, 0..1. Duration is a factor, not
+/// a term: past [_hardDurDelta] it's nearly always another thing (a mix, an
+/// hour-long compilation, slowed), and no title match outweighs that. If either
+/// duration is unknown, no factor.
 double matchScore(Track cand, Track src) {
   final nameA = _tokens(src.name);
   final nameB = _tokens(cand.name);
   final artA = _tokens(src.artist);
   final artB = _tokens(cand.artist);
 
-  // Артист может быть склеен с названием (частая беда YTM-видео:
-  // «Artist - Song»). Даём второй шанс: ищем токены артиста ещё и в названии.
+  // The artist may be glued to the title (common on YTM videos: "Artist -
+  // Song"), so I also look for artist tokens in the title.
   final artScore = [
     _containment(artA, artB),
     artA.isEmpty ? 0.0 : _containment(artA, {...nameB, ...artB}) * 0.9,
@@ -110,7 +103,7 @@ double matchScore(Track cand, Track src) {
   return score;
 }
 
-/// Кандидат с посчитанным счётом.
+/// A candidate with its score.
 class ScoredMatch {
   const ScoredMatch(this.track, this.score);
 
@@ -118,8 +111,8 @@ class ScoredMatch {
   final double score;
 }
 
-/// Отранжировать выдачу площадки относительно исходного трека: не более [limit]
-/// кандидатов со счётом ≥ [min], лучший первым.
+/// Ranks a platform's results against the source track: at most [limit] with a
+/// score ≥ [min], best first.
 List<ScoredMatch> rankMatches(
   List<Track> cands,
   Track src, {
@@ -135,10 +128,10 @@ List<ScoredMatch> rankMatches(
   return scored.length > limit ? scored.sublist(0, limit) : scored;
 }
 
-/// Счёт, с которого совпадение считаем достоверным без вопросов. Порог высокий
-/// намеренно: на плейлисте из сотни треков ошибка матчера не видна глазами, и
-/// лучше отправить сомнительное на ручной выбор, чем молча набрать каверов.
+/// Score from which a match is trusted with no questions. High on purpose: in a
+/// hundred-track playlist a matcher error isn't visible, and manual choice
+/// beats silently collecting covers.
 const double kAutoMatchScore = 0.72;
 
-/// Ниже этого кандидат вообще не показывается — это уже другой трек.
+/// Below this a candidate isn't shown at all: it's another track.
 const double kMinMatchScore = 0.28;

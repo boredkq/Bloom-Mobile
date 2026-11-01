@@ -1,16 +1,13 @@
-/// Один круг синхронизации с ПК — телефонная сторона `SyncHost` ПК
-/// (`src/sync/SyncHost.cpp`). Круг ведёт телефон:
+/// One sync round with the computer, driven by the phone: (1) `GET /v1/sync`:
+/// the computer's id and clock, and how far it took ours (`got`); (2) ours from
+/// that cursor (`ownOnly`): first pictures it lacks, then `POST /v1/sync/push`,
+/// while `more`; (3) `POST /v1/sync/pull` from our cursors, pictures we lack
+/// and [SyncLog.apply], while `more`.
 ///
-/// 1. `GET /v1/sync` — id и часы ПК, докуда ПК уже принял наше (`got`);
-/// 2. своё от этого курсора (`ownOnly`): сначала картинки, которых у ПК нет,
-///    потом `POST /v1/sync/push`; пока `more`;
-/// 3. `POST /v1/sync/pull` от наших курсоров ПК, картинки, которых нет у нас,
-///    и [SyncLog.apply]; пока `more`.
-///
-/// Часы: изменение побеждает по своему `mod`, а это часы устройства. Разница
-/// с ПК меряется в начале круга; если она заметная, `mod` уходящих изменений
-/// переводится на часы ПК, а пришедших — на наши. Прослушивания не сдвигаются:
-/// по времени они узнают свои дубли.
+/// Clocks: a change wins by its `mod`, the device's clock. The difference is
+/// measured at the start of a round; if noticeable, `mod` of outgoing changes
+/// converts to the computer's clock and of incoming to ours. Plays don't shift:
+/// they recognise their duplicates by time.
 library;
 
 import 'dart:typed_data';
@@ -21,10 +18,11 @@ import 'pc_client.dart';
 import 'sync_log.dart';
 import 'sync_pictures.dart';
 
-/// Разница часов меньше этой — не разница (сеть сама даёт десятки мс).
+/// A clock difference below this isn't one (the network alone gives tens of
+/// ms).
 const int _kSkewMs = 2000;
 
-/// Чем кончился круг.
+/// How a round ended.
 class SyncRound {
   const SyncRound({
     required this.link,
@@ -34,23 +32,23 @@ class SyncRound {
     required this.pushed,
   });
 
-  /// Связка с адресом, по которому ПК ответил (его стоит сохранить).
+  /// The link with the address the computer answered at, worth saving.
   final PcLink link;
 
-  /// Докуда ПК принял наше — сравнивается с [SyncLog.head] (`ownOnly`).
+  /// How far the computer took ours, compared with [SyncLog.head] (`ownOnly`).
   final ({int seq, int play}) pushed;
 
-  /// Виды, изменившиеся здесь ([SyncLog.apply]).
+  /// Kinds changed here ([SyncLog.apply]).
   final Set<String> touched;
   final int sent, took;
 }
 
-/// ПК не нашёлся ни по одному адресу, ни поиском.
+/// The computer wasn't found at any address or by discovery.
 class PcUnreachable implements Exception {
   const PcUnreachable();
 }
 
-/// По адресу ответил не тот ПК (его база новая — новый id).
+/// Another computer answered at the address (its database is new, so a new id).
 class PcChanged implements Exception {
   const PcChanged();
 }
@@ -66,7 +64,7 @@ Future<SyncRound> syncWithPc(PcLink link, BloomDb db, String coversDir) async {
   final log = SyncLog(db);
   final pictures = SyncPictures(db, coversDir);
 
-  // ── своё на ПК ──
+  // ── ours to the computer ──
   var sent = 0;
   var cursor = hello['got'] is Map ? hello['got'] as Map : const {};
   while (true) {
@@ -102,7 +100,7 @@ Future<SyncRound> syncWithPc(PcLink link, BloomDb db, String coversDir) async {
     if (out['more'] != true) break;
   }
 
-  // ── своё ПК здесь ──
+  // ── the computer's to here ──
   var took = 0;
   final touched = <String>{};
   while (true) {
@@ -119,7 +117,7 @@ Future<SyncRound> syncWithPc(PcLink link, BloomDb db, String coversDir) async {
         final bytes = await client.send('GET', '/v1/sync/picture/$name');
         pictures.put(name, Uint8List.fromList(bytes));
       } on PcHttpError catch (e) {
-        // У ПК её уже нет — изменение придёт без картинки.
+        // It no longer has it: the change comes with no picture.
         if (e.status != 404) rethrow;
       }
     }
@@ -146,8 +144,8 @@ Future<SyncRound> syncWithPc(PcLink link, BloomDb db, String coversDir) async {
   );
 }
 
-/// Где ПК сейчас: адрес, где он ответил в последний раз, потом остальные
-/// разом, потом поиск в сети по отпечатку.
+/// Where the computer is now: the last answering address, then the rest at
+/// once, then discovery by print.
 Future<({PcClient client, PcLink link, Map<String, Object?> hello, int skew})>
 reachPc(PcLink link) async {
   Future<({PcClient client, Map<String, Object?> hello, int skew})?> hello(
@@ -166,7 +164,7 @@ reachPc(PcLink link) async {
       final skew = _int(h['now']) - (t0 + t1) ~/ 2;
       return (client: c, hello: h, skew: skew.abs() < _kSkewMs ? 0 : skew);
     } on PcHttpError {
-      rethrow; // ПК ответил, но не пустил: искать дальше незачем
+      rethrow; // it answered but refused: no point searching further
     } on PcPrintMismatch {
       rethrow;
     } catch (_) {

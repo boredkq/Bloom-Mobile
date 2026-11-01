@@ -1,11 +1,10 @@
-/// Статистика прослушиваний: «сколько раз» и «когда в последний раз» — свёртка
-/// журнала [PlayLog] (на ПК — запросы `PlayLog::stats/top/history`).
+/// Play stats: how many times and when last, folded from [PlayLog]. The one
+/// source for all that relies on listening: history, profile stats and
+/// achievements, wave and home seeds, sort by plays.
 ///
-/// Единственный источник для всего, что опирается на слушание: «История»,
-/// статистика профиля и достижения, сиды волны и главной, сортировка «по
-/// прослушиваниям». Считается целиком заново на каждое прослушивание: сотня
-/// тысяч событий сворачивается за миллисекунды, а синхронные ответы нужны из
-/// горячих мест — компаратора сортировки и фильтра волны.
+/// Recounted whole on every play: a hundred thousand events fold in
+/// milliseconds, and hot paths (sort comparator, wave filter) need synchronous
+/// answers.
 library;
 
 import 'package:flutter/foundation.dart';
@@ -17,7 +16,7 @@ import 'play_log.dart';
 
 const int _dayMs = 24 * 3600 * 1000;
 
-/// Трек в топе прослушиваний.
+/// A track in the play top.
 @immutable
 class TopPlayed {
   const TopPlayed(this.id, this.plays, this.lastTs, this.firstTs);
@@ -26,25 +25,25 @@ class TopPlayed {
   final int plays;
   final int lastTs;
 
-  /// Первое прослушивание — по нему считается разброс дней в статистике.
+  /// First play, for the spread of days in stats.
   final int firstTs;
 }
 
-/// Строка списка «История».
+/// A History row.
 @immutable
 class HistoryRow {
   const HistoryRow(this.id, this.at, this.count);
 
   final String id;
 
-  /// Последнее прослушивание.
+  /// Last play.
   final int at;
 
-  /// Сколько раз.
+  /// Play count.
   final int count;
 }
 
-/// Индекс первого элемента `>= x`.
+/// Index of the first element `>= x`.
 int _lowerBound(List<int> arr, int x) {
   var lo = 0;
   var hi = arr.length;
@@ -64,7 +63,7 @@ class PlayStats {
 
   factory PlayStats.build(PlayLog log) {
     final byTrack = <String, List<int>>{};
-    // События журнала уже по возрастанию — массивы выходят отсортированными.
+    // Log events are already ascending, so the arrays come out sorted.
     for (final e in log.events) {
       (byTrack[e.id] ??= []).add(e.ts);
     }
@@ -73,20 +72,20 @@ class PlayStats {
 
   static final PlayStats empty = PlayStats._(const {}, const {});
 
-  /// id → моменты прослушиваний по возрастанию.
+  /// Id to play times, ascending.
   final Map<String, List<int>> _plays;
 
-  /// Снимки игранных треков — по ним строка «Истории» живёт и после того, как
-  /// сам трек ушёл из библиотеки.
+  /// Snapshots of played tracks, which keep a history row alive after the track
+  /// leaves the library.
   final Map<String, Track> tracks;
 
-  /// Сколько раз слушали трек.
+  /// How many times a track was played.
   int playCount(String id) => _plays[id]?.length ?? 0;
 
-  /// Когда трек звучал последний раз (0 — ни разу).
+  /// When a track last played (0 if never).
   int lastPlayedAt(String id) => _plays[id]?.last ?? 0;
 
-  /// Звучал ли трек за последние [days] дней.
+  /// Whether a track played in the last [days] days.
   bool recentlyPlayed(String id, int days, {DateTime? now}) {
     final last = lastPlayedAt(id);
     if (last <= 0) return false;
@@ -94,15 +93,15 @@ class PlayStats {
     return at - last < days * _dayMs;
   }
 
-  /// Все когда-либо звучавшие треки, без сортировки и отсечек — для сумм
-  /// профиля, которым нужен весь объём, а не верхушка.
+  /// All tracks ever played, with no sort or cutoffs, for profile totals that
+  /// need the whole volume.
   List<TopPlayed> allPlayed() => [
     for (final e in _plays.entries)
       TopPlayed(e.key, e.value.length, e.value.last, e.value.first),
   ];
 
-  /// Самое слушаемое: больше прослушиваний выше, при равенстве свежее.
-  /// [sinceDays] сужает окно — «топ за три месяца» отражает нынешний вкус.
+  /// Most played: more plays higher, newer on ties. [sinceDays] narrows the
+  /// window: a three-month top reflects current taste.
   List<TopPlayed> topPlayed({
     int? sinceDays,
     int limit = 20,
@@ -121,15 +120,14 @@ class PlayStats {
     return rows.take(limit).toList();
   }
 
-  /// Ряды «Истории», свежие сверху. Из истории ничего не убирается — она
-  /// показывает журнал целиком, как на ПК.
+  /// History rows, newest first. Nothing is removed: it shows the whole log.
   List<HistoryRow> historyRows() => [
     for (final e in _plays.entries)
       HistoryRow(e.key, e.value.last, e.value.length),
   ]..sort((a, b) => b.at.compareTo(a.at));
 
-  /// Прослушивания по дням (локальная дата → сколько) — `PlayLog::perDay` ПК:
-  /// график активности, серии, рекорд дня, дни с музыкой.
+  /// Plays per day (local date to count): activity chart, streaks, day record,
+  /// days with music.
   late final Map<String, int> perDay = () {
     final out = <String, int>{};
     for (final list in _plays.values) {

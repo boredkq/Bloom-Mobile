@@ -1,5 +1,5 @@
-/// Регистрация площадок. Аналог `bootstrap`-вызовов в десктопном `App.tsx`:
-/// единственное место, где ядро узнаёт о конкретных провайдерах.
+/// Platform registration: the one place where the core learns about concrete
+/// providers.
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,14 +10,14 @@ import '../providers/yandex/ym_provider.dart';
 import '../providers/ytmusic/ytm_provider.dart';
 
 final registryProvider = Provider<ProviderRegistry>((ref) {
-  // Яндекс регистрируется всегда, а показывается только после логина: его
-  // `isEnabled` смотрит на сохранённый токен (см. `ymAuthProvider`).
-  // YouTube Music включён всегда — авторизации он не требует.
+  // Yandex always registers but shows only after login: its `isEnabled` looks
+  // at the saved token (see `ymAuthProvider`). YouTube Music needs no login, so
+  // it's always on.
   return ProviderRegistry()
     ..register(const SoundCloudProvider())
     ..register(const YtmusicProvider())
     ..register(const YandexProvider());
 });
 
-/// Выбранная в поиске площадка ([kAllProviders] — искать во всех).
+/// Platform picked in search; [kAllProviders] searches them all.
 final activeProviderIdProvider = StateProvider<String>((ref) => kAllProviders);

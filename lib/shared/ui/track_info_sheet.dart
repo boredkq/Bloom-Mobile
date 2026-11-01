@@ -1,10 +1,7 @@
-/// «Инфо о треке» — то, что площадка знает о треке сверх названия и артиста.
-///
-/// Порт десктопной `TrackInfoModal`: тот же состав (альбом, год, длительность,
-/// паблишер, жанры, описание) и тот же принцип — пустые поля не показываются
-/// вовсе, а не стоят прочерками. На телефоне это не модалка по центру, а
-/// нижняя шторка: открывается она из шторки действий и обязана выглядеть её
-/// продолжением, поэтому шапка у них одна и та же.
+/// Track info: what the platform knows beyond title and artist. Album, year,
+/// duration, publisher, genres, description; empty fields don't show at all.
+/// Opens from the actions sheet and should look like its continuation, so the
+/// header is the same.
 library;
 
 import 'package:flutter/material.dart';
@@ -44,20 +41,18 @@ class _TrackInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = context.l;
-    // Файл — только у своих треков: у площадочных пути нет и строка стояла бы
-    // пустой (на ПК ровно то же условие).
+    // A file path only for local tracks; platform ones have none.
     final file = switch (track.sourceData) {
       {'file': final String path} when path.trim().isNotEmpty => path,
       {'name': final String name} when name.trim().isNotEmpty => name,
       _ => null,
     };
-    // Длительность нулевая — значит площадка её не отдала, а не «трек длиной
-    // ноль»: показывать нечего.
+    // Zero means the platform didn't send it, not a zero-length track.
     final duration = track.duration > Duration.zero
         ? mmss(track.duration)
         : null;
-    // Полная дата релиза, когда площадка знает день и месяц (SoundCloud,
-    // Яндекс); знает только год — строка остаётся прежним «Годом».
+    // Full release date when the platform knows day and month (SoundCloud,
+    // Yandex); with only the year, the row stays Year.
     final released = releaseDateLabel(
       track.releaseDate,
       Localizations.localeOf(context).toString(),
@@ -106,8 +101,8 @@ class _TrackInfo extends StatelessWidget {
                 _InfoRow(label: l.tiDescription, value: description.trim()),
               ],
             ),
-        // Совсем пустой трек — тоже ответ: сказать это словами честнее, чем
-        // открыть шторку без единой строки.
+        // An empty track is an answer too: saying so in words beats an empty
+        // sheet.
         if (rows.isEmpty && (track.description ?? '').trim().isEmpty)
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
@@ -147,9 +142,8 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-/// Пометка «E» — единственное поле трека, у которого нет значения, только
-/// факт: на ПК она стоит рядом с названием в шапке, здесь — первой строкой,
-/// потому что шапка у шторок общая.
+/// The E mark: the only track field with a fact rather than a value, so it's a
+/// first row; the header is shared by sheets.
 class _ExplicitMark extends StatelessWidget {
   const _ExplicitMark();
 

@@ -11,8 +11,8 @@ import 'theme/tokens.dart';
 
 const String _seenKey = 'welcome.seen';
 
-/// Whether this is the first launch on this data. I mark it seen right away,
-/// as the PC does: a launch that dies mid-welcome doesn't get it again.
+/// Whether this is the first launch on this data. I mark it seen right away:
+/// a launch that dies mid-welcome doesn't get it again.
 bool takeFirstRun(BloomDb db) {
   if (db.get(_seenKey) == true) return false;
   db.set(_seenKey, true);

@@ -1,4 +1,4 @@
-/// Форматирование длительностей, чисел и дат релиза.
+/// Formats durations, numbers and release dates.
 library;
 
 import 'package:intl/intl.dart';
@@ -15,28 +15,27 @@ String mmss(Duration d) {
 
 String mmssMs(int ms) => mmss(Duration(milliseconds: ms));
 
-/// Суммарное время списка: «1ч 23м» / «45 мин» — порт `fmtTotalDur` с десктопа.
-///
-/// Не [mmss]: у сотни треков часы-минуты-секунды читаются как таймкод, а в
-/// подписи под названием секунды не нужны вовсе. Меньше минуты — «0 мин»,
-/// но звонящий такой список подписывать не обязан.
+/// Total time of a list: 1h 23m or 45 min. Not [mmss]: for a hundred tracks
+/// hours, minutes and seconds read as a timecode, and a caption doesn't need
+/// seconds. Under a minute is 0 min, but the caller need not caption such a
+/// list.
 String totalDur(AppLocalizations l, Duration d) {
   final m = d.inMinutes;
   return m >= 60 ? l.commonDurHm(m ~/ 60, m % 60) : l.commonDurMin(m);
 }
 
-/// Полная дата релиза под язык: «2024-05-13T00:00:00Z» → «13 мая 2024» /
-/// «May 13, 2024». Площадка отдала один год («2024») или вообще не дату — `null`:
-/// звонящему тогда остаётся показать сам год, как он это делал раньше.
+/// Full release date for the language: "2024-05-13T00:00:00Z" becomes "13 мая
+/// 2024" or "May 13, 2024". `null` if the platform sent only a year or no date,
+/// and the caller shows the year.
 ///
-/// Берём только календарную часть строки: у SoundCloud и Яндекса к дате
-/// прицеплено время с часовым поясом, и перевод его в местный сдвинул бы день
-/// на сутки — релиз «13 мая 00:00 +03» в Лондоне стал бы двенадцатым.
+/// I take only the calendar part: SoundCloud and Yandex attach a time with a
+/// zone, and converting to local would move the day: a May 13 00:00 +03 release
+/// would be May 12 in London.
 String? releaseDateLabel(String? raw, String locale) {
   final day = _releaseDay(raw);
   if (day == null) return null;
-  // Русский `yMMMMd` кончается на «г.» — в подписи из трёх кусков через точку
-  // это лишний шум, а сам порядок слов («13 мая» против «May 13») нужен родной.
+  // Russian `yMMMMd` ends in "г.", noise in a three-part caption; the word
+  // order is still the native one.
   return DateFormat.yMMMMd(
     locale,
   ).format(day).replaceFirst(RegExp(r'\s*г\.$'), '');
@@ -53,14 +52,8 @@ DateTime? _releaseDay(String? raw) => raw == null
     ? null
     : DateTime.tryParse(raw.length > 10 ? raw.substring(0, 10) : raw);
 
-/// Короткая дата события из метки времени: «2 сент. 2026 г.» / «Sep 2, 2026».
-/// Ею подписаны шапки шторок («Добавлен …», «Создан …»).
-///
-/// В отличие от [releaseDateLabel] русское «г.» тут остаётся: строка стоит
-/// одна, отдельной, и без него читается как обрубок.
+/// Short event date from a timestamp, for sheet headers (Added, Created).
+/// Unlike [releaseDateLabel] the Russian "г." stays: the line stands alone and
+/// would look cut off.
 String stampDate(int ms, String locale) =>
     DateFormat.yMMMd(locale).format(DateTime.fromMillisecondsSinceEpoch(ms));
-
-// «12 треков» переехало в словарь: ключ `tracksCount` в `lib/l10n/*.arb`
-// считает формы через ICU-плюрали, поэтому русская тройка (трек/трека/треков)
-// и английская пара живут рядом с остальными строками, а не в коде.

@@ -1,10 +1,9 @@
-/// Шапка подстраницы настроек: круглая «назад» и название широкой пилюлей.
+/// Header of a settings subpage: a round Back and the title in a wide pill,
+/// stretched to the remaining width with the title centred, so it reads as a
+/// screen title.
 ///
-/// Пилюля тянется на всю оставшуюся ширину, название по центру — так раздел
-/// читается как заголовок экрана, а не как подпись рядом с кнопкой.
-///
-/// Рядом — [SubPage], каркас такой страницы целиком: шапка прибита, листается
-/// только содержимое под ней.
+/// [SubPage] nearby is the whole frame of such a page: the header is pinned and
+/// only the content below scrolls.
 library;
 
 import 'package:flutter/material.dart';
@@ -30,8 +29,8 @@ class SubPageHeader extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: GlassBox(
-            // Скруглена полностью, а не на радиус темы: рядом круглая кнопка,
-            // и эти двое должны читаться одной парой.
+            // Fully rounded rather than the theme radius: next to the round
+            // button they read as a pair.
             borderRadius: BorderRadius.circular(999),
             child: SizedBox(
               height: kHeaderControl,
@@ -40,10 +39,9 @@ class SubPageHeader extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  // На кегль строки списка (`titleMedium`) название в выросшей
-                  // пилюле не тянет: вокруг него слишком много воздуха, и шапка
-                  // читается пустой. Правка местная — общий стиль держит строки
-                  // треков и подписи карточек, ему расти нельзя.
+                  // `titleMedium` looks lost in the taller pill, with too much
+                  // air around it. A local tweak: the shared style also drives
+                  // track rows and card captions.
                   style: Theme.of(
                     context,
                   ).textTheme.titleMedium?.copyWith(fontSize: kHeaderTitleSize),
@@ -72,15 +70,13 @@ class SettingsCaption extends StatelessWidget {
   );
 }
 
-/// Группа строк настроек: один тёмный контейнер, внутри строки, отбитые тонкой
-/// линией.
+/// Group of settings rows: one dark container with rows split by a thin line.
+/// Related rows stay together instead of separate cards with gaps: the group
+/// title already says they belong, and a column of equal plates has no
+/// beginning or end.
 ///
-/// Связанные строки стоят вместе, а не отдельными карточками с зазором:
-/// заголовок группы над ними и так говорит, что это одно про одно, а колонка
-/// одинаковых плашек читалась списком без начала и конца.
-///
-/// [dividerInset] — отступ линии слева: она должна начинаться под ТЕКСТОМ
-/// строки, а не под её краем, поэтому в списках со значком слева он больше.
+/// [dividerInset] is the line's left inset: it starts under the row's TEXT, so
+/// lists with a leading icon use more.
 class SettingsGroupCard extends StatelessWidget {
   const SettingsGroupCard({
     super.key,
@@ -95,10 +91,9 @@ class SettingsGroupCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     return GlassBox(
-      // Скруглена заметнее плашек поменьше: карточка группы во всю ширину и в
-      // несколько строк, и на такой коробке радиус темы читается почти прямым
-      // углом. Доля, а не прибавка: радиус 0 в «Интерфейсе» должен оставлять
-      // группу квадратной.
+      // More rounded than smaller plates: on a box this size the theme radius
+      // reads almost square. A factor rather than an addition, so radius 0
+      // stays square.
       borderRadius: BorderRadius.circular(t.radius * 1.3),
       child: Column(
         children: [

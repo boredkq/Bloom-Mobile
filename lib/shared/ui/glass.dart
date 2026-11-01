@@ -1,18 +1,11 @@
-/// Стеклянная поверхность — то, чем на телефоне заменяется десктопный
-/// `body.glass-mode` из `transparency.css`.
+/// Glass surface of the interface. Cards sit right on the app background, so
+/// each surface has its own glass, made by [GlassBox].
 ///
-/// На ПК стекло получают внешние контейнеры (`.sidebar`/`.main`/панели), а
-/// блоки внутри становятся прозрачными. Здесь таких контейнеров нет: карточки
-/// лежат прямо на фоне приложения, поэтому стекло — у каждой поверхности своё,
-/// и заводит его [GlassBox].
-///
-/// **Все `GlassBox` обязаны сидеть в [GlassGroup].** `BackdropFilter.grouped`
-/// делит с соседями один снимок подложки, и движок размывает её ОДИН раз на
-/// группу — иначе экран настроек стоил бы десятка полноэкранных `saveLayer`.
-/// Цена — правило из документации `BackdropGroup`: поверхности одной группы не
-/// должны накладываться друг на друга. Поэтому групп несколько: своя у
-/// содержимого страниц, своя у нижних баров (они лежат ПОВЕРХ списка) и своя у
-/// каждой шторки.
+/// **Every `GlassBox` must sit in a [GlassGroup].** `BackdropFilter.grouped`
+/// shares one backdrop snapshot among neighbours and blurs it once per group,
+/// or a settings screen would cost a dozen full-screen `saveLayer`s. The price:
+/// surfaces in a group must not overlap. So there are several groups: one for
+/// page content, one for the bottom bars on top of the list, one per sheet.
 library;
 
 import 'package:flutter/material.dart';
@@ -21,9 +14,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/theme/tokens.dart';
 import '../../features/settings/transparency_store.dart';
 
-/// Общий снимок подложки для стеклянных поверхностей внутри. Ставится там, где
-/// начинается слой, который не накладывается сам на себя: содержимое страницы,
-/// нижние бары, шторка.
+/// Shared backdrop snapshot for glass surfaces inside. Goes where a layer that
+/// doesn't overlap itself begins: page content, bottom bars, a sheet.
 class GlassGroup extends StatelessWidget {
   const GlassGroup({super.key, required this.child});
 
@@ -33,13 +25,12 @@ class GlassGroup extends StatelessWidget {
   Widget build(BuildContext context) => BackdropGroup(child: child);
 }
 
-/// Поверхность интерфейса: сплошная плашка, а при включённой прозрачности —
-/// стекло (полупрозрачная заливка + размытие и яркость подложки).
+/// UI surface: a solid plate, or with transparency on, glass (a translucent
+/// fill plus blur and brightness of the backdrop).
 ///
-/// Заливка считается от [color] (по умолчанию `pill` — та же, что у плашек без
-/// стекла), а не от `blockColor`, как на ПК: у нас поверхность приподнята над
-/// фоном плёнкой, и брать голый цвет темы значило бы на сотне процентов
-/// получить блок, неотличимый от фона.
+/// The fill comes from [color], `pill` by default: a surface is lifted from the
+/// background by a film, and the bare theme colour at 100% would be a block
+/// indistinguishable from the background.
 class GlassBox extends ConsumerWidget {
   const GlassBox({
     super.key,
@@ -54,24 +45,25 @@ class GlassBox extends ConsumerWidget {
 
   final Widget child;
 
-  /// Цвет заливки в непрозрачном виде. По умолчанию `pill`.
+  /// Fill colour when opaque. `pill` by default.
   final Color? color;
 
-  /// Скругление. По умолчанию радиус темы. Игнорируется, если задан [shape].
+  /// Rounding; the theme's radius by default. Ignored with [shape].
   final BorderRadius? borderRadius;
 
-  /// Рамка. Игнорируется, если задан [shape].
+  /// Border. Ignored with [shape].
   final BorderSide? borderSide;
 
-  /// Своя форма — когда скруглением и рамкой не обойтись (полоса таб-бара с
-  /// линией только сверху, круглая кнопка).
+  /// Custom shape, when rounding and a border aren't enough (a tab bar with a
+  /// line only on top, a round button).
   final ShapeBorder? shape;
 
-  /// Читать настройку оверлеев, а не блоков: шторки, меню и диалоги.
+  /// Read the overlay setting rather than the blocks one: sheets, menus and
+  /// dialogs.
   final bool overlay;
 
-  /// Поверхность, которой стекло не положено даже при включённой настройке
-  /// (выбранный чип красится акцентом, а не темой).
+  /// Surface that gets no glass even with the setting on (a selected chip is
+  /// painted with the accent).
   final bool enabled;
 
   @override
@@ -89,8 +81,8 @@ class GlassBox extends ConsumerWidget {
         );
 
     final surface = Material(
-      // Заливка живёт на `Material`, а не на `DecoratedBox`: почти каждая
-      // поверхность держит внутри `InkWell`, а ему нужен материал-предок.
+      // The fill lives on `Material`, not `DecoratedBox`: nearly every surface
+      // holds an `InkWell` that needs a material ancestor.
       color: glass == null
           ? fill
           : fill.withValues(alpha: fill.a * glass.opacity),
@@ -100,8 +92,8 @@ class GlassBox extends ConsumerWidget {
     );
     if (glass?.filter == null) return surface;
 
-    // Обрезка обязательна: без неё фильтр применился бы ко всей области
-    // родителя, а не к самой плашке.
+    // The clip is a must: without it the filter covers the parent's whole area,
+    // not just this plate.
     return ClipPath(
       clipper: ShapeBorderClipper(
         shape: form,

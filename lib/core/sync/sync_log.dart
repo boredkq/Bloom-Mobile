@@ -1,11 +1,11 @@
-/// Сторона синхронизации в базе — порт `SyncLog` ПК (`src/sync/SyncLog.cpp`):
-/// что отдать другому устройству слушателя (ПК) и как принять то, что оно
-/// прислало; сеть только возит карты. Формат карт общий — менять вместе.
+/// The database side of sync: what to give another of the listener's devices
+/// and how to take what it sent; the network only carries maps. The map format
+/// is shared: change it on both sides together.
 ///
-/// Общее (плейлисты, треки в списках, подписки, дизлайки, профиль, теги,
-/// исправленные руками) отмечено в `changes`, побеждает позднее изменение;
-/// прослушивания и дни принадлежат устройству, которое их сделало, и только
-/// копируются. Локальные файлы не ездят.
+/// Shared things (playlists, tracks in lists, follows, dislikes, profile,
+/// hand-edited tags) are marked in `changes`, and the later change wins; plays
+/// and days belong to their device and are only copied. Local files don't
+/// travel.
 library;
 
 import 'dart:convert';
@@ -23,8 +23,8 @@ const String _kSince = 'profile.since';
 const int _kFormat = 1;
 const String _tab = '\t';
 
-/// Виды в порядке приёма: трек раньше всего, что на нём, плейлист раньше его
-/// треков, перенос на другой id раньше, чем списки увидят новый.
+/// Kinds in order of taking: a track before what's on it, a playlist before its
+/// tracks, a move to a new id before lists see it.
 const List<String> _kOrder = [
   'kv',
   'track',
@@ -37,7 +37,7 @@ const List<String> _kOrder = [
 
 bool _isLocal(String trackId) => trackId.startsWith('lf:');
 
-/// Числа из JSON: с ПК целое может прийти и как double.
+/// JSON numbers: an integer can come as double.
 int _int(Object? v) => v is num ? v.toInt() : 0;
 
 String _str(Object? v, [String fallback = '']) => v is String ? v : fallback;
@@ -57,8 +57,7 @@ class SyncLog {
 
   final BloomDb db;
 
-  /// id этого устройства, заводится при первом обращении (новая база —
-  /// новое устройство).
+  /// This device's id, made on first use (a new database is a new device).
   String device() {
     final have = db.get(_kDevice);
     if (have is String && have.isNotEmpty) return have;
@@ -71,11 +70,11 @@ class SyncLog {
     return id;
   }
 
-  /// Что уходит [peer]: изменения после курсора [seq], прослушивания после
-  /// курсора [play] (не больше [limit] тех и других; `more` — спросить ещё
-  /// от курсоров, которые вернулись), все дни в приложении и треки, на
-  /// которые всё это ссылается. [ownOnly] — только сделанное здесь: телефон
-  /// шлёт так, ПК передаёт дальше и присланное другими.
+  /// What goes to [peer]: changes after cursor [seq], plays after cursor [play]
+  /// (at most [limit] each; `more` means ask again from the returned cursors),
+  /// all app days and the tracks all this refers to. [ownOnly] is only what was
+  /// made here: the phone sends so, while the computer passes on what others
+  /// sent too.
   Map<String, Object?> outgoing(
     String peer, {
     int seq = 0,
@@ -111,9 +110,9 @@ class SyncLog {
         'row': out.row,
       });
     }
-    // Трек плейлиста едет вместе с плейлистом, иначе другая сторона может не
-    // знать, куда его класть: изменение плейлиста может быть за этим кругом
-    // или уже у неё.
+    // A playlist's track travels with the playlist, or the other side may not
+    // know where to put it: the playlist's change may be past this round or
+    // already there.
     for (final id in lists) {
       if (listed.contains(id)) continue;
       final c = db.select(
@@ -181,10 +180,10 @@ class SyncLog {
     };
   }
 
-  /// Принять то, что [outgoing] отдал на другом устройстве, одной
-  /// транзакцией, и запомнить его курсоры ([got]). В [touched] — виды,
-  /// которые здесь изменились: list, item, follow, dislike, kv, track, rekey,
-  /// plays, days. `false` — посылка не для нас (битая, своя).
+  /// Takes what [outgoing] gave on another device, in one transaction, and
+  /// remembers its cursors ([got]). [touched] gets kinds changed here: list,
+  /// item, follow, dislike, kv, track, rekey, plays, days. `false`: the parcel
+  /// isn't for us (broken or our own).
   bool apply(Map<String, Object?> payload, {Set<String>? touched}) {
     final me = device();
     final from = _str(payload['device']);
@@ -200,7 +199,8 @@ class SyncLog {
     db.tx(() {
       var cleared = false;
 
-      // Треки как они там — для того, чего здесь нет; известный оставляет своё.
+      // Tracks as they are there, for what's missing here; a known one keeps
+      // its own.
       for (final v in (payload['tracks'] as List?) ?? const []) {
         if (v is! Map) continue;
         final id = _str(v['id']);
@@ -301,7 +301,7 @@ class SyncLog {
     return true;
   }
 
-  /// Докуда дошло присланное [peer].
+  /// How far [peer]'s parcels got.
   ({int seq, int play}) got(String peer) {
     final at = db.getMap(_kGot)[peer];
     return at is Map
@@ -309,11 +309,11 @@ class SyncLog {
         : (seq: 0, play: 0);
   }
 
-  /// Докуда дошло бы [outgoing] для [peer] — `SyncLog::head` ПК. С [ownOnly] —
-  /// только сделанное здесь: больше курсора ПК — значит, есть что отдать.
+  /// How far [outgoing] would go for [peer]. With [ownOnly], only what was made
+  /// here: past the computer's cursor means there's something to give.
   ({int seq, int play}) head(String peer, {bool ownOnly = false}) {
     final own = ownOnly ? 1 : 0;
-    // С конца: просмотр встаёт на первой же подходящей строке.
+    // From the end: the scan stops at the first fitting row.
     return (
       seq: _int(
         db.value(
@@ -330,15 +330,15 @@ class SyncLog {
     );
   }
 
-  /// Для записей, которые триггеры не видят одним изменением: трек переехал
-  /// на другой id и «Очистить статистику» ([banked] — XP, оставленные уровню).
+  /// For writes triggers don't see as one change: a track moved to a new id,
+  /// and the stats clear ([banked] is XP kept for the level).
   void markRekey(String from, String to) =>
       db.exec("INSERT INTO stamp VALUES ('rekey', ?)", ['$from$_tab$to']);
 
   void markCleared(int banked) =>
       db.set(_kCleared, {'at': BloomDb.now(), 'banked': banked});
 
-  // ── Внутреннее ──────────────────────────────────────────────────────────
+  // ── Internal ────────────────────────────────────────────────────────────
 
   Map<String, Object?>? _one(String sql, List<Object?> args) {
     final rows = db.select(sql, args);
@@ -356,8 +356,8 @@ class SyncLog {
     );
   }
 
-  /// Вещь как она сейчас — для уходящего изменения; `null` — она не ездит.
-  /// В [tracks] — треки, на которые она ссылается.
+  /// The thing as it is now, for an outgoing change; `null` if it doesn't
+  /// travel. [tracks] gets the tracks it refers to.
   ({Map<String, Object?>? row, String? list})? _rowFor(
     String kind,
     String key,
@@ -417,9 +417,8 @@ class SyncLog {
     return null;
   }
 
-  /// Позднее ли изменение из [mod] на [device], чем то, что у нас есть.
-  /// Один и тот же миг на двух устройствах — побеждает больший id, на обоих
-  /// одинаково.
+  /// Whether the change from [mod] on [device] is later than what's here. For
+  /// the same moment on two devices the larger id wins, the same on both.
   bool _newer(String kind, String key, int mod, String device, String me) {
     final rows = db.select(
       'SELECT mod, device FROM changes WHERE kind = ? AND key = ?',
@@ -432,8 +431,8 @@ class SyncLog {
     return mod > have || (mod == have && device.compareTo(by) > 0);
   }
 
-  /// Ключ изменения с треком там, куда он здесь переехал; пусто — брать
-  /// нечего (удаление старого id: перенос уже сделал его).
+  /// A change's key with the track where it moved here; empty means nothing to
+  /// take (deletion of an old id: the move already did it).
   String _movedKey(String kind, String key, bool gone, _Moves moves) {
     final item = kind == 'item';
     if (!item && kind != 'dislike' && kind != 'track') return key;
@@ -444,8 +443,8 @@ class SyncLog {
     return item ? '${_before(key)}$_tab$to' : to;
   }
 
-  /// Записать одно изменение с другого устройства. `null` — не принято,
-  /// `true` — это была «Очистить статистику» (после неё — чистка треков).
+  /// Writes one change from another device. `null` if not taken, `true` if it
+  /// was the stats clear (track cleanup follows).
   bool? _write(String kind, String key, Map? r, bool gone) {
     switch (kind) {
       case 'list':
@@ -567,14 +566,14 @@ class SyncLog {
       case 'rekey':
         final from = _before(key), to = _after(key);
         if (_isLocal(from) || _isLocal(to)) return null;
-        // Здесь неизвестен: переносить нечего, но дальше он передаётся.
+        // Unknown here: nothing to move, but it's passed on.
         if (_exists('tracks', from)) TrackStore(db).rekey(from, to);
         return false;
     }
     return null;
   }
 
-  /// Что «Очистить статистику» на другом устройстве убирает и здесь.
+  /// What a stats clear on another device also removes here.
   void _clearBefore(int at, int banked) {
     db.exec('DELETE FROM plays WHERE ts < ?', [at]);
     db.exec(
@@ -585,7 +584,7 @@ class SyncLog {
     db.set('ach.at', <String, Object?>{});
   }
 
-  /// «С нами с» берёт раннее из двух, кто бы ни писал последним.
+  /// Member since takes the earlier of the two, whoever wrote last.
   bool _takeSince(Object? row, int mod, String device) {
     var theirs = 0;
     if (row is Map) {
@@ -602,10 +601,9 @@ class SyncLog {
   }
 }
 
-/// Куда здесь ушёл id трека: по его переносам на другие id, каждый позже
-/// прошлого (a→b, потом b→a — снова a). Поздние вести о старом id —
-/// прослушивание, лайк, сделанный раньше, чем другая сторона узнала о
-/// переносе, — ложатся на новый.
+/// Where a track's id went here: by its moves, each later than the last (a→b,
+/// then b→a is a again). Late news of an old id (a play, a like made before the
+/// other side heard of the move) lands on the new one.
 class _Moves {
   _Moves(this.db);
 
@@ -630,6 +628,6 @@ class _Moves {
     return _seen[id] = at;
   }
 
-  /// После того как пришли новые переносы.
+  /// After new moves arrive.
   void forget() => _seen.clear();
 }

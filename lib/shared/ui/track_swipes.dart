@@ -1,10 +1,7 @@
-/// Свайпы по треку: что происходит, когда строку списка или карточку плеера
-/// утянули в сторону.
-///
-/// Одно место на все четыре зоны ([SwipeZone]) — строка библиотеки, строка
-/// очереди, миниплеер и плеер отличаются только тем, откуда берётся трек и что
-/// значит «удалить». Сам жест рисуют [SwipeRow] (списки) и `TrackFlick`
-/// (плеер).
+/// Track swipes: what happens when a list row or the player card is pulled
+/// aside. One place for all four [SwipeZone]s; a library row, a queue row, the
+/// mini player and the player differ only in where the track comes from and
+/// what delete means. [SwipeRow] and `TrackFlick` draw the gesture.
 library;
 
 import 'dart:async';
@@ -25,7 +22,7 @@ import 'bloom_icon.dart';
 import 'bloom_toast.dart';
 import 'swipe_row.dart';
 
-/// Значок действия — он же в настройках, в списке выбора и на плашке.
+/// Action icon, shared by settings, the picker and the plate.
 BloomGlyph swipeActionIcon(SwipeAction action) => switch (action) {
   SwipeAction.none => Bi.forbiddenCircle,
   SwipeAction.like => Bi.heart,
@@ -56,11 +53,9 @@ String swipeZoneLabel(AppLocalizations l, SwipeZone zone) => switch (zone) {
   SwipeZone.player => l.swZonePlayer,
 };
 
-/// Строка списка со свайпами из настроек.
-///
-/// [listId] — раздел библиотеки, из которого строка (`all` / `fav` / `history`
-/// / id плейлиста): по нему «Удалить» понимает, откуда убирать. [queueIndex] —
-/// номер строки в очереди, там удаляют не из списка, а из самой очереди.
+/// List row with swipes from settings. [listId] is the library section (`all`,
+/// `fav`, `history` or a playlist id), so delete knows where from. [queueIndex]
+/// is the queue position: there a track leaves the queue itself.
 class TrackSwipe extends ConsumerWidget {
   const TrackSwipe({
     super.key,
@@ -87,14 +82,14 @@ class TrackSwipe extends ConsumerWidget {
     );
   }
 
-  /// Плашка одного направления; `null` — действия нет, строка в эту сторону не
-  /// двигается.
+  /// Plate of one direction; `null` means no action and the row doesn't move
+  /// that way.
   SwipePanel? _panel(BuildContext context, WidgetRef ref, SwipeAction action) {
     if (action == SwipeAction.none) return null;
-    // Из «Истории» ничего не убирается — в эту сторону строка не двигается.
+    // Nothing leaves history, so the row doesn't move that way.
     if (action == SwipeAction.delete && listId == 'history') return null;
-    // «Удалить» — единственное, после чего строки не станет: остальные жесты
-    // возвращают её на место.
+    // Delete is the only action after which the row is gone; the others return
+    // it.
     final removes =
         action == SwipeAction.delete && (queueIndex != null || listId != null);
     return SwipePanel(
@@ -113,7 +108,7 @@ class TrackSwipe extends ConsumerWidget {
   }
 }
 
-/// Сделать то, что назначено на жест.
+/// Runs what the gesture is set to.
 void runSwipeAction(
   BuildContext context,
   WidgetRef ref,
@@ -140,9 +135,9 @@ void runSwipeAction(
     case SwipeAction.playNext:
       player.playNext(track);
       messenger.toast(l.swPlaysNext);
-    // Смену «под пальцем» слои `TrackSwap` не анимируют: содержимое уже увёл
-    // за край сам жест (см. `markSwapSilent`). Флаг одноразовый, поэтому
-    // ставится только здесь — на действиях, которые трек точно сменят.
+    // `TrackSwap` doesn't animate a change under the finger: the gesture
+    // already carried the content off (see `markSwapSilent`). The flag is
+    // one-shot, so I set it only on actions that will surely change the track.
     case SwipeAction.next:
       if (fromFlick) markSwapSilent();
       unawaited(player.next());
@@ -160,21 +155,20 @@ void runSwipeAction(
         removeTrackFromList(messenger, l, ref, listId, track);
         return;
       }
-      // Плеер и миниплеер: списка за ними нет, убирать можно только из очереди.
+      // The player and mini player have no list behind them, so a track can
+      // only leave the queue.
       final index = ref.read(playbackProvider).index;
       if (index >= 0) unawaited(player.removeAt(index));
   }
 }
 
-/// Убрать трек из раздела библиотеки — теми же ручками, что и режим правки
-/// списка, и с «Отменить» в тосте.
+/// Removes a track from a library section with the same handles as edit mode,
+/// and Undo in the toast. From all tracks it goes throughout (see
+/// [LibraryController.deleteTrack]), so Undo restores a snapshot of the whole
+/// library. The offline copy goes only when it's too late to undo.
 ///
-/// Из «Всех треков» трек уходит НАСКВОЗЬ (см. [LibraryController.deleteTrack]),
-/// поэтому отмена возвращает снимок всей библиотеки: по частям такое удаление
-/// не собрать. Офлайн-копию удаляем только когда отменять уже поздно.
-///
-/// Общая со шторкой действий: её «Убрать из плейлиста» — то же самое, что
-/// смахивание строки, и вести себя (включая «Отменить») обязано так же.
+/// Shared with the actions sheet: its Remove from playlist must behave just
+/// like a swipe.
 void removeTrackFromList(
   ScaffoldMessengerState messenger,
   AppLocalizations l,
@@ -182,7 +176,7 @@ void removeTrackFromList(
   String listId,
   Track track,
 ) {
-  // Из «Истории» ничего не убирается — она показывает журнал как есть.
+  // History shows the log as it is; nothing leaves it.
   if (listId == 'history') return;
 
   final lib = ref.read(libraryProvider.notifier);
@@ -206,8 +200,8 @@ void removeTrackFromList(
     l.swRemoved,
     action: ToastAction(
       fn: () => lib.restoreSnapshot(before),
-      // Файлы удаляем только когда отменять уже поздно: «Отменить» вернёт
-      // снимок библиотеки, а стёртую копию своего трека — нет.
+      // Files go only when it's too late to undo: Undo restores the library
+      // snapshot, but not a deleted copy of a local track.
       onExpire: listId == 'all'
           ? () {
               unawaited(offline.remove(track.id));

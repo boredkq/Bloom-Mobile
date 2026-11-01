@@ -1,23 +1,11 @@
-/// Журнал работы приложения — «Настройки → Система → Логи».
+/// The app's log, shown in settings. A ring buffer of [kLogMax] entries in
+/// memory; the old get pushed out. The WHOLE buffer is written to disk,
+/// deferred: appending would grow forever and trimming means rotation, while
+/// rewriting the ring bounds the file by itself. At launch the file is read
+/// back, because the log must survive a restart or a crash leaves nothing.
 ///
-/// На десктопе логи пишет Rust (`tracing` в файл, команды `read_logs` /
-/// `export_logs` / `clear_logs`); в мобилке своего журнала не было вовсе, и
-/// диагностировать «у меня трек не играет» было нечем. Здесь — самое простое,
-/// что закрывает ту же задачу.
-///
-/// Устройство:
-///
-/// - в памяти кольцевой буфер на [kLogMax] записей — старое вытесняется;
-/// - на диск пишется ВЕСЬ буфер целиком (`logs/bloom.log`), отложенно, как в
-///   `JsonStore`. Дописыванием файл рос бы без края, а чистить его по размеру
-///   значило бы городить ротацию — при переписывании кольца размер файла
-///   ограничен самим кольцом;
-/// - при старте файл читается обратно: журнал должен переживать перезапуск,
-///   иначе от падения в нём не осталось бы ни строчки.
-///
-/// Запись строкой одна и та же в файле и на экране, поэтому многострочное
-/// (стек ошибки) складывается в одну строку — иначе разобрать файл обратно
-/// было бы нечем.
+/// An entry is one line on file and on screen, so multi-line text (a stack
+/// trace) is folded, or the file couldn't be parsed back.
 library;
 
 import 'dart:async';
@@ -27,13 +15,12 @@ import 'package:flutter/foundation.dart';
 
 import '../store/app_dirs.dart';
 
-/// Сколько записей держим. 500 строк — это единицы сотен килобайт и заведомо
-/// больше, чем нужно, чтобы увидеть, что случилось перед сбоем.
+/// Entries kept. 500 lines is a few hundred KB and well beyond what it takes to
+/// see what happened before a failure.
 const int kLogMax = 500;
 
-/// Сколько ждём после записи, прежде чем переписать файл. Ошибки любят идти
-/// пачками (сеть отвалилась — три площадки подряд), и писать файл на каждую
-/// незачем.
+/// Wait after a write before rewriting the file. Errors come in bursts, and one
+/// write each isn't needed.
 const Duration _flushDelay = Duration(seconds: 2);
 
 enum LogLevel { info, warn, error }
@@ -44,17 +31,16 @@ class LogEntry {
   final DateTime at;
   final LogLevel level;
 
-  /// Откуда запись: `player`, `offline`, `flutter`… Показывается в строке и
-  /// помогает искать глазами.
+  /// Where the entry comes from: `player`, `offline`, `flutter`…
   final String tag;
   final String message;
 
-  /// `2026-08-20 14:03:11 ERROR [player] нет провайдера для xx`
+  /// `2026-08-20 14:03:11 ERROR [player] no provider for xx`
   String format() =>
       '${_stamp(at)} ${level.name.toUpperCase().padRight(5)} [$tag] $message';
 
-  /// Разбор строки из файла. `null` — строка чужая или битая: журнал не тот
-  /// файл, ради которого стоит падать, такие строки просто пропускаем.
+  /// Parses a line from the file. `null` for a foreign or broken line: a log
+  /// isn't worth crashing over, so these are skipped.
   static LogEntry? parse(String line) {
     final m = _lineRe.firstMatch(line);
     if (m == null) return null;
@@ -81,32 +67,28 @@ class LogEntry {
 class BloomLog {
   BloomLog._();
 
-  /// Журнал один на процесс: писать в него зовут откуда угодно, в том числе из
-  /// обработчика необработанных ошибок, где ни `ref`, ни контекста нет.
+  /// One log per process: it's called from anywhere, including the unhandled
+  /// error handler with no `ref` or context.
   static final BloomLog instance = BloomLog._();
 
   final List<LogEntry> _entries = [];
   File? _file;
   Timer? _debounce;
 
-  /// Записи от старых к новым. Копия: список живой и меняется под ногами у
-  /// экрана.
+  /// Entries oldest first. A copy: the list is live and changes under the
+  /// screen.
   List<LogEntry> get entries => List.unmodifiable(_entries);
 
   bool get isEmpty => _entries.isEmpty;
   int get length => _entries.length;
 
-  /// Сколько записей сейчас — для подписи «Настройки → Система → Журнал
-  /// работы».
-  ///
-  /// Просто числом это не работает: страница журнала лежит ПОВЕРХ «Системы»
-  /// (вложенный маршрут), та остаётся в стопке живой и после возврата сама не
-  /// перестраивается — подпись так и держала бы число, снятое при открытии
-  /// экрана, хотя журнал уже очищен.
+  /// Entry count for the settings row caption. A plain number won't do: the log
+  /// page lies over that page, which stays alive in the stack and doesn't
+  /// rebuild on return, so the caption would keep the old count after clearing.
   final ValueNotifier<int> count = ValueNotifier(0);
 
-  /// Поднять журнал: прочитать файл прошлых запусков. Зовётся из `main()` до
-  /// первого кадра, как и остальные хранилища.
+  /// Opens the log and reads earlier launches' file. Called from `main()`
+  /// before the first frame.
   Future<void> open() async {
     try {
       final dir = Directory('${(await appPrivateDir()).path}/logs');
@@ -121,23 +103,19 @@ class BloomLog {
       }
       _trim();
     } catch (_) {
-      // Нет места, нет прав, битый файл — журнал живёт в памяти. Падать из-за
-      // диагностики нельзя: она сама ничего не решает.
+      // No space, no rights, a broken file: the log lives in memory.
+      // Diagnostics can't be a reason to crash.
     }
     _bump();
   }
 
-  /// [now] — записать на диск немедленно, не дожидаясь [_flushDelay].
+  /// [now] writes to disk at once, not waiting for [_flushDelay]. Errors always
+  /// do: an error is often the last thing before a crash, and the process may
+  /// not live two more seconds.
   ///
-  /// Ошибку пишем немедленно всегда, остальное — отложенно. Ошибка часто и есть
-  /// последнее, что случилось перед падением, а отложенных двух секунд процесс
-  /// в этот момент может уже не прожить: журнал остался бы без единственной
-  /// строки, ради которой он и заведён.
-  ///
-  /// Тот же [now] нужен и обычным записям на пути, где следующей строки может
-  /// не случиться вовсе: падение НАТИВНОЙ стороны (ExoPlayer, драйвер экрана)
-  /// убивает процесс мимо всяких обработчиков Dart, и в журнале остаётся тишина
-  /// ровно на том месте, которое и надо разобрать.
+  /// Ordinary entries need it too on paths where there may be no next line: a
+  /// NATIVE crash (ExoPlayer, a screen driver) kills the process past all Dart
+  /// handlers, leaving silence just where it's needed.
   void add(LogLevel level, String tag, String message, {bool now = false}) {
     _entries.add(LogEntry(DateTime.now(), level, tag, _flatten(message)));
     _trim();
@@ -156,11 +134,11 @@ class BloomLog {
   void warn(String tag, String message, {bool now = false}) =>
       add(LogLevel.warn, tag, message, now: now);
 
-  /// Ошибка с необязательной причиной: `сообщение — Exception: …`.
+  /// Error with an optional cause: `message — Exception: …`.
   void error(String tag, String message, [Object? cause]) =>
       add(LogLevel.error, tag, cause == null ? message : '$message — $cause');
 
-  /// Весь журнал текстом — экран просмотра, копирование и выгрузка в файл.
+  /// The whole log as text, for viewing, copying and export.
   String text() => _entries.map((e) => e.format()).join('\n');
 
   Future<void> clear() async {
@@ -172,12 +150,12 @@ class BloomLog {
       final file = _file;
       if (file != null && file.existsSync()) await file.delete();
     } catch (_) {
-      // Файл не удалился — в памяти журнал уже пуст, следующая запись
-      // перепишет его целиком.
+      // The file wasn't removed: the log is already empty in memory, and the
+      // next write replaces it.
     }
   }
 
-  /// Записать немедленно (тесты, уход приложения в фон).
+  /// Writes at once (tests, going to background).
   Future<void> flush() async {
     _debounce?.cancel();
     _debounce = null;
@@ -188,24 +166,21 @@ class BloomLog {
       await tmp.writeAsString(text(), flush: true);
       await tmp.rename(file.path);
     } catch (_) {
-      // Нет места/прав — журнал остаётся только в памяти.
+      // No space or rights: the log stays in memory.
     }
   }
 
   void _schedule() {
-    // Журнала на диске нет (тесты, десктоп) — писать нечего и таймер заводить
-    // незачем: висящий `Timer` роняет виджет-тесты как «утечку».
+    // No log on disk (tests), so there's nothing to write and no timer: a
+    // pending `Timer` fails widget tests as a leak.
     if (_file == null) return;
     _debounce?.cancel();
     _debounce = Timer(_flushDelay, flush);
   }
 
-  /// Сообщить подписчикам новое число записей.
-  ///
-  /// Через микрозадачу, а не сразу: запись в журнал прилетает и из
-  /// обработчика необработанных ошибок, а тот срабатывает в том числе посреди
-  /// построения кадра — правка [count] оттуда роняла бы слушателя жалобой на
-  /// `setState` во время build. Микрозадача выполняется уже после кадра.
+  /// Tells subscribers the new count. In a microtask: log writes come from the
+  /// unhandled error handler too, even mid-frame, and changing [count] there
+  /// fails the listener with `setState` during build.
   void _bump() {
     if (count.value == _entries.length) return;
     scheduleMicrotask(() => count.value = _entries.length);
@@ -216,9 +191,8 @@ class BloomLog {
     _entries.removeRange(0, _entries.length - kLogMax);
   }
 
-  /// Одна запись — одна строка: переносы схлопываем, длинное режем. Стек
-  /// ошибки целиком в журнал не нужен, а разбор файла держится на построчном
-  /// формате.
+  /// One entry, one line: line breaks collapse, long text is cut. The file's
+  /// parsing relies on lines.
   static String _flatten(String message) {
     final one = message.replaceAll(RegExp(r'\s*\n+\s*'), ' · ').trim();
     return one.length <= 500 ? one : '${one.substring(0, 500)}…';

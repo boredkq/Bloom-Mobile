@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 
-/// Base of every button: taps and the press-in, the same 0.94 / 120 ms as on
-/// the PC. Wrap the whole button, plate included — whatever is outside doesn't
+/// Base of every button: taps and the press-in, 0.94 over 120 ms.
+/// Wrap the whole button, plate included — whatever is outside doesn't
 /// press. Bigger things press less (cards 0.97, menu rows 0.98), track rows and
 /// segments not at all.
 class Pressable extends StatefulWidget {

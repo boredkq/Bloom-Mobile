@@ -1,7 +1,5 @@
-/// Знак бренда — 8-лучевая звезда, та же, что в иконке приложения.
-///
-/// В файле звезда белая, поэтому перекрашивается через `srcIn`: на светлой
-/// теме белое на белом было бы не видно.
+/// Brand mark: the eight-ray star from the app icon. It is white in the file,
+/// so I tint it with `srcIn`; white would vanish on the light theme.
 library;
 
 import 'package:flutter/material.dart';
@@ -13,7 +11,7 @@ class BloomMark extends StatelessWidget {
 
   final double size;
 
-  /// Цвет знака; по умолчанию — `text` темы.
+  /// Mark colour; the theme's `text` by default.
   final Color? color;
 
   final double opacity;

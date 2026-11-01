@@ -1,8 +1,5 @@
-/// Настройки внешнего вида и площадок.
-///
-/// Как на десктопе: тема — это ТРИ цвета пресета, а радиус и акцент живут
-/// отдельно и при смене темы не сбрасываются (`themeStore.ts`: «радиус и шрифт
-/// в тему не входят намеренно»).
+/// Appearance and platform settings. A theme is THREE preset colours; radius
+/// and accent live apart and survive a theme change.
 library;
 
 import 'package:flutter/material.dart';
@@ -15,47 +12,41 @@ import 'json_store.dart' show jsonStoreProvider;
 
 export '../../app/theme/tokens.dart' show ThemePreset, kThemePresets;
 
-/// id авто-темы. В [kThemePresets] её нет намеренно: это РЕЖИМ, а не набор
-/// цветов — три цвета ей приносит обложка играющего трека (см.
-/// `features/settings/auto_accent.dart`), — но в списке тем она стоит такой же
-/// карточкой и выбирается тем же [SettingsController.setTheme].
+/// Auto theme id. Not in [kThemePresets] on purpose: it's a MODE, not a colour
+/// set (the playing cover brings the three colours), but in the theme list it's
+/// a card like others, picked by the same [SettingsController.setTheme].
 const String kAutoThemeId = 'auto';
 
-/// Границы и дефолт яркости авто-акцента — те же числа, что в десктопном
-/// `coverAccent.ts`: центр коридора светлоты, вокруг которого зажимается цвет
-/// обложки.
+/// Bounds and default of auto accent brightness: the centre of the lightness
+/// corridor the cover's colour is clamped around.
 const double kAutoAccentLMin = 0.1;
 const double kAutoAccentLMax = 0.6;
 const double kAutoAccentLDefault = 0.375;
 
 double clampAutoAccentL(double v) => v.clamp(kAutoAccentLMin, kAutoAccentLMax);
 
-/// Вид таб-бара каркаса. Настройка чисто телефонная: на десктопе навигация
-/// живёт в сайдбаре, и порта у неё нет.
-///
-/// Отличаются только рамка и поля вокруг ряда иконок — сам ряд, его высота и
-/// оживление глифов у всех стилей общие.
+/// Shell tab bar style. They differ only in the frame and margins around the
+/// icon row; the row, its height and glyph motion are shared.
 enum NavBarStyle {
-  /// Во всю ширину, прижат к низу, тонкая линия сверху — как было всегда.
+  /// Full width, flush to the bottom, a thin line on top.
   bar,
 
-  /// То же место, но панель отбита сверху скруглением: под её углами видно
-  /// список.
+  /// The same place, with rounded top corners: the list shows under them.
   rounded,
 
-  /// Тот же прижатый бар, но верх скруглён вдвое сильнее — панель выгибается
-  /// куполом, а не просто теряет углы.
+  /// The same flush bar with the top twice as round: the panel arches like a
+  /// dome rather than just losing corners.
   dome,
 
-  /// Карточка с полями по краям, приподнятая над низом, — пара к миниплееру.
+  /// A card with margins, lifted from the bottom, a pair to the mini player.
   floating,
 
-  /// Та же плавающая панель, но с углами в половину высоты — капсула.
+  /// The same floating panel with corners of half its height: a capsule.
   pill,
 }
 
-/// Стиль из сырых настроек. Неизвестное имя (настройки от новой сборки) — это
-/// не повод падать: возвращаем обычный бар.
+/// Style from raw settings. An unknown name (settings from a newer build) is no
+/// reason to crash: the plain bar.
 NavBarStyle readNavStyle(Object? raw) {
   for (final style in NavBarStyle.values) {
     if (style.name == raw) return style;
@@ -83,28 +74,27 @@ List<NavTab> readNavOrder(Object? raw) {
   ];
 }
 
-/// Порядок бара у свежей установки.
+/// Bar order of a fresh install.
 const List<NavTab> kDefaultNavOrder = NavTab.values;
 
-/// Чем помечен активный таб.
+/// What marks the active tab.
 enum NavIndicator {
-  /// Ничем: активный таб виден только заливкой глифа и акцентом — так бар и
-  /// выглядел до того, как выделение вообще завели.
+  /// Nothing: the active tab shows only by its filled glyph and accent.
   none,
 
-  /// Плашка почти во всю долю таба, под иконкой и подписью.
+  /// A plate over nearly the whole tab share, under icon and label.
   pill,
 
-  /// Точка у нижней кромки ряда, под иконкой.
+  /// A dot at the row's bottom edge, under the icon.
   dot,
 
-  /// Короткая линия там же, где стояла бы точка.
+  /// A short line where the dot would be.
   line,
 }
 
-/// Выделение из сырых настроек. Ключа нет — настройки от сборки, где выделение
-/// было тумблером «подложка да/нет» (`navPill`): её и читаем, иначе у всех, кто
-/// подложку выключал, она вернулась бы сама.
+/// Indicator from raw settings. With no key, the settings come from a build
+/// with an on/off plate switch (`navPill`), so I read that, or those who turned
+/// it off would get it back.
 NavIndicator readNavIndicator(Map<String, dynamic> raw) {
   final name = raw['navIndicator'];
   for (final value in NavIndicator.values) {
@@ -115,20 +105,20 @@ NavIndicator readNavIndicator(Map<String, dynamic> raw) {
       : NavIndicator.none;
 }
 
-/// Подписи под иконками бара.
+/// Labels under the bar icons.
 enum NavLabels {
-  /// Только иконки — как бар выглядел всегда.
+  /// Icons only.
   none,
 
-  /// Под каждой иконкой.
+  /// Under every icon.
   always,
 
-  /// Только под активным табом. Место под строку занято при этом всё равно,
-  /// иначе ряд дёргался бы на каждом переключении.
+  /// Only under the active tab.
   active,
 }
 
-/// Подписи из сырых настроек. Неизвестное имя — не повод падать: дефолт.
+/// Labels from raw settings. An unknown name is no reason to crash: the
+/// default.
 NavLabels readNavLabels(Object? raw) {
   for (final value in NavLabels.values) {
     if (value.name == raw) return value;
@@ -136,20 +126,18 @@ NavLabels readNavLabels(Object? raw) {
   return NavLabels.none;
 }
 
-/// Что Bloom делает с файлом, добавленным плюсом во «Всех треках» — порт
-/// десктопного `local_import_mode` (там он про папки, у нас — про одиночные
-/// файлы, папок на телефоне мы не смотрим).
+/// What Bloom does with a file added by plus in all tracks.
 enum LocalImportMode {
-  /// Файл остаётся там, где лежит; Bloom помнит выданное системой разрешение
-  /// на чтение. Дефолт, как и на ПК.
+  /// The file stays where it is; Bloom remembers the read permission from the
+  /// system. The default.
   inPlace,
 
-  /// Файл копируется внутрь приложения — тогда трек переживает переезд и
-  /// удаление оригинала, но занимает место второй раз.
+  /// The file is copied into the app: the track survives moving or deleting the
+  /// original, but takes space twice.
   copy,
 }
 
-/// Режим из сырых настроек. Неизвестное имя — не повод падать: дефолт.
+/// Mode from raw settings. An unknown name is no reason to crash: the default.
 LocalImportMode readLocalImportMode(Object? raw) {
   for (final mode in LocalImportMode.values) {
     if (mode.name == raw) return mode;
@@ -157,15 +145,12 @@ LocalImportMode readLocalImportMode(Object? raw) {
   return LocalImportMode.inPlace;
 }
 
-/// Языки интерфейса — те же два, что в десктопном `LOCALES` (`i18nStore.ts`).
-///
-/// Порядок показа: английский первым, как на ПК.
+/// UI languages, English first.
 const List<Locale> kLocales = [Locale('en'), Locale('ru')];
 
-/// Сохранённый язык из сырой карты настроек; `null` — «как в системе».
-///
-/// Отдельной функцией, потому что нужна и до создания контейнера: `main()`
-/// собирает название канала уведомлений раньше первого кадра.
+/// Saved language from the raw settings map; `null` means system. A separate
+/// function because it's needed before the container exists: `main()` builds
+/// the notification channel's name before the first frame.
 Locale? readSavedLocale(Map<String, dynamic> raw) {
   final code = raw['locale'];
   if (code is! String) return null;
@@ -178,92 +163,81 @@ Locale? readSavedLocale(Map<String, dynamic> raw) {
 class SettingsState {
   final String themeId;
 
-  /// Язык интерфейса; `null` — «как в системе».
-  ///
-  /// Именно null, а не подставленный при первом запуске код: тогда телефон,
-  /// переключённый на другой язык, переключает и приложение, пока пользователь
-  /// не выбрал язык руками. Дальше выбор уже не сбивается.
+  /// UI language; `null` means system. Null rather than a code filled in on
+  /// first launch: a phone switched to another language switches the app too,
+  /// until the user picks by hand.
   final Locale? locale;
 
-  /// Переопределение акцента; null — берётся из пресета.
-  ///
-  /// Ручного выбора акцента на телефоне нет (как и на ПК — там только пикеры
-  /// внутри своей темы), так что заполняет его сейчас ровно одно — авто-акцент
-  /// из обложки.
+  /// Accent override; null takes the preset's. There's no manual accent choice,
+  /// so only the auto accent fills it.
   final Color? accent;
 
-  /// Акцент из обложки играющего трека (десктопный `autoAccent`).
+  /// Accent from the playing cover.
   final bool autoAccent;
 
-  /// Яркость авто-акцента: центр коридора светлоты, см. [clampAutoAccentL].
-  /// Общая с авто-темой — акцент та считает по той же формуле.
+  /// Auto accent brightness: centre of the lightness corridor, see
+  /// [clampAutoAccentL]. Shared with the auto theme, whose accent uses the same
+  /// formula.
   final double autoAccentL;
 
-  /// Поверхность авто-темы — цвет, снятый с обложки. Фон и блоки у неё
-  /// одинаковые, как у встроенных пресетов, поэтому цвет один.
+  /// Auto theme's surface, a colour taken from the cover. Background and blocks
+  /// match, as in built-in presets, so it's one colour.
   ///
-  /// Живёт и когда авто-тема не выбрана: это последнее её лицо, им и рисуется
-  /// карточка в шторке выбора. При включении авто-темы сюда кладётся цвет
-  /// текущей темы — до первой обложки перекрашивать не из чего (десктопный
-  /// `applyTheme` в этом месте тоже остаётся на текущих цветах).
+  /// Lives on when the auto theme isn't picked: it's its last look, and the
+  /// picker's card draws with it. On turning the auto theme on, the current
+  /// theme's colour goes here, with nothing to recolour from until the first
+  /// cover.
   final Color? autoSurface;
 
-  /// Ручной client_id SoundCloud (пусто — авто-подбор).
+  /// Manual SoundCloud client_id; empty means automatic.
   final String? scClientId;
 
-  /// Бейджи источника в цвете акцента. По умолчанию выключено — бейджи в
-  /// фирменных цветах площадок (то же поведение и дефолт, что на десктопе).
+  /// Source badges in the accent colour. Off by default: badges in platform
+  /// brand colours.
   final bool accentBadges;
 
-  /// Шрифт интерфейса — семейство, как оно сохранено (десктопный
-  /// `fontFamily`). Сырое значение: свои шрифты живут в своём сторе, и
-  /// проверять выбор против них здесь нечем — это делает `normalizeFont` там,
-  /// где собирается тема.
+  /// UI font, the family as saved. A raw value: user fonts live in their own
+  /// store and can't be checked here; `normalizeFont` does that where the theme
+  /// is built.
   final String fontFamily;
 
-  /// Вид таб-бара, см. [NavBarStyle].
+  /// Tab bar style; see [NavBarStyle].
   final NavBarStyle navStyle;
 
   /// The bar tabs in display order.
   final List<NavTab> navOrder;
 
-  /// Чем помечен активный таб, см. [NavIndicator].
+  /// What marks the active tab; see [NavIndicator].
   final NavIndicator navIndicator;
 
-  /// Подписи под иконками, см. [NavLabels].
+  /// Labels under icons; see [NavLabels].
   final NavLabels navLabels;
 
-  /// Знак Bloom вместо иконки «Главной» — десктопная
-  /// `settings.interface.nav.homeLogo`. Пара глифов у таба при этом остаётся:
-  /// знак нарисован одной заливкой, и наплыва outline→bold ему не из чего
-  /// собрать — выбранность у него показывает только цвет.
+  /// Bloom mark instead of the home icon. The tab's glyph pair stays: the mark
+  /// is one fill with nothing to blend, so only colour shows selection.
   final bool navHomeLogo;
 
-  /// Обложка играющего трека как фон приложения — десктопная
-  /// `settings.background.coverAsBg`. Своя картинка фона (её ставят в
-  /// «Кастомизации») эту настройку перебивает, как и на ПК.
+  /// The playing cover as the app background. A custom background picture
+  /// overrides this.
   final bool coverAsBg;
 
-  /// Что делать с добавленным своим файлом, см. [LocalImportMode].
+  /// What to do with an added local file; see [LocalImportMode].
   final LocalImportMode localImport;
 
-  /// Возвращать при запуске трек, очередь и позицию прошлой сессии — но НЕ
-  /// начинать играть. Настройка мобильная: на ПК её пока нет (пользователь
-  /// собирался завести такую же и там), а десктопный `autoplay` — это сразу
-  /// «восстановить и играть», см. [autoplay].
+  /// Bring back the last session's track, queue and position at launch, but NOT
+  /// start playing; see [autoplay].
   final bool restoreQueue;
 
-  /// Восстановить сессию и сразу продолжить воспроизведение — десктопная
-  /// `settings.system.autoplay`. Надстройка над [restoreQueue]: сама она ничего
-  /// не восстанавливает, поэтому без него не показывается и не действует.
+  /// Restore the session and continue playing at once. An add-on over
+  /// [restoreQueue]: it restores nothing itself and does nothing without it.
   final bool autoplay;
 
-  /// «Авто похожие» (десктопный `audioStore.autoSimilar`): доигравшая очередь
-  /// продолжается похожими треками, дописанными в её хвост. Кнопка «Похожие на
-  /// очередь» в шторке — другое: она заменяет очередь волной сразу.
+  /// Auto similar: a finished queue continues with similar tracks added to its
+  /// tail. The sheet's Similar to queue button is different: it replaces the
+  /// queue with a wave at once.
   final bool autoSimilar;
 
-  /// Свои темы — в порядке создания, после встроенных.
+  /// User themes in creation order, after built-in ones.
   final List<ThemePreset> customThemes;
 
   const SettingsState({
@@ -289,17 +263,17 @@ class SettingsState {
     this.customThemes = const [],
   });
 
-  /// Встроенные и свои разом — в этом порядке они и показываются.
+  /// Built-in and user themes together, in display order.
   List<ThemePreset> get allThemes => [...kThemePresets, ...customThemes];
 
-  /// Выбрана авто-тема: цвета едут за обложкой.
+  /// The auto theme is picked: colours follow the cover.
   bool get autoTheme => themeId == kAutoThemeId;
 
   ThemePreset get preset {
     if (autoTheme) {
-      // Пресета с таким id нет — собираем его из снятых с обложки цветов.
-      // Название тут служебное: в интерфейсе у авто-темы своя строка из
-      // переводов (`thAutoName`), пресетное имя ей не показывают.
+      // No preset with this id, so I build it from the colours taken from the
+      // cover. The name here is internal: the UI has its own string
+      // (`thAutoName`).
       final surface = autoSurface ?? kThemePresets.first.bg;
       return ThemePreset(
         id: kAutoThemeId,
@@ -366,7 +340,7 @@ class SettingsState {
 }
 
 /// The saved theme id, or Dark when that theme is gone (a preset dropped in
-/// an update), as the PC's `syncPreset` does.
+/// an update).
 String _knownTheme(Object? id, List<ThemePreset> custom) {
   final known =
       id == kAutoThemeId ||
@@ -414,8 +388,8 @@ class SettingsController extends Notifier<SettingsState> {
       autoSimilar: raw['autoSimilar'] as bool? ?? false,
       customThemes: customThemes,
     );
-    // Провайдер SoundCloud держит client_id в модульном состоянии — при старте
-    // ему надо отдать сохранённый, иначе ручной ключ забудется до перезапуска.
+    // The SoundCloud provider keeps client_id in module state, so it gets the
+    // saved one at launch, or the manual key is forgotten until restart.
     sc.setManualClientId(state.scClientId);
     return state;
   }
@@ -446,12 +420,12 @@ class SettingsController extends Notifier<SettingsState> {
     });
   }
 
-  /// Смена темы НЕ трогает акцент и радиус — это независимые настройки вида.
+  /// A theme change doesn't touch accent and radius, independent settings.
   ///
-  /// Исключение — авто-тема: акцент у неё свой, снятый с обложки. На входе она
-  /// затравливается текущими цветами (перекрашивать пока не из чего) и гасит
-  /// авто-акцент — вдвоём они спорили бы за один акцент; на выходе снятый цвет
-  /// сбрасывается, иначе выбранный пресет остался бы с чужим акцентом.
+  /// Except the auto theme, whose accent comes from the cover. On entry it
+  /// seeds from current colours (nothing to recolour from yet) and turns off
+  /// auto accent, since the two would fight over one accent; on exit the taken
+  /// colour resets, or the chosen preset keeps a foreign accent.
   void setTheme(String id) {
     if (id == kAutoThemeId) {
       state = state.copyWith(
@@ -466,9 +440,8 @@ class SettingsController extends Notifier<SettingsState> {
     _save();
   }
 
-  /// Создать свою тему из трёх цветов и сразу её применить — как
-  /// `createCustomTheme` на десктопе. Возвращает готовый пресет: вызывающему
-  /// нужно его имя для тоста.
+  /// Creates a user theme from three colours and applies it. Returns the
+  /// preset: the caller needs its name for the toast.
   ThemePreset createCustomTheme({
     required String name,
     required Color bg,
@@ -491,8 +464,8 @@ class SettingsController extends Notifier<SettingsState> {
     return preset;
   }
 
-  /// Удалить свою тему. Если она была активной — возвращаемся на первую
-  /// встроенную, как на ПК: иначе приложение осталось бы с темой, которой нет.
+  /// Deletes a user theme. If active, I go back to the first built-in one, or
+  /// the app stays on a theme that doesn't exist.
   void deleteCustomTheme(String id) {
     final rest = [
       for (final t in state.customThemes)
@@ -505,10 +478,9 @@ class SettingsController extends Notifier<SettingsState> {
     _save();
   }
 
-  /// Вернуть тему из снимка (пресет кастомизации). Есть такая — просто
-  /// выбираем; своей темы из снимка у нас нет (удалили, пресет с другого
-  /// телефона) — заводим её заново под тем же id, чтобы повторное применение не
-  /// плодило копий.
+  /// Returns a theme from a snapshot (customization preset). If it exists I
+  /// just pick it; if not (deleted, preset from another phone) I recreate it
+  /// under the same id, so applying again makes no copies.
   void restoreTheme(ThemePreset theme) {
     final known =
         theme.id == kAutoThemeId ||
@@ -525,7 +497,7 @@ class SettingsController extends Notifier<SettingsState> {
     _save();
   }
 
-  /// Выбрать язык интерфейса; `null` — вернуться к системному.
+  /// Picks the UI language; `null` returns to the system's.
   void setLocale(Locale? locale) {
     state = locale == null
         ? state.copyWith(clearLocale: true)
@@ -533,15 +505,12 @@ class SettingsController extends Notifier<SettingsState> {
     _save();
   }
 
-  /// Включить/выключить авто-акцент. При выключении акцент сразу возвращается
-  /// к цвету пресета — на десктопе там точка восстановления (`accentManual`),
-  /// но ручного акцента у нас нет, восстанавливать нечего.
+  /// Toggles auto accent. Turning off returns the preset's colour at once:
+  /// there's no manual accent to restore.
   ///
-  /// Включение снимает авто-тему — она шире, и красить акцент им обоим нельзя
-  /// (то же правило в десктопном `setAutoAccent`). Уходить приходится на
-  /// встроенную тему: замороженных цветов, как `activeThemeId: 'custom'` на ПК,
-  /// у нас держать негде. На экране вида тоггла при авто-теме и нет вовсе —
-  /// сюда приходят разве что из онбординга.
+  /// Turning on leaves the auto theme, which is broader, and both can't paint
+  /// the accent. It goes to a built-in theme: there's nowhere to hold frozen
+  /// colours.
   void setAutoAccent(bool value) {
     state = value
         ? state.copyWith(
@@ -558,9 +527,8 @@ class SettingsController extends Notifier<SettingsState> {
     _save();
   }
 
-  /// Цвет, вытащенный из обложки. Приходит из моста авто-акцента; если тоггл
-  /// уже успели выключить — молча игнорируем, иначе поздний скан вернул бы
-  /// акцент обратно.
+  /// Colour taken from a cover, via the auto accent bridge. If the switch is
+  /// already off I ignore it, or a late scan would bring the accent back.
   void applyAutoAccent(Color color) {
     if (!state.autoAccent) return;
     if (state.accent?.toARGB32() == color.toARGB32()) return;
@@ -568,9 +536,9 @@ class SettingsController extends Notifier<SettingsState> {
     _save();
   }
 
-  /// Цвета авто-темы, посчитанные от обложки: поверхность (фон = блоки) и
-  /// акцент. Приходят из того же моста; тему могли успеть переключить, пока
-  /// грузилась картинка, — тогда молча выходим.
+  /// Auto theme colours from the cover: surface (background equals blocks) and
+  /// accent. Via the same bridge; the theme may have changed while the picture
+  /// loaded, so then I just return.
   void applyAutoTheme(Color surface, Color accent) {
     if (!state.autoTheme) return;
     if (state.autoSurface?.toARGB32() == surface.toARGB32() &&
@@ -628,17 +596,15 @@ class SettingsController extends Notifier<SettingsState> {
     _save();
   }
 
-  /// Режим добавления своих файлов. На уже добавленные треки не влияет — как и
-  /// на ПК, где смена режима не трогает добавленные папки.
+  /// Mode for adding local files. Tracks already added aren't affected.
   void setLocalImport(LocalImportMode mode) {
     state = state.copyWith(localImport: mode);
     _save();
   }
 
-  /// Восстанавливать сессию при запуске. Выключение снимает и
-  /// [SettingsState.autoplay]: его строку экран прячет, а поднятый флаг в
-  /// скрытой строке остаться не должен — иначе восстановление вернут и получат
-  /// внезапно играющий с порога плеер.
+  /// Restores the session at launch. Turning off also clears
+  /// [SettingsState.autoplay], or bringing restore back would start the player
+  /// playing out of nowhere.
   void setRestoreQueue(bool value) {
     state = value
         ? state.copyWith(restoreQueue: true)
@@ -646,9 +612,8 @@ class SettingsController extends Notifier<SettingsState> {
     _save();
   }
 
-  /// Автовоспроизведение. Восстановление обратно не включает: тумблер
-  /// показывают только под уже включённым восстановлением, и надстройка «и
-  /// сразу продолжить» им не распоряжается.
+  /// Autoplay. Doesn't turn restore back on: the add-on doesn't control what it
+  /// sits on.
   void setAutoplay(bool value) {
     state = state.copyWith(autoplay: value);
     _save();

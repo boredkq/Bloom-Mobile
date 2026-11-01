@@ -1,18 +1,10 @@
-/// Общие сущности всех площадок — порт `src/entities/{track,artist,playlist}`
-/// из десктопного Bloom.
+/// Entities shared by all platforms. A provider maps its results TO these
+/// types, and the whole UI knows nothing about the platform: adding one means
+/// writing a provider, with no screen changes.
 ///
-/// Смысл: провайдер приводит свою выдачу К ЭТИМ типам, и весь UI (поиск,
-/// страницы, плеер) о площадке ничего не знает. Добавить площадку = написать
-/// провайдер, экраны не трогаем.
-///
-/// Отличия от десктопа, сделанные осознанно:
-/// - `duration` здесь [Duration], а не строка «m:ss». На десктопе это поле
-///   названо `dur` и хранит уже отформатированную строку — там же в
-///   комментарии помечено как историческое. Форматируем при отрисовке.
-/// - вместо плоских флагов `_sc`/`_ym`/`_ytm` и россыпи полей вроде `scMedia`
-///   — [Track.source] и непрозрачный [Track.sourceData]: сырьё площадки,
-///   которое нужно ей самой (у SoundCloud там `media.transcodings` для
-///   резолва стрима).
+/// `duration` is a [Duration], formatted when drawn. [Track.source] and the
+/// opaque [Track.sourceData] hold what the platform itself needs (for
+/// SoundCloud, `media.transcodings` to resolve a stream).
 library;
 
 enum MusicSource {
@@ -23,10 +15,10 @@ enum MusicSource {
 
   const MusicSource(this.id, this.code, this.label, this.prefix);
 
-  /// Технический id источника. В UI не показывается.
+  /// Source id; not shown in the UI.
   final String id;
 
-  /// Площадка так, как её пишет база (`tracks.provider`) — те же коды, что на ПК.
+  /// Platform as the database writes it (`tracks.provider`).
   final String code;
 
   static MusicSource fromCode(String code) => MusicSource.values.firstWhere(
@@ -34,17 +26,16 @@ enum MusicSource {
     orElse: () => MusicSource.local,
   );
 
-  /// Человекочитаемая метка. Для площадок это бренд и перевода не требует;
-  /// переводятся только «Локальные» и «Яндекс.Музыка» — см. `label10n` в
-  /// `core/l10n/source_label.dart`, где нужен язык.
+  /// Readable label. Platforms are brands and stay untranslated; only Local and
+  /// Yandex Music are translated, via `label10n`.
   final String label;
 
-  /// Префикс сквозных id сущностей этой площадки — как на ПК: `sc:123`,
-  /// `sc:artist:123`, `ytm:<videoId>`, `ym:<id>`, `lf:<хеш>`.
+  /// Prefix of this platform's global ids: `sc:123`, `sc:artist:123`,
+  /// `ytm:<videoId>`, `ym:<id>`, `lf:<hash>`.
   final String prefix;
 
-  /// Площадка по ПРЕФИКСУ сквозного id — там, где источник не сохранён
-  /// отдельным полем.
+  /// Platform by a global id's PREFIX, where the source isn't stored
+  /// separately.
   static MusicSource fromId(String id) {
     for (final s in [
       MusicSource.ytmusic,
@@ -61,13 +52,12 @@ enum MusicSource {
 typedef ArtistLink = ({String name, String? id});
 
 class Track {
-  /// Сквозной id с префиксом источника («sc:123»).
+  /// Global id with the source prefix (sc:123).
   final String id;
 
-  /// Заголовок трека.
   final String name;
 
-  /// Отображаемое имя артиста (может быть «Artist A, Artist B»).
+  /// Display name of the artist (may be "Artist A, Artist B").
   final String artist;
   final Duration duration;
   final String? cover;
@@ -76,25 +66,25 @@ class Track {
   final String? album;
   final String? year;
 
-  /// Полная дата релиза («2024-05-13T00:00:00Z»), если площадка отдала её
-  /// целиком, а не одним годом. Год из неё уже вынут в [year] — рядом лежит
-  /// именно сырьё, разбирает его `releaseDateLabel` из `shared/util/format.dart`.
+  /// Full release date (2024-05-13T00:00:00Z) when the platform gave all of it.
+  /// The year is already in [year]; this is the raw form for
+  /// `releaseDateLabel`.
   final String? releaseDate;
   final String? publisher;
   final String? description;
   final bool explicit;
   final List<String> genres;
 
-  /// Ссылка на трек у площадки (permalink).
+  /// Track link on the platform.
   final String? url;
 
-  /// Сквозной id артиста — чтобы открыть его страницу по клику на имя, минуя
-  /// резолв по имени.
+  /// Artist's global id, to open the page from the name with no lookup.
   final String? artistId;
   final String? artistAvatar;
   final bool artistVerified;
 
-  /// Артист из `publisher_metadata` — иногда точнее имени аккаунта.
+  /// Artist from `publisher_metadata`, sometimes more accurate than the account
+  /// name.
   final String? creditedArtist;
 
   /// Every artist with their page, as the platform lists them; empty when it
@@ -104,20 +94,19 @@ class Track {
   /// Tags edited by hand: the platform's ids may be someone else's now.
   final bool edited;
 
-  /// Сырьё площадки для [MusicProvider.resolveStream] и скачивания.
+  /// Platform raw data for [MusicProvider.resolveStream] and downloads.
   final Map<String, dynamic>? sourceData;
 
-  /// Место в чарте площадки (1-based) — только у треков из `getCharts()`
-  /// (витрина на главной и страница «Чарт»), у остальных `null`.
+  /// Chart position (1-based), only on tracks from `getCharts()`, else `null`.
   ///
-  /// В [toJson] не пишется намеренно: место меняется каждые сутки, и трек,
-  /// сохранённый из чарта в библиотеку, носил бы вчерашнее место вечно.
+  /// [toJson] leaves it out on purpose: it changes daily, and a saved track
+  /// would carry yesterday's forever.
   final int? chartPos;
 
-  /// Сдвиг места за сутки: >0 — поднялся, <0 — опустился.
+  /// Daily position change: >0 rose, <0 fell.
   final int chartShift;
 
-  /// Новичок чарта — вместо стрелки «нов.».
+  /// New in the chart: shows new instead of an arrow.
   final bool chartNew;
 
   const Track({
@@ -147,16 +136,14 @@ class Track {
     this.chartNew = false,
   });
 
-  /// Трек так, как его держит ПК (`Track::toMap`): строка таблицы `tracks`, он
-  /// же — трек в файле переноса и в кешах. Формат один на обе стороны, поэтому
-  /// синхронизации и файлу нечего переводить.
+  /// The track as the `tracks` row, also used in transfer files and caches. One
+  /// format on all sides, so sync and files have nothing to translate.
   ///
-  /// Своё у площадки — в `extra` под ключами ПК: `scId`/`videoId`/`ymId`,
-  /// `artistId` (голый id площадки), `media` (транскодинги SoundCloud, из них
-  /// резолвится стрим), `available` у Яндекса. Чего ПК не знает (`releaseDate`,
-  /// `creditedArtist`…), лежит там же: чужие ключи ему не мешают, а база при
-  /// записи сливает `extra` со старым, так что ключи ПК (`edited`, `artists`)
-  /// у нас тоже не теряются.
+  /// Platform specifics live in `extra`: `scId`, `videoId`, `ymId`, `artistId`
+  /// (the bare platform id), `media` (SoundCloud transcodings for resolving a
+  /// stream), `available` on Yandex. Keys only this app knows (`releaseDate`,
+  /// `creditedArtist`…) sit there too: foreign keys harm nothing, and the
+  /// database merges `extra` on write, so nothing gets lost.
   Map<String, dynamic> toJson() => {
     'id': id,
     'title': name,
@@ -194,7 +181,7 @@ class Track {
           'artistId': ?rawArtist,
           if (sourceData?['available'] == false) 'available': false,
         },
-        // Свой файл: ключ дедупа и где он лежит — на ПК таких нет, это наше.
+        // A local file: its dedupe key and where it lies.
         MusicSource.local => {...?sourceData},
       },
       if (year != null) 'year': year,
@@ -272,8 +259,8 @@ class Track {
     );
   }
 
-  /// Ссылка на трек у площадки, когда своей в `extra` нет: у YouTube Music она
-  /// собирается из id (на ПК так же — `trackLink`).
+  /// Track link when `extra` has none: for YouTube Music it's built from the
+  /// id.
   static String? _linkOf(MusicSource source, String id) =>
       source == MusicSource.ytmusic
       ? 'https://music.youtube.com/watch?v=${id.substring(source.prefix.length)}'
@@ -289,18 +276,18 @@ class Artist {
   final MusicSource source;
 
   /// A listener with no tracks of their own (SoundCloud): their card says
-  /// "Profile", as on the PC.
+  /// "Profile".
   final bool profile;
 
-  // Поля страницы артиста — заполняются провайдером в getArtist.
+  // Artist page fields, filled by the provider in getArtist.
 
-  /// Полное имя — подзаголовок профиля.
+  /// Full name, the profile's subtitle.
   final String? fullName;
   final String? description;
   final String? website;
   final List<String> genres;
 
-  /// Баннер для фона hero.
+  /// Banner for the hero background.
   final String? bannerUrl;
 
   const Artist({
@@ -366,40 +353,37 @@ class Artist {
   }
 }
 
-/// Плейлист И альбом — одна сущность: рисуются одной карточкой, различаются
-/// флагом [isAlbum].
+/// Playlist AND album are one entity: one card, told apart by [isAlbum].
 class Playlist {
   final String id;
   final String title;
   final String? cover;
 
-  /// Число треков. Именно nullable: у части площадок его нет вовсе, и «0» вместо
-  /// «неизвестно» показывало «0 треков» у альбома с четырнадцатью.
+  /// Track count. Nullable: some platforms don't have it, and 0 for unknown
+  /// showed 0 tracks on a 14-track album.
   final int? trackCount;
   final String? ownerName;
   final String? ownerAvatar;
 
-  /// Сквозной id артиста-владельца (альбом) — переход на его страницу с
-  /// карточки релиза.
+  /// Owner artist's global id (album), to open their page from a release card.
   final String? ownerId;
 
-  /// Год выпуска (у альбомов; у плейлистов чаще пусто).
+  /// Release year (albums; usually empty for playlists).
   final String? year;
 
-  /// Полная дата релиза, если площадка знает её точнее года — см.
-  /// [Track.releaseDate].
+  /// Full release date when known beyond the year; see [Track.releaseDate].
   final String? releaseDate;
 
-  /// Тип релиза от площадки: `single` | `compilation` | `podcast` | …;
-  /// `null` — обычный альбом.
+  /// Platform's release type: `single`, `compilation`, `podcast`…; `null` is a
+  /// usual album.
   final String? albumType;
   final MusicSource source;
   final bool isAlbum;
 
-  /// Длительность целиком, если площадка её отдаёт.
+  /// Total duration, if the platform gives it.
   final Duration? duration;
 
-  /// URL/permalink для повторной загрузки из источника.
+  /// URL for reloading from the source.
   final String? sourceUrl;
 
   const Playlist({

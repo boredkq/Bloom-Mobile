@@ -1,7 +1,5 @@
-/// Действия над треком: лайк, добавление в плейлист, переход к артисту.
-///
-/// Аналог контекстного меню трека на десктопе, только снизу — на телефоне это
-/// длинный тап по строке и кнопки на обложке в плеере.
+/// Track actions: like, add to playlist, go to artist. A bottom sheet, from a
+/// long press on a row or the buttons on the player's cover.
 library;
 
 import 'dart:async';
@@ -33,10 +31,10 @@ import 'platform_logo.dart';
 import 'track_info_sheet.dart';
 import 'track_swipes.dart';
 
-/// [listId] — раздел библиотеки, из которого открыли строку (`all` / `fav` /
-/// `history` / id плейлиста): от него зависит «Убрать из плейлиста».
-/// [queueIndex] — номер строки в очереди: там убирают не из списка, а из самой
-/// очереди, и один трек может стоять в ней дважды.
+/// [listId] is the library section the row was opened from (`all`, `fav`,
+/// `history` or a playlist id); Remove from playlist depends on it.
+/// [queueIndex] is the row's queue position: there a track leaves the queue
+/// itself, and it may stand there twice.
 Future<void> showTrackActions(
   BuildContext context,
   WidgetRef ref,
@@ -47,22 +45,20 @@ Future<void> showTrackActions(
   final lib = ref.read(libraryProvider);
   final isFav = lib.isFav(track.id);
   final inLib = lib.isInLib(track.id);
-  // Пункт показываем, только если площадка вообще отдаёт трек файлом.
+  // Shown only if the platform serves this track as a file at all.
   final canOffline = ref.read(offlineProvider.notifier).canDownload(track);
   final hasCover = track.cover?.isNotEmpty ?? false;
   final isDisliked = ref.read(waveStoreProvider).isDisliked(track.id);
-  // Позиция в очереди: из самой очереди её передают явно (один трек может
-  // стоять там дважды, и по id их не различить), из остальных мест ищем по id —
-  // как `isInQueue` в десктопном меню.
+  // Queue position: from the queue itself it's passed explicitly (a track may
+  // stand there twice, ids can't tell them apart); elsewhere I look up the id.
   final queue = ref.read(playbackProvider).queue;
   final inQueueAt = queueIndex ?? queue.indexWhere((t) => t.id == track.id);
-  // «Убрать из плейлиста» — только для пользовательского плейлиста: во «Всех
-  // треках», «Любимых» и «Истории» за тем же пунктом стояло бы совсем другое
-  // действие (удаление насквозь, снятие лайка, забывание записи).
+  // Remove from playlist only for user playlists: in all tracks, favourites and
+  // history the same item would be a different action.
   final fromPlaylist = lib.playlists.any((p) => p.id == listId) ? listId : null;
   final player = ref.read(playbackProvider.notifier);
-  // Мессенджер берём здесь: шторка закрывается до вызова обработчика, и её
-  // context к моменту снекбара уже отвязан от дерева.
+  // I take the messenger here: the sheet closes before the handler runs, and by
+  // the time of the snack bar its context has left the tree.
   final messenger = ScaffoldMessenger.of(context);
   final l10n = context.l;
 
@@ -187,29 +183,27 @@ Future<void> showTrackActions(
   );
 }
 
-/// Удаление насквозь, без переспроса: трек уходит и из любимых, и из
-/// плейлистов — пункт красный, тап по нему уже и есть решение. В «Истории» его
-/// запись остаётся: это журнал прослушанного, и чистит его только человек.
+/// Deletes throughout with no second question: the track leaves favourites and
+/// playlists too; the item is red, so the tap is the decision. Its history
+/// entry stays: that's a log of what was played, and only the user clears it.
 void _deleteTrack(
   ScaffoldMessengerState messenger,
   AppLocalizations l10n,
   WidgetRef ref,
   Track track,
 ) {
-  // Офлайн-копию убираем вместе с треком: без строки в библиотеке файл остался
-  // бы мусором, на который никто не ссылается. Со своим треком то же самое:
-  // копия внутри приложения стирается, чужой файл остаётся на месте.
+  // The offline copy goes with the track, or the file would be garbage nothing
+  // points at. For a local track too: the copy in the app goes, the user's file
+  // stays.
   unawaited(ref.read(offlineProvider.notifier).remove(track.id));
   unawaited(forgetLocalTracks([track]));
   ref.read(libraryProvider.notifier).deleteTrack(track.id);
   messenger.toast(l10n.taTrackDeleted);
 }
 
-/// Шторка «Скачать»: копия внутри приложения и файл наружу — порт десктопного
-/// флайаута `cxdl`.
-///
-/// Офлайн-состояние читаем здесь заново: между открытием меню и этой шторкой
-/// пакетная загрузка могла его изменить.
+/// Download sheet: a copy inside the app, or a file outside. Offline state is
+/// read afresh here: a batch download may have changed it since the menu
+/// opened.
 Future<void> _showDownloadSheet(
   BuildContext context,
   WidgetRef ref,
@@ -221,7 +215,7 @@ Future<void> _showDownloadSheet(
   final messenger = ScaffoldMessenger.of(context);
   final l10n = context.l;
 
-  // Порядок как в десктопном флайауте: трек, обложка, офлайн.
+  // Order: track, cover, offline.
   final rows = <Widget>[
     if (canOffline && canSaveFiles)
       Builder(
@@ -250,8 +244,6 @@ Future<void> _showDownloadSheet(
     if (canOffline)
       Builder(
         builder: (sheetContext) => SheetRow(
-          // Дискета у офлайна и галочка у скачанного — те же значки, что на
-          // ПК (голой галочки у Solar нет, поэтому в кружке).
           icon: isOffline ? Bi.trashBinTrash : Bi.downloadMinimalistic,
           label: isOffline ? l10n.taRemoveOffline : l10n.taListenOffline,
           color: isOffline ? context.bloom.accent : context.bloom.text,
@@ -274,8 +266,8 @@ Future<void> _showDownloadSheet(
   );
 }
 
-/// Шторка «Сменить площадку»: список площадок, куда трек можно переставить.
-/// Нынешней в нём нет — переставлять туда, где трек уже есть, нечего.
+/// Change platform sheet: platforms the track can move to. The current one
+/// isn't listed.
 Future<void> _showSwitchPlatformSheet(
   BuildContext context,
   WidgetRef ref,
@@ -292,8 +284,8 @@ Future<void> _showSwitchPlatformSheet(
       title: context.l.spSwitch,
       subtitle: track.name,
     ),
-    // Закрывать шторку надо её же навигатором: снаружи `Navigator.of` найдёт
-    // навигатор вкладки и захлопнет страницу, а не шторку.
+    // The sheet must close through its own navigator: from outside
+    // `Navigator.of` finds the tab's and closes the page instead.
     child: Builder(
       builder: (sheetContext) => SheetPanel(
         children: [
@@ -330,18 +322,16 @@ class PlatformRow extends StatelessWidget {
   }
 }
 
-/// Шторка «Добавить в …»: сперва библиотека, потом плейлисты — порядок как в
-/// десктопном `AddPopup` («В библиотеку» первым пунктом над списком).
+/// Add to sheet: the library first, then playlists.
 Future<void> showAddToPlaylistSheet(
   BuildContext context,
   WidgetRef ref,
   Track track,
 ) => showAddTracksToPlaylistSheet(context, ref, [track]);
 
-/// Та же шторка для пачки треков — выделение из режима правки списка.
-///
-/// [newName] — имя, которое подставится в «Новый плейлист»: у одного трека это
-/// его название, у пачки — имя списка, откуда её взяли.
+/// The same sheet for a batch of tracks, from a list's edit mode. [newName]
+/// fills in New playlist: a track's title for one, the source list's name for a
+/// batch.
 Future<void> showAddTracksToPlaylistSheet(
   BuildContext context,
   WidgetRef ref,
@@ -371,17 +361,17 @@ Future<void> showAddTracksToPlaylistSheet(
 
         return SheetPanel(
           children: [
-            // Того, что уже в библиотеке, пункт не касается — он прячется,
-            // когда добавлять нечего (`canAddToLib` на десктопе). Убрать трек
-            // можно только «Удалить трек» из шторки действий, насквозь.
+            // This item doesn't concern what's already in the library; it hides
+            // when there's nothing to add. A track only leaves via Delete track
+            // in the actions sheet, throughout.
             if (outside.isNotEmpty) ...[
               SheetRow(
                 icon: Bi.downloadMinimalistic,
                 label: context.l.commonAddToLibrary,
                 color: t.accent,
                 onTap: () {
-                  // Мессенджер берём до pop: после него context шторки уже
-                  // отвязан от дерева и до Scaffold по нему не дойти.
+                  // I take the messenger before pop: after it the sheet's
+                  // context has left the tree and can't reach the Scaffold.
                   final messenger = ScaffoldMessenger.of(context);
                   final l10n = context.l;
                   ref.read(libraryProvider.notifier).addToLibrary(outside);

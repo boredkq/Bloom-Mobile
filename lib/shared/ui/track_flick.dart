@@ -1,17 +1,16 @@
-/// Горизонтальный жест «перелистнуть трек» — миниплеер и полноэкранный плеер.
+/// Horizontal gesture to flick tracks, in the mini player and the full player.
+/// Unlike [SwipeRow] nothing stays under the finger: no plates, the content
+/// slides off, the action fires and the new content arrives from the opposite
+/// edge.
 ///
-/// В отличие от [SwipeRow] здесь ничего не остаётся под пальцем: плашек нет,
-/// содержимое само уезжает в сторону, действие срабатывает, и новое приезжает
-/// с противоположного края. Что именно едет, решает вызывающий — [builder]
-/// получает долю сдвига (−1…1) и оборачивает во [FlickSlide] ровно ту часть,
-/// которая должна двигаться (в плеере это обложка с названием, а не весь
-/// экран).
+/// The caller decides what moves: [builder] gets the shift (−1…1) and wraps
+/// just that part in [FlickSlide].
 library;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-/// Доля ширины, после которой отпускание перелистывает трек.
+/// Share of the width after which letting go flicks the track.
 const double kFlickThreshold = 0.22;
 
 const double _flingVelocity = 700;
@@ -19,8 +18,8 @@ const Duration _out = Duration(milliseconds: 150);
 const Duration _back = Duration(milliseconds: 240);
 const Duration _snap = Duration(milliseconds: 200);
 
-/// С какой доли приезжает новый трек — не с самого края: полный «пролёт»
-/// читается как рывок.
+/// Where the new track enters from, short of the edge: a full pass reads as a
+/// jerk.
 const double _enterFrom = 0.55;
 
 class TrackFlick extends StatefulWidget {
@@ -35,35 +34,31 @@ class TrackFlick extends StatefulWidget {
     this.behavior,
   });
 
-  /// Свайп влево. `null` — в эту сторону содержимое не двигается.
+  /// Swipe left. `null` means the content doesn't move that way.
   final VoidCallback? onLeft;
 
-  /// Свайп вправо.
+  /// Swipe right.
   final VoidCallback? onRight;
 
-  /// Чужой сдвиг вместо своего. Нужен карусели миниплеера («Соседние треки»):
-  /// за пальцем там едет не только сама карточка, но и соседи по краям, а они
-  /// лежат в другом слое — снаружи этого виджета. Кто дал, тот и освобождает.
+  /// A shift from outside instead of my own. For the mini player's carousel:
+  /// the neighbours at the edges follow the finger too, in a layer outside this
+  /// widget. Whoever gave it disposes it.
   final ValueNotifier<double>? shift;
 
-  /// Карусель: соседний трек УЖЕ стоит у края и приезжает в середину сам.
-  ///
-  /// Обычный режим уводит содержимое за край и вводит новое с другой стороны —
-  /// показывать соседа ему нечем. Здесь же после смены трека сдвиг просто
-  /// обнуляется: приехавшая карточка и есть новая середина, а въезд поверх неё
-  /// читался бы отскоком.
+  /// Carousel: the neighbour ALREADY waits at the edge and comes to the centre
+  /// by itself. The usual mode slides off and brings new content in from the
+  /// other side. Here after the change the shift just resets: the arrived card
+  /// is the new centre, and an entrance on top would read as a bounce.
   final bool carousel;
 
-  /// Слушать ли палец. `false` снимает распознаватель, НЕ трогая форму дерева:
-  /// оба обработчика на месте, `LayoutBuilder` и `GestureDetector` тоже — уходит
-  /// только сам жест. Гасить его подменой обработчиков на `null` нельзя: без них
-  /// [build] возвращает другую ветку, и всё содержимое пересобирается с нуля.
+  /// Whether to listen to the finger. `false` removes the recognizer WITHOUT
+  /// changing the tree's shape. Nulling the handlers won't do: [build] then
+  /// takes another branch and everything rebuilds from scratch.
   final bool enabled;
 
-  /// Как ловить палец. По умолчанию — `deferToChild`, то есть только там, где
-  /// содержимое реально что-то рисует. Полноэкранному плееру нужен `opaque`:
-  /// между его блоками (по бокам от обложки, в просветах колонки) содержимого
-  /// нет, и жест проваливался бы сквозь них — к панели под ним.
+  /// How to catch the finger. `deferToChild` by default, only where content
+  /// draws. The full player needs `opaque`: there's no content between its
+  /// blocks, and the gesture would fall through to the panel below.
   final HitTestBehavior? behavior;
 
   final Widget Function(BuildContext context, ValueListenable<double> shift)
@@ -75,15 +70,14 @@ class TrackFlick extends StatefulWidget {
 
 class _TrackFlickState extends State<TrackFlick>
     with SingleTickerProviderStateMixin {
-  /// Сдвиг, который держим сами, — когда своего нам не дали.
+  /// The shift I hold myself when none is given.
   ValueNotifier<double>? _own;
 
   late final ValueNotifier<double> _shift;
 
-  /// Заводится в [initState], а не ленивым полем: обложку, которую ни разу не
-  /// перелистнули, первым и единственным трогал бы `dispose()`, а `vsync`
-  /// оттуда лезет за `TickerMode` в уже мёртвый контекст и роняет само
-  /// освобождение (та же ловушка, что была в `lyrics_view.dart`).
+  /// Set up in [initState], not lazily: a cover never flicked would first touch
+  /// it in `dispose()`, and `vsync` reaches for `TickerMode` in a dead context
+  /// and crashes the disposal.
   late final AnimationController _anim;
 
   Animation<double>? _slide;
@@ -99,9 +93,9 @@ class _TrackFlickState extends State<TrackFlick>
   @override
   void didUpdateWidget(TrackFlick old) {
     super.didUpdateWidget(old);
-    // Жест сняли прямо под пальцем (панель начали разворачивать) — распознаватель
-    // уходит вместе с ним, и «отпустили» уже никто не позовёт. Возвращаем сдвиг
-    // сами, иначе содержимое так и осталось бы стоять боком.
+    // The gesture was removed under the finger (the panel started expanding),
+    // and the recognizer left with it, so nobody will report the release. I
+    // reset the shift myself or the content stays shifted.
     if (old.enabled && !widget.enabled && _shift.value != 0) {
       _animateTo(0, _snap);
     }
@@ -142,13 +136,13 @@ class _TrackFlickState extends State<TrackFlick>
       await _animateTo(0, _snap);
       return;
     }
-    // Уводим до края, меняем трек и вводим новый с другой стороны: смена
-    // содержимого приходится ровно на тот кадр, когда старого уже не видно.
+    // Slide to the edge, change the track, bring the new one in from the other
+    // side: the swap lands on the frame when the old one is out of sight.
     await _animateTo(value.sign, _out);
     if (!mounted) return;
     action();
-    // В карусели этот же сдвиг поставил соседа ровно в середину — вводить с
-    // другого края нечего и незачем: он уже приехал.
+    // In a carousel this shift already put the neighbour dead centre, so
+    // there's nothing to bring in.
     if (widget.carousel) {
       _shift.value = 0;
       return;
@@ -178,12 +172,10 @@ class _TrackFlickState extends State<TrackFlick>
   }
 }
 
-/// Часть, которая едет за пальцем в КАРУСЕЛИ ([TrackFlick.carousel]): сдвиг в
-/// ПИКСЕЛЯХ и без затухания.
-///
-/// [FlickSlide] тут не годится дважды: доля своей ширины увела бы карточку не
-/// на шаг карусели (между карточками ещё просвет), а прозрачность гасила бы
-/// ровно то, что человек тянет к себе, — соседи-то по краям непрозрачны.
+/// The part that follows the finger in a CAROUSEL ([TrackFlick.carousel]):
+/// shift in PIXELS with no fade. [FlickSlide] fails here twice: a share of its
+/// own width misses the carousel's step (there's a gap between cards), and a
+/// fade would dim what's being pulled in, while the neighbours are opaque.
 class CarouselSlide extends StatelessWidget {
   const CarouselSlide({
     super.key,
@@ -192,11 +184,11 @@ class CarouselSlide extends StatelessWidget {
     required this.child,
   });
 
-  /// Доля сдвига от [TrackFlick] — от ширины карточки.
+  /// Shift share from [TrackFlick], of the card width.
   final ValueListenable<double> shift;
 
-  /// Шаг карусели в пикселях: ширина карточки плюс просвет до соседней. Он же
-  /// делает полный сдвиг (доля 1) точной заменой соседа серединой.
+  /// Carousel step in pixels: card width plus the gap, so a full shift (1)
+  /// swaps the neighbour exactly into the centre.
   final double stride;
 
   final Widget child;
@@ -212,7 +204,8 @@ class CarouselSlide extends StatelessWidget {
   }
 }
 
-/// Часть, которая едет за пальцем: сдвиг в долях СВОЕЙ ширины плюс затухание.
+/// The part that follows the finger: a shift as a share of ITS OWN width, plus
+/// a fade.
 class FlickSlide extends StatelessWidget {
   const FlickSlide({
     super.key,
@@ -221,11 +214,11 @@ class FlickSlide extends StatelessWidget {
     this.amplitude = 1,
   });
 
-  /// Доля сдвига от [TrackFlick].
+  /// Shift share from [TrackFlick].
   final ValueListenable<double> shift;
 
-  /// Насколько сильно эта часть отзывается на жест: обложка едет вся, подписи
-  /// под ней — заметно меньше, иначе они обгоняют её на краю экрана.
+  /// How strongly this part responds: the cover moves fully, the captions below
+  /// much less, or they outrun it at the edge.
   final double amplitude;
 
   final Widget child;

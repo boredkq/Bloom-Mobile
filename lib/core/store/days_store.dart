@@ -1,13 +1,10 @@
-/// Дни, в которые Bloom был открыт, и время в приложении за каждый — таблица
-/// `days` базы (на ПК — та же таблица, пишет `Stats::start/flush`).
+/// Days Bloom was open and app time for each, in the `days` table. Plays per
+/// day aren't here: they come from the log ([PlayStats.perDay]). Only visits
+/// (for the level: a day counts if the app was opened or something played) and
+/// `app_ms` (an achievement and app time in stats).
 ///
-/// Прослушивания по дням здесь не хранятся: они выводятся из журнала
-/// ([PlayStats.perDay]). Отсюда — только визиты (для уровня: день засчитан,
-/// если приложение открывали или что-то слушали) и `app_ms` (достижение
-/// «Ветеран» и «время в приложении» в статистике).
-///
-/// Ключ дня — ЛОКАЛЬНАЯ дата `YYYY-MM-DD`, как `QDate::currentDate()` на ПК:
-/// «сегодня» в графике совпадает с сегодня у слушателя.
+/// The day key is the LOCAL date `YYYY-MM-DD`, so today on the chart is the
+/// listener's today.
 library;
 
 import 'dart:async';
@@ -19,7 +16,7 @@ import '../db/db.dart';
 import '../log/bloom_log.dart';
 import 'play_log.dart' show playLogClockProvider;
 
-/// `YYYY-MM-DD` по локальному времени.
+/// `YYYY-MM-DD` in local time.
 String dayKey(DateTime date) {
   final m = date.month.toString().padLeft(2, '0');
   final d = date.day.toString().padLeft(2, '0');
@@ -30,10 +27,10 @@ String dayKey(DateTime date) {
 class DaysState {
   const DaysState({this.visited = const {}, this.appMs = 0});
 
-  /// Дни, в которые приложение открывали.
+  /// Days the app was opened.
   final Set<String> visited;
 
-  /// Сколько времени приложение было открыто за всё время, миллисекунды.
+  /// All-time app open time, ms.
   final int appMs;
 }
 
@@ -49,7 +46,7 @@ class DaysController extends Notifier<DaysState> {
   @override
   DaysState build() => _read();
 
-  /// Перечитать — пришли дни другого устройства.
+  /// Re-reads: another device's days arrived.
   void reload() => state = _read();
 
   DaysState _read() {
@@ -64,8 +61,8 @@ class DaysController extends Notifier<DaysState> {
     );
   }
 
-  /// Сегодняшний визит — на запуске и по возвращении из фона (могла
-  /// смениться дата).
+  /// Today's visit, at launch and on return from background, since the date may
+  /// have changed.
   void visit() {
     final today = _today();
     if (state.visited.contains(today)) return;
@@ -73,7 +70,7 @@ class DaysController extends Notifier<DaysState> {
     state = DaysState(visited: {...state.visited, today}, appMs: state.appMs);
   }
 
-  /// Прибавить время в приложении к сегодняшнему дню.
+  /// Adds app time to today.
   void addUsage(int ms) {
     final today = _today();
     _db.exec(
@@ -88,8 +85,8 @@ class DaysController extends Notifier<DaysState> {
     );
   }
 
-  /// Часть «Очистить статистику»: дни уходят, сегодняшний визит остаётся —
-  /// приложение ведь открыто.
+  /// Part of clearing stats: days go, today's visit stays, since the app is
+  /// open.
   void clear() {
     final today = _today();
     _db.tx(() {
@@ -100,13 +97,10 @@ class DaysController extends Notifier<DaysState> {
   }
 }
 
-/// Учёт времени в приложении.
-///
-/// Раз в [_beat] берём НАСТОЯЩУЮ дельту часов, а не шаг таймера, и
-/// отбрасываем всё, что больше [_maxDelta] — это не работа, а провал (сон
-/// устройства, замороженный движок). Плюс жизненный цикл: уходя в фон,
-/// добираем хвост, возвращаясь — начинаем отсчёт заново, чтобы время в чужом
-/// приложении не попало в наше.
+/// Tracks time in the app. Every [_beat] I take the REAL clock delta, not the
+/// timer step, and drop anything above [_maxDelta]: that's a gap (device sleep,
+/// frozen engine). Leaving for background I take the tail, and on return the
+/// count starts over, so time in another app doesn't land here.
 class UsageTracker with WidgetsBindingObserver {
   UsageTracker(this._days);
 
@@ -139,12 +133,10 @@ class UsageTracker with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Заодно единственная на весь процесс точка, откуда виден жизненный цикл, —
-    // пишем его в журнал. Без этого по логу нельзя отличить «человек вышел сам»
-    // от «система убила приложение на ходу», а разбор сбоя запуска держится
-    // именно на этом. Уходя из активного состояния, сбрасываем журнал на диск:
-    // из фона процесс убивают без предупреждения, и отложенная запись не
-    // доехала бы.
+    // The only point in the process that sees the lifecycle, so it goes to the
+    // log: otherwise a log can't tell "the user left" from "the system killed
+    // it", and diagnosing launch failures relies on that. On leaving active I
+    // flush the log: the background process gets killed with no warning.
     logInfo('app', 'состояние: ${state.name}');
     if (state != AppLifecycleState.resumed) {
       unawaited(BloomLog.instance.flush());

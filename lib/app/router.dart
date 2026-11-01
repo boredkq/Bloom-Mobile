@@ -65,16 +65,13 @@ NavigatorState? currentBranchNavigator() {
 /// The profile page: it lives inside home, opened from the header avatar.
 const String kProfileLocation = '/home/profile';
 
-/// Фон страницы маршрута.
+/// Route page background. Branch screens have no fill of their own, the shell's
+/// [Scaffold] gives it. During a transition both pages show, and a fill-less
+/// top page lets the library show through a playlist, so each page paints
+/// itself.
 ///
-/// Экраны веток рисуются без своей заливки — фон им даёт [Scaffold] каркаса.
-/// Пока страница одна, это незаметно, но ВО ВРЕМЯ перехода видны обе: верхняя
-/// без фона просвечивает, и сквозь плейлист читается список библиотеки.
-/// Поэтому каждая страница красится сама.
-///
-/// Исключение — включённая картинка фона: тогда заливки нет вовсе, иначе фон
-/// был бы намертво закрыт (см. `AppBackground`). Просвечивание при переходе в
-/// этом случае и не мешает: под обеими страницами лежит одна и та же картинка.
+/// With a background picture on there's no fill, or it would be covered.
+/// Show-through doesn't matter then: the same picture lies under both pages.
 class _Page extends ConsumerWidget {
   const _Page(this.child);
 
@@ -85,16 +82,16 @@ class _Page extends ConsumerWidget {
     color: ref.watch(backgroundOnProvider)
         ? Colors.transparent
         : context.bloom.bg,
-    // Своя группа стекла на страницу: её плашки не накладываются друг на
-    // друга, поэтому один снимок подложки годится им всем. Бары каркаса лежат
-    // ПОВЕРХ страницы и потому в группу не входят — у них своя (`shell.dart`).
+    // One glass group per page: its plates don't overlap, so one backdrop
+    // snapshot serves them all. The shell's bars lie above the page and have
+    // their own.
     child: GlassGroup(child: child),
   );
 }
 
-/// Растворение на месте вместо общего перехода со сдвигом: в шапку профиля
-/// летит аватар с кнопки главной, и сдвиг всей страницы спорил бы с ним
-/// (см. `detailPageTransition`).
+/// A fade in place instead of the shared slide: the avatar flies from the home
+/// button into the profile header, and sliding the page would fight it (see
+/// `detailPageTransition`).
 CustomTransitionPage<void> _profilePage(GoRouterState state) =>
     CustomTransitionPage<void>(
       key: state.pageKey,
@@ -110,8 +107,8 @@ CustomTransitionPage<void> _profilePage(GoRouterState state) =>
       ),
     );
 
-/// Редактор профиля — поверх каркаса: это модалка десктопа, и таб-бар с
-/// миниплеером под кнопкой «Сохранить» ей ни к чему.
+/// The profile editor goes above the shell: no tab bar or mini player under
+/// Save.
 GoRoute get _profileEditRoute => GoRoute(
   path: 'edit',
   parentNavigatorKey: _rootKey,
@@ -161,13 +158,13 @@ final GoRouter bloomRouter = GoRouter(
               routes: [
                 GoRoute(
                   path: 'list/:id',
-                  // Растворение на месте вместо общего перехода со сдвигом:
-                  // в шапку списка летит обложка плитки, и сдвиг всей страницы
-                  // спорил бы с перелётом (см. `detailPageTransition`).
+                  // A fade in place instead of the shared slide: the tile's
+                  // cover flies into the list header, and sliding the page
+                  // would fight it (see `detailPageTransition`).
                   //
-                  // `extra` — метка того самого перелёта. Приходит только с
-                  // плитки; при открытии по ссылке или после перезапуска там
-                  // пусто, и шапка просто проявляется.
+                  // `extra` is that flight's tag. Only a tile sends it; from a
+                  // link or after a restart it's empty and the header just
+                  // fades in.
                   pageBuilder: (_, state) => CustomTransitionPage<void>(
                     key: state.pageKey,
                     transitionsBuilder: detailPageTransition,
@@ -218,7 +215,7 @@ final GoRouter bloomRouter = GoRouter(
                   path: 'pc',
                   builder: (_, _) => const _Page(PcSettingsScreen()),
                   routes: [
-                    // Камера во весь экран — поверх баров каркаса.
+                    // Full-screen camera, above the shell's bars.
                     GoRoute(
                       path: 'scan',
                       parentNavigatorKey: _rootKey,

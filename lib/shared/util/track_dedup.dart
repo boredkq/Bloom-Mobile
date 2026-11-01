@@ -1,20 +1,14 @@
-/// «Это тот же трек?» — общий детектор дублей. Порт десктопного
-/// `shared/lib/trackDedup.ts` (3.0).
+/// Is this the same track? The shared duplicate check. It isn't the platform
+/// matcher, which picks the best of several candidates; this asks whether a
+/// track is already among those picked, for recommendations and the wave.
 ///
-/// Зачем отдельно от матчера площадок (`core/providers/match.dart`): тот
-/// отвечает на вопрос «какой из кандидатов лучше подходит под исходник». Здесь
-/// вопрос уже — «этот трек уже есть в списке», и спрашивают его витрины главной.
+/// Mostly it catches SoundCloud reuploads: one track from different users with
+/// different ids. The uploader typically moves the author's name into the
+/// title: "целоваться" by lightprey, "lightprey - целоваться" by クリソライト.
 ///
-/// Ловим прежде всего реаплоады SoundCloud: один и тот же трек залит разными
-/// пользователями, id разные, и дедуп по id их не видит. Типичный вид —
-/// загрузчик утаскивает имя автора в заголовок:
-///
-///   «целоваться»            — lightprey
-///   «lightprey - целоваться» — クリソライト
-///
-/// Ключевой приём: сравниваем не «название против названия», а ОБЩИЙ мешок из
-/// названия и артиста. Тогда перенос имени автора между полями перестаёт что-то
-/// значить, и обе записи выше дают один и тот же набор токенов.
+/// The key: I compare not title to title but one BAG of title and artist
+/// together. Moving the name between fields then means nothing, and both
+/// entries above give the same tokens.
 library;
 
 import '../../core/entities/entities.dart';
@@ -22,8 +16,8 @@ import '../../core/entities/entities.dart';
 final RegExp _brackets = RegExp(r'\(.*?\)|\[.*?\]');
 final RegExp _nonWord = RegExp(r'[^a-zа-я0-9]+');
 
-/// Нормализация: нижний регистр, ё→е, без скобочных уточнений, только
-/// латиница, кириллица и цифры.
+/// Normalizes: lower case, ё→е, no bracketed notes, only Latin, Cyrillic and
+/// digits.
 String normText(String s) => s
     .toLowerCase()
     .replaceAll('ё', 'е')
@@ -31,25 +25,24 @@ String normText(String s) => s
     .replaceAll(_nonWord, ' ')
     .trim();
 
-/// Шумовые слова, которые сами по себе не делают трек другим. `prod`/`feat`
-/// важны особенно: у реаплоадов они разбросаны как попало.
+/// Noise words that don't make a track different. `prod` and `feat` especially:
+/// reuploads scatter them at random.
 ///
-/// Список намеренно короткий: «free», «out», «now» — вполне себе настоящие
-/// названия треков, и вычёркивание таких слов превратило бы короткое название
-/// в пустой набор токенов.
+/// Short on purpose: free, out and now are real titles, and striking them would
+/// turn a short title into an empty set.
 const Set<String> _noise = {
   'feat', 'ft', 'featuring', 'prod', 'by', 'the', 'a', 'an', 'and', 'и', //
   'official', 'audio', 'video', 'lyrics', 'hd', 'hq', //
   'remaster', 'remastered', 'version', 'edition', 'bonus', 'track',
 };
 
-/// Значимые токены строки (без шума и пустот).
+/// Significant tokens of a string, no noise or blanks.
 List<String> textTokens(String s) => [
   for (final w in normText(s).split(' '))
     if (w.isNotEmpty && !_noise.contains(w)) w,
 ];
 
-/// Доля меньшего множества, попавшая в большее (0..1).
+/// Share of the smaller set found in the larger (0..1).
 double containment(Set<String> a, Set<String> b) {
   if (a.isEmpty || b.isEmpty) return 0;
   var inter = 0;
@@ -59,7 +52,7 @@ double containment(Set<String> a, Set<String> b) {
   return inter / (a.length < b.length ? a.length : b.length);
 }
 
-/// Разобранный трек: точный ключ, мешки токенов и длительность.
+/// A parsed track: exact key, token bags and duration.
 class TrackFingerprint {
   TrackFingerprint({
     required String name,
@@ -79,50 +72,48 @@ class TrackFingerprint {
     seconds: t.duration.inSeconds,
   );
 
-  /// Название + артист одним множеством — см. шапку файла.
+  /// Title and artist as one set; see the top of the file.
   late final Set<String> core;
 
-  /// Только название — главный признак реаплоада, см. [sameTrack].
+  /// Title only, the main sign of a reupload; see [sameTrack].
   late final Set<String> title;
 
-  /// Точный ключ по общему мешку — быстрый путь для полностью совпавших пар.
+  /// Exact key of the shared bag, a fast path for pairs that match fully.
   late final String key;
 
   late final String titleKey;
 
-  /// Длительность, секунды; 0 — неизвестна.
+  /// Duration in seconds; 0 means unknown.
   final int seconds;
 }
 
-/// Насколько сходятся мешки, чтобы счесть треки одним. Реаплоад того же трека
-/// даёт 1.0, два РАЗНЫХ трека одного артиста — не больше ~0.67 (общее только
-/// имя артиста).
+/// How close bags must be to count as one track. A reupload gives 1.0, two
+/// DIFFERENT tracks by one artist at most about 0.67 (only the artist's name in
+/// common).
 const double _coreMin = 0.85;
 
-/// Расхождение длительности, в пределах которого это ещё «тот же трек», сек.
+/// Duration difference within which it's still the same track, seconds.
 const int _durTolerance = 5;
 
-/// Тот же допуск для пар с ПОЛНОСТЬЮ совпавшим названием. Шире: реаплоады
-/// переживают перекодировку, вступление от загрузчика и тишину в конце.
+/// The same tolerance for pairs with a FULLY matching title. Wider: reuploads
+/// survive re-encoding, an uploader's intro and trailing silence.
 const int _durToleranceSameTitle = 25;
 
-/// Мешок из одного токена совпадёт с чем угодно — нечёткому пути нужно хотя бы
-/// два значимых слова.
+/// A one-token bag matches anything, so the fuzzy path needs at least two
+/// significant words.
 const int _coreMinTokens = 2;
 
-/// Сколько значимых слов делают название достаточно «своим», чтобы полное
-/// совпадение нельзя было списать на случай. «I love you» — можно, а
-/// «Серега пират team spirit» — уже нет.
+/// How many significant words make a title distinct enough that a full match
+/// can't be chance. "I love you" can, "Серега пират team spirit" can't.
 const int _titleRichTokens = 4;
 
-/// Один ли это трек. Три пути, от самого надёжного к самому осторожному:
+/// Whether this is one track. Three paths, most reliable first: the shared
+/// title and artist bag matches; the whole TITLE matches, the main sign of a
+/// reupload (a long title won't match by chance, a short one also checks
+/// duration); or titles are only similar, which needs both a close bag and a
+/// close duration.
 ///
-/// 1. Совпал общий мешок «название + артист» — тот же трек.
-/// 2. Совпало НАЗВАНИЕ целиком — главный признак реаплоада. Длинное название
-///    случайно не совпадёт; короткое сверяем ещё и по длительности.
-/// 3. Названия лишь похожи — нужен и сходящийся мешок, и близкая длительность.
-///
-/// Длительность везде предохранитель: не знаем её — нестрогие пути закрыты.
+/// Duration is the safeguard: if it's unknown, the loose paths are closed.
 bool sameTrack(TrackFingerprint a, TrackFingerprint b) {
   if (a.key.isNotEmpty && a.key == b.key) return true;
 
@@ -145,34 +136,34 @@ bool sameTrack(TrackFingerprint a, TrackFingerprint b) {
   return containment(a.core, b.core) >= _coreMin;
 }
 
-/// Накопитель уникальных треков: [accept] отвечает `false`, если такой трек
-/// уже принимали или заранее пометили через [add].
+/// Collects unique tracks: [accept] returns `false` if a track was already
+/// accepted or marked with [add].
 ///
-/// Помеченного бывает много — вся библиотека и всё слышанное, тысячи треков, —
-/// поэтому нечёткое сравнение идёт не перебором, а только по отпечаткам с
-/// общим словом. Это не приближение: каждый путь [sameTrack] требует хотя бы
-/// одного общего токена в мешке, остальные совпасть не могут в принципе.
+/// There can be thousands of marked ones (the whole library and everything
+/// heard), so fuzzy comparison runs only over prints sharing a word, not all of
+/// them. This isn't an approximation: every path of [sameTrack] needs at least
+/// one common token.
 class DupGuard {
   final Set<String> _keys = {};
   final Map<String, List<TrackFingerprint>> _byToken = {};
 
-  /// Заранее пометить трек как «уже есть» (библиотека, очередь) без выдачи.
+  /// Marks a track as already present (library, queue) without yielding it.
   void add(Track t) => addPrint(TrackFingerprint.of(t));
 
-  /// То же для трека, от которого остался только снимок (журнал прослушиваний).
+  /// The same for a track with only a snapshot left (play journal).
   void addPrint(TrackFingerprint fp) {
-    if (fp.key.isEmpty) return; // пустой мешок ни с чем не совпадёт
+    if (fp.key.isEmpty) return; // an empty bag matches nothing
     _keys.add(fp.key);
     for (final w in fp.core) {
       (_byToken[w] ??= []).add(fp);
     }
   }
 
-  /// Принять трек, если он новый.
+  /// Accepts a track if it's new.
   bool accept(Track t) => acceptPrint(TrackFingerprint.of(t));
 
   bool acceptPrint(TrackFingerprint fp) {
-    if (fp.key.isEmpty) return true; // сравнивать нечего — пропускаем
+    if (fp.key.isEmpty) return true; // nothing to compare, so let it through
     if (_keys.contains(fp.key)) return false;
     final checked = Set<TrackFingerprint>.identity();
     for (final w in fp.core) {

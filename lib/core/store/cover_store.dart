@@ -1,12 +1,9 @@
-/// Свои обложки плейлистов: выбор картинки из галереи и её хранение.
+/// User playlist covers: picking from the gallery and storing. The gallery file
+/// is copied into the app's directory: what image_picker returns sits in a
+/// cache and may vanish, and a cover lives as long as its playlist.
 ///
-/// Файл галереи копируется в каталог приложения (`covers/`) — то, что вернул
-/// image_picker, лежит в кеше и может пропасть в любой момент, а обложка нужна
-/// столько же, сколько сам плейлист.
-///
-/// В плейлисте хранится НЕ абсолютный путь, а `local:<имя файла>`: контейнер
-/// приложения на iOS переезжает между запусками, и записанный сегодня путь
-/// завтра указывал бы в пустоту.
+/// The playlist stores `local:<file name>`, NOT an absolute path: the iOS app
+/// container moves between launches, and today's path points nowhere tomorrow.
 library;
 
 import 'dart:convert';
@@ -23,8 +20,8 @@ const String _prefix = 'local:';
 
 Directory? _dir;
 
-/// Готовит каталог обложек. Зовётся из `main()` до первого кадра — дальше путь
-/// нужен синхронно, прямо в `build`.
+/// Prepares the covers directory. Called from `main()` before the first frame:
+/// afterwards the path is needed synchronously, in `build`.
 Future<void> initCoverStore() async {
   final root = await appPrivateDir();
   final dir = Directory('${root.path}/covers');
@@ -32,23 +29,23 @@ Future<void> initCoverStore() async {
     if (!dir.existsSync()) await dir.create(recursive: true);
     _dir = dir;
   } catch (_) {
-    // Нет прав на запись — свои обложки просто не будут доступны.
+    // No write rights: own covers just won't be available.
   }
 }
 
 bool isLocalCover(String? cover) => cover != null && cover.startsWith(_prefix);
 
-/// Значение поля `cover` для своей картинки с именем [name]. Нужно тем, кто
-/// кладёт картинку в каталог мимо здешних функций: обложки своих треков
-/// вынимает из тегов нативная сторона, и в Dart приходит уже готовое имя файла.
+/// `cover` field value for a picture named [name]. For those placing pictures
+/// past these functions: local track covers come out of tags on the native
+/// side, and Dart gets a file name.
 String localCoverRef(String name) => '$_prefix$name';
 
-/// Каталог своих картинок; `null` — он не поднялся. Отдаётся наружу ровно для
-/// того же: нативной стороне нужно, куда писать вынутую из тега обложку.
+/// Directory of own pictures; `null` if it didn't come up. Exposed for the same
+/// reason: the native side needs a place to write a tag's cover.
 String? coversDirPath() => _dir?.path;
 
-/// Абсолютный путь своей обложки; `null` — если это не своя обложка или
-/// каталог не поднялся.
+/// Absolute path of an own cover; `null` if it isn't own or the directory
+/// didn't come up.
 String? localCoverPath(String? cover) {
   final dir = _dir;
   if (dir == null || !isLocalCover(cover)) return null;
@@ -65,24 +62,20 @@ ImageProvider? coverImage(String? cover) {
   return coverCacheReady ? CachedCover(cover) : NetworkImage(cover);
 }
 
-/// Метаданные снимка (EXIF, дата, геометка) нам не нужны — берём только сам
-/// файл. Флаг НЕ косметический: при `true` image_picker на iOS 13 идёт в
-/// `PHPhotoLibrary requestAuthorization` («Full metadata are available only in
-/// PHAsset, which requires gallery permission» — комментарий в самом плагине),
-/// а это системный запрос доступа ко ВСЕЙ медиатеке и обязательный
-/// `NSPhotoLibraryUsageDescription` в Info.plist. С `false` на iOS 13 открывается
-/// просто выбор файла, а на iOS 14+ и так работает `PHPickerViewController`,
-/// который разрешений не спрашивает вовсе.
+/// Photo metadata (EXIF, date, location) isn't needed. This isn't cosmetic:
+/// with `true`, image_picker on iOS 13 goes to `PHPhotoLibrary
+/// requestAuthorization`, a system prompt for the WHOLE library that requires
+/// `NSPhotoLibraryUsageDescription`. With `false`, iOS 13 opens a plain file
+/// picker and iOS 14+ uses `PHPickerViewController`, which asks for no
+/// permission.
 ///
-/// Поставишь обратно `true` — вернуть и ключ в `ios/Runner/Info.plist`, иначе
-/// iOS убьёт приложение в момент запроса.
+/// If this ever goes back to `true`, add that key to Info.plist, or iOS kills
+/// the app on the request.
 const bool kPickMetadata = false;
 
-/// Выбрать картинку из галереи и положить её к себе. Возвращает значение для
-/// поля `cover` (`local:...`) или `null`, если выбор отменён.
-///
-/// Сторона ограничена 1024 px: обложке больше не нужно, а хранить полный
-/// снимок с камеры в каталоге приложения — лишние мегабайты.
+/// Picks a gallery picture and stores it. Returns the `cover` value
+/// (`local:...`), or `null` if cancelled. Side capped at 1024 px: a cover needs
+/// no more.
 Future<String?> pickCover() async {
   final dir = _dir;
   if (dir == null) return null;
@@ -96,7 +89,7 @@ Future<String?> pickCover() async {
       requestFullMetadata: kPickMetadata,
     );
   } catch (_) {
-    return null; // отказ в доступе к галерее
+    return null; // gallery access denied
   }
   if (picked == null) return null;
   try {
@@ -108,10 +101,9 @@ Future<String?> pickCover() async {
   }
 }
 
-/// Выбрать картинку из галереи БЕЗ сохранения — путь к тому, что вернул
-/// image_picker. Нужна там, где картинку ещё будут резать (аватар и обложка
-/// профиля): исходник берётся крупнее обложки, а в каталог приложения ляжет
-/// уже обрезок.
+/// Picks a gallery picture WITHOUT storing: the path image_picker returned. For
+/// pictures still to be cropped (profile avatar and banner): the source is
+/// larger than a cover, and only the crop gets stored.
 Future<String?> pickImageFile({int maxSide = 2048}) async {
   try {
     final picked = await ImagePicker().pickImage(
@@ -122,15 +114,15 @@ Future<String?> pickImageFile({int maxSide = 2048}) async {
     );
     return picked?.path;
   } catch (_) {
-    return null; // отказ в доступе к галерее
+    return null; // gallery access denied
   }
 }
 
-/// Разобрать `data:image/...;base64,...` в байты и расширение файла. `null` —
-/// строка не data-url или не base64.
+/// Parses `data:image/...;base64,...` into bytes and a file extension. `null`
+/// if it isn't a base64 data URL.
 ///
-/// Своя картинка в файле переноса (пресеты, обложка плейлиста) едет именно
-/// так: имя файла из `covers/` на чужом устройстве не значит ничего.
+/// An own picture in a transfer file (presets, playlist cover) travels like
+/// this: a file name means nothing on another device.
 ({Uint8List bytes, String ext})? decodeDataUrl(String value) {
   if (!value.startsWith('data:')) return null;
   final comma = value.indexOf(',');
@@ -152,8 +144,8 @@ Future<String?> pickImageFile({int maxSide = 2048}) async {
   }
 }
 
-/// Обратное [decodeDataUrl]: своя картинка → `data:`-строка. `null` — это не
-/// своя картинка (ссылку возвращать не наша забота) или файла уже нет.
+/// The reverse of [decodeDataUrl]: an own picture to a `data:` string. `null`
+/// if it isn't own or the file is gone.
 Future<String?> encodeLocalImage(String? cover) async {
   final path = localCoverPath(cover);
   if (path == null) return null;
@@ -172,15 +164,14 @@ String _mimeOfPath(String path) => switch (path.split('.').last.toLowerCase()) {
   _ => 'image/jpeg',
 };
 
-/// Разводит имена файлов, записанных в одну миллисекунду: выбор нескольких
-/// картинок разом — обычное дело, и второй файл затёр бы первый.
+/// Separates file names written in one millisecond: picking several at once is
+/// common, and the second would overwrite the first.
 int _copySeq = 0;
 
-/// Положить готовые байты картинкой приложения. Возвращает значение поля
-/// (`local:...`) или `null`, если записать не вышло.
-///
-/// Расширение — только ради честного имени: картинку с диска Flutter узнаёт по
-/// самим байтам, а вот выгрузка пресета берёт по имени mime-тип.
+/// Stores ready bytes as an app picture. Returns the field value (`local:...`),
+/// or `null` on failure. The extension is only for an honest name: Flutter
+/// recognises a picture by its bytes, but preset export takes the mime type
+/// from the name.
 Future<String?> saveLocalImage(
   Uint8List bytes, {
   String prefix = 'img',
@@ -198,19 +189,17 @@ Future<String?> saveLocalImage(
   }
 }
 
-/// Скопировать готовый файл к себе КАК ЕСТЬ, сохранив расширение. Возвращает
-/// значение поля (`local:...`) или `null`, если скопировать не вышло.
-///
-/// Отличие от [pickCover]: там картинка едет через `image_picker` с
-/// `maxWidth`, то есть пережимается в JPEG. Для картинок кастомизации это
-/// недопустимо — анимация гифки пережатия не переживает.
+/// Copies a ready file AS IS, keeping its extension. Returns the field value,
+/// or `null` on failure. Unlike [pickCover], which recompresses to JPEG through
+/// `image_picker` with `maxWidth`: a GIF's animation doesn't survive that, and
+/// customization pictures need it.
 Future<String?> copyLocalFile(File source, {String prefix = 'img'}) async {
   final dir = _dir;
   if (dir == null) return null;
   try {
     final ext = source.path.split('.').last.toLowerCase();
-    // Расширение берём только если оно похоже на расширение: у файла из
-    // галереи его может не быть вовсе, и тогда в имя уехал бы весь путь.
+    // I take the extension only if it looks like one: a gallery file may have
+    // none, and the whole path would end up in the name.
     final suffix = ext.isNotEmpty && ext.length <= 5 && !ext.contains('/')
         ? '.$ext'
         : '.img';
@@ -223,12 +212,13 @@ Future<String?> copyLocalFile(File source, {String prefix = 'img'}) async {
   }
 }
 
-/// Пользуется ли ещё чем-то в базе эта картинка. Ставит `main()`: картинка с
-/// другого устройства лежит под именем-хешем, и одну и ту же могут взять два
-/// плейлиста или плейлист и профиль.
+/// Whether something in the database still uses this picture. Set by `main()`:
+/// a picture from another device has a hash name, and two playlists or a
+/// playlist and the profile may share it.
 bool Function(String cover)? coverInUse;
 
-/// Убрать файл своей обложки — плейлист удалили или обложку сменили.
+/// Removes an own cover's file, when its playlist is deleted or the cover
+/// changes.
 Future<void> deleteCover(String? cover) async {
   final path = localCoverPath(cover);
   if (path == null || (coverInUse?.call(cover!) ?? false)) return;
@@ -236,6 +226,6 @@ Future<void> deleteCover(String? cover) async {
     final file = File(path);
     if (file.existsSync()) await file.delete();
   } catch (_) {
-    // Не удалилась — не беда, это просто мусор в каталоге.
+    // Not removed is no disaster, just junk in the directory.
   }
 }

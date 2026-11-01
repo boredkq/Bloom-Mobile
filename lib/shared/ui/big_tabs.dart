@@ -106,7 +106,6 @@ class PillTabs extends StatelessWidget {
   final int index;
   final ValueChanged<int> onPick;
 
-  /// Переезд пилюли — десктопные 0.32 с.
   static const Duration slide = Duration(milliseconds: 320);
 
   @override

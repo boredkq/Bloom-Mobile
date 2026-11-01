@@ -1,8 +1,4 @@
-/// Мелкие общие элементы: круглая icon-кнопка и обложка.
-///
-/// Круглая кнопка — базовый элемент раскладки из референса: шапки экранов,
-/// оверлей на обложке, кнопки площадки. Подложка — плёнка `iconBg`, штрих —
-/// `iconFg`, как в десктопном Bloom.
+/// Small shared elements.
 library;
 
 import 'dart:math' show max, min;
@@ -24,41 +20,26 @@ import 'cover_hero.dart';
 import 'glass.dart';
 import 'pressable.dart';
 
-/// Высота управляющих элементов шапки: круглых кнопок, пилюли профиля, поля
-/// поиска и пилюли-заголовка подстраницы. В референсе шапка заметно крупнее,
-/// чем была у нас (42), — держим все элементы шапки ровно этой высоты.
-///
-/// Одно число на всё приложение: свёрнутые бары детальных страниц, поиск,
-/// пилюля площадки в плеере и онбординг считают свои размеры от него, поэтому
-/// шапка растёт везде разом и ряды не разъезжаются.
+/// Height of everything in a header: round buttons, pills, the search field.
+/// Collapsed bars, search and the player's pill derive from it, so rows stay
+/// aligned.
 const double kHeaderControl = 51;
 
-/// Кегль названия внутри пилюли шапки: имя приложения на главной, раздел на
-/// подстранице, запрос в поиске.
-///
-/// Отдельным числом, а не `titleMedium` темы: тот же стиль носят строки треков
-/// и подписи карточек, и растить его ради шапки нельзя.
+/// Title size inside a header pill. A separate number: track rows and card
+/// labels share `titleMedium`, and I can't grow that for the header.
 const double kHeaderTitleSize = 16;
 
-/// Высота чипа-фильтра (библиотека, поиск) и круглых кнопок в том же ряду.
+/// Height of a filter chip and of the round buttons in its row.
 const double kChipHeight = 50;
 
-/// Потолок нижнего системного выреза на iOS.
-///
-/// Safe area под home indicator там всегда 34 pt, тогда как жестовая полоса
-/// Android просит 24 — с полным вырезом низ раскладки на айфоне висел бы
-/// заметно выше, чем на андроиде, при одинаковых отступах. Сам индикатор —
-/// полоска 5 pt в 8 pt от края, её верх на 13 pt: 24 оставляют над ним ещё
-/// 11 pt, так что элементы его не задевают и жест «домой» тапы не
-/// перехватывает.
+/// Cap for the iOS bottom inset. It is always 34 pt there against 24 on
+/// Android, which would lift the layout visibly higher. The home indicator tops
+/// out at 13 pt, so 24 still clears it.
 const double _kIosBottomInsetCap = 24;
 
-/// Нижний системный вырез, на который раскладка отступает от края экрана, —
-/// вместо `SafeArea` и сырого `MediaQuery.paddingOf(context).bottom`.
-///
-/// Отличается от них только на iOS, где вырез зажат [_kIosBottomInsetCap]:
-/// на андроиде тот же вырез может быть панелью из трёх кнопок (48 dp), и
-/// обрезать его — сесть на сами кнопки.
+/// Bottom inset to lay out against, instead of `SafeArea`. Differs only on iOS:
+/// on Android this may be a 48 dp three-button bar, and capping it would sit on
+/// the buttons.
 double bottomSafeInset(BuildContext context) {
   final inset = MediaQuery.paddingOf(context).bottom;
   return defaultTargetPlatform == TargetPlatform.iOS
@@ -66,42 +47,29 @@ double bottomSafeInset(BuildContext context) {
       : inset;
 }
 
-/// Просвет между плавающей панелью и краями экрана: карточкой миниплеера,
-/// плавающим таб-баром, рядом инструментов в плеере.
+/// Gap between a floating panel and the screen edges.
 const double kFloatGap = 8;
 
-/// Нижний отступ панели, которая кончается до края экрана.
-///
-/// Системный вырез идёт ВМЕСТО просвета, а не в придачу к нему: сумма
-/// отрывала бы панель от низа сильнее, чем от боков. Одна функция на плеер и
-/// на таб-бар намеренно — их нижние кромки обязаны стоять на одной линии,
-/// иначе переход из списка в плеер выглядит как прыжок раскладки (поймал он).
+/// Bottom margin of a panel that stops short of the edge. The system inset
+/// replaces the gap rather than adding to it, or the panel would float higher
+/// than it sits from the sides. The player and the tab bar share this so their
+/// bottom edges line up across the transition.
 double bottomEdgeInset(BuildContext context) =>
     max(bottomSafeInset(context), kFloatGap);
 
-/// Запас снизу под плавающие бары каркаса — миниплеер и таб-бар.
-///
-/// Каркас держит их поверх содержимого (`Scaffold.extendBody`), поэтому список
-/// идёт до самого низа экрана и просвечивает сквозь поля вокруг карточки
-/// плеера. Плата за это — последние строки навсегда остаются под барами, если
-/// скролл не добрать этим отступом.
-///
-/// Высоту не считаем руками (64 + 8 + 58 + вырез): её кладёт в нижний отступ
-/// `MediaQuery` сам `Scaffold` — при `extendBody` он берёт максимум из выреза
-/// системы и высоты нижних баров. Своя копия числа разъехалась бы с раскладкой
-/// при первой же правке миниплеера.
-///
-/// Вне каркаса (модалка поверх всего) вернёт обычный системный вырез — там это
-/// и нужно.
+/// Room below a list for the shell's floating bars. The list runs under them
+/// (`Scaffold.extendBody`), so the last rows need this to scroll clear. I read
+/// the height from `MediaQuery` because `Scaffold` puts it there; a copy of the
+/// number would drift. Outside the shell this is just the system inset.
 double bottomBarsInset(BuildContext context) =>
     MediaQuery.paddingOf(context).bottom;
 
-/// Хвост `CustomScrollView` на высоту баров: там, где отступ негде дописать к
-/// существующему `SliverPadding` (ветки `if`/`else` с разными списками).
+/// Bars inset as a sliver, for scroll views with no `SliverPadding` to add it
+/// to.
 class SliverBottomBarsInset extends StatelessWidget {
   const SliverBottomBarsInset({super.key, this.extra = 0});
 
-  /// Дополнительный просвет над барами — сверх их высоты.
+  /// Extra gap above the bars.
   final double extra;
 
   @override
@@ -762,15 +730,12 @@ class CircleIconButton extends StatelessWidget {
   final double iconSize;
   final Color? background;
 
-  /// Обводка кружка. Нужна там, где заливка почти прозрачна: на фоне плеера
-  /// плёнка в три процента сама по себе не читается — ровно как у блоков
-  /// транспорта, у которых по этой же причине есть `ovlLine`.
+  /// Circle outline, for fills too transparent to read on their own.
   final Color? borderColor;
 
-  /// Пускать ли стекло. По умолчанию — только кнопкам БЕЗ своей заливки: акцент
-  /// под play и прозрачный кружок миниплеера — это состояние, а не поверхность
-  /// темы. Своя плёнка поверхности (шапка плеера на фоне) — как раз наоборот, и
-  /// ей стекло положено.
+  /// Whether to use glass. By default only buttons with no fill of their own:
+  /// the accent under play is a state, not a theme surface. A surface film (the
+  /// player header over a background) passes true.
   final bool? glass;
 
   /// Muted while there's nothing to tap, unless given.
@@ -814,17 +779,14 @@ class CircleIconButton extends StatelessWidget {
   }
 }
 
-/// Матовое стекло под элементами, стоящими ПОВЕРХ обложки: круглые кнопки
-/// шапки, ряд действий, поле поиска по списку.
-///
-/// Кружок здесь светлый, а не тёмный: читаемость даёт размытие того, что под
-/// ним, поэтому подложке хватает почти прозрачной белой плёнки, и кнопка
-/// подхватывает цвет обложки вместо чёрной нашлёпки.
+/// Frosted glass under controls on top of a cover. The circle is light because
+/// the blur gives the contrast: a nearly clear white film picks up the cover's
+/// colour instead of a dark patch.
 const double kGlassBlur = 14;
 const Color kGlassFilm = Color(0x2BFFFFFF);
 
-/// Обернуть в стекло произвольную форму: [shape] и обрезает размытие, и задаёт
-/// границу плёнки.
+/// Wraps any shape in glass: [shape] clips the blur and draws the film's
+/// border.
 class GlassSurface extends StatelessWidget {
   const GlassSurface({super.key, required this.shape, required this.child});
 
@@ -848,9 +810,8 @@ class GlassSurface extends StatelessWidget {
   }
 }
 
-/// Круглая кнопка ПОВЕРХ картинки: светлое стекло, белый штрих. Под ней
-/// обложка, а не поверхность темы, поэтому `pill` и `iconFg` не годятся —
-/// на баннере они читаются как серая заплатка.
+/// Round button over a picture: light glass, white icon. `pill` and `iconFg`
+/// read as a grey patch on a banner.
 class GlassIconButton extends StatelessWidget {
   const GlassIconButton({
     super.key,
@@ -871,8 +832,7 @@ class GlassIconButton extends StatelessWidget {
   final double size;
   final double iconSize;
 
-  /// Своя подложка — для «включённых» состояний (подписка, сет сохранён).
-  /// Кружок при этом сплошной: размывать под заливкой нечего.
+  /// My own fill for on states (followed, saved). The circle is then solid.
   final Color? background;
   final Color? color;
 
@@ -908,20 +868,17 @@ class GlassIconButton extends StatelessWidget {
   }
 }
 
-/// Нижний край обложки в hero-шапках.
-///
-/// Обложка идёт на всю высоту шапки — под название, счётчик и ряд кнопок — и
-/// ОБРЕЗАЕТСЯ скруглёнными нижними углами, а не растворяется в фоне: в
-/// референсе граница видна, картинка просто кончается. Плёнка поверх нужна
-/// только чтобы белый текст и кнопки не тонули на светлом снимке, поэтому она
-/// не доходит до полной непрозрачности — иначе сам край станет не виден.
+/// Bottom edge of the cover in hero headers. The cover runs the full header
+/// height and is clipped by rounded corners rather than fading out. The scrim
+/// only keeps white text readable on a light photo, so it never reaches full
+/// opacity or the edge would vanish.
 class HeroCover extends StatelessWidget {
   const HeroCover({super.key, required this.child, this.start = 0.20});
 
-  /// Сама картинка: одна обложка, коллаж или заглушка.
+  /// The picture: a cover, a collage or a placeholder.
   final Widget child;
 
-  /// Доля высоты шапки, до которой картинка не затемняется вовсе.
+  /// Share of the height the scrim leaves untouched.
   final double start;
 
   @override
@@ -936,8 +893,8 @@ class HeroCover extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           child,
-          // Верх: на светлом снимке белые кнопки и часы системной строки
-          // исчезают, поэтому им нужна тёмная подложка независимо от обложки.
+          // Top: white buttons and the status bar vanish on a light photo, so
+          // they get a dark scrim whatever the cover.
           DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -972,14 +929,10 @@ class HeroCover extends StatelessWidget {
   }
 }
 
-/// Эквалайзер играющего трека — порт десктопного `.bars` (library.css) и кадров
-/// `npBar1..3` (animations.css): три полоски-пилюли шириной 3 с зазором 2 в
-/// контейнере высотой 17, растут от нижнего края.
-///
-/// У каждой полоски свой цикл и своя длительность (1.7 / 1.35 / 2 с) со стартом
-/// с середины цикла, поэтому группа не синхронизируется. Кадры начинаются и
-/// заканчиваются одним значением — петля бесшовная. На паузе полоски просто
-/// замирают, без затухания (десктопное `body.audio-paused`).
+/// Equalizer of the playing track: three pill bars, 3 wide with a gap of 2, 17
+/// tall, growing from the bottom. Each has its own cycle and starts mid-cycle
+/// so the group never syncs up. Frames start and end on one value, so the loop
+/// is seamless. On pause the bars just freeze.
 class EqualizerBars extends StatefulWidget {
   const EqualizerBars({
     super.key,
@@ -991,7 +944,6 @@ class EqualizerBars extends StatefulWidget {
   final bool playing;
   final Color? color;
 
-  /// Множитель размера — полоски заданы в тех же пикселях, что на десктопе.
   final double scale;
 
   @override
@@ -1004,22 +956,22 @@ class _EqualizerBarsState extends State<EqualizerBars>
   static const double _gap = 2;
   static const double _height = 17;
 
-  /// Кадры `npBar1..3`: (доля цикла, высота в долях контейнера).
+  /// Keyframes per bar: (cycle share, height share).
   static const List<List<(double, double)>> _frames = [
     [(0, .44), (.24, .80), (.48, .52), (.72, .90), (.88, .62), (1, .44)],
     [(0, .76), (.20, .46), (.42, .86), (.64, .54), (.82, .72), (1, .76)],
     [(0, .56), (.26, .92), (.52, .42), (.74, .78), (.90, .50), (1, .56)],
   ];
 
-  /// Длительность цикла и отрицательный delay каждой полоски, мс.
+  /// Cycle length and negative delay of each bar, ms.
   static const List<int> _durations = [1700, 1350, 2000];
   static const List<int> _delays = [0, 500, 1100];
 
-  /// Заводится в [initState], а не лениво: у неигравших полосок первое
-  /// обращение пришлось бы на `dispose`, где искать предков уже нельзя.
+  /// Set up in [initState], not lazily: a bar that never played would first
+  /// touch it in `dispose`, where looking up ancestors is no longer allowed.
   late final Ticker _ticker;
 
-  /// Время, наигранное до последней паузы, и время текущего отрезка.
+  /// Time played up to the last pause, and time of the current stretch.
   Duration _before = Duration.zero;
   Duration _elapsed = Duration.zero;
 
@@ -1050,8 +1002,7 @@ class _EqualizerBarsState extends State<EqualizerBars>
     super.dispose();
   }
 
-  /// Высота полоски [i] в долях контейнера: кадры с ease-in-out на каждом
-  /// отрезке — так CSS применяет `animation-timing-function`.
+  /// Height of bar [i] as a share of the box: ease-in-out between keyframes.
   double _level(int i) {
     final ms = _elapsed.inMicroseconds / 1000 + _delays[i];
     final p = (ms % _durations[i]) / _durations[i];
@@ -1093,10 +1044,9 @@ class _EqualizerBarsState extends State<EqualizerBars>
   }
 }
 
-/// Тумблер настроек — порт десктопного `.tele-sw`: дорожка 44×24 цвета
-/// `border`, кружок 18 у левого края, включённый — дорожка акцентом, кружок
-/// `accentText`. Свой, а не material `Switch`: тому не отключить заливку под
-/// пальцем и он тянет за собой свою палитру.
+/// Settings switch: a 44×24 track and an 18 knob, the accent when on. My own
+/// because material `Switch` can't drop its touch highlight and brings its
+/// palette.
 class BloomSwitch extends StatelessWidget {
   const BloomSwitch({
     super.key,
@@ -1146,7 +1096,7 @@ class BloomSwitch extends StatelessWidget {
   }
 }
 
-/// Обложка: скруглённая картинка с заглушкой на месте отсутствующей.
+/// Cover: a rounded image with a placeholder when there is none.
 class Cover extends StatelessWidget {
   const Cover({
     super.key,
@@ -1164,21 +1114,18 @@ class Cover extends StatelessWidget {
   final double? radius;
   final bool circle;
 
-  /// Обложки треков списка — из них собирается коллаж, когда своей картинки у
-  /// списка нет. Так же, как в шапке этого списка (`CoverCollage`): карточка и
-  /// страница обязаны показывать одно и то же. `null` — сущность не список
-  /// (трек, артист), собирать нечего.
+  /// Covers of the list's tracks, for a collage when it has no picture of its
+  /// own. The same as in that list's header, so card and page match. `null` for
+  /// things that aren't lists.
   final Iterable<String?>? covers;
 
-  /// Слой поверх картинки — эквалайзер играющего сета. Стоит РЯДОМ с перелётом,
-  /// а не внутри: летит одна обложка, полоски остаются на карточке.
+  /// Layer over the picture: the playing set's equalizer. It sits beside the
+  /// flight, not inside: only the cover flies and the bars stay on the card.
   final Widget? overlay;
 
-  /// Метка перелёта в шапку страницы, которую откроет эта карточка. `null` —
-  /// обложка никуда не летит (строка трека, шапка шторки, превью выбора).
-  ///
-  /// Летит только НАСТОЯЩАЯ картинка: заглушке лететь некуда — на той стороне
-  /// её место занимает коллаж или тинт раздела.
+  /// Flight tag to the header of the page this card opens. `null` means the
+  /// cover stays put. Only a real picture flies: on the other end a
+  /// placeholder's place is taken by a collage or tint.
   final CoverFlight? flight;
 
   static double defaultRadius(BloomTokens t) => t.radius * 0.72;
@@ -1190,10 +1137,8 @@ class Cover extends StatelessWidget {
         ? BorderRadius.circular(size / 2)
         : BorderRadius.circular(radius ?? defaultRadius(t));
 
-    // Пустая обложка — приглушённый знак bloom, как `.ps-cover-empty` на
-    // десктопе (там глиф с opacity .12).
-    // Цвет сплошной, а не плёнка: над картинкой-фоном полупрозрачная заглушка
-    // показывала обои и плитка читалась дыркой в списке.
+    // Empty cover: a muted Bloom mark. The fill is solid because a film over a
+    // background picture showed the wallpaper and read as a hole in the list.
     Widget placeholder() => DecoratedBox(
       decoration: BoxDecoration(color: t.coverEmpty, borderRadius: shape),
       child: Center(
@@ -1201,8 +1146,8 @@ class Cover extends StatelessWidget {
       ),
     );
 
-    // Оверлей обрезаем той же формой, что и картинку, — иначе плёнка вылезет
-    // за скруглённые углы.
+    // I clip the overlay to the picture's shape, or the film spills past the
+    // rounded corners.
     Widget withOverlay(Widget child) => overlay == null
         ? child
         : Stack(
@@ -1234,8 +1179,8 @@ class Cover extends StatelessWidget {
       width: size,
       height: size,
       child: withOverlay(
-        // Скругление внутри перелёта, а не снаружи: обрезка родителя на летящую
-        // копию не действует, форму ей задаёт сам [CoverHero].
+        // The rounding goes inside the flight: a parent's clip doesn't reach
+        // the flying copy, [CoverHero] shapes it itself.
         CoverHero(
           tag: flight?.tag,
           shape: shape,

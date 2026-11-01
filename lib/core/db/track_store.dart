@@ -1,10 +1,9 @@
-/// Снимки треков в таблице `tracks` — порт `TrackStore` ПК.
+/// Track snapshots in the `tracks` table. Whatever shows a track later (lists,
+/// history, session, dislikes) takes it from here.
 ///
-/// Всё, что показывает трек потом (списки, история, сеанс, дизлайки), берёт
-/// его отсюда. Запись — «слить с тем, что есть»: пустое поле не затирает
-/// заполненное, `extra` сливается (`json_patch`), а трек, теги которого правили
-/// руками (`extra.edited`, правка с ПК), своё название, артиста, альбом и
-/// обложку сохраняет.
+/// A write merges with what's there: an empty field doesn't wipe a filled one,
+/// `extra` merges (`json_patch`), and a track with hand-edited tags
+/// (`extra.edited`) keeps its title, artist, album and cover.
 library;
 
 import 'dart:convert';
@@ -13,7 +12,7 @@ import '../entities/entities.dart';
 import '../sync/sync_log.dart';
 import 'db.dart';
 
-/// SQLite принимает до 32766 параметров; пачки поменьше держат запрос дешёвым.
+/// SQLite takes up to 32766 parameters; smaller batches keep the query cheap.
 const int _chunk = 500;
 
 String _marks(int n) => List.filled(n, '?').join(',');
@@ -70,7 +69,7 @@ class TrackStore {
     return one.isEmpty ? null : one.first;
   }
 
-  /// Треки в порядке [ids]; неизвестных id в ответе нет.
+  /// Tracks in the order of [ids]; unknown ids are absent.
   List<Track> get(List<String> ids) {
     final found = <String, Track>{};
     for (var at = 0; at < ids.length; at += _chunk) {
@@ -86,7 +85,7 @@ class TrackStore {
     return [for (final id in ids) ?found[id]];
   }
 
-  /// Трек из строки `tracks` (колонки — как в запросе [get]).
+  /// Track from a `tracks` row, with the columns of [get]'s query.
   static Track? trackOfRow(Map<String, Object?> row) {
     Object? extra;
     try {
@@ -97,14 +96,13 @@ class TrackStore {
     return Track.fromJson({...row, 'extra': extra});
   }
 
-  /// Трек сменил id (смена площадки): все ссылки едут за ним. Если новый id
-  /// уже известен — места в списках сливаются (раньшее место), прослушивания
-  /// складываются.
+  /// A track changed id (platform switch) and all references follow. If the new
+  /// id is known, list places merge (the earlier place wins) and plays add up.
   bool rekey(String from, String to) {
     if (from.isEmpty || to.isEmpty || from == to) return false;
     db.tx(() {
       if (db.value('SELECT 1 FROM tracks WHERE id = ?', [to]) == null) {
-        // Сливать не с чем: каскады несут каждую ссылку сами.
+        // Nothing to merge with: cascades carry every reference.
         db.exec('UPDATE tracks SET id = ? WHERE id = ?', [to, from]);
       } else {
         db.exec(
@@ -127,7 +125,8 @@ class TrackStore {
           'UPDATE OR IGNORE dislikes SET track_id = ? WHERE track_id = ?',
           [to, from],
         );
-        // Остальное уходит каскадом, офлайн-копия тоже: в ней звук другого трека.
+        // The rest goes by cascade, the offline copy too: it holds another
+        // track's sound.
         db.exec('DELETE FROM tracks WHERE id = ?', [from]);
       }
       db.exec('UPDATE OR IGNORE loudness SET track_id = ? WHERE track_id = ?', [
@@ -135,13 +134,13 @@ class TrackStore {
         from,
       ]);
       db.exec('DELETE FROM loudness WHERE track_id = ?', [from]);
-      // Другие устройства переносят свои прослушивания и места тоже.
+      // Other devices move their plays and places too.
       SyncLog(db).markRekey(from, to);
     });
     return true;
   }
 
-  /// Выбросить треки, на которые больше никто не ссылается. Возвращает сколько.
+  /// Drops tracks nothing refers to any more; returns how many.
   int prune() => db.tx(() {
     db.exec(
       '''DELETE FROM tracks WHERE

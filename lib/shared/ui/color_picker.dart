@@ -1,8 +1,5 @@
-/// Выбор цвета — порт десктопного `ColorPicker.tsx`.
-///
-/// Там это попап у сватча: квадрат насыщенности/яркости, полоса тона и поле
-/// hex. На телефоне попапу негде висеть, поэтому те же три части лежат в
-/// шторке; набор ручек и порядок — десктопные.
+/// Colour picker: a saturation and brightness square, a hue bar and a hex
+/// field, in a sheet.
 library;
 
 import 'package:flutter/material.dart';
@@ -14,21 +11,21 @@ import 'atoms.dart';
 import 'bloom_sheet.dart';
 import 'pressable.dart';
 
-/// Открыть пикер. Возвращает выбранный цвет или `null`, если закрыли.
+/// Opens the picker; returns the colour, or `null` if dismissed.
 Future<Color?> showBloomColorPicker(BuildContext context, Color initial) {
-  // Корневой навигатор и стекло затемнения — общие у всех наших шторок
-  // (`showBloomModal`): иначе шторка остаётся под таб-баром и миниплеером.
+  // The root navigator and dimming glass, as for all my sheets, or it stays
+  // under the tab bar and mini player.
   return showBloomModal<Color>(
     context: context,
     builder: (_) => _ColorPickerSheet(initial: initial),
   );
 }
 
-/// `#rrggbb` без альфы — в этом виде цвет живёт в десктопном профиле.
+/// `#rrggbb` with no alpha: the form colours are stored in.
 String colorToHex(Color color) =>
     '#${(color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
 
-/// Разбор hex (`#rgb`, `#rrggbb`); `null` — не цвет.
+/// Parses `#rgb` or `#rrggbb`; `null` if it isn't a colour.
 Color? colorFromHex(String input) {
   var hex = input.trim().replaceAll(RegExp('[^0-9a-fA-F]'), '');
   if (hex.length == 3) {
@@ -71,8 +68,8 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
   void _onHex(String value) {
     final parsed = colorFromHex(value);
     if (parsed == null) return;
-    // Тон у чёрного и белого не определён — берём прежний, иначе ползунок
-    // тона прыгал бы в красный на каждом «000000».
+    // Black and white have no hue, so I keep the previous one or the slider
+    // would jump to red on every 000000.
     final next = HSVColor.fromColor(parsed);
     _set(
       next.saturation == 0 || next.value == 0 ? next.withHue(_hsv.hue) : next,
@@ -162,7 +159,7 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
   }
 }
 
-/// Квадрат насыщенности и яркости: по горизонтали — s, по вертикали — v.
+/// Saturation and brightness square: s across, v down.
 class _SatBox extends StatelessWidget {
   const _SatBox({required this.hsv, required this.onChanged});
 
@@ -230,7 +227,6 @@ class _SatPainter extends CustomPainter {
   bool shouldRepaint(_SatPainter old) => old.hsv != hsv;
 }
 
-/// Полоса тона.
 class _HueBar extends StatelessWidget {
   const _HueBar({required this.hue, required this.onChanged});
 
@@ -294,7 +290,7 @@ class _HuePainter extends CustomPainter {
   bool shouldRepaint(_HuePainter old) => old.hue != hue;
 }
 
-/// Кружок-указатель: белое кольцо с тёмной подложкой — читается на любом цвете.
+/// Knob: a white ring on a dark base, readable on any colour.
 void _drawKnob(Canvas canvas, Offset at, {double radius = 8}) {
   canvas.drawCircle(
     at,

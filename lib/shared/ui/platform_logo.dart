@@ -1,10 +1,7 @@
-/// Логотипы площадок и бейджи источника — порт `entities/track/ui/SourceBadge`
-/// с десктопа.
-///
-/// Логотип сам по себе рисуется В СВОИХ ФИРМЕННЫХ ЦВЕТАХ: бренды не
-/// перекрашиваются под тему — то же правило, по которому их названия не
-/// переводятся. В бейджах знак одноцветный: по умолчанию брендовый цвет
-/// площадки, а по настройке «бейджи в цвете акцента» — акцент.
+/// Platform logos and source badges. A logo is drawn in its brand colours, not
+/// tinted to the theme, just as brand names aren't translated. In badges the
+/// mark has one colour: the platform's brand colour, or the accent with the
+/// accent badges setting.
 library;
 
 import 'dart:ui' show ImageFilter;
@@ -24,41 +21,39 @@ const Map<MusicSource, String> _assets = {
   MusicSource.yandex: 'assets/platform/yandex_music.svg',
 };
 
-/// Одноцветные версии — для перекраски в один цвет. Отдельный файл нужен только
-/// YouTube: в цветном ассете треугольник нарисован белой заливкой поверх
-/// прямоугольника, и при `srcIn` знак схлопнулся бы в сплошное пятно. У
-/// SoundCloud и Яндекса силуэт и так одной заливкой.
+/// One-colour versions for tinting. Only YouTube needs a separate file: in the
+/// colour asset the triangle is a white fill over the rectangle, and `srcIn`
+/// would merge them into a blob. SoundCloud and Yandex have one-fill
+/// silhouettes.
 const Map<MusicSource, String> _monoAssets = {
   MusicSource.ytmusic: 'assets/platform/youtube_mono.svg',
 };
 
-/// Фирменный цвет площадки — тот же, что в `BRAND` на десктопе.
+/// Brand colour of each platform.
 const Map<MusicSource, Color> platformColor = {
   MusicSource.soundcloud: Color(0xFFFF5500),
   MusicSource.ytmusic: Color(0xFFFF0033),
   MusicSource.yandex: Color(0xFFFED42B),
 };
 
-/// Оптическая поправка размера: `size` — это сторона квадрата, в который знак
-/// вписывается по `contain`, а не его воспринимаемая величина. Ассет YouTube —
-/// широкий прямоугольник (viewBox 313×216) и почти сплошная заливка, поэтому по
-/// ширине он занимает весь квадрат и рядом с редкими силуэтами SoundCloud и
-/// Яндекса выглядит заметно крупнее при одном и том же `size`. Поджимаем его,
-/// чтобы «вес» знаков совпадал — на десктопе этой поправки нет, там лого стоят
-/// в менее плотных строках.
+/// Optical size correction. `size` is the side of the square the mark fits in
+/// with `contain`, not its perceived size. YouTube's asset is a wide, nearly
+/// solid rectangle (viewBox 313×216), so it fills the square and looks bigger
+/// next to the sparse SoundCloud and Yandex marks. I shrink it so the marks
+/// weigh the same.
 const Map<MusicSource, double> _opticalScale = {MusicSource.ytmusic: 0.82};
 
-/// Логотип площадки. У локальных файлов логотипа нет — рисуем пустоту.
+/// Platform logo; local files get a folder.
 class PlatformLogo extends StatelessWidget {
   const PlatformLogo(this.source, {super.key, this.size = 16, this.color});
 
   final MusicSource source;
 
-  /// Сторона квадрата, в который вписывается знак, ДО оптической поправки
-  /// ([_opticalScale]).
+  /// Side of the square the mark fits in, before [_opticalScale].
   final double size;
 
-  /// Перекрасить знак в один цвет (бейджи). `null` — фирменные цвета ассета.
+  /// Tints the mark one colour (badges). `null` keeps the asset's brand
+  /// colours.
   final Color? color;
 
   @override
@@ -84,34 +79,26 @@ class PlatformLogo extends StatelessWidget {
   }
 }
 
-/// Доля бейджа, которую занимает знак площадки (у каждого лого своя
-/// «воздушность»). У SoundCloud и Яндекса — те же коэффициенты, что на десктопе.
-/// У YouTube меньше десктопного 0.62: бейдж на телефоне мелкий, и сплошной
-/// широкий прямоугольник в нём распирает плашку. Итоговая ширина знака ещё
-/// умножается на [_opticalScale].
+/// Share of the badge the mark takes; each logo has its own airiness. YouTube
+/// gets less: the badge is small on a phone and a solid wide rectangle would
+/// burst it. The resulting width is further scaled by [_opticalScale].
 const Map<MusicSource, double> _logoScale = {
   MusicSource.soundcloud: 0.60,
   MusicSource.yandex: 0.58,
   MusicSource.ytmusic: 0.54,
 };
 
-/// Размер бейджа на обложке. Два на всё приложение, чтобы строки и карточки
-/// разных экранов не разъезжались: [kRowBadge] в строке списка, [kCardBadge] на
-/// крупной карточке ленты или сетки.
-///
-/// Карточный крупнее десктопного (26 на обложке 172): обложка на телефоне
-/// вдвое мельче, и знак на ней должен читаться с той же дистанции.
+/// Cover badge sizes. Two for the whole app, so rows and cards don't drift
+/// apart: [kRowBadge] in a list row, [kCardBadge] on a big card.
 const double kRowBadge = 18;
 const double kCardBadge = 30;
 
-/// Бейдж источника поверх обложки — круглая полупрозрачная «стеклянная» плашка
-/// (затемнение + размытие фона), чтобы знак читался на любой картинке и не
-/// перекрывал её. Ставится в угол обложки: `Positioned` снаружи, отступы 3 у
-/// строк и 6 у крупных карточек — как `.cov-badge` на десктопе.
+/// Source badge over a cover: a round translucent glass plate (dim plus blur),
+/// so the mark reads on any picture without covering it. Goes in a cover
+/// corner: `Positioned` outside, inset 3 on rows and 6 on big cards.
 ///
-/// Цвет знака: фирменный цвет площадки, а при включённой настройке
-/// [SettingsState.accentBadges] — акцент. У локальных треков площадки нет,
-/// бейдж не рисуется вовсе.
+/// The mark takes the brand colour, or the accent with
+/// [SettingsState.accentBadges]. Local tracks have no platform, so no badge.
 class SourceBadge extends ConsumerWidget {
   const SourceBadge(this.source, {super.key, this.size = 16});
 
@@ -127,12 +114,11 @@ class SourceBadge extends ConsumerWidget {
     final accentBadges = ref.watch(
       settingsProvider.select((s) => s.accentBadges),
     );
-    // Обводки нет — как на десктопе с 3.0. Десктопное расширение кружка на 2
-    // сверх номинала не переносим: на телефоне бейдж так читается крупнее.
+    // No outline and no growth past the nominal size: it would read too big on
+    // a phone.
 
     return ClipOval(
       child: BackdropFilter(
-        // CSS `blur(3px)` — это σ 1.5, а не 3.
         filter: ImageFilter.blur(sigmaX: 1.5, sigmaY: 1.5),
         child: Container(
           width: size,
@@ -153,7 +139,7 @@ class SourceBadge extends ConsumerWidget {
   }
 }
 
-/// Сервис-интеграция (настройки: Last.fm, Discord).
+/// An integration service in settings.
 enum Service { lastfm, discord }
 
 const Map<Service, String> _serviceAssets = {
@@ -161,19 +147,18 @@ const Map<Service, String> _serviceAssets = {
   Service.discord: 'assets/platform/Discord.svg',
 };
 
-/// Оба знака одноцветные, и в файлах залиты ЧЁРНЫМ — на тёмной теме их
-/// просто не видно. Поэтому, в отличие от логотипов площадок, красим их сами:
-/// в фирменный цвет сервиса, силуэт при этом не меняется.
+/// Both marks are one colour, filled BLACK in the files, which vanishes on the
+/// dark theme. So unlike platform logos I tint them myself with the service's
+/// brand colour.
 const Map<Service, Color> serviceColor = {
   Service.lastfm: Color(0xFFD51007),
   Service.discord: Color(0xFF5865F2),
 };
 
-/// Знак интеграции — площадки ИЛИ сервиса, одним типом.
-///
-/// Нужен там, где вид не зависит от того, что именно за интеграцией стоит:
-/// страницы настроек одинаковы у SoundCloud и у Last.fm, а [MusicSource] и
-/// [Service] — разные перечисления и общего предка у них нет.
+/// Mark of an integration, platform OR service, as one type. For places that
+/// look the same whichever it is: settings pages match for SoundCloud and
+/// Last.fm, while [MusicSource] and [Service] are separate enums with no common
+/// parent.
 class BrandMark {
   const BrandMark.platform(MusicSource this.source) : service = null;
   const BrandMark.service(Service this.service) : source = null;
@@ -181,7 +166,7 @@ class BrandMark {
   final MusicSource? source;
   final Service? service;
 
-  /// Фирменный цвет. У локальных файлов площадки нет — там `null`.
+  /// Brand colour; `null` for local files, which have no platform.
   Color? get color =>
       source != null ? platformColor[source] : serviceColor[service];
 
@@ -196,7 +181,7 @@ class ServiceLogo extends StatelessWidget {
   final Service service;
   final double size;
 
-  /// Переопределить цвет (например приглушить у ещё не подключённого сервиса).
+  /// Colour override, for example to mute a service not yet connected.
   final Color? color;
 
   @override

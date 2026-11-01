@@ -1,12 +1,9 @@
-/// Динамика места в чарте: «▲2» / «▼3» / «нов.» / «—». Порт десктопного
-/// `ChartTrend.tsx`.
+/// Chart position change: ▲2, ▼3, new or a dash. Only tracks from a chart have
+/// it ([Track.chartPos]). Drawn on a shelf card ([chip], a dark pill over the
+/// cover) and in a chart page row, as a bare badge under the number.
 ///
-/// Данные есть только у треков из чарта ([Track.chartPos]). Рисуется и на
-/// карточке витрины ([chip] — тёмная пилюля поверх обложки), и в строке
-/// страницы «Чарт» — голым бейджем под номером, как у Яндекса.
-///
-/// Цвета семантические и к акценту приложения отношения не имеют — они одни
-/// в обеих темах.
+/// The colours carry meaning, so they ignore the accent and are the same on
+/// both themes.
 library;
 
 import 'package:flutter/material.dart';
@@ -24,7 +21,7 @@ class ChartTrend extends StatelessWidget {
 
   final Track track;
 
-  /// Пилюлей поверх обложки (витрина), а не голым бейджем (строка).
+  /// Pill over a cover rather than a bare badge.
   final bool chip;
 
   @override

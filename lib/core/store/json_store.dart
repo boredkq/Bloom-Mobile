@@ -1,12 +1,8 @@
-/// Файловое JSON-хранилище приложения — то, чем на десктопе служит
-/// `localStorage`.
+/// The app's JSON file store. One file (`bloom.json`) in the app's directory.
+/// Writes are deferred: a like or an added track hits the store in bursts.
 ///
-/// Один файл на всё (`bloom.json`) в каталоге приложения. Запись отложенная:
-/// лайк и добавление трека дёргают стор пачками, а писать файл на каждое
-/// изменение незачем.
-///
-/// Файл пишется через временный и переименовывается: обрыв на середине не
-/// оставит битый JSON, из-за которого библиотека выглядела бы пустой.
+/// The file goes through a temp file and a rename: a cut mid-write won't leave
+/// broken JSON that makes the library look empty.
 library;
 
 import 'dart:async';
@@ -17,7 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app_dirs.dart';
 
-/// Файловое хранилище. Подменяется в `main()` реальным (и в тестах — памятью).
+/// File store, overridden in `main()` with the real one (in tests, memory).
 final jsonStoreProvider = Provider<JsonStore>(
   (ref) =>
       throw UnimplementedError('jsonStoreProvider должен быть переопределён'),
@@ -42,13 +38,13 @@ class JsonStore {
         if (decoded is Map) data = decoded.cast<String, dynamic>();
       }
     } catch (_) {
-      // Битый/чужой файл — начинаем с чистого листа, но НЕ удаляем его:
-      // пусть останется на диске, если пользователь захочет посмотреть.
+      // A broken or foreign file: start clean, but DON'T delete it; it stays on
+      // disk in case the user wants a look.
     }
     return JsonStore._(file, data);
   }
 
-  /// Хранилище в памяти — для тестов и первого запуска без файловой системы.
+  /// Store in memory, for tests and a first launch with no file system.
   factory JsonStore.memory([Map<String, dynamic>? seed]) =>
       JsonStore._(File(''), seed ?? {});
 
@@ -64,12 +60,11 @@ class JsonStore {
     return v is Map ? v.cast<String, dynamic>() : {};
   }
 
-  /// Что вообще лежит в файле — нужен полному сбросу: он стирает всё, кроме
-  /// одного ключа, и перечислять хранилища по именам там было бы нечем.
+  /// What's in the file, for a full reset: it wipes all but one key, and has no
+  /// way to list stores by name.
   Iterable<String> get keys => _data.keys.toList();
 
-  /// Стереть перечисленные ключи разом — сброс настроек и полный сброс
-  /// (`features/settings/reset.dart`).
+  /// Erases the listed keys at once, for settings and full resets.
   void removeAll(Iterable<String> keys) {
     var changed = false;
     for (final key in keys) {
@@ -92,7 +87,7 @@ class JsonStore {
     _debounce = Timer(_saveDelay, flush);
   }
 
-  /// Записать немедленно (закрытие приложения, тесты).
+  /// Writes at once (app close, tests).
   Future<void> flush() async {
     _debounce?.cancel();
     if (_file.path.isEmpty) return; // in-memory
@@ -101,7 +96,7 @@ class JsonStore {
       await tmp.writeAsString(jsonEncode(_data), flush: true);
       await tmp.rename(_file.path);
     } catch (_) {
-      // Нет места/прав — библиотека продолжает работать в памяти.
+      // No space or rights: the library keeps working in memory.
     }
   }
 }

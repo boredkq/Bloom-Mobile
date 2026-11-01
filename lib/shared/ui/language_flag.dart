@@ -17,10 +17,9 @@ class LanguageFlag extends StatelessWidget {
   );
 }
 
-/// Флаги — те же две картинки, что в `FLAGS` десктопного `InterfaceSection`,
-/// с той же сеткой: холст 36×24, у американского 13 полос и кантон в семь из
-/// них. Рисуем кодом, а не SVG-файлом: две фигуры проще посчитать, чем тащить
-/// ассеты.
+/// Flags on a 36×24 canvas; the US one has 13 stripes with a canton across
+/// seven. Drawn in code because two shapes are simpler to compute than shipping
+/// assets.
 class _FlagPainter extends CustomPainter {
   const _FlagPainter(this.code);
 

@@ -1,12 +1,10 @@
-/// Сборка [ThemeData] из токенов Bloom.
+/// Builds [ThemeData] from Bloom's tokens. Inter is a variable font, so weight
+/// is set TWICE: `fontWeight` for fallback synthesis and `fontVariations` with
+/// the `wght` axis, without which it draws one weight.
 ///
-/// Inter подключён вариативным файлом, поэтому вес задаётся ДВАЖДЫ:
-/// `fontWeight` (для fallback-синтеза) и `fontVariations` с осью `wght` —
-/// без второго вариативный шрифт рисуется одним начертанием.
-///
-/// Семейства в [bloomText] нет намеренно: шрифт выбирается в настройках, и
-/// стиль наследует его из темы. Явное `fontFamily` здесь перебило бы выбор —
-/// `ThemeData` вписывает свой шрифт только в стили, где семейство не задано.
+/// [bloomText] has no family on purpose: the font comes from settings and the
+/// style inherits it. An explicit `fontFamily` would override the choice, since
+/// `ThemeData` only fills styles with no family.
 library;
 
 import 'package:flutter/material.dart';
@@ -29,14 +27,13 @@ TextStyle bloomText({
   fontVariations: [FontVariation('wght', weight.toDouble())],
 );
 
-/// [transparentPages] — под интерфейсом лежит картинка фона: страницы должны
-/// её пропускать, поэтому заливки самих поверхностей и фона перехода между
-/// страницами гасим (иначе фон был бы виден только сквозь щели по краям, а на
-/// время перехода и вовсе закрывался бы сплошным).
+/// [transparentPages]: a background picture lies under the UI, so surface fills
+/// and the transition background go, or it would only show through edge gaps
+/// and vanish during transitions.
 ///
-/// [fontFamily] — шрифт интерфейса из настроек (см. `fonts.dart`). Запасной
-/// всегда Inter: у Minecraft Rus и у своих файлов бывает не весь алфавит, и
-/// недостающие символы рисуются им, а не системным шрифтом.
+/// [fontFamily] is the UI font from settings. The fallback is always Inter:
+/// Minecraft Rus and user files may lack letters, and those should draw in
+/// Inter rather than the system font.
 ThemeData buildBloomTheme(
   BloomTokens t, {
   bool transparentPages = false,
@@ -66,40 +63,39 @@ ThemeData buildBloomTheme(
     canvasColor: pageBg,
     fontFamily: fontFamily,
     fontFamilyFallback: const [kDefaultFont],
-    // Переход между страницами. Дефолт Android — предиктивный: пока тянешь
-    // системный жест «назад», страница сжимается в карточку и в щель видно
-    // предыдущий экран. Ставим сдвиг с растворением (переход Android U):
-    // ничего не «подглядывает», анимация играет целиком по факту ухода.
-    // Фон перехода — цвет темы, иначе между страницами мигает чёрное.
+    // Page transition. Android's default is predictive: during the back gesture
+    // the page shrinks into a card with the previous screen in the gap. I use
+    // slide with fade instead, so nothing peeks and it plays whole on leaving.
+    // The transition background is the theme colour, or black blinks between
+    // pages.
     pageTransitionsTheme: PageTransitionsTheme(
       builders: {
         for (final p in TargetPlatform.values)
           p: FadeForwardsPageTransitionsBuilder(backgroundColor: pageBg),
       },
     ),
-    // Нажатие НЕ подсвечивается вообще: ни ряби, ни плёнки под пальцем.
-    // Гасим сразу три источника — фабрику всплеска, цвет всплеска и цвет
-    // подсветки удержания, — иначе material вернёт заливку через любой из них.
-    // Новые кнопки тоже не должны её заводить: если понадобится отклик на
-    // нажатие, он делается движением самого элемента, а не заливкой.
+    // Presses get no highlight at all: no ripple, no film. I turn off all three
+    // sources (splash factory, splash colour, highlight colour), or material
+    // brings the fill back through any of them. Feedback comes from the
+    // element's own movement.
     splashFactory: NoSplash.splashFactory,
     splashColor: Colors.transparent,
     highlightColor: Colors.transparent,
     extensions: [t],
     textTheme: TextTheme(
-      // Заголовок экрана / название трека в плеере.
+      // Screen title, track title in the player.
       headlineSmall: bloomText(
         size: 22,
         weight: 700,
         color: t.text,
         height: 1.2,
       ),
-      // Заголовок секции («Для вас», «Популярное»).
+      // Section title.
       titleLarge: bloomText(size: 19, weight: 700, color: t.text, height: 1.25),
-      // Строка списка, название карточки.
+      // List row, card title.
       titleMedium: bloomText(size: 15, weight: 600, color: t.text, height: 1.3),
       titleSmall: bloomText(size: 13, weight: 600, color: t.text, height: 1.3),
-      // Артист, подпись под карточкой.
+      // Artist, card caption.
       bodyMedium: bloomText(
         size: 13,
         weight: 500,
@@ -107,7 +103,7 @@ ThemeData buildBloomTheme(
         height: 1.35,
       ),
       bodySmall: bloomText(size: 12, weight: 500, color: t.muted, height: 1.35),
-      // Капсовый заголовок группы настроек.
+      // Caps title of a settings group.
       labelSmall: bloomText(
         size: 11,
         weight: 600,
@@ -117,9 +113,8 @@ ThemeData buildBloomTheme(
     ),
     iconTheme: IconThemeData(color: t.iconFg, size: 22),
     dividerTheme: DividerThemeData(color: t.ovlLine, thickness: 1, space: 1),
-    // Запасной вид для голого `SnackBar`. Свои тосты его не используют: они
-    // рисуются `BloomToastCard` (`shared/ui/bloom_toast.dart`), а сам снекбар
-    // делают прозрачным — см. `_show` там же.
+    // Fallback for a bare `SnackBar`. My toasts don't use it: `BloomToastCard`
+    // draws them over a transparent snack bar.
     snackBarTheme: SnackBarThemeData(
       backgroundColor: t.pill,
       contentTextStyle: bloomText(size: 14, weight: 500, color: t.text),
@@ -143,8 +138,8 @@ ThemeData buildBloomTheme(
       overlayShape: SliderComponentShape.noOverlay,
       thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
     ),
-    // Кнопки material берут подсветку нажатия из своего `overlayColor`, мимо
-    // `highlightColor` темы, — гасим её отдельно для каждого вида.
+    // Material buttons take press highlight from their `overlayColor`,
+    // bypassing the theme's `highlightColor`, so I turn it off per kind.
     textButtonTheme: const TextButtonThemeData(style: _flatButton),
     filledButtonTheme: const FilledButtonThemeData(style: _flatButton),
     elevatedButtonTheme: const ElevatedButtonThemeData(style: _flatButton),
@@ -153,7 +148,7 @@ ThemeData buildBloomTheme(
   );
 }
 
-/// Кнопка без заливки под пальцем.
+/// Button with no fill under the finger.
 const ButtonStyle _flatButton = ButtonStyle(
   splashFactory: NoSplash.splashFactory,
   overlayColor: WidgetStatePropertyAll(Colors.transparent),
