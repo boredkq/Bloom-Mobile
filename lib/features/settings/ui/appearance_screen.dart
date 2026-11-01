@@ -1,25 +1,9 @@
-/// Внешний вид: тема, акцент, прозрачность.
+/// Appearance: theme, accent, transparency, font, the tab bar and the
+/// background.
 ///
-/// Тема — ровно три цвета пресета; акцент живёт отдельно и при смене темы НЕ
-/// сбрасывается (то же правило, что в десктопном `themeStore.ts`).
-/// Превью пресета считается теми же формулами, что и сама тема, поэтому кружки
-/// в списке не могут разойтись с тем, что применится.
-///
-/// Радиуса тут больше нет: скругление задано одним числом на всё приложение
-/// ([kBloomRadius]) — настройку он убрал сам. Убрана она ЦЕЛИКОМ: поля `radius`
-/// нет ни в модели настроек, ни в `bloom.json`, и старое сохранённое число
-/// (файлы с ползунком ещё ходят) больше не применяется — при первом же
-/// сохранении настроек ключ из файла пропадёт.
-///
-/// Пресеты выбираются не сеткой на странице, а нижней шторкой: на экране
-/// остаётся одна строка «Тема — Dark» с кружками превью справа.
-///
-/// Ручного выбора акцента нет — как и на ПК, где акцент задаётся либо темой,
-/// либо тогглом авто-акцента из обложки.
-///
-/// Языка тут больше нет (на ПК секция «ЯЗЫК» стоит над «ТЕМА»): он строкой в
-/// группе «Приложение» корневых «Настроек» — язык не про вид, а про само
-/// приложение, и ищут его там.
+/// A theme is its three colours; the accent lives apart and survives changing
+/// it. The preview uses the theme's own formulas, so the dots can't differ from
+/// the result.
 library;
 
 import 'dart:math' show Random, min;
@@ -44,6 +28,7 @@ import '../../customization/custom_store.dart';
 import '../../customization/media_store.dart' show kBgBlurMax, kBgDimMax;
 import '../transparency_store.dart';
 import '../user_fonts.dart';
+import 'settings_rows.dart';
 
 class AppearanceScreen extends ConsumerWidget {
   const AppearanceScreen({super.key});
@@ -53,7 +38,6 @@ class AppearanceScreen extends ConsumerWidget {
     final t = context.bloom;
     final settings = ref.watch(settingsProvider);
     final controller = ref.read(settingsProvider.notifier);
-    final theme = Theme.of(context).textTheme;
 
     return SubPage(
       title: context.l.setAppearance,
@@ -63,55 +47,28 @@ class AppearanceScreen extends ConsumerWidget {
         const SizedBox(height: 10),
         SettingsGroupCard(
           rows: [
-            _SettingsCard(
+            SettingsRowShell(
+              title: context.l.apThemeRow,
+              subtitle: settings.autoTheme
+                  ? context.l.thAutoName
+                  : settings.preset.name,
+              trailing: _ThemeDots(preset: settings.preset),
               onTap: () => _pickTheme(context, ref),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(context.l.apThemeRow, style: theme.titleMedium),
-                        const SizedBox(height: 3),
-                        // У авто-темы пресетного имени нет — она режим, и
-                        // называется переводом, как на ПК.
-                        Text(
-                          settings.autoTheme
-                              ? context.l.thAutoName
-                              : settings.preset.name,
-                          style: theme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  _ThemeDots(preset: settings.preset),
-                ],
-              ),
             ),
-            // Авто-акцент — тот же тоггл, что в десктопной секции «Интерфейс»:
-            // ручного выбора акцента нет ни там, ни здесь. При авто-теме его
-            // не показывают вовсе (так же на ПК): она красит акцент сама, и
-            // выбирать между ними нечего.
+            // The auto theme colours the accent itself, so there's nothing to
+            // choose.
             if (!settings.autoTheme)
-              _SettingsCard(
-                child: _SettingsRow(
-                  title: context.l.apAutoAccent,
-                  subtitle: context.l.apAutoAccentSub,
-                  trailing: BloomSwitch(
-                    value: settings.autoAccent,
-                    onChanged: controller.setAutoAccent,
-                  ),
-                ),
+              SettingsToggleRow(
+                title: context.l.apAutoAccent,
+                subtitle: context.l.apAutoAccentSub,
+                value: settings.autoAccent,
+                onChanged: controller.setAutoAccent,
               ),
-            // Яркость — отдельной строкой под тогглом, ровно как на ПК: она
-            // нужна, пока включён авто-акцент ИЛИ авто-тема (акцент у них
-            // считается одной формулой). Ползунок не на самой странице, а в
-            // шторке — тем же способом, что и ползунки прозрачности ниже:
-            // строка показывает значение, крутят его в шторке.
+            // Needed while the auto accent or the auto theme is on: one
+            // formula.
             if (settings.autoAccent || settings.autoTheme)
-              _ValueRow(
-                icon: Bi.sun2,
+              SettingsValueRow(
+                glyph: BloomIcon(Bi.sun2),
                 title: context.l.apAutoAccentLevel,
                 value: '${(settings.autoAccentL * 100).round()} %',
                 onTap: () => _pickIntValue(
@@ -121,31 +78,22 @@ class AppearanceScreen extends ConsumerWidget {
                   minValue: (kAutoAccentLMin * 100).round(),
                   max: (kAutoAccentLMax * 100).round(),
                   unit: ' %',
-                  // Акцент считается на ходу — иначе яркость крутишь вслепую:
-                  // шторка и сама покрашена в него.
+                  // Live, or the level is turned blind: the sheet itself wears
+                  // the accent.
                   onChanged: (v) => controller.setAutoAccentL(v / 100),
                 ),
               ),
-            // Бейджи стоят тут же, в блоке темы, и сразу после авто-акцента —
-            // тот же порядок, что в десктопной секции «Интерфейс»: настройка
-            // про акцент, а не про скругления. Тексты — из `dict.ts`
-            // (`settings.interface.accentBadges`).
-            _SettingsCard(
-              child: _SettingsRow(
-                title: context.l.apBadgesTitle,
-                subtitle: context.l.apBadgesSubtitle,
-                trailing: BloomSwitch(
-                  value: settings.accentBadges,
-                  onChanged: controller.setAccentBadges,
-                ),
-              ),
+            // About the accent, so it stands right after it.
+            SettingsToggleRow(
+              title: context.l.apBadgesTitle,
+              subtitle: context.l.apBadgesSubtitle,
+              value: settings.accentBadges,
+              onChanged: controller.setAccentBadges,
             ),
           ],
         ),
         const SizedBox(height: 26),
         ..._transparencyGroup(context, ref),
-        // Шрифт — после прозрачности, как на ПК (там между ними ещё
-        // «Масштаб», которого на телефоне нет).
         const SizedBox(height: 26),
         SettingsCaption(context.l.apFontCat),
         const SizedBox(height: 10),
@@ -155,94 +103,50 @@ class AppearanceScreen extends ConsumerWidget {
         const SizedBox(height: 10),
         SettingsGroupCard(
           rows: [
-            _SettingsCard(
+            SettingsRowShell(
+              title: context.l.apNavBarRow,
+              subtitle: _navStyleLabel(context.l, settings.navStyle),
+              trailing: SizedBox(
+                width: 46,
+                height: 46 * 64 / 100,
+                child: CustomPaint(
+                  painter: _NavStyleGlyph(
+                    style: settings.navStyle,
+                    indicator: settings.navIndicator,
+                    labels: settings.navLabels,
+                    screen: t.bg,
+                    frame: t.ovlLine2,
+                    ink: t.accent,
+                  ),
+                ),
+              ),
               onTap: () => _pickNavStyle(context, ref),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(context.l.apNavBarRow, style: theme.titleMedium),
-                        const SizedBox(height: 3),
-                        Text(
-                          _navStyleLabel(context.l, settings.navStyle),
-                          style: theme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  // Тот же макет, что в шторке, только мелкий: строка
-                  // показывает выбранное, как кружки темы над ней.
-                  SizedBox(
-                    width: 46,
-                    height: 46 * 64 / 100,
-                    child: CustomPaint(
-                      painter: _NavStyleGlyph(
-                        style: settings.navStyle,
-                        indicator: settings.navIndicator,
-                        labels: settings.navLabels,
-                        screen: t.bg,
-                        frame: t.ovlLine2,
-                        ink: t.accent,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
             ),
-            _SettingsCard(
+            SettingsLinkRow(
+              title: context.l.apNavTabsRow,
+              subtitle: [
+                for (final tab in settings.navOrder)
+                  _navTabLabel(context.l, tab),
+              ].join(' · '),
               onTap: () => _pickNavOrder(context, ref),
-              child: _SettingsRow(
-                title: context.l.apNavTabsRow,
-                subtitle: [
-                  for (final tab in settings.navOrder)
-                    _navTabLabel(context.l, tab),
-                ].join(' · '),
-                trailing: BloomIcon(
-                  Bi.altArrowRight,
-                  size: 20,
-                  color: t.iconFgSb,
-                ),
-              ),
             ),
-            _SettingsCard(
+            SettingsLinkRow(
+              title: context.l.apNavMarkRow,
+              subtitle: _navIndicatorLabel(context.l, settings.navIndicator),
               onTap: () => _pickNavIndicator(context, ref),
-              child: _SettingsRow(
-                title: context.l.apNavMarkRow,
-                subtitle: _navIndicatorLabel(context.l, settings.navIndicator),
-                trailing: BloomIcon(
-                  Bi.altArrowRight,
-                  size: 20,
-                  color: t.iconFgSb,
-                ),
-              ),
             ),
-            _SettingsCard(
+            SettingsLinkRow(
+              title: context.l.apNavLabelsRow,
+              subtitle: _navLabelsLabel(context.l, settings.navLabels),
               onTap: () => _pickNavLabels(context, ref),
-              child: _SettingsRow(
-                title: context.l.apNavLabelsRow,
-                subtitle: _navLabelsLabel(context.l, settings.navLabels),
-                trailing: BloomIcon(
-                  Bi.altArrowRight,
-                  size: 20,
-                  color: t.iconFgSb,
-                ),
-              ),
             ),
-            // Тумблером, а не пятой шторкой: выбирать нечего — либо иконка,
-            // либо знак. Стоит последним в блоке, потому что настройка не про
-            // саму панель, а про один её таб.
-            _SettingsCard(
-              child: _SettingsRow(
-                title: context.l.apNavHomeLogoRow,
-                subtitle: context.l.apNavHomeLogoSub,
-                trailing: BloomSwitch(
-                  value: settings.navHomeLogo,
-                  onChanged: controller.setNavHomeLogo,
-                ),
-              ),
+            // A switch: it's either the icon or the mark. Last, since it's
+            // about one tab and not the bar.
+            SettingsToggleRow(
+              title: context.l.apNavHomeLogoRow,
+              subtitle: context.l.apNavHomeLogoSub,
+              value: settings.navHomeLogo,
+              onChanged: controller.setNavHomeLogo,
             ),
           ],
         ),
@@ -251,24 +155,14 @@ class AppearanceScreen extends ConsumerWidget {
         const SizedBox(height: 10),
         SettingsGroupCard(
           rows: [
-            // «Обложка трека как фон» — десктопная настройка вкладки «Фон»
-            // раздела «Кастомизация»; сюда её перенёс пользователь. Своя
-            // картинка фона (её ставят в «Кастомизации») эту настройку
-            // перебивает — как и на ПК.
-            _SettingsCard(
-              child: _SettingsRow(
-                title: context.l.apCoverAsBg,
-                subtitle: context.l.apCoverAsBgSub,
-                trailing: BloomSwitch(
-                  value: settings.coverAsBg,
-                  onChanged: controller.setCoverAsBg,
-                ),
-              ),
+            // A picture set as the background overrides this.
+            SettingsToggleRow(
+              title: context.l.apCoverAsBg,
+              subtitle: context.l.apCoverAsBgSub,
+              value: settings.coverAsBg,
+              onChanged: controller.setCoverAsBg,
             ),
-            // Размытие и затемнение самой обложки — те же две ручки, что у
-            // картинки библиотеки на её странице, и с теми же границами. Здесь
-            // они строкой со шторкой, как ползунки «Прозрачности» ниже, и
-            // скрыты, пока фон выключен: крутить их выключенными нечего.
+            // Hidden while off: nothing to turn.
             if (settings.coverAsBg) ..._coverAsBgRows(context, ref),
           ],
         ),
@@ -277,22 +171,16 @@ class AppearanceScreen extends ConsumerWidget {
   }
 }
 
-/// Две ручки «Обложки трека как фон»: размытие в пикселях и затемнение в
-/// процентах.
-///
-/// Названия и границы — общие со страницей картинки в библиотеке
-/// (`custBlur`/`custDim`, [kBgBlurMax]/[kBgDimMax]): это те же самые размытие и
-/// затемнение фона, только у картинки они лежат в ней самой, а у обложки трека
-/// — в [coverAsBgFxProvider]. Значки те же, что у соседей по «Интерфейсу»:
-/// капля — размытие, луна — затемнение.
+/// The cover background's blur in pixels and dim in percent, with the same
+/// limits as a library picture.
 List<Widget> _coverAsBgRows(BuildContext context, WidgetRef ref) {
   final fx = ref.watch(coverAsBgFxProvider);
   final controller = ref.read(coverAsBgFxProvider.notifier);
   final l = context.l;
 
   return [
-    _ValueRow(
-      icon: Bi.waterdrop,
+    SettingsValueRow(
+      glyph: BloomIcon(Bi.waterdrop),
       title: l.custBlur,
       value: '${fx.blur}px',
       onTap: () => _pickIntValue(
@@ -304,8 +192,8 @@ List<Widget> _coverAsBgRows(BuildContext context, WidgetRef ref) {
         onChanged: controller.setBlur,
       ),
     ),
-    _ValueRow(
-      icon: Bi.moon,
+    SettingsValueRow(
+      glyph: BloomIcon(Bi.moon),
       title: l.custDim,
       value: '${fx.dim}%',
       onTap: () => _pickIntValue(
@@ -320,14 +208,8 @@ List<Widget> _coverAsBgRows(BuildContext context, WidgetRef ref) {
   ];
 }
 
-/// Группа «ПРОЗРАЧНОСТЬ» — последняя на экране, как категория с тем же именем
-/// в конце десктопной секции «Интерфейс».
-///
-/// Ползунков на самой странице нет (на ПК они стоят прямо в карточке): строка
-/// показывает значение и открывает шторку с одним ползунком — так решил
-/// пользователь, показав макет. Всё, кроме тумблера режима, скрыто, пока
-/// прозрачность выключена: это подрежимы, и настраивать их в выключенном
-/// состоянии нечего (десктопный `#sTrSliders` с классом `vis`).
+/// The transparency group. A row shows the value and opens a sheet with one
+/// slider; all but the switch hides while off.
 List<Widget> _transparencyGroup(BuildContext context, WidgetRef ref) {
   final tr = ref.watch(transparencyProvider);
   final controller = ref.read(transparencyProvider.notifier);
@@ -338,16 +220,15 @@ List<Widget> _transparencyGroup(BuildContext context, WidgetRef ref) {
     const SizedBox(height: 10),
     SettingsGroupCard(
       rows: [
-        _SettingsCard(
-          child: _SettingsRow(
-            title: l.apTrTitle,
-            subtitle: tr.on ? l.apTrOn(tr.transparencyPercent) : l.apTrOff,
-            trailing: BloomSwitch(value: tr.on, onChanged: controller.setOn),
-          ),
+        SettingsToggleRow(
+          title: l.apTrTitle,
+          subtitle: tr.on ? l.apTrOn(tr.transparencyPercent) : l.apTrOff,
+          value: tr.on,
+          onChanged: controller.setOn,
         ),
         if (tr.on) ...[
-          _ValueRow(
-            icon: Bi.eye,
+          SettingsValueRow(
+            glyph: BloomIcon(Bi.eye),
             title: l.apTrLevel,
             value: '${tr.transparencyPercent}%',
             onTap: () => _pickIntValue(
@@ -359,8 +240,8 @@ List<Widget> _transparencyGroup(BuildContext context, WidgetRef ref) {
               onChanged: controller.setTransparencyPercent,
             ),
           ),
-          _ValueRow(
-            icon: Bi.sun2,
+          SettingsValueRow(
+            glyph: BloomIcon(Bi.sun2),
             title: l.apTrBrightness,
             value: '${tr.glassStr}%',
             onTap: () => _pickIntValue(
@@ -372,8 +253,8 @@ List<Widget> _transparencyGroup(BuildContext context, WidgetRef ref) {
               onChanged: controller.setGlassStr,
             ),
           ),
-          _ValueRow(
-            icon: Bi.waterdrop,
+          SettingsValueRow(
+            glyph: BloomIcon(Bi.waterdrop),
             title: l.apTrBlur,
             value: '${tr.glassBlur}px',
             onTap: () => _pickIntValue(
@@ -385,15 +266,11 @@ List<Widget> _transparencyGroup(BuildContext context, WidgetRef ref) {
               onChanged: controller.setGlassBlur,
             ),
           ),
-          _SettingsCard(
-            child: _SettingsRow(
-              title: l.apTrOverlays,
-              subtitle: l.apTrOverlaysSub,
-              trailing: BloomSwitch(
-                value: tr.overlayGlass,
-                onChanged: controller.setOverlayGlass,
-              ),
-            ),
+          SettingsToggleRow(
+            title: l.apTrOverlays,
+            subtitle: l.apTrOverlaysSub,
+            value: tr.overlayGlass,
+            onChanged: controller.setOverlayGlass,
           ),
         ],
       ],
@@ -401,98 +278,12 @@ List<Widget> _transparencyGroup(BuildContext context, WidgetRef ref) {
   ];
 }
 
-/// Строка группы: название, под ним значение или пояснение, справа — тумблер
-/// либо кружок со значком.
-class _SettingsRow extends StatelessWidget {
-  const _SettingsRow({
-    required this.title,
-    this.subtitle,
-    required this.trailing,
-  });
-
-  final String title;
-  final String? subtitle;
-  final Widget trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context).textTheme;
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: theme.titleMedium),
-              if (subtitle case final sub?) ...[
-                const SizedBox(height: 3),
-                // Ярче общего `bodySmall` — как выбранное в строках «Плеера».
-                Text(
-                  sub,
-                  style: theme.bodySmall?.copyWith(color: context.bloom.text2),
-                ),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(width: 14),
-        trailing,
-      ],
-    );
-  }
-}
-
-/// Строка с ползунком за ней: значение под названием, справа кружок со
-/// значком. Кружок не кнопка — нажимается вся строка, а он показывает, о чём
-/// она (солнце — яркость, глаз — прозрачность, капля — размытие).
-class _ValueRow extends StatelessWidget {
-  const _ValueRow({
-    required this.icon,
-    required this.title,
-    required this.value,
-    required this.onTap,
-  });
-
-  final BloomGlyph icon;
-  final String title;
-  final String value;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return _SettingsCard(
-      onTap: onTap,
-      child: _SettingsRow(
-        title: title,
-        subtitle: value,
-        trailing: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
-            shape: BoxShape.circle,
-          ),
-          child: BloomIcon(icon, size: 20, color: t.text),
-        ),
-      ),
-    );
-  }
-}
-
-/// Шторка одного ползунка: крупное значение по центру и широкая полоса под ним.
-/// Значение применяется НА ХОДУ, не по закрытию, — иначе стекло не с чем
-/// сравнивать, пока крутишь.
+/// One slider: a big value and a wide bar. Applied as it moves, or the glass
+/// has nothing to compare with.
 ///
-/// Заголовка НЕТ (его слово, с макетом): в шторке всего одна ручка, и что
-/// именно крутят, уже сказано строкой, из которой её открыли. Название всё
-/// равно уходит в [Semantics] — скринридеру одного числа мало.
+/// No title: the row it came from said it; [Semantics] still gets the name.
 ///
-/// Пуговки у ползунка тоже нет: на макете полоса просто наливается — жирная,
-/// со скруглёнными концами, во всю ширину шторки.
-///
-/// [minValue] — левый край: у яркости акцента он не ноль, там своя вилка
-/// ([kAutoAccentLMin]…[kAutoAccentLMax]).
+/// [minValue] is the left end: the accent level has its own range.
 Future<void> _pickIntValue({
   required BuildContext context,
   required String title,
@@ -520,8 +311,8 @@ Future<void> _pickIntValue({
               data: SliderTheme.of(context).copyWith(
                 trackHeight: 6,
                 thumbShape: SliderComponentShape.noThumb,
-                // Полоса упирается в поля шторки: без пуговки края ползунка
-                // резервировать не под что.
+                // Reaches the sheet's margins: with no thumb there's nothing to
+                // reserve room for.
                 trackShape: const RoundedRectSliderTrackShape(),
                 padding: EdgeInsets.zero,
               ),
@@ -546,7 +337,7 @@ Future<void> _pickIntValue({
   );
 }
 
-// ─── Вид таб-бара ───────────────────────────────────────────────────────────
+// ─── Tab bar look ───────────────────────────────────────────────────────────
 
 String _navStyleLabel(AppLocalizations l, NavBarStyle style) => switch (style) {
   NavBarStyle.bar => l.apNavBarPlain,
@@ -556,17 +347,9 @@ String _navStyleLabel(AppLocalizations l, NavBarStyle style) => switch (style) {
   NavBarStyle.pill => l.apNavBarPill,
 };
 
-/// Шторка выбора вида таб-бара: плитки в два столбца, последняя в нечётном
-/// ряду остаётся одна.
-///
-/// Сетка живёт в шторке, а не на самой странице: у «Интерфейса» уже есть
-/// строка «Тема» с таким же поведением, и второй развёрнутый блок выбора
-/// раздул бы экран вдвое. Плитки в два столбца, а не в строку из четырёх (как
-/// варианты анимации в настройках плеера): там подписи в одно короткое слово,
-/// а «Скруглённый» на четверти ширины телефона стал бы многоточием.
-///
-/// Выбор применяется и закрывает шторку: сам бар она собой и закрывает, так
-/// что смотреть на результат из-под неё всё равно нечем.
+/// Tiles in two columns; the last of an odd row stands alone. In a sheet: a
+/// second open block would double the page. Choosing closes it: the sheet
+/// covers the bar anyway.
 Future<void> _pickNavStyle(BuildContext context, WidgetRef ref) async {
   final settings = ref.read(settingsProvider);
   final picked = await _pickNavCard<NavBarStyle>(
@@ -574,9 +357,8 @@ Future<void> _pickNavStyle(BuildContext context, WidgetRef ref) async {
     values: NavBarStyle.values,
     current: settings.navStyle,
     label: (style) => _navStyleLabel(context.l, style),
-    // Плитки показывают бар целиком, вместе с уже выбранными пометкой и
-    // подписями: выбирают-то форму панели, но человек сравнивает картинку со
-    // своим баром, а не с абстрактным.
+    // The whole bar with its chosen mark and labels: it gets compared to one's
+    // own.
     paint: (style, ink) => _NavStyleGlyph(
       style: style,
       indicator: settings.navIndicator,
@@ -589,7 +371,6 @@ Future<void> _pickNavStyle(BuildContext context, WidgetRef ref) async {
   if (picked != null) ref.read(settingsProvider.notifier).setNavStyle(picked);
 }
 
-/// Шторка выбора пометки активного таба.
 Future<void> _pickNavIndicator(BuildContext context, WidgetRef ref) async {
   final settings = ref.read(settingsProvider);
   final picked = await _pickNavCard<NavIndicator>(
@@ -611,7 +392,6 @@ Future<void> _pickNavIndicator(BuildContext context, WidgetRef ref) async {
   }
 }
 
-/// Шторка выбора подписей под иконками.
 Future<void> _pickNavLabels(BuildContext context, WidgetRef ref) async {
   final settings = ref.read(settingsProvider);
   final picked = await _pickNavCard<NavLabels>(
@@ -631,11 +411,8 @@ Future<void> _pickNavLabels(BuildContext context, WidgetRef ref) async {
   if (picked != null) ref.read(settingsProvider.notifier).setNavLabels(picked);
 }
 
-/// Общая шторка настроек бара: плитки с макетом экрана в два столбца,
-/// последняя в нечётном ряду остаётся одна.
-///
-/// Заголовка НЕТ (его слово): что выбирают, уже сказано строкой, из которой
-/// шторку открыли, — как у [_pickIntValue].
+/// The bar settings' sheet: screen mock-ups in two columns. No title: the row
+/// it came from said it.
 Future<T?> _pickNavCard<T>({
   required BuildContext context,
   required List<T> values,
@@ -644,14 +421,13 @@ Future<T?> _pickNavCard<T>({
   required CustomPainter Function(T value, Color ink) paint,
 }) {
   final width = MediaQuery.of(context).size.width;
-  // Поля шторки с двух сторон + 12 зазора между столбцами.
+  // Margins on both sides plus the gap between columns.
   final cardWidth = (width - kSheetEdge * 2 - 12) / 2;
 
   return showBloomSheetChild<T>(
     context: context,
-    // Закрывать шторку надо ЕЁ контекстом, а не контекстом страницы: шторка
-    // живёт в корневом навигаторе, а страница — во вложенном (ветка таба), и
-    // `pop` со страничным контекстом закрыл бы сами «Настройки».
+    // With the sheet's own context: it lives in the root navigator, the page's
+    // would close Settings.
     child: Builder(
       builder: (sheetContext) => Padding(
         padding: const EdgeInsets.fromLTRB(kSheetEdge, 6, kSheetEdge, 6),
@@ -683,8 +459,7 @@ class _NavPickCard extends StatelessWidget {
     required this.onTap,
   });
 
-  /// Значок варианта. Цвет приходит снаружи: акцент у выбранной плитки,
-  /// приглушённый у прочих.
+  /// Comes from outside: accent when chosen, dimmed otherwise.
   final CustomPainter Function(Color ink) paint;
   final String label;
   final double width;
@@ -703,8 +478,8 @@ class _NavPickCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: t.pill,
           borderRadius: BorderRadius.circular(t.radius * 0.75),
-          // Рамка есть всегда, просто у невыбранной прозрачная: иначе
-          // выбранная плитка распухала бы на полтора пикселя и ряд дёргался.
+          // Always there, just transparent when not chosen: otherwise the
+          // chosen tile grows and the row jumps.
           border: Border.all(
             color: active ? t.accent : Colors.transparent,
             width: 1.5,
@@ -732,7 +507,7 @@ class _NavPickCard extends StatelessWidget {
   }
 }
 
-// ─── Порядок вкладок ────────────────────────────────────────────────────────
+// ─── Tab order ──────────────────────────────────────────────────────────────
 
 String _navTabLabel(AppLocalizations l, NavTab tab) => switch (tab) {
   NavTab.home => l.navHome,
@@ -746,8 +521,7 @@ String _navTabLabel(AppLocalizations l, NavTab tab) => switch (tab) {
 Future<void> _pickNavOrder(BuildContext context, WidgetRef ref) =>
     showBloomSheetChild<void>(
       context: context,
-      // Заголовка НЕТ (его слово): что настраивают, уже сказано строкой, из
-      // которой шторку открыли.
+      // No title: the row it came from said it.
       child: Padding(
         padding: const EdgeInsets.fromLTRB(kSheetEdge, 6, kSheetEdge, 6),
         child: Consumer(
@@ -758,14 +532,13 @@ Future<void> _pickNavOrder(BuildContext context, WidgetRef ref) =>
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Список — одна строка карточки: разделители рисуют сами
-                // строки, иначе при перестановке линия уезжала бы отдельно от
-                // строки, к которой она относится.
+                // One card row: the rows draw their dividers, or a line would
+                // stay behind while dragging.
                 SettingsGroupCard(
                   rows: [
                     ReorderableListView.builder(
-                      // Список стоит внутри уже прокручиваемой шторки: свой
-                      // скролл ему не нужен, а высоту он берёт по содержимому.
+                      // Inside a scrolling sheet: no scroll of its own, height
+                      // by its content.
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       padding: EdgeInsets.zero,
@@ -773,8 +546,8 @@ Future<void> _pickNavOrder(BuildContext context, WidgetRef ref) =>
                       buildDefaultDragHandles: false,
                       itemCount: settings.navOrder.length,
                       onReorder: controller.moveNavTab,
-                      // Строка в полёте лежит поверх карточки, и своей плёнки
-                      // у неё нет: без неё сквозь неё видно строки под ней.
+                      // The dragged row needs a plate, or the rows under it
+                      // show through.
                       proxyDecorator: (child, _, _) => Material(
                         color: t.pill,
                         borderRadius: BorderRadius.circular(t.radius),
@@ -786,8 +559,7 @@ Future<void> _pickNavOrder(BuildContext context, WidgetRef ref) =>
                           key: ValueKey(tab),
                           index: i,
                           tab: tab,
-                          // Разделитель — у всех, кроме первой: карточка
-                          // группы своих линий тут не рисует.
+                          // All but the first: the card draws no lines here.
                           divider: i > 0,
                         );
                       },
@@ -838,17 +610,14 @@ class _NavTabRow extends StatelessWidget {
               color: t.ovlLine.withValues(alpha: t.ovlLine.a * 0.5),
             ),
           ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-          child: _SettingsRow(
-            title: _navTabLabel(context.l, tab),
-            trailing: ReorderableDragStartListener(
-              index: index,
-              // Padding so a finger has something to grab.
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-                child: BloomIcon(Bi.hamburgerMenu, size: 20, color: t.iconFgSb),
-              ),
+        SettingsRowShell(
+          title: _navTabLabel(context.l, tab),
+          trailing: ReorderableDragStartListener(
+            index: index,
+            // Padding so a finger has something to grab.
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+              child: BloomIcon(Bi.hamburgerMenu, size: 20, color: t.iconFgSb),
             ),
           ),
         ),
@@ -871,9 +640,8 @@ String _navLabelsLabel(AppLocalizations l, NavLabels value) => switch (value) {
   NavLabels.active => l.apNavLabelsActive,
 };
 
-/// Макет экрана с баром внизу: рамка телефона, три полоски списка и сама
-/// панель в том виде, который выберут. Рисуем кодом, а не четырьмя SVG, — те
-/// же прямоугольники, что и в самом каркасе.
+/// A screen with the bar at the bottom: the frame, three list stripes and the
+/// panel, from the same rectangles as the real one.
 class _NavStyleGlyph extends CustomPainter {
   const _NavStyleGlyph({
     required this.style,
@@ -886,21 +654,20 @@ class _NavStyleGlyph extends CustomPainter {
 
   final NavBarStyle style;
 
-  /// Пометка активного таба: рисуется у среднего значка — он тут за активный.
+  /// Drawn at the middle icon, which stands for the active one.
   final NavIndicator indicator;
   final NavLabels labels;
 
-  /// Заливка «экрана» — фон темы: по нему видно, как панель на нём лежит.
+  /// The theme's background: shows how the panel lies on it.
   final Color screen;
   final Color frame;
 
-  /// Цвет панели и иконок: акцент у выбранной плитки, приглушённый у прочих.
+  /// Accent when chosen, dimmed otherwise.
   final Color ink;
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Рисуем в сетке 100×64 и масштабируем разом — как значки вариантов в
-    // настройках плеера.
+    // Drawn in a 100×64 grid and scaled at once.
     canvas.save();
     canvas.scale(size.width / 100, size.height / 64);
 
@@ -909,12 +676,11 @@ class _NavStyleGlyph extends CustomPainter {
     canvas.drawRRect(body, paint);
 
     canvas.save();
-    // Всё внутри режется рамкой телефона: нижние углы панели скругляются сами,
-    // а панель «во всю ширину» упирается ровно в края.
+    // Clipped by the frame: bottom corners round by themselves, a full-width
+    // panel meets the edges.
     canvas.clipRRect(body);
 
-    // Три полоски списка: разной длины, чтобы читались как строки, а не как
-    // полосы.
+    // Different lengths, so they read as rows.
     paint.color = ink.withValues(alpha: 0.22);
     const widths = [64.0, 76.0, 52.0];
     for (var i = 0; i < widths.length; i++) {
@@ -931,7 +697,7 @@ class _NavStyleGlyph extends CustomPainter {
     }
 
     final panel = switch (style) {
-      // Прижат к низу: верх ровный, низ скруглит рамка.
+      // Pressed to the bottom: flat on top, the frame rounds the rest.
       NavBarStyle.bar => RRect.fromLTRBR(0, 46, 100, 66, Radius.zero),
       NavBarStyle.rounded => RRect.fromLTRBAndCorners(
         0,
@@ -941,8 +707,7 @@ class _NavStyleGlyph extends CustomPainter {
         topLeft: const Radius.circular(9),
         topRight: const Radius.circular(9),
       ),
-      // Те же углы вдвое — ровно во столько же раз купол круче скруглённого и
-      // в самом баре.
+      // Twice the corners, just as in the real bar.
       NavBarStyle.dome => RRect.fromLTRBAndCorners(
         0,
         44,
@@ -951,8 +716,7 @@ class _NavStyleGlyph extends CustomPainter {
         topLeft: const Radius.circular(18),
         topRight: const Radius.circular(18),
       ),
-      // Выше прижатых по высоте панели — ровно как в самом баре
-      // (`kNavBarFloatHeight` против `kNavBarHeight`).
+      // Taller than the pressed ones, just as in the real bar.
       NavBarStyle.floating => RRect.fromLTRBR(
         7,
         41,
@@ -960,8 +724,7 @@ class _NavStyleGlyph extends CustomPainter {
         59,
         const Radius.circular(5),
       ),
-      // Та же панель, что у плавающей, — разница только в углах: у капсулы
-      // они в половину высоты.
+      // Same panel as floating, with corners at half its height.
       NavBarStyle.pill => RRect.fromLTRBR(
         7,
         41,
@@ -972,7 +735,7 @@ class _NavStyleGlyph extends CustomPainter {
     };
     canvas.drawRRect(panel, paint..color = ink.withValues(alpha: 0.26));
 
-    // Тонкая линия сверху — единственное, чем обычный бар отбит от списка.
+    // The only thing setting a plain bar off the list.
     if (style == NavBarStyle.bar) {
       canvas.drawLine(
         const Offset(0, 46),
@@ -983,23 +746,22 @@ class _NavStyleGlyph extends CustomPainter {
       );
     }
 
-    // Низ панели, который реально видно: у прижатых стилей она уходит под
-    // рамку телефона, и считать по ней середину нельзя.
+    // What's really visible: pressed styles go under the frame, so the middle
+    // can't be counted from them.
     final bottom = min(panel.bottom, 64);
     final half = (panel.right - panel.left) / 2 - 6;
     final step = half * 2 / 3;
     final cx = (panel.left + panel.right) / 2;
     final mid = (panel.top + bottom) / 2;
-    // Подпись есть у значка [i] (средний, i == 0, тут за активный таб). С ней
-    // значок мельче и поднят, освобождая место строке, — ровно как в самом
-    // баре, где высота панели от подписей не меняется.
+    // Whether icon [i] has a label (0, the middle, is active). With one it's
+    // smaller and raised: the panel's height doesn't change.
     bool titled(int i) => switch (labels) {
       NavLabels.none => false,
       NavLabels.always => true,
       NavLabels.active => i == 0,
     };
 
-    // Пометка — ПОД значками: в самом баре она отдельный слой под рядом.
+    // Under the icons: a layer of its own in the real bar too.
     switch (indicator) {
       case NavIndicator.none:
         break;
@@ -1031,9 +793,8 @@ class _NavStyleGlyph extends CustomPainter {
         );
     }
 
-    // Три иконки — точки по центру панели, и подписи полосками под теми, у
-    // кого они есть. Значок без подписи остаётся обычным и стоит по центру: в
-    // самом баре ужимается только тот таб, под которым строка.
+    // Three icons as dots, label stripes under those that have one. Only the
+    // tab with a label shrinks.
     for (var i = -1; i <= 1; i++) {
       final text = titled(i);
       final cy = mid - (text ? 3 : 0);
@@ -1076,34 +837,9 @@ class _NavStyleGlyph extends CustomPainter {
       old.screen != screen;
 }
 
-/// Строка настройки внутри группы. Своей плёнки у неё нет: связанные строки
-/// стоят одной карточкой ([SettingsGroupCard]), как в корневых «Настройках».
-///
-/// [onTap] — строка ведёт куда-то (шторка выбора темы); без него это просто
-/// место под тоггл или ползунок.
-class _SettingsCard extends StatelessWidget {
-  const _SettingsCard({required this.child, this.onTap});
-
-  final Widget child;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Pressable(
-      onTap: onTap,
-      scale: 0.98,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-        child: child,
-      ),
-    );
-  }
-}
-
-/// Карточка шрифта — порт десктопного `FontCard`: заголовок с «+» справа и
-/// сетка плиток «Aa + название» в три столбца, каждая нарисована своим
-/// шрифтом. Свои плитки идут после встроенных; крестик у них виден всегда
-/// (наведения на телефоне нет) и спрашивает вторым нажатием, как у своих тем.
+/// The font card: a title with "+", tiles in three columns, each in its own
+/// font. One's own come last; their cross shows always and asks with a second
+/// press.
 class _FontCard extends ConsumerWidget {
   const _FontCard();
 
@@ -1183,10 +919,8 @@ class _FontCard extends ConsumerWidget {
   }
 }
 
-/// Выбор файлов шрифта и тосты по итогу — те же, что у десктопного
-/// `addFiles`. Фильтр по расширению не ставим: у .ttf/.otf на Android часто
-/// нет своего MIME, и системный выбор их просто не показал бы. Проверка — в
-/// сторе.
+/// No filter by extension: .ttf/.otf often have no MIME on Android and the
+/// system picker would hide them. The store checks.
 Future<void> _addFonts(BuildContext context, WidgetRef ref) async {
   final List<PlatformFile> picked;
   try {
@@ -1220,8 +954,7 @@ Future<void> _addFonts(BuildContext context, WidgetRef ref) async {
   }
 }
 
-/// Плитка шрифта — `.s-font-item`: плёнка 4 %, у выбранной 12 %, скругление
-/// `radius*0.7`, «Aa» 22 жирным и подпись 10 приглушённым.
+/// "Aa" in its font and the name under it.
 class _FontTile extends StatefulWidget {
   const _FontTile({
     super.key,
@@ -1239,7 +972,7 @@ class _FontTile extends StatefulWidget {
   final bool active;
   final VoidCallback onTap;
 
-  /// Крестик — только у своих шрифтов.
+  /// Only one's own fonts.
   final VoidCallback? onDelete;
 
   @override
@@ -1334,13 +1067,12 @@ class _FontTileState extends State<_FontTile> {
   }
 }
 
-/// Шторка выбора темы: сетка пресетов в два столбца, ниже — свои темы, отбитые
-/// тонкой линией (как `tp-sep` на десктопе). Список пресетов длиннее экрана не
-/// бывает, но шторка всё равно скроллится — это делает её оболочка.
+/// Presets in two columns, one's own under a line. The sheet's shell does the
+/// scrolling.
 Future<void> _pickTheme(BuildContext context, WidgetRef ref) async {
   final controller = ref.read(settingsProvider.notifier);
   final width = MediaQuery.of(context).size.width;
-  // Поля шторки с двух сторон + 12 зазора между столбцами.
+  // Margins on both sides plus the gap between columns.
   final cardWidth = (width - kSheetEdge * 2 - 12) / 2;
 
   await showBloomSheetChild<void>(
@@ -1358,7 +1090,6 @@ Future<void> _pickTheme(BuildContext context, WidgetRef ref) async {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
             ),
-            // «+» — как кнопка `tp-add` рядом со строкой темы на ПК.
             CircleIconButton(
               icon: Bi.addCircle,
               size: 40,
@@ -1373,9 +1104,8 @@ Future<void> _pickTheme(BuildContext context, WidgetRef ref) async {
     ),
     child: Consumer(
       builder: (context, ref, _) {
-        // Настройки читаем внутри шторки: тема применяется сразу, а свои темы
-        // появляются в ней же — и галочка, и новая карточка должны приезжать,
-        // не закрывая шторку.
+        // Read inside: a theme applies at once and new ones appear here,
+        // without closing.
         final settings = ref.watch(settingsProvider);
         Widget card(ThemePreset preset) => _PresetCard(
           preset: preset,
@@ -1391,10 +1121,8 @@ Future<void> _pickTheme(BuildContext context, WidgetRef ref) async {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Авто-тема — режим, а не палитра: стоит первой строкой во всю
-              // ширину, чтобы не читаться как ещё один пресет и не ломать пары
-              // ниже (десктопное `.tp-auto{grid-column:1/-1}`). Кружки живые —
-              // это те цвета, что сейчас сняты с обложки.
+              // A mode, not a palette: a full row above the pairs. Its dots are
+              // what's taken from the cover right now.
               _AutoThemeCard(
                 preset: ThemePreset(
                   id: kAutoThemeId,
@@ -1431,17 +1159,14 @@ Future<void> _pickTheme(BuildContext context, WidgetRef ref) async {
   );
 }
 
-/// Удалить свою тему. Подтверждение — вторым нажатием на сам крестик (как
-/// очистка статистики в профиле), модалки нет.
+/// Asks with a second press on the cross itself.
 void _deleteTheme(BuildContext context, WidgetRef ref, ThemePreset preset) {
   ref.read(settingsProvider.notifier).deleteCustomTheme(preset.id);
   showToast(context, context.l.thDeleted);
 }
 
-/// Шторка создания своей темы: название, три цвета, «случайные» и «сохранить» —
-/// тот же набор, что в десктопном `ThemeCreator`. Созданная тема сразу
-/// применяется, поэтому шторка выбора под ней остаётся открытой: видно и
-/// карточку, и результат.
+/// Name, three colours, random and save. A new theme applies at once and the
+/// picker stays open under it.
 Future<void> _createTheme(BuildContext context, WidgetRef ref) async {
   final settings = ref.read(settingsProvider);
   final draft = await showBloomSheetChild<_ThemeDraft>(
@@ -1456,8 +1181,7 @@ Future<void> _createTheme(BuildContext context, WidgetRef ref) async {
         ),
       ),
     ),
-    // Отталкиваемся от текущей темы — как на ПК, где создатель открывается с
-    // её цветами: чаще всего свою тему крутят именно из неё.
+    // From the current theme's colours: that's what one usually starts from.
     child: _ThemeCreator(initial: settings.preset),
   );
   if (draft == null || !context.mounted) return;
@@ -1472,7 +1196,7 @@ Future<void> _createTheme(BuildContext context, WidgetRef ref) async {
   showToast(context, context.l.thCreated(created.name));
 }
 
-/// Черновик своей темы: то, с чем закрывается шторка создания.
+/// What the creator closes with.
 class _ThemeDraft {
   const _ThemeDraft({
     required this.name,
@@ -1508,8 +1232,8 @@ class _ThemeCreatorState extends State<_ThemeCreator> {
     super.dispose();
   }
 
-  /// Случайная приятная палитра — порт `randomThemeColors`: тёмный фон, блок
-  /// чуть светлее того же тона, акцент — заметно другой тон.
+  /// A dark background, a block a bit lighter in that hue, an accent in a
+  /// clearly different one.
   void _random() {
     final rnd = Random();
     final h = rnd.nextDouble() * 360;
@@ -1556,7 +1280,7 @@ class _ThemeCreatorState extends State<_ThemeCreator> {
             maxLength: 24,
             cursorColor: t.accent,
             style: theme.titleMedium,
-            // Имя видно в превью — перерисовываем на каждый символ.
+            // The name shows in the preview.
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
               counterText: '',
@@ -1598,7 +1322,7 @@ class _ThemeCreatorState extends State<_ThemeCreator> {
             ],
           ),
           const SizedBox(height: 14),
-          // Живое превью: та же карточка, что потом встанет в сетку.
+          // The same card the grid will get.
           Center(
             child: _PresetCard(
               preset: preview,
@@ -1641,7 +1365,7 @@ class _ThemeCreatorState extends State<_ThemeCreator> {
   }
 }
 
-/// Слот цвета: подпись и широкий сватч под ней — тап открывает пикер.
+/// A label and a wide swatch; a tap opens the picker.
 class _ColorSlot extends StatelessWidget {
   const _ColorSlot({
     required this.label,
@@ -1685,17 +1409,15 @@ class _ColorSlot extends StatelessWidget {
   }
 }
 
-/// Три кружка превью темы — как `Dots` в десктопном `ThemePicker`: фон, блок,
-/// акцент. Кружки заходят друг на друга, поэтому у каждого своя обводка цветом
-/// подложки, иначе тёмные темы сливаются в одно пятно.
+/// Background, block, accent. They overlap, so each has an outline of the
+/// plate's colour, or dark themes merge.
 class _ThemeDots extends StatelessWidget {
   const _ThemeDots({required this.preset, this.size = 22, this.ring});
 
   final ThemePreset preset;
   final double size;
 
-  /// Цвет обводки — подложка, на которой лежат кружки. По умолчанию плёнка
-  /// текущей темы: строка настроек лежит на ней.
+  /// The plate under the dots; the current theme's film by default.
   final Color? ring;
 
   @override
@@ -1728,10 +1450,8 @@ class _ThemeDots extends StatelessWidget {
   }
 }
 
-/// Авто-тема в шторке: строка во всю ширину над сеткой пресетов. Своих цветов
-/// у неё нет — карточка красится теми, что сейчас на экране, и это как раз её
-/// лицо, снятое с обложки. Плиткой в пару к пресету не ставится намеренно: на
-/// ПК она тоже занимает весь ряд (`.tp-auto{grid-column:1/-1}`).
+/// A full row above the presets. No colours of its own: it wears the ones on
+/// screen, taken from the cover.
 class _AutoThemeCard extends StatelessWidget {
   const _AutoThemeCard({
     required this.preset,
@@ -1783,9 +1503,7 @@ class _AutoThemeCard extends StatelessWidget {
   }
 }
 
-/// Пресет в шторке: карточка, залитая фоном самой темы, с кружками превью
-/// сверху и названием снизу. Превью считаем теми же формулами, что и саму
-/// тему, — разойтись они не могут.
+/// A card filled with the theme's background, dots on top, the name below.
 class _PresetCard extends StatefulWidget {
   const _PresetCard({
     required this.preset,
@@ -1800,7 +1518,7 @@ class _PresetCard extends StatefulWidget {
   final bool active;
   final VoidCallback onTap;
 
-  /// Крестик в углу — только у своих тем.
+  /// Only one's own themes.
   final VoidCallback? onDelete;
 
   @override
@@ -1808,14 +1526,13 @@ class _PresetCard extends StatefulWidget {
 }
 
 class _PresetCardState extends State<_PresetCard> {
-  /// Крестик спрашивает вторым нажатием — как очистка статистики в профиле:
-  /// модалки на такую мелочь нет ни там, ни на ПК.
+  /// Asks with a second press.
   bool _armed = false;
 
   void _delete() {
     if (!_armed) {
       setState(() => _armed = true);
-      // Само остывает — иначе взведённый крестик так и ждёт промаха.
+      // Cools off by itself, or an armed cross waits for a slip.
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted) setState(() => _armed = false);
       });
@@ -1856,9 +1573,8 @@ class _PresetCardState extends State<_PresetCard> {
                 if (active)
                   BloomIcon(Bi.check, size: 18, color: preview.accent),
                 if (widget.onDelete != null)
-                  // Своя зона нажатия: крестик мелкий, а мажут по нему пальцем.
-                  // Взведённый — красная корзина: без модалки видно, что
-                  // следующий тап удалит.
+                  // A larger hit area: the cross is small. Armed it's a red
+                  // bin, so the next tap's meaning shows.
                   Pressable(
                     onTap: _delete,
                     child: Padding(

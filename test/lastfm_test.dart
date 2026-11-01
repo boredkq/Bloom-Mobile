@@ -57,6 +57,9 @@ JsonStore _connected() => JsonStore.memory({
   },
 });
 
+Iterable<Map<String, String>> _calls(String method) =>
+    sent.where((r) => r['method'] == method);
+
 Map<String, String>? _methodCall(String method) {
   for (final r in sent) {
     if (r['method'] == method) return r;
@@ -305,7 +308,7 @@ void main() {
       },
     );
 
-    test('трек засчитывается один раз, следующий — заново', () {
+    test('трек засчитывается один раз, следующий — заново', () async {
       final now = DateTime.fromMillisecondsSinceEpoch(1700000000000);
       final c = _container(_connected(), now: now);
       final lfm = c.read(lastfmProvider.notifier);
@@ -325,14 +328,125 @@ void main() {
         reason: 'второй тик того же трека',
       );
       // Метка времени — НАЧАЛО трека, как требует Last.fm.
-      expect(_methodCall('track.scrobble')?['timestamp'], '1700000000');
+      expect(_methodCall('track.scrobble')?['timestamp[0]'], '1700000000');
 
+      await Future<void>.delayed(Duration.zero);
       lfm.onTrackStart(_track('Next'));
       lfm.onProgress(
         const Duration(seconds: 150),
         const Duration(seconds: 300),
       );
       expect(sent.where((r) => r['method'] == 'track.scrobble'), hasLength(2));
+    });
+
+    group('queue', () {
+      Future<void> settle() => Future<void>.delayed(Duration.zero);
+
+      // No "now playing": every answer here goes to the scrobbles.
+      JsonStore quiet() {
+        final store = _connected();
+        store.write('lastfm', {
+          ...store.readMap('lastfm'),
+          'nowPlaying': false,
+        });
+        return store;
+      }
+
+      void hear(LastfmController lfm, String name) {
+        lfm.onTrackStart(_track(name));
+        lfm.onProgress(
+          const Duration(seconds: 150),
+          const Duration(seconds: 300),
+        );
+      }
+
+      test(
+        'without an answer a scrobble waits and survives a restart',
+        () async {
+          final store = quiet();
+          final c = _container(store);
+          hear(c.read(lastfmProvider.notifier), 'Song');
+          await settle();
+          expect(c.read(lastfmProvider).pending, 1);
+
+          final again = ProviderContainer(
+            overrides: [
+              jsonStoreProvider.overrideWithValue(store),
+              dbProvider.overrideWithValue(c.read(dbProvider)),
+            ],
+          );
+          addTearDown(again.dispose);
+          expect(again.read(lastfmProvider).pending, 1);
+        },
+      );
+
+      test('an answer empties it and what waited goes with the next', () async {
+        final c = _container(quiet());
+        final lfm = c.read(lastfmProvider.notifier);
+        hear(lfm, 'First');
+        await settle();
+        expect(c.read(lastfmProvider).pending, 1);
+
+        replies.add({'scrobbles': {}});
+        hear(lfm, 'Second');
+        await settle();
+
+        final last = _calls('track.scrobble').last;
+        expect(last['track[0]'], 'First');
+        expect(last['track[1]'], 'Second');
+        expect(c.read(lastfmProvider).pending, 0);
+      });
+
+      test('a refused batch is done with, a transient error is not', () async {
+        final c = _container(quiet());
+        final lfm = c.read(lastfmProvider.notifier);
+        replies.add({'error': 11, 'message': 'offline'});
+        hear(lfm, 'Song');
+        await settle();
+        expect(c.read(lastfmProvider).pending, 1);
+
+        replies.add({'error': 13, 'message': 'bad signature'});
+        hear(lfm, 'Next');
+        await settle();
+        expect(c.read(lastfmProvider).pending, 0);
+      });
+
+      test(
+        'a lost session signs out and keeps them for the next sign-in',
+        () async {
+          final c = _container(quiet());
+          replies.add({'error': 9, 'message': 'invalid session'});
+          hear(c.read(lastfmProvider.notifier), 'Song');
+          await settle();
+
+          final s = c.read(lastfmProvider);
+          expect(s.connected, isFalse);
+          expect(s.note?.kind, LfmNoteKind.sessionLost);
+          expect(s.pending, 1);
+        },
+      );
+
+      test('two weeks old are dropped, not sent', () async {
+        final now = DateTime.fromMillisecondsSinceEpoch(1700000000000);
+        final store = quiet();
+        final c = _container(store, now: now);
+        c.read(dbProvider).set('lastfm.pending', [
+          const LfmScrobble(
+            artist: 'A',
+            track: 'Old',
+            album: '',
+            duration: 100,
+            ts: 1700000000 - 15 * 24 * 3600,
+          ).toJson(),
+        ]);
+        replies.add({'scrobbles': {}});
+        hear(c.read(lastfmProvider.notifier), 'Song');
+        await settle();
+
+        final last = _calls('track.scrobble').last;
+        expect(last['track[0]'], 'Song');
+        expect(last.containsKey('track[1]'), isFalse);
+      });
     });
 
     test('неизвестная длительность трек не засчитывает', () {

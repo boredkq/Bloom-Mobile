@@ -17,6 +17,7 @@ import 'package:flutter/widgets.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'app_dirs.dart';
+import 'cover_cache.dart';
 
 const String _prefix = 'local:';
 
@@ -54,13 +55,14 @@ String? localCoverPath(String? cover) {
   return '${dir.path}/${cover!.substring(_prefix.length)}';
 }
 
-/// Картинка обложки: своя с диска либо сетевая. `null` — обложки нет.
+/// A cover's picture: one's own from the disk, or a platform's through the
+/// cover cache. `null` — no cover.
 ImageProvider? coverImage(String? cover) {
   if (cover == null || cover.isEmpty) return null;
   final path = localCoverPath(cover);
   if (path != null) return FileImage(File(path));
-  if (isLocalCover(cover)) return null; // своя, но каталога нет
-  return NetworkImage(cover);
+  if (isLocalCover(cover)) return null; // one's own, but no folder
+  return coverCacheReady ? CachedCover(cover) : NetworkImage(cover);
 }
 
 /// Метаданные снимка (EXIF, дата, геометка) нам не нужны — берём только сам

@@ -1,20 +1,12 @@
-/// Опасная зона: сброс настроек и полный сброс — порт десктопного
-/// `features/settings/lib/reset.ts`.
+/// The danger zone.
 ///
-/// - [resetSettings] возвращает к умолчаниям НАСТРОЙКИ: оформление, плеер,
-///   поведение, пресеты кастомизации. Библиотека, история, профиль и
-///   авторизации остаются (тот же список, что `SETTINGS_KEYS` на ПК).
-/// - [hardReset] стирает ВСЁ: `bloom.json` целиком (кроме флага онбординга —
-///   мастер и на десктопе показывается один раз), базу `bloom.db` (библиотека,
-///   журнал, подписки) и файлы на диске: офлайн-копии, кеш текстов, свои обложки
-///   и скопированные внутрь треки.
+/// [resetSettings] brings the settings back to defaults; the library, history,
+/// profile and sign-ins stay. [hardReset] wipes it all: `bloom.json`, the
+/// database and the files on disk.
 ///
-/// Отличие от десктопа в том, ЧЕМ заканчивается сброс. Там `location.reload()`
-/// перезагружает окно, и сторы поднимаются заново; окна у нас нет, поэтому
-/// каждое затронутое хранилище гасится через `ref.invalidate` — Riverpod
-/// пересоберёт его `build()`, а тот прочитает уже пустой `bloom.json`. Из-за
-/// этого список провайдеров приходится держать руками: пропустишь один —
-/// стёртая настройка останется висеть в памяти до перезапуска.
+/// Each store is rebuilt with `ref.invalidate`, reading what's now empty, so
+/// the list of providers is kept by hand: one missed and a wiped setting hangs
+/// in memory until restart.
 library;
 
 import 'dart:io';
@@ -24,6 +16,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/log/bloom_log.dart';
 import '../../core/db/db.dart';
 import '../../core/store/app_dirs.dart';
+import '../../core/store/cover_cache.dart';
 import '../../core/store/json_store.dart';
 import '../../core/store/library_store.dart';
 import '../../core/store/play_log.dart';
@@ -51,7 +44,6 @@ import '../../features/player/session_store.dart';
 import '../../features/player/slider_style_store.dart';
 import '../../features/player/sleep_timer_store.dart';
 import '../../features/player/speed_store.dart';
-import '../../features/player/track_anim_store.dart';
 import '../../features/profile/achievements.dart';
 import '../../features/profile/artist_avatars.dart';
 import '../../features/profile/level.dart';
@@ -65,34 +57,30 @@ import 'swipe_store.dart';
 import 'transparency_store.dart';
 import 'user_fonts.dart';
 
-/// Ключи `bloom.json`, которые считаются НАСТРОЙКАМИ. Порядок и состав — с ПК
-/// (`SETTINGS_KEYS`), с поправкой на телефонные хранилища: у нас свои ключи
-/// жестов, таймера сна и стилей плеера, а `bloom_volume`/`bloom_search_source`
-/// нет вовсе.
+/// The `bloom.json` keys that count as settings.
 const List<String> kSettingsKeys = [
-  'settings', // тема, акцент, язык, радиус, таб-бар, автовоспроизведение
-  'playerView', // выравнивание подписи, вид очереди и плашка «Далее»
+  'settings', // theme, accent, language, tab bar, autoplay
+  'playerView', // title alignment, queue look, next up
   'playerStyle',
   'sliderStyle',
   'miniStyle',
-  'playButtonShape', // форма кнопки — одна на плеер и карточку над таб-баром
-  'playerBg', // фон полноэкранного плеера — как `bloom_bg_prefs` на ПК
-  'playerBgCoverFx', // и что делать с обложкой, когда она стоит этим фоном
-  'trackAnim',
+  'playButtonShape', // one for the player and the mini player
+  'playerBg', // the full player's background
+  'playerBgCoverFx', // what's done to a cover standing as it
+  'covers', // how long downloaded covers stay
   'lyrics', // where the lyrics go, keeping them and for how long
   'swipes',
   'transparency',
   'speed',
   'sleep',
-  'custom', // контексты кастомизации: фон, обложка, ползунок
-  'coverMode', // своя обложка всегда или только у треков без обложки
-  'presets', // сами пресеты — как `bloom_presets` на ПК
+  'custom', // customization's places: background, cover, slider
+  'coverMode', // one's own cover always, or only when none
+  'presets', // customization presets
   'libOrder',
   'plAuto',
 ];
 
-/// Вернуть настройки к умолчаниям. Библиотеку, историю, профиль и авторизации
-/// не трогает.
+/// The library, history, profile and sign-ins stay.
 Future<void> resetSettings(WidgetRef ref) async {
   final store = ref.read(jsonStoreProvider);
   store.removeAll(kSettingsKeys);
@@ -108,7 +96,7 @@ Future<void> resetSettings(WidgetRef ref) async {
   ref.invalidate(playButtonShapeProvider);
   ref.invalidate(playerBgProvider);
   ref.invalidate(coverBgFxProvider);
-  ref.invalidate(trackAnimProvider);
+  ref.invalidate(coverKeepProvider);
   ref.invalidate(lyricsPrefsProvider);
   ref.invalidate(swipeProvider);
   ref.invalidate(transparencyProvider);
@@ -119,21 +107,21 @@ Future<void> resetSettings(WidgetRef ref) async {
   ref.invalidate(presetsProvider);
   ref.invalidate(libOrderProvider);
   ref.invalidate(plAutoProvider);
-  // Расписание авто-обновления заводится в `main()` руками, а не в `build()`
-  // стора: пересобранный стор остался бы без таймера до перезапуска.
+  // The schedule is started by hand at launch, not in the store's `build`: a
+  // rebuilt store would be left without its timer until restart.
   ref.read(plAutoProvider.notifier).startScheduler();
 
   logInfo('reset', 'настройки сброшены к умолчаниям');
 }
 
-/// Стереть всё. Возврата нет — вызывать только после подтверждения.
+/// No way back: call only after confirming.
 Future<void> hardReset(WidgetRef ref) async {
-  // Сначала тишина: дальше исчезнут и файлы офлайн-копий, и очередь.
+  // Silence first: the offline files and the queue are about to go.
   await ref.read(audioHandlerProvider).stop();
 
-  // Свои треки — до чистки библиотеки: после неё уже не узнать, за каким id
-  // стояло постоянное разрешение SAF и копия внутри приложения (их лимит на
-  // приложение — 512, и не вернуть их нельзя).
+  // Before clearing the library: after it there's no telling which id held a
+  // persistent SAF permission and a copy inside the app (limited to 512, they
+  // must be given back).
   final lib = ref.read(libraryProvider);
   await forgetLocalTracks(lib.tracks.values);
 
@@ -142,34 +130,31 @@ Future<void> hardReset(WidgetRef ref) async {
   await store.flush();
   ref.read(dbProvider).wipe();
 
-  // Каталоги сносим целиком и заводим заново: по одному индексу их содержимое
-  // уже не обойти — сам индекс мы только что стёрли.
-  // `fonts` — свои шрифты: на ПК полный сброс тоже сносит `bloom_fonts`, а
-  // сброс настроек их не трогает.
+  // Whole folders, made anew: their index was just wiped, so there's no walking
+  // through it. `fonts` goes only here, a settings reset leaves them.
   await _wipeDirs(['offline', 'covers', 'tracks', 'fonts']);
+  await clearCoverCache();
   ref.invalidate(userFontsProvider);
 
   ref.invalidate(playbackProvider);
   ref.invalidate(sessionProvider);
   ref.invalidate(libraryProvider);
   ref.invalidate(playLogProvider);
-  // Витрины главной — их кэш лежал там же и собран по стёртому топу.
+  // Their cache was built from a wiped top.
   ref.invalidate(forYouProvider);
   ref.invalidate(similarToProvider);
   ref.invalidate(daysProvider);
-  // Отметки достижений и отложенные XP читаются из kv один раз: без этого
-  // старые отметки висели бы в памяти и первая же сверка записала бы их назад.
+  // Read once from kv: otherwise old marks hang in memory and the first check
+  // writes them back.
   ref.invalidate(unlockedAchievementsProvider);
   ref.invalidate(levelBankedProvider);
   ref.invalidate(profileSinceProvider);
   ref.invalidate(profileProvider);
   ref.invalidate(recentSearchesProvider);
-  // Открытые карточки — отдельный стор от запросов: без этой строки ключ
-  // `recentItems` с диска исчезал, а список висел в памяти до перезапуска, и
-  // первое же открытие сущности записывало всю стёртую историю обратно.
+  // Apart from the queries: without this the wiped list stays in memory and the
+  // first opening writes it all back.
   ref.invalidate(recentItemsProvider);
-  // Кеш аватарок артистов — тот же случай, что тексты и обложки: сущностей,
-  // ради которых он собран, больше нет.
+  // What it was built for is gone.
   ref.invalidate(artistAvatarsProvider);
   ref.invalidate(offlineProvider);
   ref.invalidate(mediaLibProvider);
@@ -182,15 +167,14 @@ Future<void> hardReset(WidgetRef ref) async {
   ref.invalidate(lyricsProvider);
   // The reviews' marks went with the database.
   ref.invalidate(wrappedMarksProvider);
-  // Связка с ПК жила в стёртой базе. Не invalidate: расписание кругов заведено
-  // в `main()` и пересобранный стор остался бы без него.
+  // The link lived in the wiped database. Not invalidate: rounds are scheduled
+  // at launch, a rebuilt store would lose them.
   ref.read(pcProvider.notifier).unpair();
   await resetSettings(ref);
 
   logInfo('reset', 'полный сброс: библиотека, настройки и файлы стёрты');
 }
 
-/// Снести и создать заново каталоги в служебной папке приложения.
 Future<void> _wipeDirs(List<String> names) async {
   final root = await appPrivateDir();
   for (final name in names) {
@@ -199,8 +183,8 @@ Future<void> _wipeDirs(List<String> names) async {
       if (dir.existsSync()) await dir.delete(recursive: true);
       await dir.create(recursive: true);
     } catch (e) {
-      // Файл занят проигрывателем или нет прав — остальные каталоги это не
-      // отменяет, а мусор в одном не стоит падения посреди сброса.
+      // A busy file or no rights: the other folders still go, and litter isn't
+      // worth failing in the middle of a reset.
       logWarn('reset', 'каталог $name не стёрся: $e');
     }
   }

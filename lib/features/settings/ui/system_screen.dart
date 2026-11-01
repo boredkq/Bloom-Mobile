@@ -1,16 +1,6 @@
-/// Настройки → «Система» — порт десктопной секции `PlaybackSection.tsx`.
-///
-/// Что перенесено: «Импорт/Экспорт», «Логи» и «Опасная зона». Десктопного
-/// `AboutBlock.tsx` (знак, версия, проверка обновлений) и заметок к версиям
-/// тут больше нет: они уехали строкой «Версия» в группу «Приложение» и на её
-/// страницу — вместе с историей обновлений.
-///
-/// Что нет и почему: автозапуск с логином Windows, сворачивание в трей, трек в
-/// заголовке окна и обложка в трее — всё это про окно и трей, которых на
-/// телефоне нет. Десктопное «Автовоспроизведение» из группы «Запуск» уехало в
-/// «Аудио» — так выбрал пользователь.
-///
-/// Подтверждения — общей шторкой с красной кнопкой ([confirmDanger]).
+/// Settings → System: playlists to a file and back, the log and the danger
+/// zone. Confirmations are the shared sheet with a red button
+/// ([confirmDanger]).
 library;
 
 import 'package:flutter/material.dart';
@@ -52,6 +42,9 @@ class SystemSettingsScreen extends ConsumerWidget {
               icon: Bi.export,
               title: l.sysExportTitle,
               subtitle: l.sysExportSub,
+              enabled: ref.watch(
+                libraryProvider.select((lib) => lib.playlists.isNotEmpty),
+              ),
               onTap: () => _exportAll(context, ref),
             ),
             SettingsLinkRow(
@@ -65,9 +58,8 @@ class SystemSettingsScreen extends ConsumerWidget {
         const SizedBox(height: 22),
         SettingsCaption(l.sysLogs.toUpperCase()),
         const SizedBox(height: 10),
-        // Подписка, а не разовое чтение: страница журнала лежит поверх этой,
-        // и после очистки «Система» сама не перестраивается — подпись осталась
-        // бы со старым числом (см. `BloomLog.count`).
+        // Subscribed: the log's page lies over this one, and after clearing
+        // this page wouldn't rebuild and would keep the old number.
         ValueListenableBuilder<int>(
           valueListenable: BloomLog.instance.count,
           builder: (context, count, _) => SettingsGroupCard(
@@ -85,8 +77,6 @@ class SystemSettingsScreen extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 22),
-        // Заголовок опасной зоны красный и со значком — как `h3` с `Ico danger`
-        // на десктопе.
         Row(
           children: [
             BloomIcon(Bi.dangerTriangle, size: 13, color: t.danger),
@@ -119,15 +109,11 @@ class SystemSettingsScreen extends ConsumerWidget {
   }
 }
 
-/// Выгрузить все плейлисты файлом. Отмена диалога — тишина, как на десктопе.
+/// All playlists to a file. A cancelled dialog stays silent.
 Future<void> _exportAll(BuildContext context, WidgetRef ref) async {
   final l = context.l;
   final messenger = ScaffoldMessenger.of(context);
   final lib = ref.read(libraryProvider);
-  if (lib.playlists.isEmpty) {
-    messenger.toast(l.sysNoPlaylists, kind: ToastKind.warn);
-    return;
-  }
   final ok = await saveTextFile(
     l.sysExportFilename,
     await buildExportAllBundle(lib),
@@ -137,12 +123,11 @@ Future<void> _exportAll(BuildContext context, WidgetRef ref) async {
   messenger.toast(l.sysExported, kind: ToastKind.success);
 }
 
-/// Загрузить плейлисты из файла. Тот же поток, что у «Из файла» в «+»
-/// библиотеки, — см. `library/import_file.dart`.
+/// The same flow as "From file" in the library's plus.
 Future<void> _import(BuildContext context, WidgetRef ref) =>
     importPlaylistFile(ref, ScaffoldMessenger.of(context), context.l);
 
-/// Шторка подтверждения сброса. [hard] — «Сбросить всё».
+/// [hard] is "Reset everything".
 Future<void> _confirmReset(
   BuildContext context,
   WidgetRef ref, {

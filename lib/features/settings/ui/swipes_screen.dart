@@ -1,12 +1,6 @@
-/// Настройка свайпов — четыре места, у каждого своя пара действий.
-///
-/// Раскладка по скриншотам пользователя: капсовый заголовок места, под ним
-/// плашка-превью (значок действия слева — значок самого места — значок действия
-/// справа) и карточка с двумя строками «Свайп влево» / «Свайп вправо».
-/// Выбор действия — нижняя шторка с одинаковым для всех мест списком.
-///
-/// Вид, как всегда, наш: карточки `pill`, значки Solar, галочка у выбранного —
-/// та же, что в шторке сортировки.
+/// Swipes: four places, each with its own pair of actions. A header, a preview
+/// plate, a card with the two sides; the action is picked in a sheet, one list
+/// for all.
 library;
 
 import 'package:flutter/material.dart';
@@ -48,7 +42,7 @@ class SwipesScreen extends ConsumerWidget {
   }
 }
 
-/// Значок самого места — центр плашки-превью.
+/// The place's icon, the plate's centre.
 Widget _zoneIcon(BuildContext context, SwipeZone zone) {
   final color = context.bloom.muted;
   return BloomIcon(
@@ -63,9 +57,9 @@ Widget _zoneIcon(BuildContext context, SwipeZone zone) {
   );
 }
 
-/// Плашка-превью: значки стоят со стороны, откуда приходит движение — слева
-/// действие свайпа вправо, справа — свайпа влево, посередине само место.
-/// Значки тихие: это не кнопки, а картинка.
+/// Icons stand on the side the move comes from: left is the right swipe's
+/// action, right the left one's, the place in the middle. Quiet: a picture, not
+/// buttons.
 class _Preview extends StatelessWidget {
   const _Preview({required this.zone, required this.pair});
 
@@ -102,7 +96,7 @@ class _PreviewIcon extends StatelessWidget {
       BloomIcon(icon, size: 22, color: context.bloom.muted);
 }
 
-/// Две строки места: что делает движение влево и что вправо.
+/// What a move left does and what a move right does.
 class _SidesCard extends ConsumerWidget {
   const _SidesCard({required this.zone, required this.pair});
 
@@ -112,7 +106,7 @@ class _SidesCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return SettingsGroupCard(
-      // Линия начинается под текстом строки: 16 поля + 20 значка + 14 зазора.
+      // The line starts under the row's text.
       dividerInset: 50,
       rows: [
         _SideRow(zone: zone, isLeft: true, action: pair.left),
@@ -159,7 +153,8 @@ class _SideRow extends ConsumerWidget {
                     style: theme.titleMedium,
                   ),
                   const SizedBox(height: 3),
-                  // Ярче общего `bodySmall` — как выбранное в строках «Плеера».
+                  // Brighter than the usual `bodySmall`: part of the row, not a
+                  // footnote.
                   Text(
                     swipeActionLabel(context.l, action),
                     style: theme.bodySmall?.copyWith(color: t.text2),
@@ -176,9 +171,8 @@ class _SideRow extends ConsumerWidget {
   }
 }
 
-/// Список действий одной шторкой: каждое действие — своим крупным блоком, как в
-/// референсе. Шапки нет намеренно: строка, из которой сюда пришли, осталась
-/// видна над шторкой, и подписывать выбор второй раз незачем.
+/// Each action a large block of its own. No header: the row it came from stays
+/// visible above.
 Future<void> _pickAction(
   BuildContext context,
   WidgetRef ref,

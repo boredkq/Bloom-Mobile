@@ -1,6 +1,6 @@
-/// The lyrics of the playing track, as the PC's `Lyrics`: looked up on every
-/// change of track once something shows them, the line being sung follows the
-/// position. Kept lyrics and the missed ones — [LyricsCache].
+/// The lyrics of the playing track: looked up on every change of track once
+/// something shows them, the line being sung follows the position. Kept lyrics
+/// and the missed ones — [LyricsCache].
 library;
 
 import 'dart:async';
@@ -12,14 +12,14 @@ import '../../core/db/db.dart';
 import '../../core/entities/entities.dart';
 import '../../core/store/json_store.dart' show jsonStoreProvider;
 import '../player/player_controller.dart';
+import '../../core/store/cache_keep.dart';
 import 'lrc.dart';
 import 'lyrics_api.dart';
 import 'lyrics_cache.dart';
 
-export 'lyrics_cache.dart' show LyricsKeep;
+export '../../core/store/cache_keep.dart' show CacheKeep;
 
-/// Where the lyrics go in the player: over the cover, as the PC's panel, or
-/// in its place (the phone's "lyrics instead of queue").
+/// Where the lyrics go in the player: over the cover, or in its place.
 enum LyricsMode { overlay, replace }
 
 @immutable
@@ -27,7 +27,7 @@ class LyricsPrefs {
   const LyricsPrefs({
     this.mode = LyricsMode.overlay,
     this.cache = false,
-    this.keep = LyricsKeep.never,
+    this.keep = CacheKeep.never,
   });
 
   factory LyricsPrefs.fromJson(Map<String, Object?> raw) => LyricsPrefs(
@@ -36,18 +36,18 @@ class LyricsPrefs {
       orElse: () => LyricsMode.overlay,
     ),
     cache: raw['cache'] == true,
-    keep: LyricsKeep.of(raw['keep']),
+    keep: CacheKeep.of(raw['keep']),
   );
 
   final LyricsMode mode;
 
-  /// Keep found lyrics on the phone — the PC's `lyricsCache`, off by default.
+  /// Keep found lyrics on the phone; off by default.
   final bool cache;
 
-  /// For how long — the PC's `lyricsKeep`.
-  final LyricsKeep keep;
+  /// For how long.
+  final CacheKeep keep;
 
-  LyricsPrefs copyWith({LyricsMode? mode, bool? cache, LyricsKeep? keep}) =>
+  LyricsPrefs copyWith({LyricsMode? mode, bool? cache, CacheKeep? keep}) =>
       LyricsPrefs(
         mode: mode ?? this.mode,
         cache: cache ?? this.cache,
@@ -76,9 +76,9 @@ class LyricsPrefsController extends Notifier<LyricsPrefs> {
   void setCache(bool on) => _set(state.copyWith(cache: on));
 
   /// A time limit applies at once; returns how many went out of date.
-  int setKeep(LyricsKeep keep) {
+  int setKeep(CacheKeep keep) {
     _set(state.copyWith(keep: keep));
-    return keep == LyricsKeep.restart
+    return keep == CacheKeep.restart
         ? 0
         : ref.read(lyricsCacheProvider).purge(keep);
   }

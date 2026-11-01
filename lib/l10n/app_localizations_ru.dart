@@ -1616,11 +1616,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get setMiniPlayer => 'Мини плеер';
 
   @override
-  String setStub(String title) {
-    return '«$title» ещё не сделан';
-  }
-
-  @override
   String get pvGroupTitle => 'Заголовок';
 
   @override
@@ -1697,37 +1692,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get pvSliderWave => 'Волновой';
-
-  @override
-  String get pvGroupAnim => 'Смена трека';
-
-  @override
-  String get pvAnimPlayer => 'Плеер';
-
-  @override
-  String get pvAnimPlayerSub =>
-      'полноэкранный плеер — обложка и подпись настраиваются отдельно';
-
-  @override
-  String get pvAnimMini => 'Миниплеер';
-
-  @override
-  String get pvAnimMiniSub => 'карточка над таб-баром';
-
-  @override
-  String get pvAnimCover => 'Обложка';
-
-  @override
-  String get pvAnimText => 'Название и артист';
-
-  @override
-  String get pvAnimNone => 'Нет';
-
-  @override
-  String get pvAnimSlide => 'Слайд';
-
-  @override
-  String get pvAnimFade => 'Затухание';
 
   @override
   String get pvGroupLyrics => 'Текст песни';
@@ -2327,6 +2291,22 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get stCovers => 'Обложки';
+
+  @override
+  String get stClearCoversBody =>
+      'Скачанные обложки будут удалены — при следующем показе они загрузятся заново.';
+
+  @override
+  String get stCoversCleared => 'Кеш обложек очищен';
+
+  @override
+  String get stCoversKeep => 'Хранить обложки';
+
+  @override
+  String get lfmSessionLost => 'Вход больше не действует — войди заново';
+
+  @override
   String get stLyricsCleared => 'Кеш текстов очищен';
 
   @override
@@ -2338,7 +2318,7 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get stKeepNever => 'Никогда';
+  String get stKeepNever => 'Без срока';
 
   @override
   String get stKeepRestart => 'До перезапуска';
@@ -2726,6 +2706,18 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get lfmScrobbleSub => 'Засчитывать прослушанные треки на Last.fm';
+
+  @override
+  String lfmPending(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count скробблов ждут отправки',
+      few: '$count скроббла ждут отправки',
+      one: '$count скроббл ждёт отправки',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get lfmNowPlayingSub => 'Обновлять статус «Сейчас играет»';
@@ -3173,9 +3165,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get sysExported => 'Файл сохранён';
-
-  @override
-  String get sysNoPlaylists => 'Плейлистов пока нет';
 
   @override
   String get sysImportTitle => 'Импортировать';

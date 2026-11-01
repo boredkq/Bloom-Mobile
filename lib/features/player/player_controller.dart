@@ -1024,6 +1024,9 @@ class PlaybackController extends Notifier<PlaybackState>
     }
     if (_st.repeat == PlayerRepeat.one) {
       _credited = false; // следующий круг засчитывается заново
+      if (_st.track case final track?) {
+        ref.read(lastfmProvider.notifier).onTrackStart(track);
+      }
       _player.seek(Duration.zero);
       unawaited(_player.play());
       return;

@@ -40,7 +40,6 @@ import '../player_view_store.dart';
 import '../sleep_timer_store.dart';
 import '../slider_style_store.dart';
 import '../speed_store.dart';
-import '../track_anim_store.dart';
 import 'artist_avatars.dart';
 import 'play_button.dart';
 import 'player_backdrop.dart';
@@ -335,7 +334,6 @@ class _Cover extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final track = state.track!;
-    final anim = ref.watch(trackAnimProvider).of(TrackAnimSurface.player);
     // Пластинка (`playerStyle: 'vinyl'` с ПК): круглая обложка, вращение и
     // тёмная этикетка по центру.
     final vinyl = ref.watch(playerStyleProvider).isVinyl;
@@ -370,7 +368,7 @@ class _Cover extends ConsumerWidget {
                   spinning: spinning,
                   child: TrackSwap(
                     id: track.id,
-                    kind: anim.cover,
+                    fade: true,
                     child: Cover(
                       // Своя обложка из «Кастомизации» важнее обложки трека —
                       // десктопный `coverOverride` (с учётом режима).
@@ -494,7 +492,6 @@ class _TitleBlock extends ConsumerWidget {
       width: double.infinity,
       child: TrackSwap(
         id: track.id,
-        kind: ref.watch(trackAnimProvider).of(TrackAnimSurface.player).text,
         child: Column(
           crossAxisAlignment: align.cross,
           children: [

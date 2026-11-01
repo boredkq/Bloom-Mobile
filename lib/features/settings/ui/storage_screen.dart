@@ -1,13 +1,7 @@
-/// Настройки → «Хранилище»: сколько места занимают кеши Bloom и как их стереть.
-///
-/// Порт десктопной секции `TelemetrySection` — раскладка та же: сверху кольцо
-/// «Занято» (сумма кешей на фоне памяти телефона), под ним строки категорий с
-/// их объёмом и отдельная строка «Очистить всё».
-///
-/// Отличие от ПК одно и оно от пальца: там у каждой строки своя корзина и
-/// подтверждение системным `confirm()`, здесь строка ведёт в шторку — в ней и
-/// объём крупно, и что именно пропадёт, и красная кнопка. Промахнуться по
-/// корзине в списке легко, по шторке — нет.
+/// Settings → Storage: how much Bloom's caches take and how to wipe them. The
+/// ring is the sum of the caches against the phone's memory; each row leads to
+/// a sheet with its size, what goes and a red button, since a bin in a list is
+/// easy to miss with a finger.
 library;
 
 import 'package:flutter/material.dart';
@@ -16,6 +10,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
+import '../../../core/store/cover_cache.dart';
 import '../../../core/store/settings_store.dart';
 import '../../../features/lyrics/lyrics_store.dart';
 import '../../../shared/ui/atoms.dart';
@@ -62,12 +57,8 @@ class StorageSettingsScreen extends ConsumerWidget {
   }
 }
 
-/// Карточка «Занято»: кольцо с общим объёмом кешей.
-///
-/// Кольцо заполняется долей от ВСЕЙ памяти телефона — как на ПК, где
-/// знаменатель берётся из квоты вебвью. Доля эта крошечная, поэтому у дуги есть
-/// минимальная видимая длина: пустое кольцо над цифрой «12 МБ» читалось бы
-/// сломанным индикатором.
+/// The share of ALL the phone's memory. It's tiny, so the arc has a minimum
+/// length: an empty ring over "12 MB" reads as broken.
 class _UsageCard extends StatelessWidget {
   const _UsageCard({required this.stats});
 
@@ -113,8 +104,7 @@ class _UsageCard extends StatelessWidget {
                   ? l.stCounting
                   : [
                       l.stItems(stats!.count),
-                      // Доля есть только там, где нативная сторона сказала
-                      // объём памяти телефона.
+                      // Only where the native side told the memory's size.
                       if (fraction != null && stats!.deviceTotal != null)
                         l.stUsedOf(
                           _percent(fraction),
@@ -130,7 +120,7 @@ class _UsageCard extends StatelessWidget {
   }
 }
 
-/// Строка категории: иконка, название и «N файлов · размер» под ним.
+/// Icon, name, and "N items · size" under it.
 class _CacheRow extends ConsumerWidget {
   const _CacheRow({required this.kind, required this.stat});
 
@@ -176,8 +166,7 @@ class _CacheRow extends ConsumerWidget {
   }
 }
 
-/// «Очистить всё» — своей плашкой, как на десктопе, где кнопка стоит отдельно
-/// от списка строк.
+/// A plate of its own, apart from the rows.
 class _ClearAllRow extends ConsumerWidget {
   const _ClearAllRow({required this.stats});
 
@@ -222,10 +211,7 @@ class _ClearAllRow extends ConsumerWidget {
   }
 }
 
-/// Строка «Свои треки»: что Bloom делает с файлом, добавленным плюсом во «Всех
-/// треках». Порт десктопной карточки `settings.library.import` (там она про
-/// папки, у нас про одиночные файлы) — выбор уехал в шторку, чтобы страница
-/// осталась списком строк.
+/// What Bloom does with a file added with the plus in "All tracks".
 class _ImportRow extends ConsumerWidget {
   const _ImportRow();
 
@@ -269,8 +255,7 @@ class _ImportRow extends ConsumerWidget {
   }
 }
 
-/// Шторка категории: кольцо с её долей от занятого, что именно пропадёт и
-/// красная кнопка.
+/// The ring with this kind's share, what goes, and the red button.
 Future<void> _openCacheSheet(
   BuildContext context,
   WidgetRef ref,
@@ -295,7 +280,11 @@ Future<void> _openCacheSheet(
           // The ring shows this kind's share of what is used.
           fraction: _share(stat?.bytes ?? 0, stats?.bytes ?? 0),
           enabled: stat != null && !stat.isEmpty,
-          extra: kind == CacheKind.lyrics ? const _LyricsKeeping() : null,
+          extra: switch (kind) {
+            CacheKind.lyrics => const _LyricsKeeping(),
+            CacheKind.covers => const _CoversKeeping(),
+            _ => null,
+          },
         );
       },
     ),
@@ -335,10 +324,8 @@ Future<void> _openClearAllSheet(
   messenger.toast(l.stAllCleared, kind: ToastKind.success);
 }
 
-/// Шторка выбора режима импорта: два варианта с подсказкой под каждым.
-///
-/// Подсказку на ПК показывает тултип по наведению; на телефоне наводить нечем,
-/// поэтому текст стоит прямо в строке варианта.
+/// Two choices with a hint: there's no hovering here, so the text stands in the
+/// sheet.
 Future<void> _openImportSheet(BuildContext context, WidgetRef ref) {
   final l = context.l;
   return showBloomSheetChild<void>(
@@ -363,11 +350,8 @@ Future<void> _openImportSheet(BuildContext context, WidgetRef ref) {
   );
 }
 
-/// Два квадрата выбора и подсказка выбранного под ними — та же карточка, что
-/// стояла на странице, и тот же вид, что у выбора анимации в настройках плеера.
-///
-/// Шторка по выбору НЕ закрывается: подсказка под квадратами меняется вместе с
-/// режимом, и её надо успеть прочитать.
+/// Two squares and the chosen one's hint. Stays open on choosing: the hint
+/// changes with the mode and needs reading.
 class _ImportOptions extends ConsumerWidget {
   const _ImportOptions();
 
@@ -443,7 +427,7 @@ class _ModeButton extends StatelessWidget {
   );
 }
 
-/// Тело шторки очистки: кольцо с объёмом, название, что пропадёт, кнопка.
+/// The ring with the size, the name, what goes, the button.
 class _ClearBody extends StatelessWidget {
   const _ClearBody({
     required this.icon,
@@ -467,10 +451,10 @@ class _ClearBody extends StatelessWidget {
   final int bytes;
   final double fraction;
 
-  /// Есть ли что стирать — на пустом кеше кнопка гаснет.
+  /// On an empty cache the button greys out.
   final bool enabled;
 
-  /// «Очистить всё»: кольцо красное, а не акцентное.
+  /// "Clear all": the ring is red, not accent.
   final bool danger;
 
   @override
@@ -519,8 +503,7 @@ class _ClearBody extends StatelessWidget {
   }
 }
 
-/// Keeping lyrics on the phone and for how long — the PC's switch and
-/// dropdown on its lyrics row. Off, the periods stay in view, dimmed.
+/// Keeping lyrics and for how long. Off, the periods stay in view, dimmed.
 class _LyricsKeeping extends ConsumerWidget {
   const _LyricsKeeping();
 
@@ -530,14 +513,6 @@ class _LyricsKeeping extends ConsumerWidget {
     final theme = Theme.of(context).textTheme;
     final prefs = ref.watch(lyricsPrefsProvider);
     final ctrl = ref.read(lyricsPrefsProvider.notifier);
-
-    void pick(LyricsKeep keep) {
-      final gone = ctrl.setKeep(keep);
-      ref.invalidate(storageStatsProvider);
-      if (gone > 0) {
-        ScaffoldMessenger.of(context).toast(l.stStaleRemoved(gone));
-      }
-    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -554,29 +529,15 @@ class _LyricsKeeping extends ConsumerWidget {
           child: AnimatedOpacity(
             opacity: prefs.cache ? 1 : 0.4,
             duration: const Duration(milliseconds: 200),
-            child: GridView(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-                mainAxisExtent: 48,
-              ),
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: EdgeInsets.zero,
-              children: [
-                for (final keep in LyricsKeep.values)
-                  OptionTile(
-                    active: prefs.keep == keep,
-                    onTap: () => pick(keep),
-                    builder: (ink) => Text(
-                      _keepLabel(l, keep),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.titleSmall?.copyWith(color: ink),
-                    ),
-                  ),
-              ],
+            child: _KeepTiles(
+              value: prefs.keep,
+              onPick: (keep) {
+                final gone = ctrl.setKeep(keep);
+                ref.invalidate(storageStatsProvider);
+                if (gone > 0) {
+                  ScaffoldMessenger.of(context).toast(l.stStaleRemoved(gone));
+                }
+              },
             ),
           ),
         ),
@@ -585,17 +546,82 @@ class _LyricsKeeping extends ConsumerWidget {
   }
 }
 
-String _keepLabel(AppLocalizations l, LyricsKeep keep) => switch (keep) {
-  LyricsKeep.never => l.stKeepNever,
-  LyricsKeep.restart => l.stKeepRestart,
-  LyricsKeep.day => l.stKeepDay,
-  LyricsKeep.days3 => l.stKeep3Days,
-  LyricsKeep.week => l.stKeepWeek,
-  LyricsKeep.month => l.stKeepMonth,
+/// How long downloaded covers stay.
+class _CoversKeeping extends ConsumerWidget {
+  const _CoversKeeping();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l;
+    final ctrl = ref.read(coverKeepProvider.notifier);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l.stCoversKeep, style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 12),
+        _KeepTiles(
+          value: ref.watch(coverKeepProvider),
+          onPick: (keep) async {
+            final messenger = ScaffoldMessenger.of(context);
+            final gone = await ctrl.set(keep);
+            if (!context.mounted) return;
+            ref.invalidate(storageStatsProvider);
+            if (gone > 0) messenger.toast(l.stStaleRemoved(gone));
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _KeepTiles extends StatelessWidget {
+  const _KeepTiles({required this.value, required this.onPick});
+
+  final CacheKeep value;
+  final ValueChanged<CacheKeep> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l;
+    final theme = Theme.of(context).textTheme;
+    return GridView(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+        mainAxisExtent: 48,
+      ),
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.zero,
+      children: [
+        for (final keep in CacheKeep.values)
+          OptionTile(
+            active: value == keep,
+            onTap: () => onPick(keep),
+            builder: (ink) => Text(
+              _keepLabel(l, keep),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.titleSmall?.copyWith(color: ink),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+String _keepLabel(AppLocalizations l, CacheKeep keep) => switch (keep) {
+  CacheKeep.never => l.stKeepNever,
+  CacheKeep.restart => l.stKeepRestart,
+  CacheKeep.day => l.stKeepDay,
+  CacheKeep.days3 => l.stKeep3Days,
+  CacheKeep.week => l.stKeepWeek,
+  CacheKeep.month => l.stKeepMonth,
 };
 
-/// Кольцо-индикатор: дорожка плюс дуга занятого. Общее у карточки страницы и
-/// шторок — размер и толщина задаются снаружи.
+/// A track and an arc. Size and thickness come from outside.
 class _Ring extends StatelessWidget {
   const _Ring({
     required this.value,
@@ -605,7 +631,7 @@ class _Ring extends StatelessWidget {
     this.color,
   });
 
-  /// Доля 0..1; `null` — считаем (дуги нет).
+  /// 0..1; `null` while counting, no arc.
   final double? value;
   final double size;
   final double stroke;
@@ -658,8 +684,8 @@ class _RingPainter extends CustomPainter {
     canvas.drawCircle(rect.center, rect.width / 2, base);
     if (value <= 0) return;
 
-    // Минимум дуги: занятое от памяти телефона — это доли процента, и честная
-    // дуга была бы короче собственного скругления, то есть невидима.
+    // At least this much: the share of the phone's memory is a fraction of a
+    // percent, and an honest arc would be shorter than its own rounding.
     final sweep = 6.28318530718 * value.clamp(0.02, 1.0);
     canvas.drawArc(rect, -1.5707963268, sweep, false, base..color = fill);
   }
@@ -675,18 +701,21 @@ class _RingPainter extends CustomPainter {
 BloomGlyph _icon(CacheKind kind) => switch (kind) {
   CacheKind.offline => Bi.downloadMinimalistic,
   CacheKind.lyrics => Bi.microphone3,
+  CacheKind.covers => Bi.gallery,
   CacheKind.custom => Bi.palette,
 };
 
 String _title(AppLocalizations l, CacheKind kind) => switch (kind) {
   CacheKind.offline => l.stOfflineCache,
   CacheKind.lyrics => l.stLyrics,
+  CacheKind.covers => l.stCovers,
   CacheKind.custom => l.stCustom,
 };
 
 String _clearBody(AppLocalizations l, CacheKind kind) => switch (kind) {
   CacheKind.offline => l.stClearBody,
   CacheKind.lyrics => l.stClearLyricsBody,
+  CacheKind.covers => l.stClearCoversBody,
   CacheKind.custom => l.stClearCustomBody,
 };
 
@@ -694,10 +723,11 @@ String _cleared(AppLocalizations l, CacheKind kind, int count) =>
     switch (kind) {
       CacheKind.offline => l.stCleared(count),
       CacheKind.lyrics => l.stLyricsCleared,
+      CacheKind.covers => l.stCoversCleared,
       CacheKind.custom => l.stCustomCleared,
     };
 
-/// «N файлов · размер»; у пустого кеша размер не пишем — там всегда «0 Б».
+/// "N items · size"; an empty cache shows no size, it's always "0 B".
 String _meta(AppLocalizations l, CacheStat stat) => stat.isEmpty
     ? l.stItems(0)
     : '${l.stItems(stat.count)} · ${formatSize(l, stat.bytes)}';
@@ -708,12 +738,12 @@ BloomGlyph _importIcon(LocalImportMode mode) =>
 String _importLabel(AppLocalizations l, LocalImportMode mode) =>
     mode == LocalImportMode.inPlace ? l.ltImportInPlace : l.ltImportCopy;
 
-/// Доля категории в занятом; пустое хранилище — пустое кольцо.
+/// This kind's share of what's used; nothing stored, an empty ring.
 double _share(int bytes, int total) =>
     total <= 0 || bytes <= 0 ? 0 : (bytes / total).clamp(0.0, 1.0);
 
-/// «0.4» / «7» — доли процента у кешей на фоне памяти телефона обычное дело, и
-/// округлённый до целого ноль выглядел бы ошибкой.
+/// Fractions of a percent are usual here, and a rounded zero would look like an
+/// error.
 String _percent(double fraction) {
   final pct = fraction * 100;
   if (pct >= 10) return pct.toStringAsFixed(0);
@@ -721,7 +751,7 @@ String _percent(double fraction) {
   return pct.toStringAsFixed(2);
 }
 
-/// Размер по-человечески: килобайты для мелочи, дальше мегабайты и гигабайты.
+/// Kilobytes for small things, then megabytes and gigabytes.
 String formatSize(AppLocalizations l, int bytes) {
   if (bytes < 1024) return l.stBytes('$bytes');
   final kb = bytes / 1024;

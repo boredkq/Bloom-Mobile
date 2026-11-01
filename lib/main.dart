@@ -13,10 +13,12 @@ import 'app/theme/bloom_theme.dart';
 import 'core/l10n/l10n.dart';
 import 'core/log/bloom_log.dart';
 import 'core/db/db.dart';
+import 'core/store/cover_cache.dart';
 import 'core/store/cover_store.dart';
 import 'core/store/json_store.dart';
 import 'core/store/settings_store.dart';
 import 'core/store/days_store.dart';
+import 'features/lastfm/lastfm_store.dart';
 import 'features/customization/ui/app_background.dart';
 import 'features/library/local_tracks.dart';
 import 'features/library/pl_auto_store.dart';
@@ -52,6 +54,7 @@ Future<void> main() async {
   // Свои шрифты — до первого кадра: иначе выбранный мелькнёт Inter.
   await _step('шрифты', () => initUserFonts(store));
   await _step('обложки', initCoverStore);
+  await _step('кеш обложек', initCoverCache);
   await _step('офлайн', initOfflineStore);
   await _step('свои треки', initLocalTracks);
 
@@ -90,6 +93,9 @@ Future<void> main() async {
   container
       .read(lyricsCacheProvider)
       .start(container.read(lyricsPrefsProvider).keep);
+  unawaited(startCoverCache(container.read(coverKeepProvider)));
+  // Scrobbles left from the last run go out by themselves.
+  container.read(lastfmProvider);
   // Токен Яндекса поднимаем сразу: пока стор не создан, площадка считается
   // выключенной и первый же поиск прошёл бы мимо неё.
   container.read(ymAuthProvider);

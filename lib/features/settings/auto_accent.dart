@@ -1,16 +1,9 @@
-/// Мост авто-акцента — порт десктопного `autoAccentBridge.ts`.
+/// The auto accent: on each change of the playing cover I take its dominant
+/// colour for the accent. The last tone stays in a field, so the level slider
+/// recounts without touching the picture.
 ///
-/// Когда тоггл включён, при смене обложки играющего трека вытаскиваем из неё
-/// доминантный цвет и ставим акцентом. Тон последней просканированной обложки
-/// держим в поле: ползунок яркости пересчитывает акцент из него, не трогая
-/// картинку заново.
-///
-/// Тот же мост обслуживает и авто-тему (`kAutoThemeId` в списке тем): скан
-/// обложки один и тот же, отличается только то, что из тона собирается — один
-/// акцент или все три цвета. Режимы взаимоисключающие, см. `settings_store`.
-///
-/// Провайдер держится живым из `main()` — как мост на десктопе монтируется в
-/// `App.tsx`: акцент должен ехать за треком, даже когда настройки закрыты.
+/// The auto theme uses the same scan: only what's built from the tone differs,
+/// the accent or all three colours.
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,7 +24,7 @@ final autoAccentProvider = Provider<AutoAccentBridge>((ref) {
   ref.listen(settingsProvider.select((s) => s.autoTheme), (_, _) {
     bridge.rescan();
   });
-  // Яркость — пересчёт из уже известного тона, скан не нужен.
+  // Recounted from the known tone, no scan.
   ref.listen(settingsProvider.select((s) => s.autoAccentL), (_, _) {
     bridge.reapply();
   });
@@ -44,11 +37,10 @@ class AutoAccentBridge {
 
   final Ref _ref;
 
-  /// Тон последней просканированной обложки.
   CoverHsl? _last;
 
-  /// Номер последнего скана: пока грузилась одна обложка, трек мог смениться —
-  /// цвет опоздавшего скана применять нельзя.
+  /// A track may change while a cover loads: a late scan's colour must not
+  /// apply.
   int _token = 0;
 
   Future<void> rescan() async {
@@ -63,7 +55,6 @@ class AutoAccentBridge {
     _apply(hsl);
   }
 
-  /// Пересчитать акцент из уже известного тона — движение ползунка яркости.
   void reapply() {
     final hsl = _last;
     if (hsl == null) {

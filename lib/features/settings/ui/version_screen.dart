@@ -1,19 +1,11 @@
-/// «Версия»: проверка обновления и заметки к новой версии.
+/// Version: the update check and the new version's notes. The check runs on
+/// opening, that's why one comes here; the button is for a second go, or for
+/// the release page when there's something new.
 ///
-/// Открывается строкой «Версия» из группы «Приложение». Проверка запускается
-/// сама при открытии — на страницу и заходят затем, чтобы узнать, вышло ли
-/// новое; жать для этого ещё и кнопку незачем. Кнопка внизу остаётся, но она
-/// про второй заход: «Проверить снова» (или «Открыть страницу релиза», если
-/// новое нашлось).
-///
-/// Заметка показана прямо на странице, а не шторкой поверх: сюда приходят
-/// читать, что в обновлении, — это и есть содержимое страницы, а не
-/// всплывающая добавка. Берём заметку к НАЙДЕННОЙ версии, а нет её в
-/// манифесте — к установленной. Отдельной строки «Что нового» поэтому нет:
-/// она открывала бы шторкой ровно то, что уже на экране.
-///
-/// Скачать и поставить APK сами мы не можем (см. `about_store.dart`), поэтому
-/// «Открыть страницу релиза» уводит в браузер — дальше человек качает сам.
+/// The note stands on the page: reading it is what the page is for. It's the
+/// found version's, or the installed one's if the manifest lacks it. The APK
+/// isn't installed from here (see `about_store.dart`): the release page opens
+/// in the browser.
 library;
 
 import 'package:flutter/material.dart';
@@ -45,8 +37,8 @@ class _VersionScreenState extends ConsumerState<VersionScreen> {
   @override
   void initState() {
     super.initState();
-    // Сначала версия, потом проверка: без установленной версии сравнивать
-    // релиз не с чем (`check` в этом случае честно скажет «есть релиз N»).
+    // The version first: without it there's nothing to compare the release
+    // with.
     Future.microtask(() async {
       final about = ref.read(aboutProvider.notifier);
       await about.loadVersion();
@@ -85,8 +77,8 @@ class _VersionScreenState extends ConsumerState<VersionScreen> {
             onTap: () => ref.read(aboutProvider.notifier).check(),
           ),
         const SizedBox(height: 26),
-        // Заметку тянем не раньше, чем проверка кончилась: до этого неизвестно,
-        // чью показывать — новой версии или установленной.
+        // Not before the check ends: until then it's unknown whose note to
+        // show.
         if (about.phase == UpdatePhase.uptodate ||
             about.phase == UpdatePhase.available ||
             about.phase == UpdatePhase.error) ...[
@@ -101,8 +93,7 @@ class _VersionScreenState extends ConsumerState<VersionScreen> {
           ),
         ],
         const SizedBox(height: 22),
-        // История — сюда же из «Системы»: заметки к версиям лежат в одном
-        // манифесте с той, что показана выше, и искать их в двух местах незачем.
+        // The notes live in the same manifest as the one above.
         SettingsGroupCard(
           dividerInset: 52,
           rows: [
@@ -125,9 +116,8 @@ class _VersionScreenState extends ConsumerState<VersionScreen> {
   }
 }
 
-/// Исход проверки крупно: кружок со значком, строка состояния и под ней —
-/// какая версия стоит сейчас. Тот же расклад, что на макете: значок, заголовок,
-/// подпись — по центру.
+/// The outcome in large: an icon in a circle, a status line, and which version
+/// is installed.
 class _StatusCard extends StatelessWidget {
   const _StatusCard({required this.about});
 
@@ -142,8 +132,7 @@ class _StatusCard extends StatelessWidget {
     final (icon, color, title) = switch (about.phase) {
       UpdatePhase.idle ||
       UpdatePhase.checking => (null, t.accent, l.aboutChecking),
-      // Цвета исходов — те же, что у тостов: зелёный «всё хорошо», жёлтый
-      // «не вышло». Про них уже знают по всему приложению.
+      // The toasts' colours, known across the app.
       UpdatePhase.uptodate => (
         Bi.checkCircleBold,
         kindColor(ToastKind.success, t),
@@ -174,8 +163,8 @@ class _StatusCard extends StatelessWidget {
                 color: color.withValues(alpha: 0.16),
                 shape: BoxShape.circle,
               ),
-              // Пока идёт проверка — крутилка ровно на месте значка: коробка
-              // одна, и блок не подпрыгивает, когда исход приходит.
+              // One box for the spinner and the icon: the block doesn't jump
+              // when the outcome comes.
               child: icon == null
                   ? SizedBox(
                       width: 28,
@@ -192,8 +181,8 @@ class _StatusCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               about.version.isEmpty
-                  // Платформа не ответила (так бывает в тестах и на десктопе);
-                  // прочерк честнее нуля.
+                  // No answer from the platform: a dash is more honest than a
+                  // zero.
                   ? '${l.aboutVersion} —'
                   : l.aboutInstalled(about.version),
               textAlign: TextAlign.center,
@@ -206,19 +195,17 @@ class _StatusCard extends StatelessWidget {
   }
 }
 
-/// Заметка к версии: те же разделы, что в шторке «Что нового».
-///
-/// Манифест тянется из сети (или из кэша, если её нет), поэтому блок сам
-/// показывает крутилку и сам объясняет пустой исход — заметки к версии может
-/// не быть вовсе.
+/// A version's note, with the sections of "What's new". It comes from the
+/// network or the cache, so the block shows its spinner and explains an empty
+/// outcome: a version may have no note.
 class _NoteBlock extends ConsumerStatefulWidget {
   const _NoteBlock({required this.version, required this.fallback});
 
-  /// Чью заметку показываем: найденной версии или установленной.
+  /// The found version's or the installed one's.
   final String version;
 
-  /// Установленная версия — к ней откатываемся, если про найденную в манифесте
-  /// ещё не написали.
+  /// The installed version, for when the manifest doesn't know the found one
+  /// yet.
   final String fallback;
 
   @override
@@ -238,22 +225,22 @@ class _NoteBlockState extends ConsumerState<_NoteBlock> {
   @override
   void didUpdateWidget(_NoteBlock old) {
     super.didUpdateWidget(old);
-    // Проверка кончилась и версия сменилась с установленной на найденную —
-    // перезапрашиваем; в остальных случаях запрос живёт один.
+    // The check ended and the version changed from installed to found: I ask
+    // again. Otherwise one request lives on.
     _ensure();
   }
 
   void _ensure() {
     if (widget.version.isEmpty || _asked == widget.version) return;
-    // Локаль берём тут: к `Localizations` из `initState` обращаться нельзя.
+    // Here: `Localizations` can't be reached from `initState`.
     final locale = Localizations.localeOf(context).languageCode;
     final notes = ref.read(updateNotesProvider);
     _asked = widget.version;
     _future = () async {
       final note = await notes.note(widget.version, locale);
       if (note != null) return note;
-      // Про найденную версию в манифесте ещё не написали — показываем заметку
-      // к установленной, она человеку тоже в новинку.
+      // The manifest doesn't know the found version yet: the installed one's
+      // note is new to them as well.
       if (widget.fallback.isEmpty || widget.fallback == widget.version) {
         return null;
       }
@@ -305,8 +292,8 @@ class _NoteBlockState extends ConsumerState<_NoteBlock> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Шапка заметки: чья версия и когда вышла — иначе на странице
-                // не видно, к чему относится текст.
+                // Whose version and when, or the text doesn't say what it's
+                // about.
                 Text(
                   note.title.isEmpty ? 'v${note.version}' : note.title,
                   style: theme.titleMedium,

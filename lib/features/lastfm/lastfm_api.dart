@@ -1,16 +1,8 @@
-/// Web-API Last.fm (`ws.audioscrobbler.com/2.0/`) — порт сетевой части
-/// десктопного `features/lastfm/model/lastfmStore.ts`.
+/// Last.fm's web API: plain requests signed with `api_sig`. Each user has their
+/// own app keys, none are built in.
 ///
-/// Бэкенда у этой интеграции нет ни там, ни здесь: всё делается прямыми
-/// запросами с подписью `api_sig = md5(отсортированные ключ+значение + secret)`.
-/// Свой md5 с десктопа (`lastfm/lib/md5.ts`) НЕ переносим — в проекте уже есть
-/// пакет `crypto` ради подписи ссылок Яндекса.
-///
-/// Ключи приложения свои у каждого пользователя (`last.fm/api/account/create`),
-/// вшитого ключа Bloom нет — как и на ПК.
-///
-/// Ошибки наружу не бросаем: скробблинг — фоновое дело, ронять из-за него
-/// воспроизведение нельзя. Неудача выглядит как `null`/`false`.
+/// Nothing is thrown: scrobbling is background work and must not bring playback
+/// down. A failure is `null`.
 library;
 
 import 'dart:convert';
@@ -20,16 +12,15 @@ import 'package:http/http.dart' as http;
 
 const String kLastfmBase = 'https://ws.audioscrobbler.com/2.0/';
 
-/// Страница подтверждения доступа: туда уходит браузер после `auth.getToken`.
+/// Where the browser goes after `auth.getToken`.
 String lastfmAuthUrl(String apiKey, String token) =>
     'https://www.last.fm/api/auth/?api_key=$apiKey&token=$token';
 
-/// Где заводят свои ключи. Показывается в инструкции.
+/// Where one's own keys come from; shown in the guide.
 const String kLastfmApiAccountUrl = 'https://www.last.fm/api/account/create';
 
-/// Подпись запроса — десктопный `sign`: ключи по алфавиту, значения встык,
-/// в хвост секрет, всё это md5 по UTF-8. `format` в подпись НЕ входит: его
-/// добавляют уже после (так же на ПК и так же требует сам Last.fm).
+/// Keys sorted, values joined, the secret at the end, md5 over UTF-8. `format`
+/// stays out of the signature: it's added after.
 String lastfmSign(Map<String, String> params, String apiSecret) {
   final keys = params.keys.toList()..sort();
   final buffer = StringBuffer();
@@ -42,8 +33,7 @@ String lastfmSign(Map<String, String> params, String apiSecret) {
   return md5.convert(utf8.encode(buffer.toString())).toString();
 }
 
-/// Транспорт запросов. Отдельной переменной — чтобы тесты подменяли его и не
-/// ходили в сеть (тот же приём, что `openVerifyPage` у Яндекса).
+/// A variable, so tests stay off the network.
 typedef LastfmTransport =
     Future<Map<String, dynamic>?> Function(
       Map<String, String> form, {
@@ -54,8 +44,7 @@ LastfmTransport lastfmTransport = defaultLastfmTransport;
 
 final http.Client _http = http.Client();
 
-/// Настоящий транспорт — HTTP. Отдельным именем, чтобы тест мог вернуть его на
-/// место после подмены.
+/// Named, so a test can put it back.
 Future<Map<String, dynamic>?> defaultLastfmTransport(
   Map<String, String> form, {
   bool get = false,
@@ -67,12 +56,12 @@ Future<Map<String, dynamic>?> defaultLastfmTransport(
     final data = jsonDecode(res.body);
     return data is Map<String, dynamic> ? data : null;
   } catch (_) {
-    // Сеть отвалилась / пришёл не JSON: для скробблинга это просто «не вышло».
+    // No network or not JSON: for scrobbling it's just "didn't work".
     return null;
   }
 }
 
-/// Подписанный POST. Возвращает разобранный ответ либо `null`.
+/// A signed POST; the parsed answer or `null`.
 Future<Map<String, dynamic>?> lastfmPost(
   Map<String, String> params, {
   required String apiKey,
@@ -87,17 +76,17 @@ Future<Map<String, dynamic>?> lastfmPost(
   }, get: false);
 }
 
-/// Ответ `auth.getToken`: либо токен, либо причина отказа от самой площадки.
+/// Either a token or the service's reason.
 class LastfmTokenResult {
   const LastfmTokenResult({this.token, this.message});
 
   final String? token;
 
-  /// Текст ошибки Last.fm (`message`), если токена не дали.
+  /// Last.fm's `message` when no token came.
   final String? message;
 }
 
-/// Шаг 1 OAuth: разовый токен. Подписи не требует.
+/// Sign-in, step 1: a one-time token. Needs no signature.
 Future<LastfmTokenResult> lastfmGetToken(String apiKey) async {
   final data = await lastfmTransport({
     'method': 'auth.getToken',
@@ -113,7 +102,7 @@ Future<LastfmTokenResult> lastfmGetToken(String apiKey) async {
   );
 }
 
-/// Сессия Last.fm: ключ и ник.
+/// A session: its key and the nickname.
 class LastfmSession {
   const LastfmSession({required this.key, required this.name});
 
@@ -121,8 +110,8 @@ class LastfmSession {
   final String name;
 }
 
-/// Ответ `auth.getSession`. Сессии нет — либо доступ ещё не подтверждён в
-/// браузере, либо площадка объяснила причину в [message].
+/// No session: access isn't confirmed in the browser yet, or [message] says
+/// why.
 class LastfmSessionResult {
   const LastfmSessionResult({this.session, this.message});
 
@@ -130,7 +119,7 @@ class LastfmSessionResult {
   final String? message;
 }
 
-/// Шаг 2 OAuth: обмен подтверждённого токена на ключ сессии.
+/// Sign-in, step 2: a confirmed token for a session key.
 Future<LastfmSessionResult> lastfmGetSession({
   required String apiKey,
   required String apiSecret,
@@ -156,50 +145,77 @@ Future<LastfmSessionResult> lastfmGetSession({
   return LastfmSessionResult(message: message is String ? message : null);
 }
 
-/// «Сейчас играет». Статус живёт у Last.fm недолго и обновляется на каждом
-/// треке — результат никого не интересует.
-Future<void> lastfmNowPlaying({
+/// "Now playing". The answer matters only for a session that's gone.
+Future<Map<String, dynamic>?> lastfmNowPlaying({
   required String apiKey,
   required String apiSecret,
   required String sk,
   required String artist,
   required String track,
   required String album,
-}) async {
-  await lastfmPost(
-    {
-      'method': 'track.updateNowPlaying',
-      'artist': artist,
-      'track': track,
-      'album': album,
-      'sk': sk,
-    },
-    apiKey: apiKey,
-    apiSecret: apiSecret,
+}) => lastfmPost(
+  {
+    'method': 'track.updateNowPlaying',
+    'artist': artist,
+    'track': track,
+    'album': album,
+    'sk': sk,
+  },
+  apiKey: apiKey,
+  apiSecret: apiSecret,
+);
+
+/// One waiting scrobble. [ts] is when the track started, Unix seconds.
+class LfmScrobble {
+  const LfmScrobble({
+    required this.artist,
+    required this.track,
+    required this.album,
+    required this.duration,
+    required this.ts,
+  });
+
+  factory LfmScrobble.fromJson(Map<String, dynamic> raw) => LfmScrobble(
+    artist: raw['artist'] as String? ?? '',
+    track: raw['track'] as String? ?? '',
+    album: raw['album'] as String? ?? '',
+    duration: (raw['duration'] as num?)?.toInt() ?? 0,
+    ts: (raw['ts'] as num?)?.toInt() ?? 0,
   );
+
+  final String artist;
+  final String track;
+  final String album;
+  final int duration;
+  final int ts;
+
+  Map<String, Object> toJson() => {
+    'artist': artist,
+    'track': track,
+    'album': album,
+    'duration': duration,
+    'ts': ts,
+  };
 }
 
-/// Засчитать прослушивание. [timestamp] — секунды Unix НАЧАЛА трека, как
-/// требует Last.fm (и как считает десктоп).
-Future<void> lastfmScrobble({
+/// Sends a batch at once; `null` means no answer.
+Future<Map<String, dynamic>?> lastfmScrobble({
   required String apiKey,
   required String apiSecret,
   required String sk,
-  required String artist,
-  required String track,
-  required String album,
-  required int timestamp,
-}) async {
-  await lastfmPost(
-    {
-      'method': 'track.scrobble',
-      'artist': artist,
-      'track': track,
-      'timestamp': '$timestamp',
-      'album': album,
-      'sk': sk,
+  required List<LfmScrobble> batch,
+}) => lastfmPost(
+  {
+    'method': 'track.scrobble',
+    'sk': sk,
+    for (final (i, s) in batch.indexed) ...{
+      'artist[$i]': s.artist,
+      'track[$i]': s.track,
+      'timestamp[$i]': '${s.ts}',
+      if (s.album.isNotEmpty) 'album[$i]': s.album,
+      if (s.duration > 0) 'duration[$i]': '${s.duration}',
     },
-    apiKey: apiKey,
-    apiSecret: apiSecret,
-  );
-}
+  },
+  apiKey: apiKey,
+  apiSecret: apiSecret,
+);

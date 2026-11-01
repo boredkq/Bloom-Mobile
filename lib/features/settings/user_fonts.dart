@@ -1,19 +1,10 @@
-/// Свои шрифты: файл, загруженный пользователем, встаёт в один ряд со
-/// встроенными (`app/theme/fonts.dart`) — порт десктопных `lib/userFonts.ts` и
-/// `model/userFontsStore.ts`.
+/// One's own fonts stand beside the built-in ones. A file is COPIED inside
+/// (`<private>/fonts/<id>.<ext>`): access to a picked file is temporary on
+/// Android and the font would die with the next launch. Meta is in `bloom.json`
+/// under [kUserFontsKey].
 ///
-/// Файл КОПИРУЕТСЯ внутрь приложения (`<служебный каталог>/fonts/<id>.<ext>`),
-/// а не читается по ссылке выбора: доступ к выбранному файлу у Android
-/// временный, и шрифт умер бы со следующим запуском. Мета (id/имя/семейство)
-/// лежит в `bloom.json` под [kUserFontsKey].
-///
-/// Отличия от ПК:
-/// - только .ttf и .otf: .woff/.woff2 движок Flutter не читает;
-/// - шрифты регистрируются ДО первого кадра ([initUserFonts]) — на ПК
-///   `@font-face` вписывается, когда ответит IndexedDB, и первые десятки мс
-///   текст рисуется запасным шрифтом;
-/// - зарегистрированный шрифт выгрузить из движка нельзя: удалённый живёт в
-///   памяти до перезапуска, но выбрать его уже неоткуда.
+/// Only .ttf and .otf: the engine doesn't read .woff. They're registered before
+/// the first frame ([initUserFonts]).
 library;
 
 import 'dart:io';
@@ -30,7 +21,7 @@ import '../../core/store/settings_store.dart';
 
 const String kUserFontsKey = 'userFonts';
 
-/// Потолок на файл — как на ПК: шрифт с CJK бывает и 20 МБ.
+/// A CJK font can be 20 MB.
 const int kMaxFontBytes = 12 * 1024 * 1024;
 
 const Set<String> _fontExts = {'ttf', 'otf'};
@@ -47,13 +38,13 @@ class UserFont {
 
   final String id;
 
-  /// Имя файла без расширения — подпись плитки.
+  /// The file name without extension, the tile's caption.
   final String name;
 
-  /// Уникальное семейство (`bloomfont-<id>`), чтобы не спорить со встроенными.
+  /// `bloomfont-<id>`, so as not to clash with built-in ones.
   final String family;
 
-  /// Имя файла в каталоге `fonts`.
+  /// In the `fonts` folder.
   final String file;
 
   final int bytes;
@@ -99,9 +90,9 @@ Future<Directory> _fontsDir() async {
   return dir;
 }
 
-/// Похоже ли на файл шрифта — по сигнатуре: TrueType (`00 01 00 00`, `true`),
-/// OpenType (`OTTO`), коллекция (`ttcf`). Движок на битом файле не бросает, а
-/// молча рисует запасным шрифтом, так что отсеивать приходится самим.
+/// By signature: TrueType (`00 01 00 00`, `true`), OpenType (`OTTO`), a
+/// collection (`ttcf`). The engine doesn't throw on a broken file, it just
+/// draws a fallback, so I filter here.
 bool looksLikeFont(List<int> bytes) {
   if (bytes.length < 12) return false;
   final tag = String.fromCharCodes(bytes.sublist(0, 4));
@@ -111,7 +102,6 @@ bool looksLikeFont(List<int> bytes) {
       tag == 'ttcf';
 }
 
-/// Имя плитки из имени файла — как `readFontFile` на ПК.
 String fontNameFromFile(String fileName) {
   final dot = fileName.lastIndexOf('.');
   final base = dot > 0 ? fileName.substring(0, dot) : fileName;
@@ -130,9 +120,8 @@ Future<void> _register(String family, Uint8List bytes) async {
   await loader.load();
 }
 
-/// Поднять свои шрифты при запуске — до первого кадра, иначе выбранный свой
-/// шрифт мелькнул бы Inter. Пропавший файл не валит запуск: шрифт просто не
-/// зарегистрируется, а тема нарисуется запасным.
+/// Before the first frame, or a chosen font flashes as Inter. A missing file
+/// doesn't stop the launch: it just isn't registered.
 Future<void> initUserFonts(JsonStore store) async {
   final fonts = readUserFonts(store);
   if (fonts.isEmpty) return;
@@ -149,8 +138,7 @@ Future<void> initUserFonts(JsonStore store) async {
   }
 }
 
-/// Выбранный файл: имя, размер (если платформа знает его без чтения) и
-/// чтение байтов.
+/// The name, the size if known without reading, and reading the bytes.
 typedef PickedFontFile = ({
   String name,
   int? size,
@@ -178,9 +166,8 @@ class UserFontsController extends Notifier<List<UserFont>> {
     for (final f in state) f.toJson(),
   ]);
 
-  /// Загрузить файлы. Не подошедшие — в [FontAddResult.errors], тексты
-  /// показывает экран. Один добавленный файл сразу применяется: человек грузил
-  /// шрифт, чтобы им пользоваться (так же на ПК).
+  /// Unfit ones go to [FontAddResult.errors], the screen words them. A single
+  /// added file applies at once: it was uploaded to be used.
   Future<FontAddResult> addFiles(List<PickedFontFile> files) async {
     final errors = <FontAddError>{};
     final settings = ref.read(settingsProvider.notifier);
@@ -213,8 +200,8 @@ class UserFontsController extends Notifier<List<UserFont>> {
         continue;
       }
       final name = fontNameFromFile(picked.name);
-      // Тот же файл второй раз — не плодим одинаковые плитки; одиночный выбор
-      // просто применяет уже загруженный.
+      // The same file again: no equal tiles; a single pick just applies the
+      // loaded one.
       final dup = state
           .where((f) => f.name == name && f.bytes == bytes.length)
           .firstOrNull;
@@ -251,7 +238,7 @@ class UserFontsController extends Notifier<List<UserFont>> {
     return FontAddResult(added, errors);
   }
 
-  /// Удалить шрифт; выбранный — интерфейс возвращается на Inter.
+  /// If it was chosen, the interface goes back to Inter.
   Future<void> remove(String id) async {
     final font = state.where((f) => f.id == id).firstOrNull;
     if (font == null) return;
@@ -274,8 +261,7 @@ class UserFontsController extends Notifier<List<UserFont>> {
   }
 }
 
-/// Шрифт, которым рисуется интерфейс: выбор из настроек, проверенный против
-/// каталога и своих шрифтов.
+/// The choice in settings, checked against the catalogue and one's own fonts.
 final uiFontProvider = Provider<String>(
   (ref) => normalizeFont(ref.watch(settingsProvider).fontFamily, [
     for (final f in ref.watch(userFontsProvider)) f.family,

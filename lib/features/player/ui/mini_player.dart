@@ -32,7 +32,6 @@ import '../../../shared/ui/marquee_text.dart';
 import '../mini_style_store.dart';
 import '../play_error.dart';
 import '../player_controller.dart';
-import '../track_anim_store.dart';
 import 'play_button.dart';
 import 'track_swap.dart';
 
@@ -183,7 +182,6 @@ class MiniCardRow extends ConsumerWidget {
     if (track == null) return const SizedBox.shrink();
 
     final theme = Theme.of(context).textTheme;
-    final anim = ref.watch(trackAnimProvider).of(TrackAnimSurface.mini);
     final style = ref.watch(miniStyleProvider);
     // Своя картинка из «Кастомизации» подменяет обложку ИГРАЮЩЕГО трека —
     // соседи показывают свои.
@@ -209,7 +207,7 @@ class MiniCardRow extends ConsumerWidget {
                 _MiniCover(
                   trackId: track.id,
                   cover: cover,
-                  anim: live ? anim.cover : TrackAnimKind.none,
+                  animated: live,
                   shape: style.shape,
                   ring: progress.ring,
                 ),
@@ -217,7 +215,7 @@ class MiniCardRow extends ConsumerWidget {
                 Expanded(
                   child: TrackSwap(
                     id: track.id,
-                    kind: live ? anim.text : TrackAnimKind.none,
+                    animated: live,
                     tuning: TrackSwapTuning.mini,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -353,14 +351,14 @@ class _MiniCover extends StatelessWidget {
   const _MiniCover({
     required this.trackId,
     required this.cover,
-    required this.anim,
+    required this.animated,
     required this.shape,
     required this.ring,
   });
 
   final String trackId;
   final String? cover;
-  final TrackAnimKind anim;
+  final bool animated;
   final MiniCoverShape shape;
   final bool ring;
 
@@ -383,7 +381,8 @@ class _MiniCover extends StatelessWidget {
             borderRadius: BorderRadius.circular(radius),
             child: TrackSwap(
               id: trackId,
-              kind: anim,
+              fade: true,
+              animated: animated,
               tuning: TrackSwapTuning.mini,
               child: Cover(url: cover, size: _coverSize, radius: 0),
             ),

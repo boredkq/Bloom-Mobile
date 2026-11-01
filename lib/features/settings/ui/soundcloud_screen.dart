@@ -1,12 +1,9 @@
-/// Настройки SoundCloud: ручной `client_id` и проверка соединения.
+/// SoundCloud: a typed `client_id` and a connection check, on the
+/// [PlatformPage] layout. Collapsed at rest: the key is found on its own, and
+/// "Set up" opens the guide, the field and the check.
 ///
-/// Раскладка — [PlatformPage]: знак площадки посреди экрана, действия внизу.
-/// В покое страница свёрнута (настраивать обычно нечего — ключ подбирается
-/// сам), «Настроить» раскрывает карточку с инструкцией, поле ключа и проверку.
-///
-/// Обе операции портированы вместе с провайдером: `setManualClientId` сбрасывает
-/// авто-кеш, `checkConnection` сначала сбрасывает его же и потом делает тестовый
-/// поиск — то есть показывает, каким ключом всё реально работает сейчас.
+/// Saving by hand drops the found key; the check drops it too and searches, so
+/// it shows which key really works now.
 library;
 
 import 'package:flutter/material.dart';
@@ -39,8 +36,7 @@ class _SoundCloudSettingsScreenState
     text: ref.read(settingsProvider).scClientId ?? '',
   );
 
-  /// Раскрыт ли блок настройки. В покое страница показывает только знак: свой
-  /// ключ нужен редко.
+  /// One's own key is rarely needed.
   bool _open = false;
   bool _checking = false;
   ScCheckResult? _result;
@@ -69,8 +65,7 @@ class _SoundCloudSettingsScreenState
     });
     final result = await sc.checkConnection();
     if (!mounted) return;
-    // Авто-подбор сработал, а поле пустое — подставим ключ, чтобы его можно
-    // было сохранить (то же, что на ПК).
+    // Found one on its own and the field is empty: I put it there to save.
     if (result.ok && _controller.text.trim().isEmpty) {
       final id = result.clientId;
       if (id != null) _controller.text = id;
@@ -125,8 +120,8 @@ class _SoundCloudSettingsScreenState
     final t = context.bloom;
     final l = context.l;
     final theme = Theme.of(context).textTheme;
-    // Правка в поле ещё не сохранена — левая кнопка предлагает сохранить;
-    // иначе она чистит уже сохранённый ключ.
+    // An unsaved edit: the left button offers to save, otherwise it clears the
+    // saved key.
     final changed = _controller.text.trim() != (saved ?? '');
 
     return Column(
@@ -161,8 +156,7 @@ class _SoundCloudSettingsScreenState
                     ),
                   ),
                 ),
-                // «?» внутри поля — как на референсе: инструкция нужна ровно
-                // тогда, когда смотришь на пустое поле.
+                // The guide is needed exactly when looking at an empty field.
                 CircleIconButton(
                   icon: Bi.questionCircle,
                   size: 48,

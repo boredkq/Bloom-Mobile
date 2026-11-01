@@ -1,15 +1,7 @@
-/// «О приложении»: версия сборки и проверка обновлений — порт десктопных
-/// `AboutBlock.tsx` + `updateStore.ts`, урезанный до того, что мобилка умеет.
-///
-/// На ПК обновление скачивается и ставится самим приложением (плагин
-/// `tauri-updater`). На телефоне так нельзя: APK ставит система, из App Store
-/// приложение обновляется само, и никакой установщик мы не пишем. Поэтому здесь
-/// осталась ровно проверка: сходить в GitHub Releases, сравнить версии и, если
-/// вышла новее, дать кнопку «Открыть страницу релиза» — дальше человек качает
-/// APK сам.
-///
-/// Заметки к версиям (`update-notes` с ПК) не переносились: их манифест лежит в
-/// десктопном репозитории и описывает десктопные релизы.
+/// The build's version and the update check: GitHub releases compared with
+/// what's installed, and a link to the release page if newer. An APK is
+/// installed by the system and App Store updates by itself, so there's no
+/// installer here.
 library;
 
 import 'dart:convert';
@@ -20,21 +12,17 @@ import 'package:http/http.dart' as http;
 import '../../core/log/bloom_log.dart';
 import '../../core/store/text_files.dart';
 
-/// Публичный репозиторий с релизами обеих платформ, куда
-/// `.github/workflows/release.yml` кладёт APK. Код мобилки лежит в приватном
-/// `bxzlik/Bloom-Mobile`, а из приватного репозитория без токена не скачать —
-/// отсюда и прокладка. Он же источник заметок в `update_notes_store.dart`.
+/// The public repository with the releases, where the release workflow puts the
+/// APK. The notes come from it too.
 const String kUpdateRepo = 'bxzlik/Bloom';
 
-/// Префикс тега мобильных релизов: `mobile-v1.2.3`. У десктопных — `desktop-v`,
-/// и путать их нельзя: версии платформ нумеруются независимо, так что чужой
-/// релиз здесь выглядел бы как обновление. Задаётся в release.yml.
+/// Mobile release tags. Each platform numbers on its own, so another's release
+/// would look like an update here.
 const String kTagPrefix = 'mobile-v';
 
 Uri get _releasesUrl =>
     Uri.parse('https://api.github.com/repos/$kUpdateRepo/releases?per_page=30');
 
-/// Что показывает блок «О приложении».
 enum UpdatePhase { idle, checking, uptodate, available, error }
 
 class AboutState {
@@ -45,16 +33,13 @@ class AboutState {
     this.releaseUrl = '',
   });
 
-  /// Версия установленной сборки (`1.0.0`); пусто — платформа не ответила.
-  ///
-  /// Номер сборки (`versionCode`) рядом не показываем: он растёт от каждой
-  /// сборки CI и человеку ничего не говорит, а сравнивать с релизом мы всё
-  /// равно будем по версии.
+  /// The installed version; empty if the platform didn't answer. The build
+  /// number stays out: it grows with each build and says nothing to anyone.
   final String version;
 
   final UpdatePhase phase;
 
-  /// Версия последнего релиза без `v` — есть только после успешной проверки.
+  /// Without `v`; only after a successful check.
   final String latest;
   final String releaseUrl;
 
@@ -71,8 +56,7 @@ class AboutState {
   );
 }
 
-/// Как ходим за релизом. Отдельным провайдером ради тестов: сеть в них
-/// подменяется, как `lastfmTransport` у Last.fm.
+/// A provider for tests.
 typedef ReleaseFetch = Future<String> Function(Uri url);
 
 final releaseFetchProvider = Provider<ReleaseFetch>((ref) => _get);
@@ -96,8 +80,8 @@ class AboutController extends Notifier<AboutState> {
   @override
   AboutState build() => const AboutState();
 
-  /// Прочитать версию у платформы. Идемпотентно — экран зовёт её при каждом
-  /// открытии, а ответ не меняется до переустановки.
+  /// Safe to repeat: the screen calls it on each opening and the answer holds
+  /// until reinstalling.
   Future<void> loadVersion() async {
     if (state.version.isNotEmpty) return;
     final info = await appVersion();
@@ -105,7 +89,7 @@ class AboutController extends Notifier<AboutState> {
     state = state.copyWith(version: info.version);
   }
 
-  /// Сходить за последним релизом. Второй вызов, пока идёт первый, игнорируем.
+  /// A second call during the first is ignored.
   Future<void> check() async {
     if (state.phase == UpdatePhase.checking) return;
     state = state.copyWith(phase: UpdatePhase.checking);
@@ -113,8 +97,8 @@ class AboutController extends Notifier<AboutState> {
       final body = await ref.read(releaseFetchProvider)(_releasesUrl);
       final json = jsonDecode(body);
       if (json is! List) throw const FormatException('не JSON-массив');
-      // Список приходит от новых к старым — берём первый мобильный. Черновики и
-      // пререлизы пропускаем: так же вёл себя прежний /releases/latest.
+      // Newest first: I take the first mobile one, skipping drafts and
+      // pre-releases.
       final rel = json.firstWhere(
         (r) =>
             r is Map &&
@@ -132,8 +116,8 @@ class AboutController extends Notifier<AboutState> {
       final url =
           rel['html_url'] as String? ??
           'https://github.com/$kUpdateRepo/releases';
-      // Версия неизвестна (платформа не ответила) — сравнивать не с чем, и
-      // честнее показать «есть релиз N», чем соврать «установлена последняя».
+      // Version unknown: "release N is out" is more honest than "you have the
+      // latest".
       final newer =
           state.version.isEmpty || compareVersions(latest, state.version) > 0;
       state = state.copyWith(
@@ -148,18 +132,15 @@ class AboutController extends Notifier<AboutState> {
   }
 }
 
-/// `v1.2.3` → `1.2.3`. Тег релиза, имя сборки и версия из манифеста должны
-/// сравниваться в одном виде.
+/// Tags, build names and manifest versions compare in one form.
 String normalizeVersion(String raw) {
   final v = raw.trim();
   return v.startsWith('v') || v.startsWith('V') ? v.substring(1) : v;
 }
 
-/// Сравнение версий по числовым частям — порт `cmpVer` с десктопа.
-///
-/// Разной длины сравниваются как дополненные нулями (`1.2` = `1.2.0`), нечисловой
-/// хвост (`1.2.3-beta`) отбрасывается: у нас релизы нумеруются просто, а падать
-/// из-за чужого тега проверка обновлений не должна.
+/// By numeric parts. Different lengths compare as padded with zeros (`1.2` =
+/// `1.2.0`); a non-numeric tail is dropped, so someone's odd tag can't break
+/// the check.
 int compareVersions(String a, String b) {
   final pa = _parts(a);
   final pb = _parts(b);

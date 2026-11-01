@@ -17,6 +17,7 @@ import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/pressable.dart';
 import '../pl_auto_store.dart';
+import '../../settings/ui/settings_rows.dart';
 
 /// «30 мин» / «3 ч» — подпись периода (десктопный `fmtEvery`).
 String _fmtEvery(AppLocalizations l, int min) =>
@@ -75,7 +76,7 @@ class _PlAutoBody extends ConsumerWidget {
         _Hero(selected: selected, candidates: candidates.length),
         SheetPanel(
           children: [
-            _ToggleRow(
+            SettingsToggleRow(
               title: context.l.paAutoTitle,
               subtitle: context.l.paAutoSubtitle,
               value: state.enabled,
@@ -88,13 +89,13 @@ class _PlAutoBody extends ConsumerWidget {
               onPick: auto.setEveryMin,
             ),
             sheetDivider(),
-            _ToggleRow(
+            SettingsToggleRow(
               title: context.l.paOnStartTitle,
               subtitle: context.l.paOnStartSubtitle,
               value: state.onStart,
-              // Без расписания проверять при запуске нечего — как и на ПК,
-              // строка гаснет вместе с тумблером выше.
-              onChanged: state.enabled ? auto.setOnStart : null,
+              // Nothing to check at launch without a schedule.
+              enabled: state.enabled,
+              onChanged: auto.setOnStart,
             ),
           ],
         ),
@@ -254,63 +255,6 @@ class _Hero extends ConsumerWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ToggleRow extends StatelessWidget {
-  const _ToggleRow({
-    required this.title,
-    required this.subtitle,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String title;
-  final String subtitle;
-  final bool value;
-  final ValueChanged<bool>? onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    final enabled = onChanged != null;
-
-    return InkWell(
-      onTap: enabled ? () => onChanged!(!value) : null,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: theme.titleMedium?.copyWith(
-                      color: enabled ? t.text : t.muted,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: theme.bodySmall?.copyWith(color: t.muted),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            IgnorePointer(
-              child: Opacity(
-                opacity: enabled ? 1 : 0.5,
-                child: BloomSwitch(value: value, onChanged: (_) {}),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

@@ -2696,12 +2696,6 @@ abstract class AppLocalizations {
   /// **'Mini player'**
   String get setMiniPlayer;
 
-  /// No description provided for @setStub.
-  ///
-  /// In en, this message translates to:
-  /// **'“{title}” isn’t built yet'**
-  String setStub(String title);
-
   /// desktop: settings.view.titleAlign — the group holding it
   ///
   /// In en, this message translates to:
@@ -2857,66 +2851,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Wave'**
   String get pvSliderWave;
-
-  /// desktop: settings.view.tab.anim
-  ///
-  /// In en, this message translates to:
-  /// **'Track change'**
-  String get pvGroupAnim;
-
-  /// desktop: settings.view.trackAnim.player
-  ///
-  /// In en, this message translates to:
-  /// **'Player'**
-  String get pvAnimPlayer;
-
-  /// No description provided for @pvAnimPlayerSub.
-  ///
-  /// In en, this message translates to:
-  /// **'the full screen player — cover and title are configured separately'**
-  String get pvAnimPlayerSub;
-
-  /// desktop: settings.view.trackAnim.bar
-  ///
-  /// In en, this message translates to:
-  /// **'Mini player'**
-  String get pvAnimMini;
-
-  /// No description provided for @pvAnimMiniSub.
-  ///
-  /// In en, this message translates to:
-  /// **'the card above the tab bar'**
-  String get pvAnimMiniSub;
-
-  /// desktop: settings.view.trackAnim.cover
-  ///
-  /// In en, this message translates to:
-  /// **'Cover'**
-  String get pvAnimCover;
-
-  /// desktop: settings.view.trackAnim.text
-  ///
-  /// In en, this message translates to:
-  /// **'Title and artist'**
-  String get pvAnimText;
-
-  /// No description provided for @pvAnimNone.
-  ///
-  /// In en, this message translates to:
-  /// **'None'**
-  String get pvAnimNone;
-
-  /// No description provided for @pvAnimSlide.
-  ///
-  /// In en, this message translates to:
-  /// **'Slide'**
-  String get pvAnimSlide;
-
-  /// No description provided for @pvAnimFade.
-  ///
-  /// In en, this message translates to:
-  /// **'Fade'**
-  String get pvAnimFade;
 
   /// desktop: settings.view.lyrics
   ///
@@ -4046,6 +3980,36 @@ abstract class AppLocalizations {
   /// **'Offline cache cleared, files deleted: {count}'**
   String stCleared(int count);
 
+  /// No description provided for @stCovers.
+  ///
+  /// In en, this message translates to:
+  /// **'Covers'**
+  String get stCovers;
+
+  /// No description provided for @stClearCoversBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloaded covers will be deleted — they are fetched again the next time they show.'**
+  String get stClearCoversBody;
+
+  /// No description provided for @stCoversCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Cover cache cleared'**
+  String get stCoversCleared;
+
+  /// No description provided for @stCoversKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep covers'**
+  String get stCoversKeep;
+
+  /// No description provided for @lfmSessionLost.
+  ///
+  /// In en, this message translates to:
+  /// **'The sign-in no longer works — sign in again'**
+  String get lfmSessionLost;
+
   /// No description provided for @stLyricsCleared.
   ///
   /// In en, this message translates to:
@@ -4067,7 +4031,7 @@ abstract class AppLocalizations {
   /// desktop: settings.storage.ttl.never
   ///
   /// In en, this message translates to:
-  /// **'Never'**
+  /// **'No limit'**
   String get stKeepNever;
 
   /// desktop: settings.storage.ttl.restart
@@ -4730,6 +4694,12 @@ abstract class AppLocalizations {
   /// **'Count listened tracks on Last.fm'**
   String get lfmScrobbleSub;
 
+  /// No description provided for @lfmPending.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} scrobble waits to be sent} other{{count} scrobbles wait to be sent}}'**
+  String lfmPending(int count);
+
   /// desktop: settings.lastfm.nowPlaying.sub
   ///
   /// In en, this message translates to:
@@ -5293,12 +5263,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'File saved'**
   String get sysExported;
-
-  /// No description provided for @sysNoPlaylists.
-  ///
-  /// In en, this message translates to:
-  /// **'There are no playlists yet'**
-  String get sysNoPlaylists;
 
   /// desktop: settings.system.import.title
   ///

@@ -1,14 +1,6 @@
-/// «Что нового» и «История обновлений» — шторки поверх «Системы».
-///
-/// Порт десктопной `UpdateNotesModal.tsx`, но без карусели: там страницы
-/// заметки листаются стрелками и точками, потому что окно модалки фиксированной
-/// высоты. В шторке телефона естественнее вертикаль — страницы манифеста идут
-/// разделами одной прокрутки, и палец делает то же, что и всегда.
-///
-/// Разметка текста — только списки: строка, начинающаяся с `- `, рисуется
-/// пунктом с точкой, остальные — абзацем. Полноценный markdown десктопа
-/// (жирный, ссылки) не тянем: манифест мобилки пишем мы сами, и списков ему
-/// хватает.
+/// "What's new" and "Update history", as sheets. A note's pages are sections of
+/// one scroll, what a finger does anyway. Text is lists only: a line starting
+/// with `- ` is an item, others a paragraph.
 library;
 
 import 'package:flutter/material.dart';
@@ -23,7 +15,6 @@ import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/pressable.dart';
 import '../update_notes_store.dart';
 
-/// Показать заметку к версии.
 Future<void> showUpdateNote(BuildContext context, UpdateNote note) {
   final l = context.l;
   final locale = Localizations.localeOf(context).languageCode;
@@ -37,8 +28,7 @@ Future<void> showUpdateNote(BuildContext context, UpdateNote note) {
   );
 }
 
-/// Показать список версий. Тап по строке открывает заметку поверх списка —
-/// закрыв её, человек возвращается к истории, как по кнопке «назад» на ПК.
+/// A tap opens the note over the list; closing it comes back to the history.
 Future<void> showUpdateHistory(BuildContext context) {
   final l = context.l;
   return showBloomSheetChild<void>(
@@ -48,7 +38,7 @@ Future<void> showUpdateHistory(BuildContext context) {
   );
 }
 
-/// Шапка шторки заметок: знак приложения, название и дата/подпись.
+/// The app's mark, a title, a date or a caption.
 class _NotesHeader extends StatelessWidget {
   const _NotesHeader({required this.title, required this.subtitle});
 
@@ -93,7 +83,7 @@ class _NotesHeader extends StatelessWidget {
   }
 }
 
-/// Тело заметки: страницы манифеста разделами, внизу «Готово».
+/// The manifest's pages as sections, "Done" at the end.
 class _NoteBody extends StatelessWidget {
   const _NoteBody({required this.note});
 
@@ -135,8 +125,8 @@ class _NoteBody extends StatelessWidget {
   }
 }
 
-/// Одна страница заметки: заголовок, текст списком и картинка. Публичная —
-/// её же показывает страница «Версия».
+/// A title, the text as a list, a picture. Public: the "Version" page shows it
+/// too.
 class UpdateNoteSection extends StatelessWidget {
   const UpdateNoteSection({super.key, required this.page});
 
@@ -163,8 +153,7 @@ class UpdateNoteSection extends StatelessWidget {
             child: Image.network(
               image,
               fit: BoxFit.cover,
-              // Картинки в заметке необязательны: не скачалась — просто нет её,
-              // текст читается и без.
+              // Pictures are optional: the text reads without one.
               errorBuilder: (_, _, _) => const SizedBox.shrink(),
               loadingBuilder: (context, child, progress) => progress == null
                   ? child
@@ -180,7 +169,7 @@ class UpdateNoteSection extends StatelessWidget {
   }
 }
 
-/// Текст страницы: строки с `- ` — пунктами списка, остальные — абзацами.
+/// `- ` lines as items, others as paragraphs.
 class _NoteText extends StatelessWidget {
   const _NoteText({required this.body});
 
@@ -204,8 +193,8 @@ class _NoteText extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Точка списка своя, а не из шрифта: у «•» в Inter слишком
-                  // много воздуха по бокам, и текст уезжает вправо.
+                  // Its own dot: "•" in the font has too much air around it and
+                  // the text moves right.
                   Padding(
                     padding: const EdgeInsets.only(top: 7, right: 10),
                     child: Container(
@@ -233,7 +222,6 @@ class _NoteText extends StatelessWidget {
   }
 }
 
-/// Список версий из манифеста.
 class _HistoryList extends ConsumerStatefulWidget {
   const _HistoryList();
 
@@ -247,9 +235,8 @@ class _HistoryListState extends ConsumerState<_HistoryList> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Не в `initState`: локаль приходит из `Localizations`, а к унаследованным
-    // виджетам оттуда обращаться нельзя. Заводим запрос один раз — иначе
-    // `FutureBuilder` перезапускал бы его на каждый кадр.
+    // Not in `initState`: the locale comes from inherited `Localizations`.
+    // Asked once, or `FutureBuilder` would restart it every frame.
     final locale = Localizations.localeOf(context).languageCode;
     _future ??= ref.read(updateNotesProvider).history(locale);
   }
@@ -349,8 +336,8 @@ class _HistoryRow extends ConsumerWidget {
     );
   }
 
-  /// Манифест к этому моменту уже в памяти (его скачал список), поэтому
-  /// заметка открывается сразу — спиннер тут не нужен.
+  /// The list already fetched the manifest, so the note opens at once and needs
+  /// no spinner.
   Future<void> _open(BuildContext context, WidgetRef ref, String locale) async {
     final note = await ref.read(updateNotesProvider).note(item.version, locale);
     if (!context.mounted || note == null) return;

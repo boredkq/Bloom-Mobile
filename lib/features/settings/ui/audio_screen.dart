@@ -1,15 +1,6 @@
-/// Настройки → «Аудио».
-///
-/// С десктопной секции `AudioSection.tsx` пока не перенесено ничего: кроссфейд
-/// и нормализация громкости живут там в WebAudio-графе, которого у нас нет, а
-/// «Устройство вывода» на телефоне выбирает сама система (наушники, колонка,
-/// bluetooth) — экрана для этого приложению не положено.
-///
-/// Здесь — «Запуск»: что делать с прошлой сессией, когда приложение открыли
-/// заново, и «Очередь» с «Авто похожими» (порт группы из `AudioSection.tsx`,
-/// 3.1). Десктопная `settings.system.autoplay` живёт на ПК в «Системе», но на
-/// телефоне пользователь выбрал ей место тут, рядом со звуком; вторая строка —
-/// «Восстановление очереди» — мобильная и новая (на ПК её ещё нет).
+/// Settings → Audio: what happens to the last session on launch, and the queue
+/// going on with similar tracks. The output device is the system's business
+/// here.
 library;
 
 import 'package:flutter/material.dart';
@@ -47,21 +38,16 @@ class AudioSettingsScreen extends ConsumerWidget {
               value: settings.restoreQueue,
               onChanged: controller.setRestoreQueue,
             ),
-            // Автовоспроизведение — вложенная настройка восстановления («и
-            // сразу продолжить»), само оно ничего не восстанавливает. Поэтому
-            // строка появляется только при включённом восстановлении, ровно
-            // как на ПК, а его выключение гасит и флаг (см.
-            // `SettingsController.setRestoreQueue`): скрытая строка не должна
-            // остаться поднятой в bloom.json, иначе возврат восстановления дал
-            // бы играющий с порога плеер.
-            if (settings.restoreQueue)
-              SettingsToggleRow(
-                icon: Bi.play,
-                title: l.audAutoplayTitle,
-                subtitle: l.audAutoplaySub,
-                value: settings.autoplay,
-                onChanged: controller.setAutoplay,
-              ),
+            // Autoplay only goes on from a restored session: turning that off
+            // takes it along.
+            SettingsToggleRow(
+              icon: Bi.play,
+              title: l.audAutoplayTitle,
+              subtitle: l.audAutoplaySub,
+              value: settings.autoplay,
+              enabled: settings.restoreQueue,
+              onChanged: controller.setAutoplay,
+            ),
           ],
         ),
         const SizedBox(height: 22),

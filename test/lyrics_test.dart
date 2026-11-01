@@ -243,9 +243,9 @@ void main() {
       cache.remember('a::old', found, keep: true);
       cache.remember('a::new', found, keep: true);
       db.exec("UPDATE lyrics SET at = at - 2 * 86400000 WHERE key = 'a::old'");
-      expect(cache.purge(LyricsKeep.day), 1);
+      expect(cache.purge(CacheKeep.day), 1);
       expect(cache.read('a::new'), isNotNull);
-      cache.start(LyricsKeep.restart);
+      cache.start(CacheKeep.restart);
       expect(cache.stats().count, 0);
     });
 
@@ -366,7 +366,7 @@ void main() {
       final prefs = c.read(lyricsPrefsProvider);
       expect(prefs.mode, LyricsMode.overlay);
       expect(prefs.cache, isFalse);
-      expect(prefs.keep, LyricsKeep.never);
+      expect(prefs.keep, CacheKeep.never);
     });
 
     test('saved and read back; unknown values fall back', () {
@@ -377,13 +377,13 @@ void main() {
       );
       first.read(lyricsPrefsProvider.notifier)
         ..setMode(LyricsMode.replace)
-        ..setKeep(LyricsKeep.week);
+        ..setKeep(CacheKeep.week);
       final second = _container(
         answer: (_) async => LyricsResult.none,
         store: store,
       );
       expect(second.read(lyricsPrefsProvider).mode, LyricsMode.replace);
-      expect(second.read(lyricsPrefsProvider).keep, LyricsKeep.week);
+      expect(second.read(lyricsPrefsProvider).keep, CacheKeep.week);
 
       final odd = _container(
         answer: (_) async => LyricsResult.none,
@@ -392,7 +392,7 @@ void main() {
         }),
       );
       expect(odd.read(lyricsPrefsProvider).mode, LyricsMode.overlay);
-      expect(odd.read(lyricsPrefsProvider).keep, LyricsKeep.never);
+      expect(odd.read(lyricsPrefsProvider).keep, CacheKeep.never);
     });
   });
 

@@ -1,20 +1,5 @@
-/// Настройки.
-///
-/// Состав разделов — ПОРТ десктопного `SettingsNav.tsx` (`GROUPS`), названия
-/// групп и пунктов взяты из `dict.ts` дословно. Из макета сюда пришла только
-/// раскладка: капсовые заголовки групп и тёмные контейнеры со строками
-/// «иконка — текст — шеврон».
-///
-/// Не перенесены разделы, которых на телефоне физически не бывает: «Оверлей»
-/// (окно поверх других окон), «Горячие клавиши» (глобальные, на уровне ОС),
-/// «Discord RPC», «Эффективность», «Страницы» и «Вкладки». Вместо них в
-/// «Приложение» добавлены «Свайпы» — жесты есть только на телефоне. Иконки — те
-/// же Solar, что на десктопе; исключение «Система»: там монитор, здесь
-/// смартфон.
-///
-/// Заглушек в «Приложении» и «Интерфейсе» больше нет: работают «Система»,
-/// «Аудио», «Хранилище», «Свайпы», «Внешний вид», «Плеер», «Мини плеер»,
-/// кастомизация, все три площадки и «Last.fm».
+/// Settings: the groups and their rows. Sections that make no sense on a phone
+/// aren't here; swipes are only here.
 library;
 
 import 'package:flutter/material.dart';
@@ -32,7 +17,6 @@ import '../../lastfm/lastfm_store.dart';
 import '../../pc/pc_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
-import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/language_card.dart';
 import '../../../shared/ui/platform_logo.dart';
 import '../../../shared/ui/subpage_header.dart';
@@ -46,9 +30,8 @@ class SettingsScreen extends StatelessWidget {
     return SafeArea(
       bottom: false,
       child: ListView(
-        // Заголовка экрана нет: вкладка и так подписана иконкой в таб-баре,
-        // а первая группа начинается со своего капсового заголовка. Снизу к
-        // полю добавлены бары каркаса — они плавают над списком.
+        // No title: the tab's icon says it, and the first group has its header.
+        // The bars float over the list: the bottom counts from them.
         padding: EdgeInsets.fromLTRB(20, 4, 20, 16 + bottomBarsInset(context)),
         children: [
           SettingsGroup(
@@ -74,17 +57,12 @@ class SettingsScreen extends StatelessWidget {
                 title: context.l.setSwipes,
                 onTap: () => context.go('/settings/swipes'),
               ),
-              // Язык и версия — в конце группы, как на макете. Язык переехал
-              // сюда из «Внешнего вида»: он не про оформление, а про само
-              // приложение.
+              // Not about looks but the app itself.
               const LanguageSettingsRow(),
               const VersionSettingsRow(),
             ],
           ),
-          // Всё про вид приложения — одной группой «Интерфейс», включая обе
-          // страницы кастомизации: своей группой они стояли отдельной от
-          // «Оформления» плашкой, хотя настраивают ровно то же самое (так
-          // решил пользователь, показав макет).
+          // All about how the app looks, in one group.
           SettingsGroup(
             title: context.l.setGroupInterface,
             rows: [
@@ -98,8 +76,6 @@ class SettingsScreen extends StatelessWidget {
                 title: context.l.setPlayer,
                 onTap: () => context.go('/settings/player'),
               ),
-              // Тот же значок, каким мини-плеер помечен как поверхность в
-              // «Смене трека»: строка и там и тут про одну карточку.
               SettingsRow(
                 icon: Bi.widget,
                 title: context.l.setMiniPlayer,
@@ -119,12 +95,11 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
-/// «Интеграции»: знак в фирменных цветах, только если интеграция готова к
-/// работе, иначе он серый — статус видно, не заходя в раздел.
+/// A logo in its colours only if the integration is ready, grey otherwise: the
+/// status shows without going in.
 ///
-/// SoundCloud и YouTube Music работают без входа (ключ SoundCloud подбирается
-/// сам), поэтому они всегда цветные. Яндекс.Музыка — по сохранённому токену,
-/// Last.fm — по ключу сессии.
+/// SoundCloud and YouTube Music work without signing in, so they're always
+/// coloured; Yandex goes by its token, Last.fm by its session.
 class _IntegrationsGroup extends ConsumerWidget {
   const _IntegrationsGroup();
 
@@ -165,7 +140,6 @@ class _IntegrationsGroup extends ConsumerWidget {
           ),
           onTap: () => context.go('/settings/lastfm'),
         ),
-        // Bloom на ПК — пара раздела «Интеграции → Телефон» там.
         SettingsRow(
           icon: Bi.monitor,
           title: context.l.setPc,
@@ -182,8 +156,7 @@ class SettingsGroup extends StatelessWidget {
 
   final String title;
 
-  /// Строки группы — [SettingsRow] или обёртка над ней («Язык», «Версия»:
-  /// им нужно своё состояние).
+  /// [SettingsRow] or a wrapper over it: "Language" and "Version" need state.
   final List<Widget> rows;
 
   @override
@@ -195,8 +168,7 @@ class SettingsGroup extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(6, 20, 6, 8),
           child: SettingsCaption(title),
         ),
-        // 14 паддинга + 24 иконки + 14 зазора: линия начинается ровно под
-        // текстом строки.
+        // Padding, icon, gap: the line starts under the row's text.
         SettingsGroupCard(rows: rows, dividerInset: 52),
       ],
     );
@@ -209,7 +181,7 @@ class SettingsRow extends StatelessWidget {
     this.icon,
     this.leading,
     required this.title,
-    this.onTap,
+    required this.onTap,
     this.value,
     this.trailing,
   });
@@ -217,43 +189,33 @@ class SettingsRow extends StatelessWidget {
   final BloomGlyph? icon;
   final Widget? leading;
   final String title;
-  final VoidCallback? onTap;
+  final VoidCallback onTap;
 
-  /// Что показать справа от названия, перед шевроном (номер версии).
+  /// Right of the title, before the chevron: the version number.
   final String? value;
 
-  /// Чем заменить шеврон (флаг у языка): строка и так открывает шторку, а
-  /// стрелка рядом с флагом читалась бы вторым значком.
+  /// Replaces the chevron: an arrow beside the flag would read as a second
+  /// icon.
   final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
-    final ready = onTap != null;
     return Pressable(
-      onTap: onTap ?? () => _showStub(context, title),
+      onTap: onTap,
       scale: 0.98,
       child: Padding(
-        // 22 по вертикали + 20 строки текста = 64 на строку.
+        // Makes 64 a row with the text line.
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 22),
         child: Row(
           children: [
             SizedBox(
               width: 24,
-              child:
-                  leading ??
-                  BloomIcon(icon, size: 20, color: ready ? t.iconFg : t.muted),
+              child: leading ?? BloomIcon(icon, size: 20, color: t.iconFg),
             ),
             const SizedBox(width: 14),
-            Expanded(
-              child: Text(
-                title,
-                style: ready
-                    ? theme.titleMedium
-                    : theme.titleMedium?.copyWith(color: t.text2),
-              ),
-            ),
+            Expanded(child: Text(title, style: theme.titleMedium)),
             if (value case final text?) ...[
               Text(
                 text,
@@ -271,18 +233,15 @@ class SettingsRow extends StatelessWidget {
   }
 }
 
-/// Строка «Язык»: справа флаг того языка, на котором приложение сейчас
-/// говорит, тап — шторка со списком.
-///
-/// Флаг вместо шеврона — как на макете: он и показывает выбранное, и говорит,
-/// что строка про язык, без второго значка справа.
+/// The flag of the language in use; a tap opens the list. In place of the
+/// chevron: it shows the choice and what the row is about.
 class LanguageSettingsRow extends ConsumerWidget {
   const LanguageSettingsRow({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Язык не выбран руками — показываем тот, на котором приложение говорит
-    // сейчас (системный), иначе флаг не соответствовал бы тексту вокруг.
+    // Not chosen by hand: the one in use, the system's, or the flag won't match
+    // the text around it.
     final code =
         (ref.watch(settingsProvider.select((s) => s.locale)) ??
                 Localizations.localeOf(context))
@@ -296,12 +255,8 @@ class LanguageSettingsRow extends ConsumerWidget {
   }
 }
 
-/// Шторка выбора языка: флаг, название на самом языке, галочка у выбранного.
-/// Закрывается от выбора — выбирать в ней больше нечего.
-///
-/// Шапки нет: строка, из которой сюда пришли, осталась видна над шторкой, и
-/// подписывать список флагов словом «Язык» второй раз незачем (та же причина,
-/// что у шторок «Плеера»).
+/// A flag, the name in that language, a check on the chosen. Closes on
+/// choosing. No header: the row it came from stays visible above.
 Future<void> _pickLanguage(
   BuildContext context,
   WidgetRef ref,
@@ -309,8 +264,8 @@ Future<void> _pickLanguage(
 ) async {
   final picked = await showBloomSheetChild<Locale>(
     context: context,
-    // Закрывать шторку надо ЕЁ контекстом: она живёт в корневом навигаторе, а
-    // «Настройки» — во вложенном, и `pop` со страничным закрыл бы вкладку.
+    // With the sheet's own context: it lives in the root navigator, the page's
+    // would close the tab.
     child: Builder(
       builder: (sheetContext) => Column(
         mainAxisSize: MainAxisSize.min,
@@ -347,8 +302,8 @@ class _LanguageTile extends StatelessWidget {
       _ => context.l.apLanguageEn,
     };
     return SheetPanel(
-      // Строки стоят вплотную — как в шторках «Плеера»: полный просвет блока
-      // рвал бы короткий список на отдельные плашки.
+      // Close together: a full gap would tear a short list into separate
+      // plates.
       gap: 3,
       children: [
         Pressable(
@@ -378,8 +333,8 @@ class _LanguageTile extends StatelessWidget {
   }
 }
 
-/// Строка «Версия»: справа номер установленной сборки, тап — страница проверки
-/// обновлений с заметками к новой версии.
+/// The installed version on the right; a tap opens the update check with its
+/// notes.
 class VersionSettingsRow extends ConsumerStatefulWidget {
   const VersionSettingsRow({super.key});
 
@@ -391,9 +346,8 @@ class _VersionSettingsRowState extends ConsumerState<VersionSettingsRow> {
   @override
   void initState() {
     super.initState();
-    // Версию спрашиваем у платформы один раз за сеанс: ответ не меняется до
-    // переустановки. Не в `build` — там правка состояния пришлась бы на фазу
-    // построения кадра.
+    // Asked once a session, the answer holds until reinstalling. Not in
+    // `build`: that would change state during the frame's build.
     Future.microtask(() => ref.read(aboutProvider.notifier).loadVersion());
   }
 
@@ -403,13 +357,9 @@ class _VersionSettingsRowState extends ConsumerState<VersionSettingsRow> {
     return SettingsRow(
       icon: Bi.infoCircle,
       title: context.l.aboutVersion,
-      // Платформа не ответила (так бывает в тестах и на десктопе) — прочерк
-      // честнее нуля.
+      // No answer from the platform: a dash is more honest than a zero.
       value: version.isEmpty ? '—' : 'v$version',
       onTap: () => context.go('/settings/version'),
     );
   }
 }
-
-void _showStub(BuildContext context, String title) =>
-    showToast(context, context.l.setStub(title), kind: ToastKind.warn);
