@@ -40,6 +40,7 @@ import '../../../shared/ui/track_actions.dart';
 import '../../../shared/ui/track_swipes.dart';
 import '../player_controller.dart';
 import '../player_view_store.dart';
+import '../../../shared/ui/subpage_header.dart';
 
 /// Высота заголовка секции расширенного вида. Задана числом, а не собрана из
 /// отступов: по ней шторка считает, куда проматываться при открытии.
@@ -96,15 +97,6 @@ class _QueueSheetState extends ConsumerState<_QueueSheet> {
   /// Ключи строк. Один трек может стоять в очереди дважды (повтор в
   /// плейлисте), а `ReorderableListView` падает на дублях — поэтому к id
   /// дописываем номер вхождения.
-  List<Key> _keys(List<Track> queue) {
-    final seen = <String, int>{};
-    return [
-      for (final track in queue)
-        ValueKey('${track.id}#${seen[track.id] = (seen[track.id] ?? -1) + 1}'),
-    ];
-  }
-
-  /// Список секций. Обычный вид — одна на всю очередь, расширенный — до трёх.
   List<Widget> _slivers({
     required List<Track> queue,
     required List<Key> keys,
@@ -176,12 +168,7 @@ class _QueueSheetState extends ConsumerState<_QueueSheet> {
         padding: const EdgeInsets.fromLTRB(12, 14, 12, 6),
         child: Align(
           alignment: Alignment.centerLeft,
-          child: Text(
-            text.toUpperCase(),
-            style: Theme.of(
-              context,
-            ).textTheme.labelSmall?.copyWith(color: context.bloom.text2),
-          ),
+          child: SettingsCaption(text),
         ),
       ),
     ),
@@ -242,7 +229,7 @@ class _QueueSheetState extends ConsumerState<_QueueSheet> {
     final state = ref.watch(playbackProvider);
     final ctrl = ref.read(playbackProvider.notifier);
     final queue = state.queue;
-    final keys = _keys(queue);
+    final keys = trackRowKeys(queue);
 
     // Смахнули последний трек — очередь пуста, показывать в шторке нечего.
     // Плеер под нами закроется сам (см. `FullPlayerPage`), но закрыться первой

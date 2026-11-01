@@ -13,7 +13,6 @@ import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_cache.dart';
 import '../../../core/store/settings_store.dart';
 import '../../../features/lyrics/lyrics_store.dart';
-import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
@@ -37,7 +36,7 @@ class StorageSettingsScreen extends ConsumerWidget {
       children: [
         _UsageCard(stats: stats),
         const SizedBox(height: 22),
-        SettingsCaption(l.stManage.toUpperCase()),
+        SettingsCaption(l.stManage),
         const SizedBox(height: 10),
         SettingsGroupCard(
           dividerInset: 52,
@@ -49,7 +48,7 @@ class StorageSettingsScreen extends ConsumerWidget {
         const SizedBox(height: 12),
         SettingsGroupCard(rows: [_ClearAllRow(stats: stats)]),
         const SizedBox(height: 22),
-        SettingsCaption(l.ltImportTitle.toUpperCase()),
+        SettingsCaption(l.ltImportTitle),
         const SizedBox(height: 10),
         SettingsGroupCard(dividerInset: 52, rows: const [_ImportRow()]),
       ],
@@ -435,18 +434,17 @@ class _LyricsKeeping extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l;
-    final theme = Theme.of(context).textTheme;
     final prefs = ref.watch(lyricsPrefsProvider);
     final ctrl = ref.read(lyricsPrefsProvider.notifier);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(child: Text(l.stLyricsKeep, style: theme.titleMedium)),
-            BloomSwitch(value: prefs.cache, onChanged: ctrl.setCache),
-          ],
+        SheetSwitchRow(
+          label: l.stLyricsKeep,
+          value: prefs.cache,
+          onChanged: ctrl.setCache,
+          padding: EdgeInsets.zero,
         ),
         const SizedBox(height: 12),
         IgnorePointer(

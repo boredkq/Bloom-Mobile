@@ -12,7 +12,7 @@ import '../../core/store/cover_store.dart';
 import '../../features/player/player_controller.dart';
 import 'atoms.dart';
 import 'bloom_icon.dart';
-import 'bloom_mark.dart';
+
 import 'cover_hero.dart';
 import 'glass.dart';
 import 'pressable.dart';
@@ -175,13 +175,7 @@ class _Background extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
-    // Solid, not a film: a background picture would show through.
-    Widget empty() => ColoredBox(
-      color: t.coverEmpty,
-      child: Center(child: BloomMark(size: 96, color: t.text, opacity: 0.16)),
-    );
-
+    Widget empty() => const BannerEmpty();
     final earlier = coverImage(previous);
     Widget waiting() => earlier == null
         ? empty()

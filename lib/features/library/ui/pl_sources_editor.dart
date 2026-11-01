@@ -137,51 +137,33 @@ class _PlSourcesEditorState extends ConsumerState<PlSourcesEditor> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-
-    return Padding(
-      // По краю блоков шторки: секция живёт только в ней.
-      padding: const EdgeInsets.fromLTRB(kSheetEdge, 6, kSheetEdge, 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(context.l.psTitle, style: theme.titleMedium),
-          const SizedBox(height: 4),
-          Text(
-            context.l.psHint,
-            style: theme.bodySmall?.copyWith(color: t.muted, height: 1.35),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SheetTitle(context.l.psTitle, subtitle: context.l.psHint),
+        for (var i = 0; i < widget.sources.length; i++)
+          _SourceRow(
+            source: widget.sources[i],
+            onRemove: _busy ? null : () => _remove(i),
           ),
-          const SizedBox(height: 12),
-          for (var i = 0; i < widget.sources.length; i++) ...[
-            _SourceRow(
-              source: widget.sources[i],
-              onRemove: _busy ? null : () => _remove(i),
-            ),
-            const SizedBox(height: 8),
-          ],
-          SheetField(
-            controller: _url,
-            hint: context.l.psAddHint,
-            busy: _busy,
-            autocorrect: false,
-            keyboardType: TextInputType.url,
-            trailing: switch (detectLinkSource(_url.text)) {
-              final source? => PlatformLogo(source, size: 18),
-              null => null,
-            },
-            padding: EdgeInsets.zero,
-            onChanged: (_) => setState(() {}),
-            onSubmit: _add,
-          ),
-        ],
-      ),
+        SheetField(
+          controller: _url,
+          hint: context.l.psAddHint,
+          busy: _busy,
+          autocorrect: false,
+          keyboardType: TextInputType.url,
+          trailing: switch (detectLinkSource(_url.text)) {
+            final source? => PlatformLogo(source, size: 18),
+            null => null,
+          },
+          onChanged: (_) => setState(() {}),
+          onSubmit: _add,
+        ),
+      ],
     );
   }
 }
 
-/// Строка привязки: знак площадки, название коллекции, под ним владелец (или
-/// ссылка, если владельца площадка не сказала).
 class _SourceRow extends StatelessWidget {
   const _SourceRow({required this.source, required this.onRemove});
 
@@ -190,61 +172,31 @@ class _SourceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    final platform = MusicSource.fromCode(source.provider);
     final title = source.title.isEmpty ? source.url : source.title;
     final under = source.owner.isEmpty ? source.url : source.owner;
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
-      decoration: BoxDecoration(
-        // Плашка внутри шторки красится по её скину, а не токеном страницы:
-        // на стекле сплошной `pill` остался бы единственным глухим пятном.
-        color: sheetPanelColor(context),
-        borderRadius: BorderRadius.circular(t.radius),
-      ),
-      child: Row(
-        children: [
-          // Знак площадки — в фирменных цветах, как везде в приложении.
-          PlatformLogo(platform, size: 18),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.titleMedium,
-                ),
-                // Ссылку под названием повторять незачем, когда она и есть
-                // название.
-                if (under.isNotEmpty && under != title) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    under,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.bodySmall?.copyWith(color: t.muted),
-                  ),
-                ],
-              ],
-            ),
+    return SheetPanel(
+      gap: 4,
+      children: [
+        SheetRow(
+          leading: PlatformLogo(
+            MusicSource.fromCode(source.provider),
+            size: 18,
           ),
-          const SizedBox(width: 8),
-          CircleIconButton(
+          gap: 12,
+          label: title,
+          subtitle: under.isNotEmpty && under != title ? under : null,
+          color: context.bloom.text,
+          trailing: CircleIconButton(
             icon: Bi.close,
             size: 40,
             iconSize: 18,
             background: Colors.transparent,
-            color: t.muted,
+            color: context.bloom.muted,
             tooltip: context.l.psRemove,
             onTap: onRemove,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

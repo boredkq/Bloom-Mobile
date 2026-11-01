@@ -30,24 +30,8 @@ class MediaLibraryPane extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(mediaLibProvider);
-    if (items.isEmpty) {
-      return Center(
-        child: CenterNote(
-          context.l.custLibraryEmpty,
-          padding: const EdgeInsets.symmetric(horizontal: 40),
-        ),
-      );
-    }
-    return GridView.builder(
-      padding: EdgeInsets.fromLTRB(16, 12, 16, 8 + bottomBarsInset(context)),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        // Ландшафтная плитка: обои и есть ландшафт, а квадрат резал бы их
-        // посередине ещё в списке.
-        childAspectRatio: 4 / 3,
-      ),
+    return CustomPane(
+      empty: context.l.custLibraryEmpty,
       itemCount: items.length,
       itemBuilder: (_, i) => _MediaCard(item: items[i]),
     );

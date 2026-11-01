@@ -394,9 +394,11 @@ class _SourceItem extends StatelessWidget {
         SizedBox.square(
           dimension: 20,
           child: Center(
-            child: local
-                ? BloomIcon(Bi.folder, size: 20, color: t.text2)
-                : PlatformLogo(row.source, size: 20),
+            child: PlatformLogo(
+              row.source,
+              size: 20,
+              color: local ? t.text2 : null,
+            ),
           ),
         ),
         const SizedBox(height: 6),
@@ -507,22 +509,11 @@ class _FootState extends ConsumerState<_Foot> {
               context.l.statsClearSub,
               style: bloomText(size: 12, weight: 500, color: t.text2),
             ),
-            SizedBox(
-              height: 44,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      context.l.statsClearLevel,
-                      style: bloomText(size: 13, weight: 500, color: t.text),
-                    ),
-                  ),
-                  BloomSwitch(
-                    value: _resetLevel,
-                    onChanged: (v) => setState(() => _resetLevel = v),
-                  ),
-                ],
-              ),
+            SheetSwitchRow(
+              label: context.l.statsClearLevel,
+              value: _resetLevel,
+              onChanged: (v) => setState(() => _resetLevel = v),
+              padding: const EdgeInsets.symmetric(vertical: 10),
             ),
           ] else if (month != null) ...[
             BloomButton(

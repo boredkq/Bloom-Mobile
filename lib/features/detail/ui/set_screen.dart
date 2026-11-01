@@ -11,7 +11,6 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/store/library_store.dart';
-import '../../../features/customization/ui/app_background.dart';
 import '../../../features/library/import_url.dart';
 import '../../../features/player/play_source.dart';
 import '../../../features/player/player_controller.dart';
@@ -26,6 +25,7 @@ import '../../../shared/util/artists.dart';
 import '../../../shared/util/format.dart';
 import '../detail_nav.dart';
 import 'detail_parts.dart';
+import '../../../shared/ui/subpage_header.dart';
 
 class SetScreen extends ConsumerStatefulWidget {
   const SetScreen({super.key, required this.set, this.flight});
@@ -170,11 +170,7 @@ class _SetScreenState extends ConsumerState<SetScreen> {
     final queue = _tracks;
     final saved = _savedIn(ref.watch(libraryProvider), _set);
 
-    return Scaffold(
-      // A background picture may lie under the page: then no fill of its own.
-      backgroundColor: ref.watch(backgroundOnProvider)
-          ? Colors.transparent
-          : t.bg,
+    return BloomPage(
       body: CustomScrollView(
         slivers: [
           DetailHero(

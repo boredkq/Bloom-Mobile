@@ -15,7 +15,6 @@ import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
-import '../../../shared/ui/pressable.dart';
 import '../pl_auto_store.dart';
 import '../../settings/ui/settings_rows.dart';
 
@@ -59,7 +58,6 @@ class _PlAutoBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
     final state = ref.watch(plAutoProvider);
     final auto = ref.read(plAutoProvider.notifier);
     final lib = ref.watch(libraryProvider);
@@ -99,42 +97,28 @@ class _PlAutoBody extends ConsumerWidget {
             ),
           ],
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 10, 24, 2),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  context.l.paPlaylistsWithSources,
-                  style: theme.bodySmall?.copyWith(color: t.muted),
-                ),
-              ),
-              if (candidates.isNotEmpty)
-                Pressable(
+        SheetCaption(
+          context.l.paPlaylistsWithSources,
+          color: t.muted,
+          trailing: candidates.isEmpty
+              ? null
+              : BloomButton(
+                  label: allSelected
+                      ? context.l.paDeselectAll
+                      : context.l.paSelectAll,
+                  height: 24,
                   onTap: state.running
                       ? null
                       : () => library.setAutoRefresh(
                           candidates.map((p) => p.id),
                           !allSelected,
                         ),
-                  child: Text(
-                    allSelected
-                        ? context.l.paDeselectAll
-                        : context.l.paSelectAll,
-                    style: theme.bodySmall?.copyWith(color: t.accent),
-                  ),
                 ),
-            ],
-          ),
         ),
         if (candidates.isEmpty)
-          Padding(
+          CenterNote(
+            context.l.paNothingToRefresh,
             padding: const EdgeInsets.fromLTRB(28, 12, 28, 8),
-            child: Text(
-              context.l.paNothingToRefresh,
-              textAlign: TextAlign.center,
-              style: theme.bodySmall?.copyWith(color: t.muted),
-            ),
           )
         else
           SheetPanel(
@@ -186,10 +170,7 @@ class _Hero extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
     final state = ref.watch(plAutoProvider);
-
-    /// «через 40 мин» до следующего прохода.
     String? next() {
       if (!state.enabled || selected == 0) return null;
       final left =
@@ -206,64 +187,36 @@ class _Hero extends ConsumerWidget {
       if (state.enabled) _fmtEvery(context.l, state.everyMin),
       ?next(),
     ];
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-      child: Row(
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: t.sysAllTint,
-              borderRadius: BorderRadius.circular(t.radius),
-            ),
-            child: BloomIcon(
-              Bi.refresh,
-              size: 24,
-              color: state.running ? t.accent : t.sysAllIco,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(context.l.paTitle, style: theme.titleLarge),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    for (final chip in chips)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          // Чипы лежат прямо на фоне шторки, а он тут обычный
-                          // фон темы — плёнка блока, а не чёрный.
-                          color: t.pill,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          chip,
-                          style: theme.bodySmall?.copyWith(color: t.text2),
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
+    return SheetTitle(
+      context.l.paTitle,
+      bottom: 12,
+      leading: Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          color: t.sysAllTint,
+          borderRadius: BorderRadius.circular(t.radius),
+        ),
+        child: BloomIcon(
+          Bi.refresh,
+          size: 24,
+          color: state.running ? t.accent : t.sysAllIco,
+        ),
+      ),
+      line: Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final chip in chips) BloomTag(text: chip, active: false),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Период — тот же сегмент-переключатель, что `pau-seg` на ПК.
 class _IntervalRow extends StatelessWidget {
   const _IntervalRow({
     required this.value,
@@ -279,7 +232,6 @@ class _IntervalRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
       child: Column(
@@ -292,39 +244,29 @@ class _IntervalRow extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          Row(
-            children: [
-              for (final min in kPlAutoIntervals) ...[
-                Expanded(
-                  child: Pressable(
-                    onTap: enabled ? () => onPick(min) : null,
-                    child: Material(
-                      // Невыбранный сегмент — плёнка поверх блока, в который он
-                      // вложен: чёрный на плашке блока читался бы дырой.
-                      color: min == value
-                          ? (enabled ? t.accent : t.pill)
-                          : t.iconBg,
-                      borderRadius: BorderRadius.circular(999),
-                      clipBehavior: Clip.antiAlias,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 9),
-                        child: Center(
-                          child: Text(
-                            _fmtEvery(context.l, min),
-                            style: theme.bodySmall?.copyWith(
-                              color: min == value && enabled
-                                  ? t.accentText
-                                  : t.text2,
-                            ),
-                          ),
+          IgnorePointer(
+            ignoring: !enabled,
+            child: Opacity(
+              opacity: enabled ? 1 : 0.45,
+              child: Row(
+                children: [
+                  for (final min in kPlAutoIntervals) ...[
+                    Expanded(
+                      child: OptionTile(
+                        active: min == value,
+                        height: 36,
+                        onTap: () => onPick(min),
+                        builder: (ink) => Text(
+                          _fmtEvery(context.l, min),
+                          style: theme.bodySmall?.copyWith(color: ink),
                         ),
                       ),
                     ),
-                  ),
-                ),
-                if (min != kPlAutoIntervals.last) const SizedBox(width: 6),
-              ],
-            ],
+                    if (min != kPlAutoIntervals.last) const SizedBox(width: 6),
+                  ],
+                ],
+              ),
+            ),
           ),
         ],
       ),

@@ -8,8 +8,10 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme/tokens.dart';
+import '../../features/customization/ui/app_background.dart';
 import 'atoms.dart';
 import 'bloom_icon.dart';
 import 'glass.dart';
@@ -55,11 +57,7 @@ class SubPageHeader extends StatelessWidget {
   }
 }
 
-/// Капсовый заголовок группы на подстранице настроек.
-///
-/// Цвет — тот же `text2`, что у групп в корневых «Настройках»: общий
-/// `labelSmall` приглушён до `muted`, и после перехода с корневого списка
-/// заголовки заметно тускнели.
+/// A group's caption, in capitals.
 class SettingsCaption extends StatelessWidget {
   const SettingsCaption(this.text, {super.key});
 
@@ -67,7 +65,7 @@ class SettingsCaption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-    text,
+    text.toUpperCase(),
     style: Theme.of(
       context,
     ).textTheme.labelSmall?.copyWith(color: context.bloom.text2),
@@ -131,24 +129,29 @@ class GroupDivider extends StatelessWidget {
   }
 }
 
-/// Каркас подстраницы настроек: [SubPageHeader] прибит сверху, скролл живёт
-/// только в содержимом под ним.
-///
-/// Так «назад» и название раздела всегда под пальцем: раньше шапка ехала
-/// первым элементом общего списка и уползала за край с первым же движением.
+/// A page under a [SubPageHeader] that stays put: only what's below it scrolls,
+/// so "back" and the title are always under the finger.
 class SubPage extends StatelessWidget {
   const SubPage({
     super.key,
     required this.title,
     required this.onBack,
-    required this.children,
+    this.children = const [],
+    this.child,
+    this.actions = const [],
   });
 
   final String title;
   final VoidCallback onBack;
 
-  /// Содержимое страницы — дети скроллящегося списка под шапкой.
+  /// A list under the header, with the page's margins.
   final List<Widget> children;
+
+  /// Instead of [children]: what scrolls itself.
+  final Widget? child;
+
+  /// Round buttons next to the title.
+  final List<Widget> actions;
 
   @override
   Widget build(BuildContext context) {
@@ -158,29 +161,51 @@ class SubPage extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-            child: SubPageHeader(title: title, onBack: onBack),
+            child: Row(
+              children: [
+                Expanded(
+                  child: SubPageHeader(title: title, onBack: onBack),
+                ),
+                for (final action in actions) ...[
+                  const SizedBox(width: 8),
+                  action,
+                ],
+              ],
+            ),
           ),
-          // Часть просвета — распоркой, а не отступом списка: она остаётся на
-          // месте при скролле, и содержимое обрезается не по самому краю
-          // пилюли, а на этот зазор ниже. Вплотную к ней карточки касаются
-          // некрасиво.
+          // A strut, not list padding: content cuts off this far below the
+          // pill, not along its very edge.
           const SizedBox(height: 10),
           Expanded(
-            child: ListView(
-              // Вместе с распоркой сверху выходят прежние 22 — просвет под
-              // шапкой в покое не изменился. Снизу добавлены бары каркаса:
-              // они плавают над содержимым.
-              padding: EdgeInsets.fromLTRB(
-                16,
-                12,
-                16,
-                24 + bottomBarsInset(context),
-              ),
-              children: children,
-            ),
+            child:
+                child ??
+                ListView(
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    12,
+                    16,
+                    24 + bottomBarsInset(context),
+                  ),
+                  children: children,
+                ),
           ),
         ],
       ),
     );
   }
+}
+
+/// The ground of a pushed page: clear when the app has a picture behind it.
+class BloomPage extends ConsumerWidget {
+  const BloomPage({super.key, required this.body});
+
+  final Widget body;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => Scaffold(
+    backgroundColor: ref.watch(backgroundOnProvider)
+        ? Colors.transparent
+        : context.bloom.bg,
+    body: body,
+  );
 }

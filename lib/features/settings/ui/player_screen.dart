@@ -25,8 +25,6 @@ import '../../../features/player/ui/vinyl_disc.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
-import '../../../shared/ui/glass.dart';
-import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../../../shared/util/format.dart';
 import 'settings_rows.dart';
@@ -50,7 +48,7 @@ class PlayerSettingsScreen extends ConsumerWidget {
       title: l.setPlayer,
       onBack: () => context.go('/settings'),
       children: [
-        SettingsCaption(l.pvGroupLook.toUpperCase()),
+        SettingsCaption(l.pvGroupLook),
         const SizedBox(height: 10),
         SettingsGroupCard(
           rows: [
@@ -69,7 +67,7 @@ class PlayerSettingsScreen extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 22),
-        SettingsCaption(l.pvGroupQueue.toUpperCase()),
+        SettingsCaption(l.pvGroupQueue),
         const SizedBox(height: 10),
         const _QueueViewCards(),
         const SizedBox(height: 12),
@@ -85,7 +83,7 @@ class PlayerSettingsScreen extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 22),
-        SettingsCaption(l.pvGroupBg.toUpperCase()),
+        SettingsCaption(l.pvGroupBg),
         const SizedBox(height: 10),
         SettingsGroupCard(
           rows: [
@@ -107,7 +105,7 @@ class PlayerSettingsScreen extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 22),
-        SettingsCaption(l.pvGroupTitle.toUpperCase()),
+        SettingsCaption(l.pvGroupTitle),
         const SizedBox(height: 10),
         SettingsGroupCard(
           rows: [
@@ -120,7 +118,7 @@ class PlayerSettingsScreen extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 22),
-        SettingsCaption(l.pvGroupSlider.toUpperCase()),
+        SettingsCaption(l.pvGroupSlider),
         const SizedBox(height: 10),
         SettingsGroupCard(
           rows: [
@@ -133,7 +131,7 @@ class PlayerSettingsScreen extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 22),
-        SettingsCaption(l.pvGroupLyrics.toUpperCase()),
+        SettingsCaption(l.pvGroupLyrics),
         const SizedBox(height: 10),
         SettingsGroupCard(
           rows: [
@@ -235,32 +233,29 @@ class _PlayShapePreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(kSheetEdge, 8, kSheetEdge, 12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 26),
-        decoration: BoxDecoration(
-          // The fill of the sheet's blocks.
-          color: sheetPanelColor(context),
-          borderRadius: BorderRadius.circular(t.radius),
+    return SheetPanel(
+      gap: 10,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 26),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              BloomIcon(Bi.skipPreviousBold, size: 30, color: t.iconFg),
+              const SizedBox(width: 26),
+              const PlayButton(
+                size: 68,
+                iconSize: 28,
+                plainIconSize: 40,
+                spinnerSize: 28,
+                live: false,
+              ),
+              const SizedBox(width: 26),
+              BloomIcon(Bi.skipNextBold, size: 30, color: t.iconFg),
+            ],
+          ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            BloomIcon(Bi.skipPreviousBold, size: 30, color: t.iconFg),
-            const SizedBox(width: 26),
-            const PlayButton(
-              size: 68,
-              iconSize: 28,
-              plainIconSize: 40,
-              spinnerSize: 28,
-              live: false,
-            ),
-            const SizedBox(width: 26),
-            BloomIcon(Bi.skipNextBold, size: 30, color: t.iconFg),
-          ],
-        ),
-      ),
+      ],
     );
   }
 }
@@ -344,79 +339,19 @@ class _QueueViewCards extends ConsumerWidget {
         for (final view in QueueView.values) ...[
           if (view != QueueView.values.first) const SizedBox(width: 12),
           Expanded(
-            child: _OptionCard(
+            child: PickCard(
+              height: 88,
               label: view.isExtended ? l.pvQueueExtended : l.pvQueueNormal,
-              selected: view == current,
-              glyph: _QueueViewGlyph(extended: view.isExtended),
+              active: view == current,
+              picture: (ink) => IconTheme(
+                data: IconThemeData(color: ink),
+                child: _QueueViewGlyph(extended: view.isExtended),
+              ),
               onTap: () => ref.read(queueViewProvider.notifier).set(view),
             ),
           ),
         ],
       ],
-    );
-  }
-}
-
-/// A glyph over a label: "one of several" reads the same wherever it stands on
-/// this page.
-class _OptionCard extends StatelessWidget {
-  const _OptionCard({
-    required this.label,
-    required this.glyph,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-
-  /// Coloured through [IconTheme]: accent when chosen.
-  final Widget glyph;
-  final bool selected;
-  final VoidCallback onTap;
-
-  /// As tall as two settings rows: any lower, the glyph and the label touch.
-  static const double height = 88;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    return Pressable(
-      onTap: onTap,
-      scale: 0.97,
-      child: GlassBox(
-        // The settings group's radius: it stands in a group's place.
-        borderRadius: BorderRadius.circular(t.radius * 1.3),
-        child: Material(
-          color: Colors.transparent,
-          child: Ink(
-            // A thin film of accent over the glass: the card stays a surface of
-            // the theme.
-            color: selected ? t.accent.withValues(alpha: 0.12) : null,
-            child: SizedBox(
-              height: height,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconTheme(
-                    data: IconThemeData(color: selected ? t.accent : t.iconFg),
-                    child: glyph,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.bodyMedium?.copyWith(
-                      color: selected ? t.text : t.text2,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -498,61 +433,62 @@ class _StylePreview extends ConsumerWidget {
     final vinyl = style.isVinyl;
     final url = ref.watch(playerCoverProvider);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(kSheetEdge, 8, kSheetEdge, 12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 22),
-        decoration: BoxDecoration(
-          // The fill of the sheet's blocks.
-          color: sheetPanelColor(context),
-          borderRadius: BorderRadius.circular(t.radius),
-        ),
-        child: Column(
-          children: [
-            SizedBox(
-              width: side,
-              height: side,
-              child: Stack(
-                children: [
-                  // The square rounds into a circle before the eyes: that shows
-                  // what the setting did. The player's radius is taken as a
-                  // share of the side, or a small picture looks sharper.
-                  TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0, end: vinyl ? 1 : 0),
-                    duration: const Duration(milliseconds: 320),
-                    curve: Curves.easeOutCubic,
-                    builder: (context, k, child) => ClipRRect(
-                      borderRadius: BorderRadius.circular(
-                        side * (0.11 + 0.39 * k),
+    return SheetPanel(
+      gap: 10,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 22),
+          child: Column(
+            children: [
+              SizedBox(
+                width: side,
+                height: side,
+                child: Stack(
+                  children: [
+                    // The square rounds into a circle before the eyes: that shows
+                    // what the setting did. The player's radius is taken as a
+                    // share of the side, or a small picture looks sharper.
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: vinyl ? 1 : 0),
+                      duration: const Duration(milliseconds: 320),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, k, child) => ClipRRect(
+                        borderRadius: BorderRadius.circular(
+                          side * (0.11 + 0.39 * k),
+                        ),
+                        child: child,
                       ),
-                      child: child,
-                    ),
-                    child: VinylSpin(
-                      enabled: vinyl,
-                      // Always spinning here: no sound in settings, and a still
-                      // circle would hide half of the mode.
-                      spinning: true,
-                      child: Cover(url: url, size: side, radius: 0),
-                    ),
-                  ),
-                  if (vinyl)
-                    Positioned.fill(
-                      child: Center(
-                        child: VinylLabel(size: side * VinylLabel.share),
+                      child: VinylSpin(
+                        enabled: vinyl,
+                        // Always spinning here: no sound in settings, and a still
+                        // circle would hide half of the mode.
+                        spinning: true,
+                        child: Cover(url: url, size: side, radius: 0),
                       ),
                     ),
-                ],
+                    if (vinyl)
+                      Positioned.fill(
+                        child: Center(
+                          child: VinylLabel(size: side * VinylLabel.share),
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 18),
-            // Bars, not text: the preview shows the layout, a live title would
-            // take all the attention.
-            _Bar(width: 104, height: 9, color: t.text.withValues(alpha: 0.55)),
-            const SizedBox(height: 8),
-            _Bar(width: 68, height: 7, color: t.text.withValues(alpha: 0.24)),
-          ],
+              const SizedBox(height: 18),
+              // Bars, not text: the preview shows the layout, a live title would
+              // take all the attention.
+              _Bar(
+                width: 104,
+                height: 9,
+                color: t.text.withValues(alpha: 0.55),
+              ),
+              const SizedBox(height: 8),
+              _Bar(width: 68, height: 7, color: t.text.withValues(alpha: 0.24)),
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -734,53 +670,50 @@ class _SliderPreviewState extends State<_SliderPreview> {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(kSheetEdge, 8, kSheetEdge, 12),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(18, 22, 18, 18),
-        decoration: BoxDecoration(
-          // The fill of the sheet's blocks.
-          color: sheetPanelColor(context),
-          borderRadius: BorderRadius.circular(t.radius),
-        ),
-        child: Column(
-          children: [
-            SizedBox(
-              // Taller than in the player: it's what the sheet is opened for.
-              height: 44,
-              child: SliderTheme(
-                data: bloomSliderTheme(
-                  SliderTheme.of(context),
-                  style: widget.style,
-                  tokens: t,
-                  waveSeed: _SliderPreview.waveSeed,
-                ),
-                child: Slider(
-                  value: _value,
-                  max: _SliderPreview.total.toDouble(),
-                  onChanged: (v) => setState(() => _value = v),
+    return SheetPanel(
+      gap: 10,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 22, 18, 18),
+          child: Column(
+            children: [
+              SizedBox(
+                // Taller than in the player: it's what the sheet is opened for.
+                height: 44,
+                child: SliderTheme(
+                  data: bloomSliderTheme(
+                    SliderTheme.of(context),
+                    style: widget.style,
+                    tokens: t,
+                    waveSeed: _SliderPreview.waveSeed,
+                  ),
+                  child: Slider(
+                    value: _value,
+                    max: _SliderPreview.total.toDouble(),
+                    onChanged: (v) => setState(() => _value = v),
+                  ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    mmss(Duration(milliseconds: _value.round())),
-                    style: theme.bodyMedium,
-                  ),
-                  Text(
-                    mmss(const Duration(milliseconds: _SliderPreview.total)),
-                    style: theme.bodyMedium,
-                  ),
-                ],
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      mmss(Duration(milliseconds: _value.round())),
+                      style: theme.bodyMedium,
+                    ),
+                    Text(
+                      mmss(const Duration(milliseconds: _SliderPreview.total)),
+                      style: theme.bodyMedium,
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -888,10 +821,14 @@ Future<void> _openLyrics(BuildContext context) {
                     if (mode != LyricsMode.values.first)
                       const SizedBox(width: 8),
                     Expanded(
-                      child: _OptionCard(
+                      child: PickCard(
+                        height: 88,
                         label: _modeLabel(l, mode),
-                        selected: current == mode,
-                        glyph: _ModeGlyph(mode: mode),
+                        active: current == mode,
+                        picture: (ink) => IconTheme(
+                          data: IconThemeData(color: ink),
+                          child: _ModeGlyph(mode: mode),
+                        ),
                         onTap: () => ctrl.setMode(mode),
                       ),
                     ),

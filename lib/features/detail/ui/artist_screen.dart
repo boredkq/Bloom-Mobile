@@ -17,7 +17,6 @@ import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/providers/music_provider.dart';
 import '../../../core/store/library_store.dart';
-import '../../../features/customization/ui/app_background.dart';
 import '../../../features/library/import_url.dart';
 import '../../../features/player/play_source.dart';
 import '../../../features/player/player_controller.dart';
@@ -255,7 +254,6 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
     final artist = _artist;
     final canPlay = _main.isNotEmpty;
 
@@ -269,11 +267,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
       const SliverBottomBarsInset(extra: 16),
     ];
 
-    return Scaffold(
-      // A background picture may lie under the page: then no fill of its own.
-      backgroundColor: ref.watch(backgroundOnProvider)
-          ? Colors.transparent
-          : t.bg,
+    return BloomPage(
       body: _tracksView
           ? _allTracks(rows)
           : CustomScrollView(
@@ -324,23 +318,10 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
 
   /// All of the artist's tracks: no header, only "back" and the title over
   /// the rows.
-  Widget _allTracks(List<Widget> rows) => SafeArea(
-    bottom: false,
-    child: Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-          child: SubPageHeader(
-            title: context.l.commonTracks,
-            onBack: () => Navigator.of(context).maybePop(),
-          ),
-        ),
-        const SizedBox(height: 10),
-        Expanded(
-          child: CustomScrollView(controller: _scroll, slivers: rows),
-        ),
-      ],
-    ),
+  Widget _allTracks(List<Widget> rows) => SubPage(
+    title: context.l.commonTracks,
+    onBack: () => Navigator.of(context).maybePop(),
+    child: CustomScrollView(controller: _scroll, slivers: rows),
   );
 
   List<Widget> _sections() {

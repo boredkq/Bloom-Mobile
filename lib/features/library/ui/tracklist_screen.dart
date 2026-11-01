@@ -165,7 +165,6 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
     final lib = ref.watch(libraryProvider);
     // Режим дублей включён для этого списка — вместо строк идут группы
     // повторов. Читаем в самом начале, до всех ранних возвратов: снимок нужен
@@ -218,7 +217,7 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
     // Ключи нужны не только перетаскиванию: строку можно смахнуть, а список
     // тут не анимированный — без ключа состояние жеста досталось бы соседу,
     // который встал на освободившееся место.
-    final keys = _keysFor(tracks);
+    final keys = trackRowKeys(tracks);
     final width = MediaQuery.of(context).size.width;
 
     // Геометрия для пилюли «Сейчас играет»: сколько от верха списка закрыто
@@ -282,28 +281,23 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
             else if (tracks.isEmpty)
               SliverFillRemaining(
                 hasScrollBody: false,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 60),
-                  child: Center(
-                    child: Text(
-                      _query.isNotEmpty
-                          ? context.l.tlNothingFound
-                          // Список не пуст — просто в нём нечего показать под
-                          // отбором: об этом и говорим, иначе «Плейлист пуст»
-                          // на полном плейлисте выглядит поломкой.
-                          : _sort == TrackSort.downloaded
-                          ? (_desc
-                                ? context.l.tlNothingNotDownloaded
-                                : context.l.tlNothingDownloaded)
-                          : switch (widget.listId) {
-                              'fav' => context.l.tlEmptyFav,
-                              'all' => context.l.tlEmptyAll,
-                              _ => context.l.tlEmptyPlaylist,
-                            },
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: t.muted),
-                    ),
+                child: Center(
+                  child: CenterNote(
+                    _query.isNotEmpty
+                        ? context.l.tlNothingFound
+                        // Список не пуст — просто в нём нечего показать под
+                        // отбором: об этом и говорим, иначе «Плейлист пуст»
+                        // на полном плейлисте выглядит поломкой.
+                        : _sort == TrackSort.downloaded
+                        ? (_desc
+                              ? context.l.tlNothingNotDownloaded
+                              : context.l.tlNothingDownloaded)
+                        : switch (widget.listId) {
+                            'fav' => context.l.tlEmptyFav,
+                            'all' => context.l.tlEmptyAll,
+                            _ => context.l.tlEmptyPlaylist,
+                          },
+                    padding: const EdgeInsets.symmetric(vertical: 60),
                   ),
                 ),
               )
@@ -315,12 +309,8 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
                 sliver: SliverReorderableList(
                   itemCount: tracks.length,
                   onReorder: (from, to) => _reorder(source, from, to),
-                  proxyDecorator: (child, _, _) => Material(
-                    color: t.pill,
-                    elevation: 6,
-                    borderRadius: BorderRadius.circular(t.radius * 0.85),
-                    child: child,
-                  ),
+                  proxyDecorator: (child, _, _) =>
+                      trackRowDragged(context, child),
                   itemBuilder: (context, i) => TrackSwipe(
                     key: keys[i],
                     zone: SwipeZone.library,
@@ -397,16 +387,6 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
 
   /// Ключи строк: один трек может стоять в списке дважды, а `ReorderableList`
   /// на дублях падает — дописываем номер вхождения (как в очереди).
-  List<Key> _keysFor(List<Track> tracks) {
-    final seen = <String, int>{};
-    return [
-      for (final track in tracks)
-        ValueKey('${track.id}#${seen[track.id] = (seen[track.id] ?? -1) + 1}'),
-    ];
-  }
-
-  /// Новый порядок уезжает в хранилище целиком — теми же ручками, что и режим
-  /// правки: состав не меняется, меняются только места.
   void _reorder(List<Track> source, int from, int to) {
     // Индекс вставки считается ДО изъятия строки — всё, что ниже, уже сдвинуто.
     if (to > from) to--;
@@ -573,7 +553,12 @@ class _Hero extends ConsumerWidget {
                 onTap: () => context.go('/library'),
               ),
               const SizedBox(width: 8),
-              _SortButton(sort: sort, desc: desc, onSort: onSort),
+              GlassIconButton(
+                icon: Bi.sort,
+                background: sort != TrackSort.manual ? t.accent : null,
+                color: sort != TrackSort.manual ? t.accentText : null,
+                onTap: () => showSortSheet(context, sort, desc, onSort),
+              ),
               const Spacer(),
               // Плюс — только во «Всех треках», как `libUploadBtn` на ПК
               // (`mode === 'all'`): в «Любимых» состав не свой, а в плейлист
@@ -669,46 +654,13 @@ class _AddLocalButtonState extends ConsumerState<_AddLocalButton> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    if (!_busy) {
-      return GlassIconButton(icon: Bi.add, onTap: _add);
-    }
-    return GlassSurface(
-      shape: BorderRadius.circular(kHeaderControl / 2),
-      child: const SizedBox(
-        width: kHeaderControl,
-        height: kHeaderControl,
-        child: Center(child: BloomSpinner(size: 18, color: Colors.white)),
-      ),
-    );
-  }
-}
-
-class _SortButton extends StatelessWidget {
-  const _SortButton({
-    required this.sort,
-    required this.desc,
-    required this.onSort,
-  });
-
-  final TrackSort sort;
-  final bool desc;
-  final ValueChanged<TrackSort> onSort;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    // Список показан не как есть — кнопка горит акцентом, как у сортировки
-    // библиотеки: иначе отбор «Скачанные» ничем себя не выдаёт, и коротким
-    // плейлист выглядит поломкой.
-    final on = sort != TrackSort.manual;
-    return GlassIconButton(
-      icon: Bi.sort,
-      background: on ? t.accent : null,
-      color: on ? t.accentText : null,
-      onTap: () => showSortSheet(context, sort, desc, onSort),
-    );
-  }
+  Widget build(BuildContext context) => GlassIconButton(
+    icon: Bi.add,
+    onTap: _add,
+    child: _busy
+        ? const Center(child: BloomSpinner(size: 18, color: Colors.white))
+        : null,
+  );
 }
 
 /// Выбор сортировки списка — такая же нижняя шторка, как по удержанию трека, а
@@ -766,38 +718,11 @@ class _InlineSearch extends StatelessWidget {
   final ValueChanged<String> onQuery;
 
   @override
-  Widget build(BuildContext context) {
-    return GlassSurface(
-      shape: BorderRadius.circular(999),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: SizedBox(
-          height: kHeaderControl,
-          child: Row(
-            children: [
-              const BloomIcon(Bi.magnifier, size: 21, color: Colors.white),
-              const SizedBox(width: 10),
-              Expanded(
-                child: BloomField(
-                  hint: context.l.tlSearchHint,
-                  autofocus: true,
-                  onChanged: onQuery,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontSize: kHeaderTitleSize,
-                    color: Colors.white,
-                  ),
-                  hintStyle: const TextStyle(
-                    color: Colors.white54,
-                    fontSize: kHeaderTitleSize,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => HeaderSearchField(
+    hint: context.l.tlSearchHint,
+    overPicture: true,
+    onChanged: onQuery,
+  );
 }
 
 class _Actions extends ConsumerWidget {

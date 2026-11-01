@@ -185,7 +185,12 @@ class TrackRowShell extends StatelessWidget {
     final drag = dragIndex;
     final Widget plain = switch (number) {
       final n? => _Number(number: n, active: active),
-      null => _Cover(track: track),
+      null => SourcedCover(
+        url: track.cover,
+        size: kTrackRowCover,
+        source: track.source,
+        small: true,
+      ),
     };
     final Widget cover = switch (rank) {
       final r? => Row(
@@ -227,22 +232,45 @@ class TrackRowShell extends StatelessWidget {
   }
 }
 
-/// Обложка трека в строке. Бейдж площадки в углу: в общем списке треки могут
-/// быть из разных источников, и по обложке этого не понять.
-class _Cover extends StatelessWidget {
-  const _Cover({required this.track});
+/// A cover with the platform's badge in its corner.
+class SourcedCover extends StatelessWidget {
+  const SourcedCover({
+    super.key,
+    required this.url,
+    required this.size,
+    required this.source,
+    this.small = false,
+    this.circle = false,
+    this.flight,
+    this.overlay,
+  });
 
-  final Track track;
+  final String? url;
+  final double size;
+  final MusicSource source;
+
+  /// In a row: a smaller badge, closer to the edge.
+  final bool small;
+  final bool circle;
+  final CoverFlight? flight;
+  final Widget? overlay;
 
   @override
   Widget build(BuildContext context) {
+    final edge = small ? 3.0 : 6.0;
     return Stack(
       children: [
-        Cover(url: track.cover, size: kTrackRowCover),
+        Cover(
+          url: url,
+          size: size,
+          circle: circle,
+          flight: flight,
+          overlay: overlay,
+        ),
         Positioned(
-          right: 3,
-          bottom: 3,
-          child: SourceBadge(track.source, size: kRowBadge),
+          right: edge,
+          bottom: edge,
+          child: SourceBadge(source, size: small ? kRowBadge : kCardBadge),
         ),
       ],
     );
@@ -357,7 +385,7 @@ class _Rest extends StatelessWidget {
                   // в истории и так у всех, кроме повторов.
                   if (mark != null && mark.count > 1) ...[
                     const SizedBox(width: 6),
-                    _PlayCountBadge(count: mark.count),
+                    CountBadge(mark.count),
                   ],
                 ],
               ),
@@ -394,39 +422,6 @@ class _Rest extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onLongPress: onMenu,
       child: row,
-    );
-  }
-}
-
-/// Счётчик прослушиваний у названия — акцентная пилюля из десктопной истории
-/// (`historyMeta.count`). Цифра, а не «N раз»: строка узкая, а смысл читается из
-/// самого раздела.
-class _PlayCountBadge extends StatelessWidget {
-  const _PlayCountBadge({required this.count});
-
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Container(
-      constraints: const BoxConstraints(minWidth: 18),
-      height: 18,
-      alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 5),
-      decoration: BoxDecoration(
-        color: t.accent,
-        borderRadius: BorderRadius.circular(9),
-      ),
-      child: Text(
-        '$count',
-        style: TextStyle(
-          color: t.accentText,
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          height: 1,
-        ),
-      ),
     );
   }
 }
@@ -575,7 +570,6 @@ class _SetRowState extends State<SetRow> {
   Widget build(BuildContext context) {
     final set = widget.set;
     final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
     final flight = _flightFor(set.cover, _tag);
     final sub = [
       set.isAlbum ? context.l.commonAlbum : context.l.commonPlaylist,
@@ -590,45 +584,92 @@ class _SetRowState extends State<SetRow> {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         child: Row(
           children: [
-            Stack(
-              children: [
-                Cover(
-                  url: set.cover,
-                  size: 48,
-                  flight: flight,
-                  overlay: SetEqualizer(setId: set.id),
-                ),
-                Positioned(
-                  right: 3,
-                  bottom: 3,
-                  child: SourceBadge(set.source, size: kRowBadge),
-                ),
-              ],
+            SourcedCover(
+              url: set.cover,
+              size: 48,
+              source: set.source,
+              small: true,
+              flight: flight,
+              overlay: SetEqualizer(setId: set.id),
             ),
             const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    set.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.titleMedium,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    sub,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
+            Expanded(child: TwoLines(set.title, sub)),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// A card: a square on top, a title and lines under it, all of it pressing.
+class EntityCard extends StatelessWidget {
+  const EntityCard({
+    super.key,
+    required this.cover,
+    this.title = '',
+    this.head,
+    this.titleStyle,
+    this.lines = const [],
+    this.size,
+    this.center = false,
+    this.onTap,
+    this.onLongPress,
+  });
+
+  /// Gets the card's width.
+  final Widget Function(double side) cover;
+  final String title;
+
+  /// Instead of [title]: a line with marks around the name.
+  final Widget? head;
+
+  /// `titleSmall` when not set.
+  final TextStyle? titleStyle;
+  final List<String> lines;
+
+  /// `null`: the whole width of a grid's cell.
+  final double? size;
+  final bool center;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context).textTheme;
+    final align = center ? TextAlign.center : TextAlign.start;
+    final content = LayoutBuilder(
+      builder: (context, box) => Column(
+        crossAxisAlignment: center
+            ? CrossAxisAlignment.center
+            : CrossAxisAlignment.start,
+        children: [
+          cover(box.maxWidth),
+          const SizedBox(height: 8),
+          head ??
+              Text(
+                title,
+                maxLines: 1,
+                textAlign: align,
+                overflow: TextOverflow.ellipsis,
+                style: titleStyle ?? theme.titleSmall,
+              ),
+          const SizedBox(height: 2),
+          for (final line in lines)
+            Text(
+              line,
+              maxLines: 1,
+              textAlign: align,
+              overflow: TextOverflow.ellipsis,
+              style: theme.bodySmall,
+            ),
+        ],
+      ),
+    );
+    return Pressable(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      scale: 0.97,
+      child: size == null ? content : SizedBox(width: size, child: content),
     );
   }
 }
@@ -648,60 +689,27 @@ class TrackCard extends ConsumerWidget {
   final Track track;
   final List<Track> queue;
   final int index;
-
-  /// Откуда взята [queue] — см. [TrackRow.source].
   final PlaySource? source;
-
   final double size;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
     final active = ref.watch(playbackProvider).track?.id == track.id;
-
-    return Pressable(
+    return EntityCard(
+      size: size,
+      title: track.name,
+      titleStyle: active
+          ? Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(color: context.bloom.accent)
+          : null,
+      lines: [track.artist],
+      cover: (side) =>
+          SourcedCover(url: track.cover, size: side, source: track.source),
       onTap: () => ref
           .read(playbackProvider.notifier)
           .playQueue(queue, index, source: source),
       onLongPress: () => showTrackActions(context, ref, track),
-      scale: 0.97,
-      child: SizedBox(
-        width: size,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Бейдж крупнее и с большим отступом от угла, чем в строке, — как
-            // `.sp-tc-cover .cov-badge` на десктопе.
-            Stack(
-              children: [
-                Cover(url: track.cover, size: size),
-                Positioned(
-                  right: 6,
-                  bottom: 6,
-                  child: SourceBadge(track.source, size: kCardBadge),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              track.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: active
-                  ? theme.titleSmall?.copyWith(color: t.accent)
-                  : theme.titleSmall,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              track.artist,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.bodySmall,
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -743,61 +751,40 @@ class _ArtistCardState extends State<ArtistCard> {
   @override
   Widget build(BuildContext context) {
     final artist = widget.artist;
-    final size = widget.size;
-    final centerLabel = widget.centerLabel;
     final theme = Theme.of(context).textTheme;
-    final align = centerLabel ? TextAlign.center : TextAlign.start;
     final flight = _flightFor(artist.avatar, _tag);
-
-    final content = LayoutBuilder(
-      builder: (context, box) => Column(
-        crossAxisAlignment: centerLabel
-            ? CrossAxisAlignment.center
-            : CrossAxisAlignment.start,
+    return EntityCard(
+      size: widget.size,
+      center: widget.centerLabel,
+      head: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Cover(
-            url: artist.avatar,
-            size: box.maxWidth,
-            circle: true,
-            flight: flight,
+          Flexible(
+            child: Text(
+              artist.name,
+              maxLines: 1,
+              textAlign: widget.centerLabel
+                  ? TextAlign.center
+                  : TextAlign.start,
+              overflow: TextOverflow.ellipsis,
+              style: theme.titleSmall,
+            ),
           ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: Text(
-                  artist.name,
-                  maxLines: 1,
-                  textAlign: align,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.titleSmall,
-                ),
-              ),
-              if (widget.pinned) ...[
-                const SizedBox(width: 4),
-                BloomIcon(Bi.pin, size: 13, color: context.bloom.text2),
-              ],
-            ],
-          ),
-          const SizedBox(height: 2),
-          Text(
-            artist.profile ? context.l.commonProfile : context.l.commonArtist,
-            maxLines: 1,
-            textAlign: align,
-            style: theme.bodySmall,
-          ),
+          if (widget.pinned) ...[
+            const SizedBox(width: 4),
+            BloomIcon(Bi.pin, size: 13, color: context.bloom.text2),
+          ],
         ],
       ),
-    );
-
-    return Pressable(
+      lines: [
+        artist.profile ? context.l.commonProfile : context.l.commonArtist,
+      ],
+      cover: (side) =>
+          Cover(url: artist.avatar, size: side, circle: true, flight: flight),
       onTap: () {
         widget.onOpen?.call();
         openArtist(context, artist.id, initial: artist, flight: flight);
       },
-      scale: 0.97,
-      child: size == null ? content : SizedBox(width: size, child: content),
     );
   }
 }
@@ -866,59 +853,95 @@ class _SetCardState extends State<SetCard> {
   @override
   Widget build(BuildContext context) {
     final set = widget.set;
-    final size = widget.size;
-    final theme = Theme.of(context).textTheme;
     final flight = _flightFor(set.cover, _tag);
-
-    final content = LayoutBuilder(
-      builder: (context, box) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Бейдж площадки — как у карточки трека: в одной ленте выдачи рядом
-          // стоят альбомы разных площадок, и по обложке этого не понять.
-          Stack(
-            children: [
-              Cover(
-                url: set.cover,
-                size: box.maxWidth,
-                flight: flight,
-                overlay: SetEqualizer(setId: set.id),
-              ),
-              Positioned(
-                right: 6,
-                bottom: 6,
-                child: SourceBadge(set.source, size: kCardBadge),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            set.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.titleSmall,
-          ),
-          const SizedBox(height: 2),
-          for (final line in setLines(context, set))
-            Text(
-              line,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.bodySmall,
-            ),
-        ],
+    return EntityCard(
+      size: widget.size,
+      title: set.title,
+      lines: setLines(context, set),
+      cover: (side) => SourcedCover(
+        url: set.cover,
+        size: side,
+        source: set.source,
+        flight: flight,
+        overlay: SetEqualizer(setId: set.id),
       ),
-    );
-
-    return Pressable(
       onTap: () {
         widget.onOpen?.call();
         openSet(context, set, flight: flight);
       },
-      scale: 0.97,
-      child: size == null ? content : SizedBox(width: size, child: content),
     );
   }
+}
+
+/// A grid of cards over the whole width: a cell's height is its width plus
+/// [caption].
+class CardGrid extends StatelessWidget {
+  const CardGrid({
+    super.key,
+    required this.columns,
+    required this.caption,
+    required this.itemCount,
+    required this.itemBuilder,
+    this.top = 4,
+    this.bottom,
+    this.scrolls = true,
+  });
+
+  final int columns;
+  final double caption;
+  final int itemCount;
+  final IndexedWidgetBuilder itemBuilder;
+  final double top;
+
+  /// Clear of the bars when not set.
+  final double? bottom;
+  final bool scrolls;
+
+  static const double _side = 16;
+  static const double _gap = 16;
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final cell = (width - _side * 2 - _gap * (columns - 1)) / columns;
+    return GridView.builder(
+      padding: EdgeInsets.fromLTRB(
+        _side,
+        top,
+        _side,
+        bottom ?? 16 + bottomBarsInset(context),
+      ),
+      physics: scrolls ? null : const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: columns,
+        crossAxisSpacing: _gap,
+        mainAxisSpacing: 20,
+        mainAxisExtent: cell + caption,
+      ),
+      itemCount: itemCount,
+      itemBuilder: itemBuilder,
+    );
+  }
+}
+
+/// Keys for rows of a list where a track may repeat.
+List<Key> trackRowKeys(List<Track> tracks) {
+  final seen = <String, int>{};
+  return [
+    for (final track in tracks)
+      ValueKey('${track.id}#${seen[track.id] = (seen[track.id] ?? -1) + 1}'),
+  ];
+}
+
+/// How a track row looks in the finger while being dragged.
+Widget trackRowDragged(BuildContext context, Widget child) {
+  final t = context.bloom;
+  return Material(
+    color: t.pill,
+    elevation: 6,
+    borderRadius: BorderRadius.circular(t.radius * 0.85),
+    child: child,
+  );
 }
 
 /// Горизонтальная лента карточек — общая для выдачи поиска и секций страницы

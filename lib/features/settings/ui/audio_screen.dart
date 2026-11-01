@@ -26,7 +26,7 @@ class AudioSettingsScreen extends ConsumerWidget {
       title: l.setAudio,
       onBack: () => context.go('/settings'),
       children: [
-        SettingsCaption(l.sysStartup.toUpperCase()),
+        SettingsCaption(l.sysStartup),
         const SizedBox(height: 10),
         SettingsGroupCard(
           dividerInset: 52,
@@ -51,7 +51,7 @@ class AudioSettingsScreen extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 22),
-        SettingsCaption(l.audQueue.toUpperCase()),
+        SettingsCaption(l.audQueue),
         const SizedBox(height: 10),
         SettingsGroupCard(
           dividerInset: 52,

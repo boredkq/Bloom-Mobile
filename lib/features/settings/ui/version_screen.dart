@@ -153,14 +153,9 @@ class _StatusCard extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 30, 20, 30),
         child: Column(
           children: [
-            Container(
-              width: 72,
-              height: 72,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.16),
-                shape: BoxShape.circle,
-              ),
+            TintCircle(
+              size: 72,
+              color: color.withValues(alpha: 0.16),
               // One box for the spinner and the icon: the block doesn't jump
               // when the outcome comes.
               child: icon == null

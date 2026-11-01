@@ -365,7 +365,13 @@ class BloomToastCard extends StatelessWidget {
                       left: 18,
                       right: 18,
                       bottom: 5,
-                      child: _Bar(color: color, progress: progress!),
+                      child: BloomBar(
+                        value: progress!,
+                        color: color,
+                        track: color.withValues(alpha: 0.14),
+                        height: 3,
+                        animated: const Duration(milliseconds: 250),
+                      ),
                     ),
                 ],
               ),
@@ -455,14 +461,9 @@ class _Badge extends StatelessWidget {
           Positioned.fill(
             child: _Ring(color: color, duration: duration!),
           ),
-        Container(
-          width: 27,
-          height: 27,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: color.withValues(alpha: 0.16),
-          ),
+        TintCircle(
+          size: 27,
+          color: color.withValues(alpha: 0.16),
           child: busy
               ? BloomSpinner(size: 15, color: color)
               // У «успеха» голая галочка, а не `checkCircle`: значок и так
@@ -579,42 +580,4 @@ class _RingPainter extends CustomPainter {
   @override
   bool shouldRepaint(_RingPainter old) =>
       old.left != left || old.color != color;
-}
-
-/// Полоса прогресса долгой работы: доля скачанного, с дорожкой под ней.
-///
-/// Время тоста показывает кольцо у значка — сюда попадает ТОЛЬКО доля, и
-/// только у `busyToast` с прогрессом.
-class _Bar extends StatelessWidget {
-  const _Bar({required this.color, required this.progress});
-
-  final Color color;
-  final double progress;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    height: 3,
-    child: DecoratedBox(
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(3),
-      ),
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(end: progress.clamp(0, 1)),
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-        builder: (_, v, child) => FractionallySizedBox(
-          alignment: Alignment.centerLeft,
-          widthFactor: v,
-          child: child,
-        ),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(3),
-          ),
-        ),
-      ),
-    ),
-  );
 }

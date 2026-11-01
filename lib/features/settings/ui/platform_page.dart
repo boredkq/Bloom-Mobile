@@ -307,7 +307,17 @@ Future<void> showPlatformGuide(
 }) {
   return showBloomSheetChild<void>(
     context: context,
-    header: _GuideHeader(mark: mark, title: title),
+    header: Builder(
+      builder: (context) => SheetTitle(
+        title,
+        bottom: 14,
+        leading: TintCircle(
+          size: 38,
+          color: (mark.color ?? context.bloom.accent).withValues(alpha: 0.14),
+          child: mark.logo(size: 19),
+        ),
+      ),
+    ),
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -316,7 +326,7 @@ Future<void> showPlatformGuide(
             children: [
               for (var i = 0; i < steps.length; i++) ...[
                 if (i > 0) sheetDivider(),
-                _GuideStep(index: i + 1, mark: mark, text: steps[i]),
+                GuideStep(index: i + 1, color: mark.color, text: steps[i]),
               ],
             ],
           ),
@@ -338,74 +348,39 @@ Future<void> showPlatformGuide(
   );
 }
 
-class _GuideHeader extends StatelessWidget {
-  const _GuideHeader({required this.mark, required this.title});
-
-  final BrandMark mark;
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(kSheetEdge, 10, kSheetEdge, 14),
-      child: Row(
-        children: [
-          // A small logo gets lost without a plate.
-          Container(
-            width: 38,
-            height: 38,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: (mark.color ?? t.accent).withValues(alpha: 0.14),
-              shape: BoxShape.circle,
-            ),
-            child: mark.logo(size: 19),
-          ),
-          const SizedBox(width: 14),
-          Expanded(child: Text(title, style: theme.titleLarge)),
-        ],
-      ),
-    );
-  }
-}
-
-class _GuideStep extends StatelessWidget {
-  const _GuideStep({
+/// A numbered step of instructions, `**bold**` for what the eye looks for.
+class GuideStep extends StatelessWidget {
+  const GuideStep({
+    super.key,
     required this.index,
-    required this.mark,
     required this.text,
+    this.color,
   });
 
   final int index;
-  final BrandMark mark;
   final String text;
+
+  /// Accent when not set.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
-    final brand = mark.color ?? t.accent;
+    final tint = color ?? t.accent;
     final base = theme.bodyMedium?.copyWith(color: t.text2, height: 1.5);
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 24,
-            height: 24,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: brand.withValues(alpha: 0.16),
-              shape: BoxShape.circle,
-            ),
+          TintCircle(
+            size: 24,
+            color: tint.withValues(alpha: 0.16),
             child: Text(
               '$index',
               style: theme.labelSmall?.copyWith(
-                color: brand,
+                color: tint,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -426,6 +401,32 @@ class _GuideStep extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A wide button at the bottom of a platform's page, or lower in its form.
+class PlatformAction extends StatelessWidget {
+  const PlatformAction({
+    super.key,
+    required this.label,
+    required this.onTap,
+    this.busy = false,
+    this.height = 54,
+  });
+
+  final String label;
+  final VoidCallback? onTap;
+  final bool busy;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) => BloomButton(
+    label: label,
+    tone: ButtonTone.plate,
+    pill: false,
+    height: height,
+    busy: busy,
+    onTap: onTap,
+  );
 }
 
 /// Odd pieces are the bold ones.

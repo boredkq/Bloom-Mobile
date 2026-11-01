@@ -173,27 +173,19 @@ class _MergeBodyState extends ConsumerState<_MergeBody> {
         ),
         // Счёт того, что получится, — сразу под именем: он меняется от каждой
         // отметки, и видеть его надо там же, где отмечаешь.
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 2, 20, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  _picked.isEmpty
-                      ? context.l.mgPickHint
-                      : context.l.mgResult(context.l.tracksCount(total)),
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ),
-              if (_dedup && dups > 0)
-                Text(
+        SheetCaption(
+          _picked.isEmpty
+              ? context.l.mgPickHint
+              : context.l.mgResult(context.l.tracksCount(total)),
+          padding: const EdgeInsets.fromLTRB(kSheetEdge, 2, kSheetEdge, 8),
+          trailing: _dedup && dups > 0
+              ? Text(
                   context.l.mgDupsDropped(dups),
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: t.accent),
-                ),
-            ],
-          ),
+                )
+              : null,
         ),
         SheetPanel(
           children: [
@@ -264,23 +256,7 @@ class _PlaylistRow extends StatelessWidget {
       label: playlist.name,
       subtitle: context.l.tracksCount(tracks),
       color: picked ? t.accent : t.text,
-      trailing: picked
-          ? Container(
-              width: 24,
-              height: 24,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: t.accent,
-                shape: BoxShape.circle,
-              ),
-              child: Text(
-                '${order + 2}',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: t.accentText),
-              ),
-            )
-          : null,
+      trailing: picked ? CountBadge(order + 2, height: 24, size: 12) : null,
       onTap: onTap,
     );
   }

@@ -14,6 +14,7 @@ import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../achievements.dart';
 import '../stats.dart';
+import '../../../shared/ui/atoms.dart';
 
 Future<void> showAchievementsSheet(BuildContext context) =>
     showBloomSheetChild<void>(
@@ -171,11 +172,14 @@ class _AchCard extends StatelessWidget {
                     style: bloomText(size: 12, weight: 500, color: t.text2),
                   ),
                   const SizedBox(height: 5),
-                  _Bar(
-                    ratio: a.maxed ? 1 : a.ratio,
-                    fill: a.maxed ? null : t.accent,
-                    gold: a.maxed ? _gold : null,
+                  BloomBar(
+                    value: a.maxed ? 1 : a.ratio,
+                    color: t.accent,
+                    gradient: a.maxed
+                        ? const LinearGradient(colors: _gold)
+                        : null,
                     track: t.text.withValues(alpha: 0.08),
+                    height: 6,
                   ),
                   const SizedBox(height: 5),
                   Row(
@@ -215,39 +219,4 @@ class _AchCard extends StatelessWidget {
   String _date(BuildContext context, int ms) => DateFormat.yMMMd(
     Localizations.localeOf(context).languageCode,
   ).format(DateTime.fromMillisecondsSinceEpoch(ms));
-}
-
-/// The bar to the next tier: accent, or gold across once it's all taken.
-class _Bar extends StatelessWidget {
-  const _Bar({required this.ratio, required this.track, this.fill, this.gold});
-
-  final double ratio;
-  final Color track;
-  final Color? fill;
-  final List<Color>? gold;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 6,
-      decoration: BoxDecoration(
-        color: track,
-        borderRadius: BorderRadius.circular(3),
-      ),
-      alignment: Alignment.centerLeft,
-      child: ratio <= 0
-          ? null
-          : FractionallySizedBox(
-              widthFactor: ratio.clamp(0.0, 1.0),
-              child: Container(
-                constraints: const BoxConstraints(minWidth: 6),
-                decoration: BoxDecoration(
-                  color: fill,
-                  gradient: gold == null ? null : LinearGradient(colors: gold!),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-            ),
-    );
-  }
 }

@@ -437,11 +437,14 @@ Future<T?> _pickNavCard<T>({
           runSpacing: 12,
           children: [
             for (final value in values)
-              _NavPickCard(
+              PickCard(
                 width: _sheetCardWidth(sheetContext),
                 active: value == current,
                 label: label(value),
-                paint: (ink) => paint(value, ink),
+                picture: (ink) => AspectRatio(
+                  aspectRatio: 100 / 64,
+                  child: CustomPaint(painter: paint(value, ink)),
+                ),
                 onTap: () => Navigator.of(sheetContext).pop(value),
               ),
           ],
@@ -449,63 +452,6 @@ Future<T?> _pickNavCard<T>({
       ),
     ),
   );
-}
-
-class _NavPickCard extends StatelessWidget {
-  const _NavPickCard({
-    required this.paint,
-    required this.label,
-    required this.width,
-    required this.active,
-    required this.onTap,
-  });
-
-  /// Comes from outside: accent when chosen, dimmed otherwise.
-  final CustomPainter Function(Color ink) paint;
-  final String label;
-  final double width;
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Pressable(
-      onTap: onTap,
-      scale: 0.97,
-      child: Container(
-        width: width,
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-        decoration: BoxDecoration(
-          color: t.pill,
-          borderRadius: BorderRadius.circular(t.radius * 0.75),
-          // Always there, just transparent when not chosen: otherwise the
-          // chosen tile grows and the row jumps.
-          border: Border.all(
-            color: active ? t.accent : Colors.transparent,
-            width: 1.5,
-          ),
-        ),
-        child: Column(
-          children: [
-            AspectRatio(
-              aspectRatio: 100 / 64,
-              child: CustomPaint(painter: paint(active ? t.accent : t.text2)),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: active ? t.text : t.text2,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 // ─── Tab order ──────────────────────────────────────────────────────────────
@@ -1345,7 +1291,6 @@ class _ThemeCreatorState extends State<_ThemeCreator> {
   }
 }
 
-/// A label and a wide swatch; a tap opens the picker.
 class _ColorSlot extends StatelessWidget {
   const _ColorSlot({
     required this.label,
@@ -1359,7 +1304,6 @@ class _ColorSlot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1371,18 +1315,7 @@ class _ColorSlot extends StatelessWidget {
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 6),
-          Pressable(
-            onTap: onTap,
-            scale: 0.97,
-            child: Container(
-              height: 44,
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(t.radius * 0.6),
-                border: Border.all(color: t.ovlLine2),
-              ),
-            ),
-          ),
+          ColorChip(color: color, onTap: onTap),
         ],
       ),
     );

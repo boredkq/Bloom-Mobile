@@ -16,7 +16,6 @@ import '../../../core/l10n/l10n.dart';
 import '../../../core/store/settings_store.dart';
 import '../../../providers/soundcloud/models.dart';
 import '../../../providers/soundcloud/soundcloud.dart' as sc;
-import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/platform_logo.dart';
 import 'platform_page.dart';
@@ -100,15 +99,12 @@ class _SoundCloudSettingsScreenState
       status: saved == null ? l.scStatusAuto : l.scStatusManual,
       body: _open ? _buildForm(saved) : null,
       actions: [
-        BloomButton(
+        PlatformAction(
           label: _open
               ? l.commonHide
               : saved == null
               ? l.scSetup
               : l.scReconfigure,
-          tone: ButtonTone.plate,
-          pill: false,
-          height: 54,
           onTap: () => setState(() => _open = !_open),
         ),
       ],
@@ -146,10 +142,8 @@ class _SoundCloudSettingsScreenState
         Row(
           children: [
             Expanded(
-              child: BloomButton(
+              child: PlatformAction(
                 label: changed ? l.commonSave : l.commonClear,
-                tone: ButtonTone.plate,
-                pill: false,
                 height: 48,
                 onTap: changed
                     ? _save
@@ -160,10 +154,8 @@ class _SoundCloudSettingsScreenState
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: BloomButton(
+              child: PlatformAction(
                 label: l.scCheckConnection,
-                tone: ButtonTone.plate,
-                pill: false,
                 height: 48,
                 busy: _checking,
                 onTap: _check,

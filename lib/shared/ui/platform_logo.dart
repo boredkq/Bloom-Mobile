@@ -16,6 +16,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../app/theme/tokens.dart';
 import '../../core/entities/entities.dart';
 import '../../core/store/settings_store.dart';
+import 'bloom_icon.dart';
 
 const Map<MusicSource, String> _assets = {
   MusicSource.soundcloud: 'assets/platform/soundcloud.svg',
@@ -62,6 +63,13 @@ class PlatformLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (source == MusicSource.local) {
+      return BloomIcon(
+        Bi.folder,
+        size: size,
+        color: color ?? context.bloom.text,
+      );
+    }
     final mono = color != null;
     final asset = (mono ? _monoAssets[source] : null) ?? _assets[source];
     if (asset == null) return SizedBox(width: size, height: size);

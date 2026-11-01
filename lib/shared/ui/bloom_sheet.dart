@@ -369,6 +369,7 @@ class SheetTitle extends StatelessWidget {
     super.key,
     this.subtitle,
     this.line,
+    this.leading,
     this.trailing,
     this.right = kSheetEdge,
     this.bottom = 10,
@@ -379,6 +380,9 @@ class SheetTitle extends StatelessWidget {
 
   /// Instead of [subtitle]: a line with more than text in it.
   final Widget? line;
+
+  /// On the left of the text: what the sheet is about.
+  final Widget? leading;
   final Widget? trailing;
 
   /// Round buttons stand closer to the edge than text does.
@@ -393,6 +397,7 @@ class SheetTitle extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(kSheetEdge, 6, right, bottom),
       child: Row(
         children: [
+          if (leading case final mark?) ...[mark, const SizedBox(width: 14)],
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -654,7 +659,11 @@ class SheetPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final column = Column(mainAxisSize: MainAxisSize.min, children: children);
+    final column = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: children,
+    );
     if (_SheetSkinScope.of(context)?.flat ?? false) {
       return Padding(
         padding: EdgeInsets.symmetric(horizontal: _kFlatEdge, vertical: gap),
@@ -819,6 +828,42 @@ class SheetRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A small caption over a block of a sheet, what acts on the block on its right.
+class SheetCaption extends StatelessWidget {
+  const SheetCaption(
+    this.text, {
+    super.key,
+    this.trailing,
+    this.color,
+    this.padding = const EdgeInsets.fromLTRB(kSheetEdge, 10, kSheetEdge, 4),
+  });
+
+  final String text;
+  final Widget? trailing;
+
+  /// `text2` when not set.
+  final Color? color;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: padding,
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            text,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: color ?? context.bloom.text2,
+            ),
+          ),
+        ),
+        ?trailing,
+      ],
+    ),
+  );
 }
 
 /// On the right of a [SheetRow]: where a tap leads on.

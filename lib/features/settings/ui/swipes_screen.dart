@@ -12,10 +12,10 @@ import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/glass.dart';
-import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../../../shared/ui/track_swipes.dart';
 import '../swipe_store.dart';
+import 'settings_rows.dart';
 
 class SwipesScreen extends ConsumerWidget {
   const SwipesScreen({super.key});
@@ -30,7 +30,7 @@ class SwipesScreen extends ConsumerWidget {
       children: [
         for (final zone in SwipeZone.values) ...[
           if (zone != SwipeZone.values.first) const SizedBox(height: 26),
-          SettingsCaption(swipeZoneLabel(context.l, zone).toUpperCase()),
+          SettingsCaption(swipeZoneLabel(context.l, zone)),
           const SizedBox(height: 10),
           _Preview(zone: zone, pair: settings.of(zone)),
           const SizedBox(height: 12),
@@ -67,32 +67,23 @@ class _Preview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.bloom;
     return GlassBox(
       child: Container(
         height: 96,
         padding: const EdgeInsets.symmetric(horizontal: 22),
         child: Row(
           children: [
-            _PreviewIcon(icon: swipeActionIcon(pair.right)),
+            BloomIcon(swipeActionIcon(pair.right), size: 22, color: t.muted),
             const Spacer(),
             _zoneIcon(context, zone),
             const Spacer(),
-            _PreviewIcon(icon: swipeActionIcon(pair.left)),
+            BloomIcon(swipeActionIcon(pair.left), size: 22, color: t.muted),
           ],
         ),
       ),
     );
   }
-}
-
-class _PreviewIcon extends StatelessWidget {
-  const _PreviewIcon({required this.icon});
-
-  final BloomGlyph icon;
-
-  @override
-  Widget build(BuildContext context) =>
-      BloomIcon(icon, size: 22, color: context.bloom.muted);
 }
 
 /// What a move left does and what a move right does.
@@ -106,7 +97,7 @@ class _SidesCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return SettingsGroupCard(
       // The line starts under the row's text.
-      dividerInset: 50,
+      dividerInset: 52,
       rows: [
         _SideRow(zone: zone, isLeft: true, action: pair.left),
         _SideRow(zone: zone, isLeft: false, action: pair.right),
@@ -129,43 +120,14 @@ class _SideRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    return Pressable(
+    return SettingsRowShell(
+      icon: isLeft ? Bi.arrowLeft : Bi.arrowRight,
+      iconColor: t.muted,
+      title: isLeft ? context.l.swLeft : context.l.swRight,
+      subtitle: swipeActionLabel(context.l, action),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
+      trailing: BloomIcon(swipeActionIcon(action), size: 20, color: t.muted),
       onTap: () => _pickAction(context, ref, zone, isLeft, action),
-      scale: 0.98,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-        child: Row(
-          children: [
-            BloomIcon(
-              isLeft ? Bi.arrowLeft : Bi.arrowRight,
-              size: 20,
-              color: t.muted,
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isLeft ? context.l.swLeft : context.l.swRight,
-                    style: theme.titleMedium,
-                  ),
-                  const SizedBox(height: 3),
-                  // Brighter than the usual `bodySmall`: part of the row, not a
-                  // footnote.
-                  Text(
-                    swipeActionLabel(context.l, action),
-                    style: theme.bodySmall?.copyWith(color: t.text2),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 14),
-            BloomIcon(swipeActionIcon(action), size: 20, color: t.muted),
-          ],
-        ),
-      ),
     );
   }
 }

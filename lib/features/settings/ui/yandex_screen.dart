@@ -14,7 +14,6 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../providers/yandex/ym_auth.dart';
-import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/platform_logo.dart';
@@ -116,27 +115,18 @@ class _YandexSettingsScreenState extends ConsumerState<YandexSettingsScreen> {
       ),
       actions: [
         if (s.authed)
-          BloomButton(
+          PlatformAction(
             label: l.ymLogout,
-            tone: ButtonTone.plate,
-            pill: false,
-            height: 54,
             onTap: () => ref.read(ymAuthProvider.notifier).logout(),
           )
         else if (s.userCode case final _?)
-          BloomButton(
+          PlatformAction(
             label: l.ymOpenPage,
-            tone: ButtonTone.plate,
-            pill: false,
-            height: 54,
             onTap: () => openVerifyPage(s.verifyUrl ?? 'https://ya.ru/device'),
           )
         else
-          BloomButton(
+          PlatformAction(
             label: l.ymConnect,
-            tone: ButtonTone.plate,
-            pill: false,
-            height: 54,
             busy: s.connecting,
             onTap: () => ref.read(ymAuthProvider.notifier).startAuth(),
           ),

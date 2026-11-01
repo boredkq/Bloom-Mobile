@@ -16,7 +16,7 @@ import '../../lastfm/lastfm_store.dart';
 import '../../pc/pc_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
-import '../../../shared/ui/language_card.dart';
+import '../../../shared/ui/language_flag.dart';
 import '../../../shared/ui/platform_logo.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../about_store.dart';

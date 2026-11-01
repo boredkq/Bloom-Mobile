@@ -22,6 +22,7 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../dups.dart';
+import '../../../shared/ui/glass.dart';
 
 /// Слайвер с полосой и группами. Живёт внутри `CustomScrollView` треклиста —
 /// поэтому не экран, а именно слайвер.
@@ -109,8 +110,6 @@ class _Bar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 10, 4),
       child: Row(
@@ -118,18 +117,11 @@ class _Bar extends StatelessWidget {
           BloomIcon(Bi.copy, size: 18, color: t.accent),
           const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(context.l.dupsTitle, style: theme.titleMedium),
-                const SizedBox(height: 2),
-                Text(
-                  groups > 0
-                      ? context.l.dupsFound(groups, extra)
-                      : context.l.dupsChecked(checked),
-                  style: theme.bodySmall,
-                ),
-              ],
+            child: TwoLines(
+              context.l.dupsTitle,
+              groups > 0
+                  ? context.l.dupsFound(groups, extra)
+                  : context.l.dupsChecked(checked),
             ),
           ),
           if (onDeleteAll != null)
@@ -170,15 +162,10 @@ class _Group extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
     final theme = Theme.of(context).textTheme;
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
-      child: Material(
-        color: t.pill,
-        borderRadius: BorderRadius.circular(t.radius),
-        clipBehavior: Clip.antiAlias,
+      child: GlassBox(
         child: Column(
           children: [
             Padding(
@@ -243,27 +230,14 @@ class _Row extends StatelessWidget {
           Cover(url: track.cover, size: 40),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  track.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: keep
-                      ? theme.titleSmall?.copyWith(color: t.accent)
-                      : theme.titleSmall,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  plays > 0
-                      ? '${track.artist} · ${context.l.dupsPlays(plays)}'
-                      : track.artist,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.bodySmall,
-                ),
-              ],
+            child: TwoLines(
+              track.name,
+              plays > 0
+                  ? '${track.artist} · ${context.l.dupsPlays(plays)}'
+                  : track.artist,
+              titleStyle: keep
+                  ? theme.titleSmall?.copyWith(color: t.accent)
+                  : theme.titleSmall,
             ),
           ),
           const SizedBox(width: 8),

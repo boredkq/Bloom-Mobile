@@ -55,13 +55,9 @@ class DangerConfirmBody extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 6, 20, 8),
       child: Column(
         children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: t.danger.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
+          TintCircle(
+            size: 72,
+            color: t.danger.withValues(alpha: 0.12),
             child: BloomIcon(icon, size: 28, color: t.danger),
           ),
           const SizedBox(height: 16),

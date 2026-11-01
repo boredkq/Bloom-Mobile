@@ -50,27 +50,18 @@ class PcSettingsScreen extends ConsumerWidget {
       body: link == null ? const _HowTo() : null,
       actions: [
         if (link == null || s.status == PcStatus.repair) ...[
-          BloomButton(
+          PlatformAction(
             label: link == null ? l.pcScan : l.pcReconnect,
-            tone: ButtonTone.plate,
-            pill: false,
-            height: 54,
             onTap: () => context.go('/settings/pc/scan'),
           ),
-          BloomButton(
+          PlatformAction(
             label: l.pcEnterCode,
-            tone: ButtonTone.plate,
-            pill: false,
-            height: 54,
             onTap: () => _enterCode(context),
           ),
         ],
         if (link != null && s.status != PcStatus.repair)
-          BloomButton(
+          PlatformAction(
             label: l.pcSyncNow,
-            tone: ButtonTone.plate,
-            pill: false,
-            height: 54,
             busy: s.status == PcStatus.syncing,
             onTap: () async {
               await pc.sync(force: true);
@@ -82,11 +73,8 @@ class PcSettingsScreen extends ConsumerWidget {
             },
           ),
         if (link != null)
-          BloomButton(
+          PlatformAction(
             label: l.pcUnpair,
-            tone: ButtonTone.plate,
-            pill: false,
-            height: 54,
             onTap: () async {
               final yes = await confirmDanger(
                 context,
@@ -142,7 +130,7 @@ class _HowTo extends StatelessWidget {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
     final steps = [l.pcStep1, l.pcStep2, l.pcStep3];
-    final base = theme.bodyMedium?.copyWith(color: t.text2, height: 1.5);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -151,45 +139,7 @@ class _HowTo extends StatelessWidget {
           child: Column(
             children: [
               for (final (i, step) in steps.indexed)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 24,
-                        height: 24,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: t.accent.withValues(alpha: 0.16),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          '${i + 1}',
-                          style: theme.labelSmall?.copyWith(
-                            color: t.accent,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Text.rich(
-                          TextSpan(
-                            children: markupSpans(
-                              step,
-                              base,
-                              base?.copyWith(
-                                color: t.text,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                GuideStep(index: i + 1, text: step),
             ],
           ),
         ),
@@ -442,13 +392,7 @@ class _CodeSheetState extends ConsumerState<_CodeSheet> {
           children: [
             note(l.pcCodeNone),
             const SizedBox(height: 8),
-            BloomButton(
-              label: l.pcCodeRetry,
-              tone: ButtonTone.plate,
-              pill: false,
-              height: 48,
-              onTap: _search,
-            ),
+            PlatformAction(label: l.pcCodeRetry, height: 48, onTap: _search),
           ],
         ),
       );
@@ -504,10 +448,8 @@ class _CodeSheetState extends ConsumerState<_CodeSheet> {
             ),
           ),
           note(_error ?? l.pcCodeHint, color: _error != null ? t.danger : null),
-          BloomButton(
+          PlatformAction(
             label: l.pcConnect,
-            tone: ButtonTone.plate,
-            pill: false,
             height: 48,
             busy: _busy,
             onTap: () => _connect(pc),

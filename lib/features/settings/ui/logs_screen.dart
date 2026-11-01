@@ -17,6 +17,7 @@ import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/subpage_header.dart';
+import '../../../shared/ui/atoms.dart';
 
 class LogsScreen extends ConsumerStatefulWidget {
   const LogsScreen({super.key});
@@ -66,7 +67,6 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
   @override
   Widget build(BuildContext context) {
     final l = context.l;
-    final t = context.bloom;
     final empty = _entries.isEmpty;
 
     return SubPage(
@@ -103,17 +103,7 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
         ),
         const SizedBox(height: 14),
         if (empty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 40),
-            child: Center(
-              child: Text(
-                l.logsEmpty,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: t.muted),
-              ),
-            ),
-          )
+          Center(child: CenterNote(l.logsEmpty))
         else
           GlassBox(
             child: Padding(

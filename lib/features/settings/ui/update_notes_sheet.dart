@@ -118,7 +118,7 @@ class _SummaryPlate extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SettingsCaption(context.l.updWhatsNew.toUpperCase()),
+          SettingsCaption(context.l.updWhatsNew),
           const SizedBox(height: 8),
           Text(
             text,

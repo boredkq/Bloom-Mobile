@@ -322,6 +322,7 @@ class _MiniButton extends ConsumerWidget {
           size: _size,
           iconSize: 20,
           background: Colors.transparent,
+          color: t.iconFg,
           onTap: live ? ref.read(playbackProvider.notifier).prev : null,
         );
       case MiniButton.next:
@@ -330,6 +331,7 @@ class _MiniButton extends ConsumerWidget {
           size: _size,
           iconSize: 20,
           background: Colors.transparent,
+          color: t.iconFg,
           onTap: live ? ref.read(playbackProvider.notifier).next : null,
         );
       case MiniButton.fav:
@@ -341,7 +343,7 @@ class _MiniButton extends ConsumerWidget {
           size: _size,
           iconSize: 20,
           background: Colors.transparent,
-          color: fav ? t.sysFavIco : null,
+          color: fav ? t.sysFavIco : t.iconFg,
           onTap: live
               ? () => ref.read(libraryProvider.notifier).toggleFav(track)
               : null,

@@ -92,3 +92,81 @@ class SectionLabel extends StatelessWidget {
     ),
   );
 }
+
+/// A short choice of a few, a film sliding under the chosen one.
+class PillTabs extends StatelessWidget {
+  const PillTabs({
+    super.key,
+    required this.labels,
+    required this.index,
+    required this.onPick,
+  });
+
+  final List<String> labels;
+  final int index;
+  final ValueChanged<int> onPick;
+
+  /// Переезд пилюли — десктопные 0.32 с.
+  static const Duration slide = Duration(milliseconds: 320);
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final style = Theme.of(
+      context,
+    ).textTheme.titleMedium?.copyWith(fontSize: 13);
+    return IntrinsicWidth(
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: AnimatedAlign(
+              duration: slide,
+              curve: Curves.easeOutCubic,
+              alignment: Alignment(
+                labels.length < 2 ? 0 : -1 + 2 * index / (labels.length - 1),
+                0,
+              ),
+              child: FractionallySizedBox(
+                widthFactor: 1 / labels.length,
+                heightFactor: 1,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: t.text.withValues(alpha: 0.09),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Row(
+            children: [
+              for (var i = 0; i < labels.length; i++)
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => onPick(i),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      child: Center(
+                        widthFactor: 1,
+                        child: AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 180),
+                          style: (style ?? const TextStyle()).copyWith(
+                            color: i == index ? t.text : t.text2,
+                          ),
+                          child: Text(labels[i], maxLines: 1),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -21,7 +21,6 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
-import '../../../shared/ui/pressable.dart';
 import '../custom_store.dart';
 import '../media_store.dart';
 import 'custom_sheet.dart';
@@ -88,9 +87,8 @@ class _MediaItemBody extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               CustSheetLabel(context.l.custCoverMode),
-              for (final m in CoverMode.values) ...[
-                if (m != CoverMode.values.first) const SizedBox(height: 8),
-                _ModeRow(
+              for (final m in CoverMode.values)
+                SheetOptionTile(
                   icon: switch (m) {
                     CoverMode.always => Bi.infinite,
                     CoverMode.fallback => Bi.shieldCheck,
@@ -99,10 +97,9 @@ class _MediaItemBody extends ConsumerWidget {
                     CoverMode.always => context.l.custCoverModeAlways,
                     CoverMode.fallback => context.l.custCoverModeFallback,
                   },
-                  on: m == mode,
+                  active: m == mode,
                   onTap: () => ref.read(coverModeProvider.notifier).set(m),
                 ),
-              ],
             ],
           ),
         ),
@@ -162,63 +159,6 @@ class _Reveal extends StatelessWidget {
       child: show ? child : const SizedBox(width: double.infinity),
     ),
   );
-}
-
-/// Вариант режима — отдельной плашкой, как на макете: выбранный светлее
-/// (плёнка `iconBg` поверх блока — ровно #282828) и с галочкой, без рамки.
-class _ModeRow extends StatelessWidget {
-  const _ModeRow({
-    required this.icon,
-    required this.label,
-    required this.on,
-    required this.onTap,
-  });
-
-  final BloomGlyph icon;
-  final String label;
-  final bool on;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final color = on ? t.text : t.iconFg;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: kCustSheetEdge),
-      child: Pressable(
-        onTap: onTap,
-        scale: 0.98,
-        child: Material(
-          color: on ? Color.alphaBlend(t.iconBg, t.pill) : t.pill,
-          borderRadius: BorderRadius.circular(t.radius),
-          clipBehavior: Clip.antiAlias,
-          child: SizedBox(
-            height: 46,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(
-                children: [
-                  BloomIcon(icon, size: 22, color: color),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.titleMedium?.copyWith(color: color),
-                    ),
-                  ),
-                  if (on) BloomIcon(Bi.check, size: 20, color: t.text),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _SliderRow extends StatelessWidget {

@@ -26,7 +26,7 @@ class MiniPlayerSettingsScreen extends ConsumerWidget {
       title: l.setMiniPlayer,
       onBack: () => context.go('/settings'),
       children: [
-        SettingsCaption(l.pvGroupLook.toUpperCase()),
+        SettingsCaption(l.pvGroupLook),
         const SizedBox(height: 10),
         SettingsGroupCard(
           rows: [
@@ -58,7 +58,7 @@ class MiniPlayerSettingsScreen extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 22),
-        SettingsCaption(l.pvGroupMiniControls.toUpperCase()),
+        SettingsCaption(l.pvGroupMiniControls),
         const SizedBox(height: 10),
         SettingsGroupCard(
           rows: [

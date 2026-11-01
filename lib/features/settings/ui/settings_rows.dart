@@ -7,6 +7,7 @@ import '../../../app/theme/tokens.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/pressable.dart';
+import '../../../shared/ui/glass.dart';
 
 /// A row with a switch. Only the switch toggles: a tap across the whole width
 /// would read as going to a page.
@@ -110,14 +111,9 @@ class SettingsValueRow extends StatelessWidget {
       subtitle: value,
       subtitleLines: 1,
       onTap: onTap,
-      trailing: Container(
-        width: 40,
-        height: 40,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: t.text.withValues(alpha: 0.08),
-          shape: BoxShape.circle,
-        ),
+      trailing: TintCircle(
+        size: 40,
+        color: t.text.withValues(alpha: 0.08),
         child: IconTheme(
           data: IconThemeData(color: t.iconFg, size: 21),
           child: glyph,
@@ -136,6 +132,7 @@ class SettingsRowShell extends StatelessWidget {
     required this.trailing,
     this.subtitle,
     this.subtitleLines,
+    this.titleStyle,
     this.icon,
     this.leading,
     this.color,
@@ -150,6 +147,9 @@ class SettingsRowShell extends StatelessWidget {
   final String title;
   final String? subtitle;
   final int? subtitleLines;
+
+  /// `titleMedium` in [color] when not set.
+  final TextStyle? titleStyle;
   final Widget trailing;
   final BloomGlyph? icon;
 
@@ -202,7 +202,9 @@ class SettingsRowShell extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: theme.titleMedium?.copyWith(color: color),
+                        style:
+                            titleStyle ??
+                            theme.titleMedium?.copyWith(color: color),
                       ),
                       if (sub.isNotEmpty) ...[
                         const SizedBox(height: 3),
@@ -221,6 +223,64 @@ class SettingsRowShell extends StatelessWidget {
                 const SizedBox(width: 14),
                 trailing,
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A choice shown as a picture over its name: the chosen one is lit.
+class PickCard extends StatelessWidget {
+  const PickCard({
+    super.key,
+    required this.picture,
+    required this.label,
+    required this.active,
+    required this.onTap,
+    this.width,
+    this.height,
+  });
+
+  /// Comes from outside: accent when chosen, dimmed otherwise.
+  final Widget Function(Color ink) picture;
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+  final double? width;
+  final double? height;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return Pressable(
+      onTap: onTap,
+      scale: 0.97,
+      child: SizedBox(
+        width: width,
+        height: height,
+        child: GlassBox(
+          borderRadius: BorderRadius.circular(t.radius),
+          child: Ink(
+            color: active ? t.accent.withValues(alpha: 0.12) : null,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  picture(active ? t.accent : t.iconFg),
+                  const SizedBox(height: 10),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: active ? t.text : t.text2,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

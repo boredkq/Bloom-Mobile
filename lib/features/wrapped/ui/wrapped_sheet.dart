@@ -1025,7 +1025,7 @@ class _SourcesSlide extends StatelessWidget {
           delay: 90,
           child: Column(
             children: [
-              _SourceLogo(source: lead.source, size: 52 * big),
+              PlatformLogo(lead.source, size: 52 * big),
               const SizedBox(height: 14),
               _Num(
                 n: fmtCount(locale, lead.plays),
@@ -1061,18 +1061,6 @@ class _SourcesSlide extends StatelessWidget {
   }
 }
 
-class _SourceLogo extends StatelessWidget {
-  const _SourceLogo({required this.source, required this.size});
-
-  final MusicSource source;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) => source == MusicSource.local
-      ? BloomIcon(Bi.folder, size: size, color: context.bloom.text)
-      : PlatformLogo(source, size: size);
-}
-
 class _SourceRow extends StatelessWidget {
   const _SourceRow({
     required this.row,
@@ -1092,7 +1080,7 @@ class _SourceRow extends StatelessWidget {
       children: [
         Row(
           children: [
-            _SourceLogo(source: row.source, size: 14),
+            PlatformLogo(row.source, size: 14),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -1113,26 +1101,12 @@ class _SourceRow extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(3),
-          child: SizedBox(
-            height: 5,
-            child: ColoredBox(
-              color: t.text.withValues(alpha: 0.12),
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: fill),
-                duration: const Duration(milliseconds: 700),
-                curve: Curves.easeOutCubic,
-                builder: (_, value, _) => FractionallySizedBox(
-                  alignment: Alignment.centerLeft,
-                  widthFactor: value,
-                  child: ColoredBox(
-                    color: platformColor[row.source] ?? t.accent,
-                  ),
-                ),
-              ),
-            ),
-          ),
+        BloomBar(
+          value: fill,
+          color: platformColor[row.source] ?? t.accent,
+          track: t.text.withValues(alpha: 0.12),
+          height: 5,
+          animated: const Duration(milliseconds: 700),
         ),
       ],
     );

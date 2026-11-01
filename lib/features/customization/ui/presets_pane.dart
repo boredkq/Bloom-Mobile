@@ -13,7 +13,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
-import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
@@ -31,22 +30,8 @@ class PresetsPane extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final presets = ref.watch(presetsProvider);
-    if (presets.isEmpty) {
-      return Center(
-        child: CenterNote(
-          context.l.custPresetsEmpty,
-          padding: const EdgeInsets.symmetric(horizontal: 40),
-        ),
-      );
-    }
-    return GridView.builder(
-      padding: EdgeInsets.fromLTRB(16, 12, 16, 8 + bottomBarsInset(context)),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 4 / 3,
-      ),
+    return CustomPane(
+      empty: context.l.custPresetsEmpty,
       itemCount: presets.length,
       itemBuilder: (_, i) => _PresetCard(preset: presets[i]),
     );
@@ -144,24 +129,12 @@ class _PresetAddFormState extends State<_PresetAddForm> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
     Widget toggle(String label, bool value, ValueChanged<bool> onChanged) =>
-        InkWell(
-          onTap: () => onChanged(!value),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    label,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-                BloomSwitch(value: value, onChanged: onChanged),
-              ],
-            ),
-          ),
+        SheetSwitchRow(
+          label: label,
+          value: value,
+          onChanged: onChanged,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         );
 
     return Column(
@@ -178,15 +151,7 @@ class _PresetAddFormState extends State<_PresetAddForm> {
         ),
         // Картинки с размытием, затемнением и режимом обложки ложатся в
         // пресет всегда; это — по желанию.
-        Padding(
-          padding: const EdgeInsets.fromLTRB(kSheetEdge + 4, 10, kSheetEdge, 2),
-          child: Text(
-            context.l.custPresetAlsoSave,
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: t.text2),
-          ),
-        ),
+        SheetCaption(context.l.custPresetAlsoSave),
         SheetPanel(
           children: [
             toggle(

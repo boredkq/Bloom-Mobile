@@ -34,6 +34,7 @@ import '../profile_store.dart';
 import 'image_cropper.dart';
 import 'profile_avatar.dart';
 import 'profile_banner.dart';
+import '../../../shared/ui/big_tabs.dart';
 import 'profile_screen.dart'
     show ProfileBannerHero, ProfileWho, kProfileBannerStrip;
 
@@ -371,18 +372,20 @@ class _ImageSheetState extends State<_ImageSheet> {
           Row(
             children: [
               Expanded(
-                child: _ImageTab(
+                child: OptionTile(
                   active: !banner,
+                  height: 66,
                   onTap: () => setState(() => _target = ProfileImage.avatar),
-                  child: ProfileAvatar(profile: _draft, size: 38),
+                  builder: (_) => ProfileAvatar(profile: _draft, size: 38),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _ImageTab(
+                child: OptionTile(
                   active: banner,
+                  height: 66,
                   onTap: () => setState(() => _target = ProfileImage.banner),
-                  child: ClipRRect(
+                  builder: (_) => ClipRRect(
                     borderRadius: BorderRadius.circular(6),
                     child: SizedBox(
                       width: 54,
@@ -423,7 +426,9 @@ class _ImageSheetState extends State<_ImageSheet> {
                         Row(
                           children: [
                             if (_draft.bannerMode != BannerColorMode.auto)
-                              _Swatch(
+                              ColorChip(
+                                width: 46,
+                                height: 36,
                                 color: _draft.bannerColor,
                                 onTap: () => _pickColor(
                                   _draft.bannerColor,
@@ -434,7 +439,9 @@ class _ImageSheetState extends State<_ImageSheet> {
                             if (_draft.bannerMode ==
                                 BannerColorMode.gradient) ...[
                               const SizedBox(width: 10),
-                              _Swatch(
+                              ColorChip(
+                                width: 46,
+                                height: 36,
                                 color: _draft.bannerColor2,
                                 onTap: () => _pickColor(
                                   _draft.bannerColor2,
@@ -444,17 +451,18 @@ class _ImageSheetState extends State<_ImageSheet> {
                               ),
                             ],
                             const Spacer(),
-                            _Segmented<BannerColorMode>(
-                              value: _draft.bannerMode,
-                              items: {
-                                BannerColorMode.auto: (l) => l.profileColorAuto,
-                                BannerColorMode.solid: (l) =>
-                                    l.profileColorSolid,
-                                BannerColorMode.gradient: (l) =>
-                                    l.profileColorGradient,
-                              },
-                              onChanged: (m) =>
-                                  _patch(_draft.copyWith(bannerMode: m)),
+                            PillTabs(
+                              labels: [
+                                context.l.profileColorAuto,
+                                context.l.profileColorSolid,
+                                context.l.profileColorGradient,
+                              ],
+                              index: _draft.bannerMode.index,
+                              onPick: (i) => _patch(
+                                _draft.copyWith(
+                                  bannerMode: BannerColorMode.values[i],
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -499,39 +507,6 @@ class _ImageSheetState extends State<_ImageSheet> {
               onTap: () => _run(widget.onDrop),
             ),
         ],
-      ),
-    );
-  }
-}
-
-/// Вкладка шторки: одна миниатюра. Выбранная не обводится, а светлеет —
-/// плёнкой поверх той же тёмной панели.
-class _ImageTab extends StatelessWidget {
-  const _ImageTab({
-    required this.active,
-    required this.onTap,
-    required this.child,
-  });
-
-  final bool active;
-  final VoidCallback onTap;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Material(
-      color: active
-          ? Colors.white.withValues(alpha: 0.14)
-          : sheetPanelColor(context),
-      borderRadius: BorderRadius.circular(t.radius),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          child: SizedBox(height: 38, child: Center(child: child)),
-        ),
       ),
     );
   }
@@ -606,59 +581,6 @@ class _Field extends StatelessWidget {
   }
 }
 
-/// Сегментированный переключатель — десктопный `.pedit-mode-toggle`.
-class _Segmented<T> extends StatelessWidget {
-  const _Segmented({
-    required this.value,
-    required this.items,
-    required this.onChanged,
-  });
-
-  final T value;
-  final Map<T, String Function(AppLocalizations l)> items;
-  final ValueChanged<T> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: t.bg,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final entry in items.entries)
-            GestureDetector(
-              onTap: () => onChanged(entry.key),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: entry.key == value ? t.accent : Colors.transparent,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  entry.value(context.l),
-                  style: theme.bodySmall?.copyWith(
-                    color: entry.key == value ? t.accentText : t.text2,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Восемь углов градиента стрелками.
 class _AngleRow extends StatelessWidget {
   const _AngleRow({required this.value, required this.onChanged});
 
@@ -667,58 +589,23 @@ class _AngleRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
         for (var i = 0; i < kBannerAngles.length; i++)
-          GestureDetector(
-            onTap: () => onChanged(kBannerAngles[i]),
-            child: Container(
-              width: 36,
-              height: 36,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: kBannerAngles[i] == value ? t.accent : t.bg,
-                borderRadius: BorderRadius.circular(t.radius * 0.6),
-              ),
-              child: Text(
+          SizedBox.square(
+            dimension: 36,
+            child: OptionTile(
+              active: kBannerAngles[i] == value,
+              onTap: () => onChanged(kBannerAngles[i]),
+              builder: (ink) => Text(
                 _angleArrows[i],
-                style: TextStyle(
-                  fontSize: 15,
-                  color: kBannerAngles[i] == value ? t.accentText : t.text2,
-                ),
+                style: TextStyle(fontSize: 15, color: ink),
               ),
             ),
           ),
       ],
-    );
-  }
-}
-
-/// Кликабельный сватч цвета. Единственная линия, что тут осталась, — самая
-/// тихая: без неё тёмный цвет на тёмной плашке просто не виден.
-class _Swatch extends StatelessWidget {
-  const _Swatch({required this.color, required this.onTap});
-
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 46,
-        height: 36,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(t.radius * 0.5),
-          border: Border.all(color: t.ovlLine),
-        ),
-      ),
     );
   }
 }

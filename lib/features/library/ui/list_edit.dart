@@ -328,7 +328,6 @@ class _ListEditorState extends ConsumerState<ListEditor> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
     final width = MediaQuery.sizeOf(context).width;
     // Панель правки плавает над списком, а под ней — миниплеер и таб-бар
     // каркаса: их высоту она обходит сверху, а список — снизу.
@@ -379,12 +378,7 @@ class _ListEditorState extends ConsumerState<ListEditor> {
                       setState(() => _dragId = _tracks[i].id),
                   onReorderEnd: (_) => setState(() => _dragId = null),
                   proxyDecorator: (child, _, _) {
-                    final card = Material(
-                      color: t.pill,
-                      elevation: 6,
-                      borderRadius: BorderRadius.circular(t.radius * 0.85),
-                      child: child,
-                    );
+                    final card = trackRowDragged(context, child);
                     final n = _dragGroup;
                     return n < 2 ? card : _DragDeck(count: n, child: card);
                   },
@@ -711,7 +705,6 @@ class _EditRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
     final drag = index;
     final Widget cover = Cover(url: track.cover, size: 52);
 
@@ -733,23 +726,12 @@ class _EditRow extends StatelessWidget {
                 ReorderableDelayedDragStartListener(index: drag, child: cover),
               const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      track.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.titleMedium,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      track.artist,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.bodySmall?.copyWith(color: t.text2),
-                    ),
-                  ],
+                child: TwoLines(
+                  track.name,
+                  track.artist,
+                  subStyle: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: t.text2),
                 ),
               ),
               const SizedBox(width: 10),
@@ -803,20 +785,11 @@ class _DragDeck extends StatelessWidget {
           top: -9,
           right: -4,
           child: Material(
-            color: t.accent,
+            type: MaterialType.transparency,
             elevation: 6,
             shadowColor: Colors.black,
             borderRadius: BorderRadius.circular(999),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
-              child: Text(
-                '$count',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: t.accentText,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
+            child: CountBadge(count, height: 24, size: 13, side: 9),
           ),
         ),
       ],
@@ -862,7 +835,9 @@ class _EditBar extends StatelessWidget {
     return _BarShell(
       child: Row(
         children: [
-          _BarIcon(
+          CircleIconButton(
+            size: 44,
+            background: Colors.transparent,
             icon: allSelected
                 ? Bi.checklistMinimalisticBold
                 : Bi.checklistMinimalistic,
@@ -889,18 +864,27 @@ class _EditBar extends StatelessWidget {
           ),
           const Spacer(),
           if (some) ...[
-            _BarIcon(icon: Bi.add, onTap: onAdd),
+            CircleIconButton(
+              icon: Bi.add,
+              size: 44,
+              background: Colors.transparent,
+              color: t.text,
+              onTap: onAdd,
+            ),
             if (canFav)
-              _BarIcon(
+              CircleIconButton(
+                size: 44,
+                background: Colors.transparent,
                 icon: favOn ? Bi.heartBold : Bi.heart,
-                color: favOn ? t.sysFavIco : null,
+                color: favOn ? t.sysFavIco : t.text,
                 onTap: onFav,
               ),
             const SizedBox(width: 4),
-            _BarIcon(
+            CircleIconButton(
+              size: 44,
+              background: t.danger.withValues(alpha: 0.16),
               icon: Bi.trashBinTrash,
               color: t.danger,
-              background: t.danger.withValues(alpha: 0.16),
               onTap: onRemove,
             ),
           ],
@@ -940,7 +924,13 @@ class _RenameBarState extends State<_RenameBar> {
     return _BarShell(
       child: Row(
         children: [
-          _BarIcon(icon: Bi.close, onTap: widget.onCancel),
+          CircleIconButton(
+            icon: Bi.close,
+            size: 44,
+            background: Colors.transparent,
+            color: context.bloom.text,
+            onTap: widget.onCancel,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: BloomField(
@@ -951,8 +941,11 @@ class _RenameBarState extends State<_RenameBar> {
             ),
           ),
           const SizedBox(width: 8),
-          _BarIcon(
+          CircleIconButton(
+            size: 44,
+            background: Colors.transparent,
             icon: Bi.check,
+            color: context.bloom.text,
             onTap: () => widget.onDone(_controller.text),
           ),
         ],
@@ -982,44 +975,6 @@ class _BarShell extends StatelessWidget {
         height: 62,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: child,
-      ),
-    );
-  }
-}
-
-class _BarIcon extends StatelessWidget {
-  const _BarIcon({
-    required this.icon,
-    required this.onTap,
-    this.color,
-    this.background,
-  });
-
-  final BloomGlyph icon;
-  final VoidCallback? onTap;
-  final Color? color;
-
-  /// Своя заливка — у корзины: удаление в этой панели единственное опасное.
-  final Color? background;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Pressable(
-      onTap: onTap,
-      child: Material(
-        color: background ?? Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        clipBehavior: Clip.antiAlias,
-        child: SizedBox(
-          width: 44,
-          height: 44,
-          child: BloomIcon(
-            icon,
-            size: 23,
-            color: onTap == null ? t.muted : (color ?? t.text),
-          ),
-        ),
       ),
     );
   }

@@ -456,6 +456,270 @@ class BloomField extends StatelessWidget {
   }
 }
 
+/// A title and a line under it, cut to one line each unless told otherwise.
+class TwoLines extends StatelessWidget {
+  const TwoLines(
+    this.title,
+    this.sub, {
+    super.key,
+    this.titleStyle,
+    this.subStyle,
+    this.gap = 2,
+    this.subLines = 1,
+    this.center = false,
+  });
+
+  final String title;
+
+  /// `null` or empty: only the title.
+  final String? sub;
+
+  /// `titleMedium` when not set.
+  final TextStyle? titleStyle;
+
+  /// `bodySmall` when not set.
+  final TextStyle? subStyle;
+  final double gap;
+  final int subLines;
+  final bool center;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context).textTheme;
+    final line = sub ?? '';
+    final align = center ? TextAlign.center : TextAlign.start;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: center
+          ? CrossAxisAlignment.center
+          : CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          maxLines: 1,
+          textAlign: align,
+          overflow: TextOverflow.ellipsis,
+          style: titleStyle ?? theme.titleMedium,
+        ),
+        if (line.isNotEmpty) ...[
+          SizedBox(height: gap),
+          Text(
+            line,
+            maxLines: subLines,
+            textAlign: align,
+            overflow: TextOverflow.ellipsis,
+            style: subStyle ?? theme.bodySmall,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// A round plate with a mark in the middle.
+class TintCircle extends StatelessWidget {
+  const TintCircle({
+    super.key,
+    required this.size,
+    required this.color,
+    required this.child,
+  });
+
+  final double size;
+  final Color color;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    alignment: Alignment.center,
+    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    child: child,
+  );
+}
+
+/// A number on an accent pill: how many, or which in order.
+class CountBadge extends StatelessWidget {
+  const CountBadge(
+    this.value, {
+    super.key,
+    this.height = 18,
+    this.size = 10,
+    this.side = 5,
+  });
+
+  final int value;
+  final double height;
+  final double size;
+  final double side;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return Container(
+      constraints: BoxConstraints(minWidth: height),
+      height: height,
+      alignment: Alignment.center,
+      padding: EdgeInsets.symmetric(horizontal: side),
+      decoration: BoxDecoration(
+        color: t.accent,
+        borderRadius: BorderRadius.circular(height / 2),
+      ),
+      child: Text(
+        '$value',
+        style: bloomText(
+          size: size,
+          weight: 700,
+          color: t.accentText,
+          height: 1,
+        ),
+      ),
+    );
+  }
+}
+
+/// A straight progress bar. With [animated] it glides to a new value.
+class BloomBar extends StatelessWidget {
+  const BloomBar({
+    super.key,
+    required this.value,
+    required this.color,
+    required this.track,
+    this.height = 4,
+    this.gradient,
+    this.animated,
+  });
+
+  final double value;
+  final Color color;
+  final Color track;
+  final double height;
+
+  /// Instead of [color].
+  final Gradient? gradient;
+  final Duration? animated;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(height / 2);
+    final fill = DecoratedBox(
+      decoration: BoxDecoration(
+        color: gradient == null ? color : null,
+        gradient: gradient,
+        borderRadius: radius,
+      ),
+    );
+    final end = value.clamp(0.0, 1.0);
+    Widget at(double v, Widget? child) => FractionallySizedBox(
+      alignment: Alignment.centerLeft,
+      widthFactor: v,
+      child: child,
+    );
+    return SizedBox(
+      height: height,
+      child: DecoratedBox(
+        decoration: BoxDecoration(color: track, borderRadius: radius),
+        child: animated == null
+            ? at(end, fill)
+            : TweenAnimationBuilder<double>(
+                tween: Tween(end: end),
+                duration: animated!,
+                curve: Curves.easeOutCubic,
+                builder: (_, v, child) => at(v, child),
+                child: fill,
+              ),
+      ),
+    );
+  }
+}
+
+/// Where a big picture is missing.
+class BannerEmpty extends StatelessWidget {
+  const BannerEmpty({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return ColoredBox(
+      color: t.coverEmpty,
+      child: Center(child: BloomMark(size: 96, color: t.text, opacity: 0.16)),
+    );
+  }
+}
+
+/// A round field in a header: the magnifier, the text, what acts on it.
+class HeaderSearchField extends StatelessWidget {
+  const HeaderSearchField({
+    super.key,
+    required this.hint,
+    this.controller,
+    this.focusNode,
+    this.action,
+    this.trailing,
+    this.onChanged,
+    this.onSubmitted,
+    this.overPicture = false,
+  });
+
+  final String hint;
+  final TextEditingController? controller;
+  final FocusNode? focusNode;
+  final TextInputAction? action;
+  final Widget? trailing;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+
+  /// Lies over a cover: clear glass and white ink instead of the theme's.
+  final bool overPicture;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final ink = overPicture ? Colors.white : t.text;
+    final body = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: SizedBox(
+        height: kHeaderControl,
+        child: Row(
+          children: [
+            BloomIcon(
+              Bi.magnifier,
+              size: 21,
+              color: overPicture ? Colors.white : t.muted,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: BloomField(
+                controller: controller,
+                focusNode: focusNode,
+                hint: hint,
+                autofocus: true,
+                action: action,
+                onChanged: onChanged,
+                onSubmitted: onSubmitted,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontSize: kHeaderTitleSize,
+                  color: ink,
+                ),
+                hintStyle: TextStyle(
+                  fontSize: kHeaderTitleSize,
+                  color: overPicture ? Colors.white54 : t.muted,
+                ),
+              ),
+            ),
+            ?trailing,
+          ],
+        ),
+      ),
+    );
+    final shape = BorderRadius.circular(999);
+    return overPicture
+        ? GlassSurface(shape: shape, child: body)
+        : GlassBox(borderRadius: shape, child: body);
+  }
+}
+
 /// Over a [Cover] while what it leads to is being looked for.
 class CoverSpinner extends StatelessWidget {
   const CoverSpinner({super.key});
@@ -476,7 +740,8 @@ class CoverSpinner extends StatelessWidget {
 class CircleIconButton extends StatelessWidget {
   const CircleIconButton({
     super.key,
-    required this.icon,
+    this.icon,
+    this.child,
     this.onTap,
     this.size = kHeaderControl,
     this.iconSize = 23,
@@ -485,9 +750,13 @@ class CircleIconButton extends StatelessWidget {
     this.glass,
     this.color,
     this.tooltip,
+    this.label,
   });
 
-  final BloomGlyph icon;
+  final BloomGlyph? icon;
+
+  /// Instead of [icon]: a logo, a spinner.
+  final Widget? child;
   final VoidCallback? onTap;
   final double size;
   final double iconSize;
@@ -504,8 +773,12 @@ class CircleIconButton extends StatelessWidget {
   /// ей стекло положено.
   final bool? glass;
 
+  /// Muted while there's nothing to tap, unless given.
   final Color? color;
   final String? tooltip;
+
+  /// What a screen reader says when the icon alone wouldn't.
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
@@ -522,11 +795,22 @@ class CircleIconButton extends StatelessWidget {
         child: SizedBox(
           width: size,
           height: size,
-          child: BloomIcon(icon, size: iconSize, color: color ?? t.iconFg),
+          child:
+              child ??
+              BloomIcon(
+                icon,
+                size: iconSize,
+                color: color ?? (onTap == null ? t.muted : t.iconFg),
+              ),
         ),
       ),
     );
-    return tooltip == null ? button : Tooltip(message: tooltip!, child: button);
+    final hinted = tooltip == null
+        ? button
+        : Tooltip(message: tooltip!, child: button);
+    return label == null
+        ? hinted
+        : Semantics(button: true, label: label, child: hinted);
   }
 }
 
@@ -570,7 +854,8 @@ class GlassSurface extends StatelessWidget {
 class GlassIconButton extends StatelessWidget {
   const GlassIconButton({
     super.key,
-    required this.icon,
+    this.icon,
+    this.child,
     required this.onTap,
     this.size = kHeaderControl,
     this.iconSize = 23,
@@ -578,7 +863,10 @@ class GlassIconButton extends StatelessWidget {
     this.color,
   });
 
-  final BloomGlyph icon;
+  final BloomGlyph? icon;
+
+  /// Instead of [icon]: a spinner.
+  final Widget? child;
   final VoidCallback? onTap;
   final double size;
   final double iconSize;
@@ -607,7 +895,13 @@ class GlassIconButton extends StatelessWidget {
         child: SizedBox(
           width: size,
           height: size,
-          child: BloomIcon(icon, size: iconSize, color: color ?? Colors.white),
+          child:
+              child ??
+              BloomIcon(
+                icon,
+                size: iconSize,
+                color: color ?? (onTap == null ? Colors.white38 : Colors.white),
+              ),
         ),
       ),
     );

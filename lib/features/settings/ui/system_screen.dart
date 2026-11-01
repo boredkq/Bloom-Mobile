@@ -33,7 +33,7 @@ class SystemSettingsScreen extends ConsumerWidget {
       title: l.setSystem,
       onBack: () => context.go('/settings'),
       children: [
-        SettingsCaption(l.sysImportExport.toUpperCase()),
+        SettingsCaption(l.sysImportExport),
         const SizedBox(height: 10),
         SettingsGroupCard(
           dividerInset: 52,
@@ -56,7 +56,7 @@ class SystemSettingsScreen extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 22),
-        SettingsCaption(l.sysLogs.toUpperCase()),
+        SettingsCaption(l.sysLogs),
         const SizedBox(height: 10),
         // Subscribed: the log's page lies over this one, and after clearing
         // this page wouldn't rebuild and would keep the old number.
@@ -81,7 +81,7 @@ class SystemSettingsScreen extends ConsumerWidget {
           children: [
             BloomIcon(Bi.dangerTriangle, size: 13, color: t.danger),
             const SizedBox(width: 6),
-            SettingsCaption(l.sysDangerZone.toUpperCase()),
+            SettingsCaption(l.sysDangerZone),
           ],
         ),
         const SizedBox(height: 10),

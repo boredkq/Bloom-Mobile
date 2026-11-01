@@ -300,8 +300,12 @@ class _NowPlaying extends ConsumerWidget {
           builder: (context, box) => Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _FilmButton(
+              CircleIconButton(
+                size: _filmSide,
+                iconSize: 20,
+                background: _film(context),
                 icon: disliked ? Bi.dislikeBold : Bi.dislike,
+                color: t.text,
                 label: disliked
                     ? context.l.waveUndislike
                     : context.l.waveDislike,
@@ -314,9 +318,12 @@ class _NowPlaying extends ConsumerWidget {
                 onLongPress: menu,
               ),
               const SizedBox(width: 8),
-              _FilmButton(
+              CircleIconButton(
+                size: _filmSide,
+                iconSize: 20,
+                background: _film(context),
                 icon: liked ? Bi.heartBold : Bi.heart,
-                color: liked ? t.sysFavIco : null,
+                color: liked ? t.sysFavIco : t.text,
                 label: liked
                     ? context.l.taRemoveFromFavorites
                     : context.l.taAddToFavorites,
@@ -335,34 +342,6 @@ class _NowPlaying extends ConsumerWidget {
 /// the circle's brightest heart.
 Color _film(BuildContext context) =>
     context.bloom.bg.withValues(alpha: _filmAlpha);
-
-class _FilmButton extends StatelessWidget {
-  const _FilmButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.color,
-  });
-
-  final BloomGlyph icon;
-  final String label;
-  final VoidCallback onTap;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-    button: true,
-    label: label,
-    child: CircleIconButton(
-      icon: icon,
-      size: _filmSide,
-      iconSize: 20,
-      background: _film(context),
-      color: color ?? context.bloom.text,
-      onTap: onTap,
-    ),
-  );
-}
 
 /// The title on the progress: the played part a shade lighter; a tap or a
 /// drag seeks, a hold opens the track's menu.
@@ -500,9 +479,7 @@ class _PicksState extends ConsumerState<_Picks> {
     return ((n - acts) / 2).ceil();
   }
 
-  // keepPage off: a row built anew (the home scrolled far and back) restored
-  // its old page, while the arc's first frame reads initialPage, so every
-  // pick rose to the arc's top and stayed there till a swipe.
+  // keepPage off: a row built anew starts in the middle, not on its old page.
   PageController _controller() => PageController(
     viewportFraction: _pickShare,
     initialPage: widget.once ? 0 : widget.options.length * _laps + _mid,
@@ -564,6 +541,20 @@ class _PicksState extends ConsumerState<_Picks> {
     }
   }
 
+  // A change of theme or insets replaces the scroll position, which has its
+  // pixels but no dimensions until layout, and `page` isn't there to read.
+  // Going by initialPage then put the row a thousand pages off: every pick
+  // rose to the arc's top and stayed till a swipe.
+  double _page() {
+    if (!_pages.hasClients) return _pages.initialPage.toDouble();
+    final p = _pages.position;
+    if (p.haveDimensions) return _pages.page!;
+    if (p.hasPixels && p.hasViewportDimension && p.viewportDimension > 0) {
+      return p.pixels / (p.viewportDimension * _pickShare);
+    }
+    return _pages.initialPage.toDouble();
+  }
+
   Widget _pick(int slot, WaveOption o, double width) => SizedBox(
     width: width,
     child: _PickItem(
@@ -590,6 +581,9 @@ class _PicksState extends ConsumerState<_Picks> {
         }
         final arcR = math.max(widget.arcR, itemW);
         return PageView.builder(
+          // A new controller starts anew: taking over the old position would
+          // keep its place on the old lap and ignore initialPage.
+          key: ObjectKey(_pages),
           controller: _pages,
           padEnds: true,
           // The neighbours rise out of the row.
@@ -597,10 +591,7 @@ class _PicksState extends ConsumerState<_Picks> {
           itemBuilder: (context, i) => AnimatedBuilder(
             animation: _pages,
             builder: (context, child) {
-              final page = _pages.hasClients && _pages.position.haveDimensions
-                  ? _pages.page!
-                  : _pages.initialPage.toDouble();
-              final d = (i - page).abs();
+              final d = (i - _page()).abs();
               final dx = math.min(d * itemW, arcR);
               final rise = arcR - math.sqrt(arcR * arcR - dx * dx);
               final fade = ((d - 0.6) / 1.0).clamp(0.0, 1.0);

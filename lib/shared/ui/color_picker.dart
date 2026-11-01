@@ -12,6 +12,7 @@ import '../../app/theme/tokens.dart';
 import '../../core/l10n/l10n.dart';
 import 'atoms.dart';
 import 'bloom_sheet.dart';
+import 'pressable.dart';
 
 /// Открыть пикер. Возвращает выбранный цвет или `null`, если закрыли.
 Future<Color?> showBloomColorPicker(BuildContext context, Color initial) {
@@ -111,15 +112,7 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
               const SizedBox(height: 14),
               Row(
                 children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: _color,
-                      borderRadius: BorderRadius.circular(t.radius * 0.6),
-                      border: Border.all(color: t.ovlLine2),
-                    ),
-                  ),
+                  ColorChip(color: _color, width: 42, height: 42),
                   const SizedBox(width: 12),
                   Expanded(
                     child: BloomField(
@@ -319,4 +312,38 @@ void _drawKnob(Canvas canvas, Offset at, {double radius = 8}) {
       ..strokeWidth = 2
       ..color = Colors.white,
   );
+}
+
+/// A rounded sample of a colour; with [onTap] it opens a choice.
+class ColorChip extends StatelessWidget {
+  const ColorChip({
+    super.key,
+    required this.color,
+    this.width,
+    this.height = 44,
+    this.onTap,
+  });
+
+  final Color color;
+  final double? width;
+  final double height;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return Pressable(
+      onTap: onTap,
+      scale: 0.97,
+      child: Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(t.radius * 0.6),
+          border: Border.all(color: t.ovlLine2),
+        ),
+      ),
+    );
+  }
 }

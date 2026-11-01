@@ -31,6 +31,7 @@ import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../../../shared/ui/track_actions.dart';
 import '../convert_playlist.dart';
+import '../../../shared/ui/glass.dart';
 
 /// Шторка выбора площадки, за которой открывается сам перенос.
 Future<void> showConvertSheet(
@@ -187,33 +188,18 @@ class _ConvertScreenState extends ConsumerState<ConvertScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
     final l = context.l;
-
-    return Scaffold(
-      backgroundColor: t.bg,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-              child: SubPageHeader(
-                title: l.cvTitle,
-                onBack: () => Navigator.of(context).pop(),
-              ),
-            ),
-            Expanded(
-              child: _scanning
-                  ? _Scanning(
-                      source: widget.target,
-                      done: _done,
-                      total: widget.tracks.length,
-                    )
-                  : _review(),
-            ),
-          ],
-        ),
+    return BloomPage(
+      body: SubPage(
+        title: l.cvTitle,
+        onBack: () => Navigator.of(context).pop(),
+        child: _scanning
+            ? _Scanning(
+                source: widget.target,
+                done: _done,
+                total: widget.tracks.length,
+              )
+            : _review(),
       ),
     );
   }
@@ -311,13 +297,18 @@ class _Scanning extends StatelessWidget {
             Text('$done / $total', style: theme.bodyMedium),
             const SizedBox(height: 16),
             ClipRRect(
-              borderRadius: BorderRadius.circular(999),
-              child: LinearProgressIndicator(
-                value: total == 0 ? null : done / total,
-                minHeight: 4,
-                backgroundColor: t.pill,
-                color: t.accent,
-              ),
+              borderRadius: BorderRadius.circular(2),
+              child: total == 0
+                  ? LinearProgressIndicator(
+                      minHeight: 4,
+                      backgroundColor: t.pill,
+                      color: t.accent,
+                    )
+                  : BloomBar(
+                      value: done / total,
+                      color: t.accent,
+                      track: t.pill,
+                    ),
             ),
             const SizedBox(height: 14),
             Text(
@@ -377,10 +368,7 @@ class _ItemRow extends StatelessWidget {
             ? () => _choose(context)
             : null,
         scale: 0.98,
-        child: Material(
-          color: t.pill,
-          borderRadius: BorderRadius.circular(t.radius),
-          clipBehavior: Clip.antiAlias,
+        child: GlassBox(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
             child: Opacity(
@@ -390,27 +378,16 @@ class _ItemRow extends StatelessWidget {
                   Cover(url: item.src.cover, size: 40),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.src.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.titleSmall,
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          tag,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.bodySmall?.copyWith(color: color),
-                        ),
-                      ],
+                    child: TwoLines(
+                      item.src.name,
+                      tag,
+                      gap: 3,
+                      titleStyle: theme.titleSmall,
+                      subStyle: theme.bodySmall?.copyWith(color: color),
                     ),
                   ),
                   if (canChoose || item.status != ConvertStatus.same)
-                    BloomIcon(Bi.altArrowRight, size: 20, color: t.muted),
+                    const SheetChevron(),
                 ],
               ),
             ),

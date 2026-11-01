@@ -11,6 +11,7 @@ import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../custom_store.dart';
+import '../../../shared/ui/atoms.dart';
 
 /// A context's icon, the PC's: for the page's tiles, the picture sheet's rows
 /// and the badge of where a picture is used.
@@ -19,37 +20,6 @@ BloomGlyph customCtxIcon(CustomCtx ctx) => switch (ctx) {
   CustomCtx.cover => Bi.gallery,
   CustomCtx.slider => Bi.sliderHorizontal,
 };
-
-/// Страница раздела: шапка сверху, содержимое под ней.
-class CustomizationPage extends StatelessWidget {
-  const CustomizationPage({
-    super.key,
-    required this.title,
-    required this.onBack,
-    required this.child,
-  });
-
-  final String title;
-  final VoidCallback onBack;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      bottom: false,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-            child: SubPageHeader(title: title, onBack: onBack),
-          ),
-          const SizedBox(height: 10),
-          Expanded(child: child),
-        ],
-      ),
-    );
-  }
-}
 
 /// Поле ввода в шторке — ровно то же, что у «Создать плейлист» ([SheetField]):
 /// широкое поле и акцентная галочка, которая появляется вместе с текстом.
@@ -147,4 +117,41 @@ class SheetPickRow extends StatelessWidget {
       ),
     ],
   );
+}
+
+/// A pane of tiles in two columns, or a note when there are none.
+class CustomPane extends StatelessWidget {
+  const CustomPane({
+    super.key,
+    required this.empty,
+    required this.itemCount,
+    required this.itemBuilder,
+  });
+
+  final String empty;
+  final int itemCount;
+  final IndexedWidgetBuilder itemBuilder;
+
+  @override
+  Widget build(BuildContext context) {
+    if (itemCount == 0) {
+      return Center(
+        child: CenterNote(
+          empty,
+          padding: const EdgeInsets.symmetric(horizontal: 40),
+        ),
+      );
+    }
+    return GridView.builder(
+      padding: EdgeInsets.fromLTRB(16, 12, 16, 8 + bottomBarsInset(context)),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 4 / 3,
+      ),
+      itemCount: itemCount,
+      itemBuilder: itemBuilder,
+    );
+  }
 }

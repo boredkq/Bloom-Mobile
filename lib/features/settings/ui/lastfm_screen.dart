@@ -11,7 +11,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
-import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
@@ -122,37 +121,22 @@ class _LastfmSettingsScreenState extends ConsumerState<LastfmSettingsScreen>
       body: s.connected ? _connectedBody(s) : _loginBody(s),
       actions: [
         if (s.connected)
-          BloomButton(
-            label: l.lfmLogout,
-            tone: ButtonTone.plate,
-            pill: false,
-            height: 54,
-            onTap: _logout,
-          )
+          PlatformAction(label: l.lfmLogout, onTap: _logout)
         else ...[
           // The sign-in has started: no need to open the browser again.
           if (s.oauthPending)
-            BloomButton(
+            PlatformAction(
               label: l.lfmDone,
-              tone: ButtonTone.plate,
-              pill: false,
-              height: 54,
               busy: s.busy,
               onTap: () => _finish(),
             ),
-          BloomButton(
+          PlatformAction(
             label: l.lfmLogin,
-            tone: ButtonTone.plate,
-            pill: false,
-            height: 54,
             busy: s.busy && !s.oauthPending,
             onTap: () => ref.read(lastfmProvider.notifier).startOAuth(),
           ),
-          BloomButton(
+          PlatformAction(
             label: _keysOpen ? l.commonHide : l.lfmKeys,
-            tone: ButtonTone.plate,
-            pill: false,
-            height: 54,
             onTap: () => setState(() => _keysOpen = !_keysOpen),
           ),
         ],
@@ -227,13 +211,7 @@ class _LastfmSettingsScreenState extends ConsumerState<LastfmSettingsScreen>
             onIcon: () => setState(() => _secretVisible = !_secretVisible),
           ),
           const SizedBox(height: 10),
-          BloomButton(
-            label: l.lfmSaveKeys,
-            tone: ButtonTone.plate,
-            pill: false,
-            height: 48,
-            onTap: _saveKeys,
-          ),
+          PlatformAction(label: l.lfmSaveKeys, height: 48, onTap: _saveKeys),
         ],
         if (s.note case final note?) ...[
           const SizedBox(height: 14),

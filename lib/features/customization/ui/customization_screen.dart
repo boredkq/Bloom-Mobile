@@ -22,6 +22,9 @@ import '../media_store.dart';
 import 'custom_widgets.dart';
 import 'media_library_pane.dart';
 import 'presets_pane.dart';
+import '../../../shared/ui/subpage_header.dart';
+import '../../../shared/ui/big_tabs.dart';
+import '../../../shared/ui/atoms.dart';
 
 enum _Pane { library, presets }
 
@@ -54,7 +57,7 @@ class _CustomizationScreenState extends ConsumerState<CustomizationScreen> {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    return CustomizationPage(
+    return SubPage(
       title: context.l.stCustom,
       onBack: () => context.go('/settings'),
       child: Column(
@@ -72,13 +75,18 @@ class _CustomizationScreenState extends ConsumerState<CustomizationScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                _PillTabs(
+                PillTabs(
                   labels: [context.l.custLibrary, context.l.custPresets],
                   index: _pane.index,
                   onPick: (i) => _pick(_Pane.values[i]),
                 ),
                 const Spacer(),
-                _PlusTool(
+                CircleIconButton(
+                  icon: Bi.add,
+                  size: 40,
+                  iconSize: 22,
+                  background: Colors.transparent,
+                  color: context.bloom.text2,
                   onTap: () => switch (_pane) {
                     _Pane.library => showAddMediaSheet(context, ref),
                     _Pane.presets => showAddPresetSheet(context, ref),
@@ -281,110 +289,4 @@ class _DashedRRect extends CustomPainter {
   @override
   bool shouldRepaint(_DashedRRect old) =>
       old.color != color || old.radius != radius;
-}
-
-/// Вкладки-пилюли — десктопный `PillTabs`: без коробки вокруг, под выбранной
-/// вкладкой переезжает пилюля-подсветка, надпись выбранной ярче.
-///
-/// Вкладки одной ширины (по самой широкой) — так пилюле достаточно сдвига, без
-/// замера каждой надписи.
-class _PillTabs extends StatelessWidget {
-  const _PillTabs({
-    required this.labels,
-    required this.index,
-    required this.onPick,
-  });
-
-  final List<String> labels;
-  final int index;
-  final ValueChanged<int> onPick;
-
-  /// Переезд пилюли — десктопные 0.32 с.
-  static const Duration slide = Duration(milliseconds: 320);
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final style = Theme.of(
-      context,
-    ).textTheme.titleMedium?.copyWith(fontSize: 13);
-    return IntrinsicWidth(
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: AnimatedAlign(
-              duration: slide,
-              curve: Curves.easeOutCubic,
-              alignment: Alignment(
-                labels.length < 2 ? 0 : -1 + 2 * index / (labels.length - 1),
-                0,
-              ),
-              child: FractionallySizedBox(
-                widthFactor: 1 / labels.length,
-                heightFactor: 1,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: t.text.withValues(alpha: 0.09),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Row(
-            children: [
-              for (var i = 0; i < labels.length; i++)
-                Expanded(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => onPick(i),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
-                      ),
-                      child: Center(
-                        widthFactor: 1,
-                        child: AnimatedDefaultTextStyle(
-                          duration: const Duration(milliseconds: 180),
-                          style: (style ?? const TextStyle()).copyWith(
-                            color: i == index ? t.text : t.text2,
-                          ),
-                          child: Text(labels[i], maxLines: 1),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Плюсик справа от вкладок — десктопная `cz-tool`, без подложки.
-class _PlusTool extends StatelessWidget {
-  const _PlusTool({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Pressable(
-      onTap: onTap,
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(t.radius * 0.8),
-        clipBehavior: Clip.antiAlias,
-        child: SizedBox(
-          width: 44,
-          height: 38,
-          child: BloomIcon(Bi.add, size: 22, color: t.text2),
-        ),
-      ),
-    );
-  }
 }
