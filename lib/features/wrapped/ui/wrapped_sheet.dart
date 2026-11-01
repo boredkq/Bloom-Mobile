@@ -275,99 +275,92 @@ class _WrappedSheetState extends ConsumerState<_WrappedSheet>
 
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: media.size.height * 0.9),
-      child: ClipRRect(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(t.radius * 1.7),
-        ),
-        child: Stack(
-          children: [
-            const Positioned.fill(
-              child: SheetSurface(child: SizedBox.expand()),
-            ),
-            Positioned.fill(
-              child: IgnorePointer(
-                child: _Blob(
-                  at: _kBlobAt[cur]!,
-                  color: color.withValues(
-                    alpha: cur == _SlideId.share ? 0.22 : 0.3,
-                  ),
+      child: Stack(
+        children: [
+          const Positioned.fill(child: SheetSurface(child: SizedBox.expand())),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: _Blob(
+                at: _kBlobAt[cur]!,
+                color: color.withValues(
+                  alpha: cur == _SlideId.share ? 0.22 : 0.3,
                 ),
               ),
             ),
-            SafeArea(
-              top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SheetHandle(),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      kSheetEdge,
-                      6,
-                      kSheetEdge,
-                      16,
-                    ),
-                    child: _Bars(
-                      count: _slides.length,
-                      index: _idx,
-                      timed: _timed,
-                      clock: _clock,
-                      onJump: _jump,
-                    ),
+          ),
+          SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SheetHandle(),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    kSheetEdge,
+                    6,
+                    kSheetEdge,
+                    16,
                   ),
-                  Flexible(
-                    child: SingleChildScrollView(
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTapDown: _pressed,
-                        onTapUp: _released,
-                        onTapCancel: _letGo,
-                        child: AnimatedSize(
-                          duration: const Duration(milliseconds: 340),
-                          curve: Curves.easeOutCubic,
-                          alignment: Alignment.topCenter,
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              minHeight: math.max(
-                                _kBodyMin,
-                                media.size.height * _kBodyFill,
-                              ),
+                  child: _Bars(
+                    count: _slides.length,
+                    index: _idx,
+                    timed: _timed,
+                    clock: _clock,
+                    onJump: _jump,
+                  ),
+                ),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTapDown: _pressed,
+                      onTapUp: _released,
+                      onTapCancel: _letGo,
+                      child: AnimatedSize(
+                        duration: const Duration(milliseconds: 340),
+                        curve: Curves.easeOutCubic,
+                        alignment: Alignment.topCenter,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: math.max(
+                              _kBodyMin,
+                              media.size.height * _kBodyFill,
                             ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: kSheetEdge,
-                              ),
-                              child: KeyedSubtree(
-                                key: ValueKey(_idx),
-                                child: _slide(cur),
-                              ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: kSheetEdge,
+                            ),
+                            child: KeyedSubtree(
+                              key: ValueKey(_idx),
+                              child: _slide(cur),
                             ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      kSheetEdge,
-                      16,
-                      kSheetEdge,
-                      14,
-                    ),
-                    child: BloomButton(
-                      label: last ? l.wrClose : l.wrNext,
-                      tone: ButtonTone.ink,
-                      height: 46,
-                      onTap: last
-                          ? () => Navigator.of(context).maybePop()
-                          : () => _go(1),
-                    ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    kSheetEdge,
+                    16,
+                    kSheetEdge,
+                    14,
                   ),
-                ],
-              ),
+                  child: BloomButton(
+                    label: last ? l.wrClose : l.wrNext,
+                    tone: ButtonTone.ink,
+                    height: 46,
+                    onTap: last
+                        ? () => Navigator.of(context).maybePop()
+                        : () => _go(1),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

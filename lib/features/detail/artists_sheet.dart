@@ -57,8 +57,7 @@ Future<void> openTrackArtist(
 
   final picked = await showBloomSheetChild<Artist>(
     context: context,
-    backdrop: track.cover,
-    header: SheetLineHeader(
+    header: SheetHero(
       cover: track.cover,
       title: track.name,
       subtitle: track.artist,
@@ -178,13 +177,7 @@ class _ArtistPickerState extends ConsumerState<_ArtistPicker> {
   @override
   Widget build(BuildContext context) {
     return SheetPanel(
-      children: [
-        for (final (i, link) in widget.links.indexed) ...[
-          // Row text: 14 + avatar 44 + 14.
-          if (i > 0) sheetDivider(indent: 72),
-          _row(link.name),
-        ],
-      ],
+      children: [for (final link in widget.links) _row(link.name)],
     );
   }
 
@@ -203,7 +196,7 @@ class _ArtistPickerState extends ConsumerState<_ArtistPicker> {
       onTap: artist == null ? null : () => Navigator.of(context).pop(artist),
       scale: 0.98,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(
           children: [
             Cover(url: artist?.avatar, size: 44, circle: true),

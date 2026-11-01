@@ -1009,5 +1009,21 @@
   "pcErrWrong": "Неверный код",
   "pcErrClosed": "На компьютере закрыто окно «Подключить телефон»",
   "pcErrTooMany": "Слишком много попыток — подожди новый код",
-  "pcErrFailed": "Не удалось подключить"
+  "pcErrFailed": "Не удалось подключить",
+  "taPlayNextHint": "Сыграет после текущего",
+  "waveFromTrackHint": "Подборка похожего",
+  "waveFromArtistHint": "Подборка по артисту",
+  "waveDislikeHint": "Не попадётся в подборках",
+  "waveUndislikeHint": "Снова будет в подборках",
+  "tiHint": "Альбом, год, длительность",
+  "tlOfflineHint": "Копия в приложении",
+  "tlFilesHint": "В файлы на телефон",
+  "tlRefreshHint": "Новое из источников",
+  "commonPinHint": "Первым в библиотеке",
+  "tlMergeHint": "В новый плейлист",
+  "tlConvertHint": "Копия на другой площадке",
+  "tlFindDupsHint": "Повторы в этом списке",
+  "tlExportHint": "В файл переноса",
+  "artistImportHint": "В вашу библиотеку",
+  "commonFollowHint": "Артист появится в библиотеке"
 }

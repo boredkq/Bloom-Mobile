@@ -406,48 +406,49 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
 
     await showBloomSheet(
       context: context,
-      backdrop: artist.avatar,
-      header: SheetLineHeader(
+      header: SheetHero(
         cover: artist.avatar,
         title: artist.name,
         subtitle: _stats(),
-        circle: true,
       ),
+      bar: [
+        SheetAction(
+          icon: Bi.playBold,
+          label: context.l.commonPlay,
+          onTap: canPlay ? _play : null,
+        ),
+        SheetAction(
+          icon: Bi.shuffle,
+          label: context.l.commonShuffle,
+          onTap: canPlay ? _shuffle : null,
+        ),
+        ...queueSheetActions(context, ref, _main, source: _source),
+      ],
       groups: [
         [
-          SheetAction(
-            icon: Bi.playBold,
-            label: context.l.commonPlay,
-            onTap: canPlay ? _play : null,
-          ),
-          SheetAction(
-            icon: Bi.shuffle,
-            label: context.l.commonShuffle,
-            onTap: canPlay ? _shuffle : null,
-          ),
-          ...queueSheetActions(context, ref, _main, source: _source),
           // Yandex has the artist's own station; elsewhere I pick from the
           // tracks the page has loaded.
           if (!_profile && canStartWaveFromArtist(ref, artist, seeds))
             SheetAction(
               icon: Bi.soundwave,
               label: context.l.waveFromArtist,
+              subtitle: context.l.waveFromArtistHint,
               onTap: () =>
                   startWaveFromArtist(context, ref, artist, seedTracks: seeds),
             ),
-        ],
-        [
           if (!_profile)
             SheetAction(
               icon: following ? Bi.check : Bi.user,
               label: following
                   ? context.l.commonUnfollow
                   : context.l.commonFollow,
+              subtitle: following ? null : context.l.commonFollowHint,
               onTap: () => toggleFollow(context, ref, artist),
             ),
           SheetAction(
             icon: Bi.import,
             label: context.l.artistImport,
+            subtitle: context.l.artistImportHint,
             onTap: canPlay ? () => _import(artist) : null,
           ),
         ],
@@ -463,7 +464,6 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
       context,
       title: likes?.title ?? artist.name,
       cover: artist.avatar,
-      circle: true,
     );
     if (target == null || !mounted) return;
     final messenger = ScaffoldMessenger.of(context);

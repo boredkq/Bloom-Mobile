@@ -44,110 +44,104 @@ class _SpeedSheet extends ConsumerWidget {
     final speed = ref.watch(speedProvider);
     final ctrl = ref.read(speedProvider.notifier);
 
-    return ClipRRect(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(t.radius * 1.7)),
-      child: SheetSurface(
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SheetHandle(),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
-                child: Row(
-                  children: [Text(l.playerSpeed, style: theme.titleLarge)],
-                ),
+    return SheetSurface(
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SheetHandle(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
+              child: Row(
+                children: [Text(l.playerSpeed, style: theme.titleLarge)],
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  children: [
-                    for (final preset in kSpeedPresets) ...[
-                      if (preset != kSpeedPresets.first)
-                        const SizedBox(width: 10),
-                      Expanded(
-                        child: _PresetCard(
-                          value: preset,
-                          active: speed.rate == preset,
-                          onTap: () => ctrl.setRate(preset),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  children: [
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  for (final preset in kSpeedPresets) ...[
+                    if (preset != kSpeedPresets.first)
+                      const SizedBox(width: 10),
                     Expanded(
-                      child: Text(l.playerSpeedCustom, style: theme.bodySmall),
-                    ),
-                    Semantics(
-                      button: true,
-                      label: context.l.playerSpeedReset,
-                      child: BloomTag(
-                        text: speedLabel(speed.rate),
-                        active: speed.rate != 1,
-                        onTap: ctrl.reset,
+                      child: _PresetCard(
+                        value: preset,
+                        active: speed.rate == preset,
+                        onTap: () => ctrl.setRate(preset),
                       ),
                     ),
                   ],
-                ),
+                ],
               ),
-              const SizedBox(height: 4),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  children: [
-                    SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: _trackHeight,
-                        thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: _thumbRadius,
-                        ),
-                        // Делений тридцать — родные метки дали бы рябь;
-                        // засечки рисуем свои, каждые 0.25×, как на ПК.
-                        tickMarkShape: SliderTickMarkShape.noTickMark,
-                      ),
-                      child: Slider(
-                        value: speed.rate.clamp(kSpeedMin, kSpeedMax),
-                        min: kSpeedMin,
-                        max: kSpeedMax,
-                        divisions: kSpeedDivisions,
-                        label: speedLabel(speed.rate),
-                        onChanged: ctrl.setRate,
-                      ),
+            ),
+            const SizedBox(height: 18),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(l.playerSpeedCustom, style: theme.bodySmall),
+                  ),
+                  Semantics(
+                    button: true,
+                    label: context.l.playerSpeedReset,
+                    child: BloomTag(
+                      text: speedLabel(speed.rate),
+                      active: speed.rate != 1,
+                      onTap: ctrl.reset,
                     ),
-                    const _Ticks(),
-                    const SizedBox(height: 6),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(speedLabel(kSpeedMin), style: theme.bodySmall),
-                        Text(speedLabel(kSpeedMax), style: theme.bodySmall),
-                      ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                children: [
+                  SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      trackHeight: _trackHeight,
+                      thumbShape: const RoundSliderThumbShape(
+                        enabledThumbRadius: _thumbRadius,
+                      ),
+                      // Делений тридцать — родные метки дали бы рябь;
+                      // засечки рисуем свои, каждые 0.25×, как на ПК.
+                      tickMarkShape: SliderTickMarkShape.noTickMark,
                     ),
-                  ],
-                ),
+                    child: Slider(
+                      value: speed.rate.clamp(kSpeedMin, kSpeedMax),
+                      min: kSpeedMin,
+                      max: kSpeedMax,
+                      divisions: kSpeedDivisions,
+                      label: speedLabel(speed.rate),
+                      onChanged: ctrl.setRate,
+                    ),
+                  ),
+                  const _Ticks(),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(speedLabel(kSpeedMin), style: theme.bodySmall),
+                      Text(speedLabel(kSpeedMax), style: theme.bodySmall),
+                    ],
+                  ),
+                ],
               ),
-              const SizedBox(height: 14),
-              Divider(
-                height: 1,
-                thickness: 1,
-                color: t.ovlLine2,
-                indent: 20,
-                endIndent: 20,
-              ),
-              _NightcoreRow(
-                value: speed.nightcore,
-                onChanged: ctrl.setNightcore,
-              ),
-              const SizedBox(height: 6),
-            ],
-          ),
+            ),
+            const SizedBox(height: 14),
+            Divider(
+              height: 1,
+              thickness: 1,
+              color: t.ovlLine2,
+              indent: 20,
+              endIndent: 20,
+            ),
+            _NightcoreRow(value: speed.nightcore, onChanged: ctrl.setNightcore),
+            const SizedBox(height: 6),
+          ],
         ),
       ),
     );

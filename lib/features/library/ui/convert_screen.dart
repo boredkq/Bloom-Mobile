@@ -47,8 +47,7 @@ Future<void> showConvertSheet(
 
   await showBloomSheetChild<void>(
     context: context,
-    backdrop: playlist.cover,
-    header: SheetLineHeader(
+    header: SheetHero(
       cover: playlist.cover,
       title: context.l.cvTitle,
       subtitle: playlist.name,
@@ -59,10 +58,9 @@ Future<void> showConvertSheet(
     child: Builder(
       builder: (sheetContext) => SheetPanel(
         children: [
-          for (var i = 0; i < targets.length; i++) ...[
-            if (i > 0) sheetDivider(),
+          for (final target in targets)
             PlatformRow(
-              source: targets[i],
+              source: target,
               onTap: () {
                 final root = Navigator.of(sheetContext, rootNavigator: true);
                 Navigator.of(sheetContext).pop();
@@ -71,13 +69,12 @@ Future<void> showConvertSheet(
                     builder: (_) => ConvertScreen(
                       playlist: playlist,
                       tracks: tracks,
-                      target: targets[i],
+                      target: target,
                     ),
                   ),
                 );
               },
             ),
-          ],
         ],
       ),
     ),
@@ -428,8 +425,7 @@ class _ItemRow extends StatelessWidget {
     final l = context.l;
     await showBloomSheetChild<void>(
       context: context,
-      backdrop: item.src.cover,
-      header: SheetLineHeader(
+      header: SheetHero(
         cover: item.src.cover,
         title: item.src.name,
         subtitle: item.src.artist,
@@ -443,22 +439,18 @@ class _ItemRow extends StatelessWidget {
             if (item.cands.isNotEmpty)
               SheetPanel(
                 children: [
-                  for (var i = 0; i < item.cands.length; i++) ...[
-                    // Текст строки: 12 + обложка 40 + 12.
-                    if (i > 0) sheetDivider(indent: 64),
+                  for (final cand in item.cands)
                     _CandidateRow(
-                      match: item.cands[i],
+                      match: cand,
                       picked: switch (decision) {
-                        TakeMatch(:final track) =>
-                          track.id == item.cands[i].track.id,
+                        TakeMatch(:final track) => track.id == cand.track.id,
                         _ => false,
                       },
                       onTap: () {
                         Navigator.of(sheetContext).pop();
-                        onDecide(TakeMatch(item.cands[i].track));
+                        onDecide(TakeMatch(cand.track));
                       },
                     ),
-                  ],
                 ],
               ),
             SheetPanel(
@@ -472,7 +464,6 @@ class _ItemRow extends StatelessWidget {
                     onDecide(const KeepOriginal());
                   },
                 ),
-                sheetDivider(),
                 _DecisionRow(
                   icon: Bi.close,
                   label: l.cvSkip,
@@ -513,7 +504,7 @@ class _CandidateRow extends StatelessWidget {
       onTap: onTap,
       scale: 0.98,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: [
             Cover(url: track.cover, size: 40),

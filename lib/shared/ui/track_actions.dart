@@ -25,7 +25,6 @@ import '../../features/player/play_source.dart';
 import '../../features/player/player_controller.dart';
 import '../../features/wave/wave_actions.dart';
 import '../../features/wave/wave_store.dart';
-import '../util/artists.dart';
 import 'atoms.dart';
 import 'bloom_icon.dart';
 import 'bloom_sheet.dart';
@@ -49,8 +48,6 @@ Future<void> showTrackActions(
   final lib = ref.read(libraryProvider);
   final isFav = lib.isFav(track.id);
   final inLib = lib.isInLib(track.id);
-  // Several artists lead to a sheet to pick from, not straight to a page.
-  final artists = artistLinks(track);
   // Пункт показываем, только если площадка вообще отдаёт трек файлом.
   final canOffline = ref.read(offlineProvider.notifier).canDownload(track);
   final hasCover = track.cover?.isNotEmpty ?? false;
@@ -72,108 +69,97 @@ Future<void> showTrackActions(
 
   await showBloomSheet(
     context: context,
-    backdrop: track.cover,
-    header: SheetLineHeader(
+    header: SheetHero(
       cover: track.cover,
       title: track.name,
       subtitle: track.artist,
-      // Дата — когда трек попал в библиотеку (`inLib`): в самом плейлисте
-      // времени добавления не хранится, там лежат одни id.
+      // When it came into the library; a track from search has no such date.
       meta: sheetDateMeta(context, l10n.commonAddedOn, lib.inLib[track.id]),
     ),
-    groups: [
-      // Очередь первой группой, как на десктопе: это действие «сейчас», а не
-      // над самой записью трека.
-      [
-        SheetAction(
-          icon: Bi.inboxIn,
-          label: context.l.taToQueue,
-          onTap: () => messenger.toast(
-            player.addToQueue(track)
-                ? l10n.swAddedToQueue
-                : l10n.swAlreadyInQueue,
-          ),
+    bar: [
+      SheetAction(
+        icon: isFav ? Bi.heartBold : Bi.heart,
+        label: isFav
+            ? context.l.taRemoveFromFavorites
+            : context.l.taAddToFavorites,
+        onTap: () => ref.read(libraryProvider.notifier).toggleFav(track),
+      ),
+      SheetAction(
+        icon: Bi.plus,
+        label: context.l.taAddToPlaylist,
+        onTap: () => showAddToPlaylistSheet(context, ref, track),
+      ),
+      SheetAction(
+        icon: Bi.inboxIn,
+        label: context.l.taToQueue,
+        onTap: () => messenger.toast(
+          player.addToQueue(track)
+              ? l10n.swAddedToQueue
+              : l10n.swAlreadyInQueue,
         ),
+      ),
+      // Two kinds of download live in their own sheet. A local track has only
+      // the cover from its tags to save, and the sheet opens for that alone.
+      if (canOffline || (canSaveFiles && hasCover))
+        SheetAction(
+          icon: Bi.downloadMinimalistic,
+          label: context.l.taDownload,
+          onTap: () =>
+              _showDownloadSheet(context, ref, track, canOffline: canOffline),
+        ),
+    ],
+    groups: [
+      [
         SheetAction(
           icon: Bi.skipNext,
           label: context.l.taPlayNext,
+          subtitle: context.l.taPlayNextHint,
           onTap: () {
             player.playNext(track);
             messenger.toast(l10n.swPlaysNext);
           },
         ),
-      ],
-      [
-        SheetAction(
-          icon: isFav ? Bi.heartBold : Bi.heart,
-          label: isFav
-              ? context.l.taRemoveFromFavorites
-              : context.l.taAddToFavorites,
-          onTap: () => ref.read(libraryProvider.notifier).toggleFav(track),
-        ),
-        SheetAction(
-          icon: Bi.musicNote,
-          label: context.l.taAddToPlaylist,
-          chevron: true,
-          onTap: () => showAddToPlaylistSheet(context, ref, track),
-        ),
-        // Скачиваний два (копия внутри приложения — чтобы играло без сети, и
-        // файл наружу), и оба уехали в свою шторку — как флайаут «Скачать» на
-        // десктопе: в общем списке они читались одинаково и путались.
-        // У своего трека скачивать нечего, кроме обложки из тегов — шторка
-        // открывается и ради неё одной.
-        if (canOffline || (canSaveFiles && hasCover))
-          SheetAction(
-            icon: Bi.downloadMinimalistic,
-            label: context.l.taDownload,
-            chevron: true,
-            onTap: () =>
-                _showDownloadSheet(context, ref, track, canOffline: canOffline),
-          ),
-      ],
-      [
-        // Волна по треку — только у площадок с радио: у остальных пункт
-        // открывался бы ради отказа.
+        // Only platforms with radio: elsewhere it would open just to refuse.
         if (canStartWaveFrom(ref, track))
           SheetAction(
             icon: Bi.soundwave,
             label: context.l.waveFromTrack,
+            subtitle: context.l.waveFromTrackHint,
             onTap: () => startWaveFromTrack(context, ref, track),
           ),
-        SheetAction(
-          icon: isDisliked ? Bi.dislikeBold : Bi.dislike,
-          label: isDisliked ? context.l.waveUndislike : context.l.waveDislike,
-          onTap: () => toggleWaveDislike(context, ref, track),
-        ),
-        // Смена площадки — про запись библиотеки, поэтому у треков из поиска и
-        // у локальных файлов пункта нет (см. `canSwitchPlatform`).
-        if (canSwitchPlatform(lib, ref, track))
-          SheetAction(
-            icon: Bi.refreshSquare,
-            label: context.l.spSwitch,
-            chevron: true,
-            onTap: () => _showSwitchPlatformSheet(context, ref, track),
-          ),
-      ],
-      [
         if (canOpenTrackArtist(track))
           SheetAction(
             icon: Bi.user,
             label: context.l.taGoToArtist,
-            chevron: artists.length > 1,
+            subtitle: track.artist,
             onTap: () => openTrackArtist(context, ref, track),
+          ),
+        // About the library's record, so not for search results or own files.
+        if (canSwitchPlatform(lib, ref, track))
+          SheetAction(
+            icon: Bi.refreshSquare,
+            label: context.l.spSwitch,
+            subtitle: track.source.label10n(context.l),
+            onTap: () => _showSwitchPlatformSheet(context, ref, track),
           ),
         SheetAction(
           icon: Bi.infoCircle,
           label: context.l.tiTitle,
-          chevron: true,
+          subtitle: context.l.tiHint,
           onTap: () =>
               showTrackInfoSheet(context, track, addedAt: lib.inLib[track.id]),
         ),
+        SheetAction(
+          icon: isDisliked ? Bi.dislikeBold : Bi.dislike,
+          label: isDisliked ? context.l.waveUndislike : context.l.waveDislike,
+          subtitle: isDisliked
+              ? context.l.waveUndislikeHint
+              : context.l.waveDislikeHint,
+          onTap: () => toggleWaveDislike(context, ref, track),
+        ),
       ],
       [
-        // Убрать из списка и убрать из очереди — тоже красные, как `ci red` на
-        // десктопе: после них строка со своего места исчезает.
+        // Red too: after these the row leaves its place.
         if (fromPlaylist case final playlistId?)
           SheetAction(
             icon: Bi.close,
@@ -189,8 +175,7 @@ Future<void> showTrackActions(
             danger: true,
             onTap: () => unawaited(player.removeAt(inQueueAt)),
           ),
-        // Удалять есть что только у трека из библиотеки: у остальных за строкой
-        // ничего не стоит, они приехали из поиска.
+        // Only a library track has anything to delete: the rest came from search.
         if (inLib)
           SheetAction(
             icon: Bi.trashBinTrash,
@@ -241,7 +226,7 @@ Future<void> _showDownloadSheet(
   final rows = <Widget>[
     if (canOffline && canSaveFiles)
       Builder(
-        builder: (sheetContext) => _SimpleRow(
+        builder: (sheetContext) => SheetRow(
           icon: Bi.musicNote,
           label: l10n.fdDownloadFile,
           color: context.bloom.text,
@@ -253,7 +238,7 @@ Future<void> _showDownloadSheet(
       ),
     if (canSaveFiles && hasCover)
       Builder(
-        builder: (sheetContext) => _SimpleRow(
+        builder: (sheetContext) => SheetRow(
           icon: Bi.gallery,
           label: l10n.fdDownloadCover,
           color: context.bloom.text,
@@ -265,7 +250,7 @@ Future<void> _showDownloadSheet(
       ),
     if (canOffline)
       Builder(
-        builder: (sheetContext) => _SimpleRow(
+        builder: (sheetContext) => SheetRow(
           // Дискета у офлайна и галочка у скачанного — те же значки, что на
           // ПК (голой галочки у Solar нет, поэтому в кружке).
           icon: isOffline ? Bi.trashBinTrash : Bi.downloadMinimalistic,
@@ -281,22 +266,12 @@ Future<void> _showDownloadSheet(
 
   await showBloomSheetChild<void>(
     context: context,
-    backdrop: track.cover,
-    header: SheetLineHeader(
+    header: SheetHero(
       cover: track.cover,
       title: context.l.taDownload,
       subtitle: track.name,
     ),
-    child: Builder(
-      builder: (sheetContext) => SheetPanel(
-        children: [
-          for (var i = 0; i < rows.length; i++) ...[
-            if (i > 0) sheetDivider(),
-            rows[i],
-          ],
-        ],
-      ),
-    ),
+    child: Builder(builder: (sheetContext) => SheetPanel(children: rows)),
   );
 }
 
@@ -313,8 +288,7 @@ Future<void> _showSwitchPlatformSheet(
 
   await showBloomSheetChild<void>(
     context: context,
-    backdrop: track.cover,
-    header: SheetLineHeader(
+    header: SheetHero(
       cover: track.cover,
       title: context.l.spSwitch,
       subtitle: track.name,
@@ -324,18 +298,16 @@ Future<void> _showSwitchPlatformSheet(
     child: Builder(
       builder: (sheetContext) => SheetPanel(
         children: [
-          for (var i = 0; i < targets.length; i++) ...[
-            if (i > 0) sheetDivider(),
+          for (final target in targets)
             PlatformRow(
-              source: targets[i],
+              source: target,
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 unawaited(
-                  switchTrackPlatform(messenger, l10n, ref, track, targets[i]),
+                  switchTrackPlatform(messenger, l10n, ref, track, target),
                 );
               },
             ),
-          ],
         ],
       ),
     ),
@@ -351,22 +323,10 @@ class PlatformRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Pressable(
+    return SheetRow(
+      leading: PlatformLogo(source, size: 22),
+      label: source.label10n(context.l),
       onTap: onTap,
-      scale: 0.98,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-        child: Row(
-          children: [
-            PlatformLogo(source, size: 22),
-            const SizedBox(width: 16),
-            Text(
-              source.label10n(context.l),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -395,8 +355,7 @@ Future<void> showAddTracksToPlaylistSheet(
 
   await showBloomSheetChild(
     context: context,
-    backdrop: cover,
-    header: SheetLineHeader(
+    header: SheetHero(
       cover: cover,
       title: context.l.taAddToPlaylist,
       subtitle: one?.name ?? context.l.tracksCount(tracks.length),
@@ -417,7 +376,7 @@ Future<void> showAddTracksToPlaylistSheet(
             // когда добавлять нечего (`canAddToLib` на десктопе). Убрать трек
             // можно только «Удалить трек» из шторки действий, насквозь.
             if (outside.isNotEmpty) ...[
-              _SimpleRow(
+              SheetRow(
                 icon: Bi.downloadMinimalistic,
                 label: context.l.commonAddToLibrary,
                 color: t.accent,
@@ -434,9 +393,8 @@ Future<void> showAddTracksToPlaylistSheet(
                   );
                 },
               ),
-              sheetDivider(),
             ],
-            _SimpleRow(
+            SheetRow(
               icon: Bi.plus,
               label: context.l.commonNewPlaylist,
               color: t.accent,
@@ -447,11 +405,8 @@ Future<void> showAddTracksToPlaylistSheet(
                 Navigator.of(context).pop();
               },
             ),
-            for (final pl in playlists) ...[
-              // Текст строки плейлиста: 12 + обложка 40 + 12.
-              sheetDivider(indent: 64),
+            for (final pl in playlists)
               _PlaylistRow(playlist: pl, tracks: tracks),
-            ],
           ],
         );
       },
@@ -502,15 +457,12 @@ Future<ImportTarget?> pickImportTarget(
   BuildContext context, {
   required String title,
   String? cover,
-  bool circle = false,
 }) => showBloomSheetChild<ImportTarget>(
   context: context,
-  backdrop: cover,
-  header: SheetLineHeader(
+  header: SheetHero(
     cover: cover,
     title: context.l.artistImport,
     subtitle: title,
-    circle: circle,
   ),
   child: Consumer(
     builder: (context, ref, _) {
@@ -518,28 +470,25 @@ Future<ImportTarget?> pickImportTarget(
       void pick(ImportTarget target) => Navigator.of(context).pop(target);
       return SheetPanel(
         children: [
-          _SimpleRow(
+          SheetRow(
             icon: Bi.plus,
             label: context.l.commonCreatePlaylist,
             color: t.accent,
             onTap: () => pick(const ImportTarget.create()),
           ),
-          sheetDivider(),
-          _SimpleRow(
+          SheetRow(
             icon: Bi.musicNote,
             label: context.l.commonAllTracks,
             color: t.text,
             onTap: () => pick(const ImportTarget(ImportTargetKind.library)),
           ),
-          sheetDivider(),
-          _SimpleRow(
+          SheetRow(
             icon: Bi.heartBold,
             label: context.l.commonFavorites,
             color: t.text,
             onTap: () => pick(const ImportTarget(ImportTargetKind.favorites)),
           ),
-          for (final pl in ref.watch(libraryProvider).playlists) ...[
-            sheetDivider(indent: 64),
+          for (final pl in ref.watch(libraryProvider).playlists)
             _PlaylistRow(
               playlist: pl,
               tracks: const [],
@@ -547,50 +496,11 @@ Future<ImportTarget?> pickImportTarget(
                 ImportTarget(ImportTargetKind.playlist, playlistId: pl.id),
               ),
             ),
-          ],
         ],
       );
     },
   ),
 );
-
-/// Строка шторки без обложки — под высоту строки плейлиста.
-class _SimpleRow extends StatelessWidget {
-  const _SimpleRow({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  final BloomGlyph icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Pressable(
-      onTap: onTap,
-      scale: 0.98,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-        child: Row(
-          children: [
-            BloomIcon(icon, size: 22, color: color),
-            const SizedBox(width: 16),
-            Text(
-              label,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(color: color),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _PlaylistRow extends ConsumerWidget {
   const _PlaylistRow({
@@ -626,7 +536,7 @@ class _PlaylistRow extends ConsumerWidget {
           },
       scale: 0.98,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: [
             Cover(

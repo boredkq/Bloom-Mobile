@@ -300,30 +300,30 @@ class _SetScreenState extends ConsumerState<SetScreen> {
     final canPlay = _tracks.isNotEmpty;
     await showBloomSheet(
       context: context,
-      backdrop: _set.cover,
-      header: SheetCoverHeader(
+      header: SheetHero(
         cover: _set.cover,
         title: _set.title,
         subtitle: _subtitle(),
       ),
+      bar: [
+        SheetAction(
+          icon: Bi.playBold,
+          label: context.l.commonPlay,
+          onTap: canPlay ? _play : null,
+        ),
+        SheetAction(
+          icon: Bi.shuffle,
+          label: context.l.commonShuffle,
+          onTap: canPlay ? _shuffle : null,
+        ),
+        ...queueSheetActions(context, ref, _tracks, source: SetSource(_set)),
+      ],
       groups: [
-        [
-          SheetAction(
-            icon: Bi.playBold,
-            label: context.l.commonPlay,
-            onTap: canPlay ? _play : null,
-          ),
-          SheetAction(
-            icon: Bi.shuffle,
-            label: context.l.commonShuffle,
-            onTap: canPlay ? _shuffle : null,
-          ),
-          ...queueSheetActions(context, ref, _tracks, source: SetSource(_set)),
-        ],
         [
           SheetAction(
             icon: Bi.import,
             label: context.l.artistImport,
+            subtitle: context.l.artistImportHint,
             onTap: canPlay ? _import : null,
           ),
         ],

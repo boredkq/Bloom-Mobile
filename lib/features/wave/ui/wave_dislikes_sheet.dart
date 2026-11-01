@@ -27,7 +27,6 @@ class _DislikesSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
     // Новые сверху, как на ПК.
     final tracks = ref.watch(waveStoreProvider).dislikes;
 
@@ -35,31 +34,26 @@ class _DislikesSheet extends ConsumerWidget {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.85,
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(t.radius * 1.7),
-        ),
-        child: SheetSurface(
-          child: SafeArea(
-            top: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SheetHandle(),
-                _Header(count: tracks.length),
-                if (tracks.isEmpty)
-                  const _Empty()
-                else
-                  Flexible(
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
-                      itemCount: tracks.length,
-                      itemBuilder: (context, i) => _Row(track: tracks[i]),
-                    ),
+      child: SheetSurface(
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SheetHandle(),
+              _Header(count: tracks.length),
+              if (tracks.isEmpty)
+                const _Empty()
+              else
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
+                    itemCount: tracks.length,
+                    itemBuilder: (context, i) => _Row(track: tracks[i]),
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
       ),

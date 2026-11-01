@@ -411,6 +411,11 @@ Future<void> _pickNavLabels(BuildContext context, WidgetRef ref) async {
   if (picked != null) ref.read(settingsProvider.notifier).setNavLabels(picked);
 }
 
+/// A card of a two-column grid in a sheet, from the sheet's own context: the
+/// page's width is wider. Margins on both sides plus the gap between columns.
+double _sheetCardWidth(BuildContext sheetContext) =>
+    (MediaQuery.sizeOf(sheetContext).width - kSheetEdge * 2 - 12) / 2;
+
 /// The bar settings' sheet: screen mock-ups in two columns. No title: the row
 /// it came from said it.
 Future<T?> _pickNavCard<T>({
@@ -420,10 +425,6 @@ Future<T?> _pickNavCard<T>({
   required String Function(T value) label,
   required CustomPainter Function(T value, Color ink) paint,
 }) {
-  final width = MediaQuery.of(context).size.width;
-  // Margins on both sides plus the gap between columns.
-  final cardWidth = (width - kSheetEdge * 2 - 12) / 2;
-
   return showBloomSheetChild<T>(
     context: context,
     // With the sheet's own context: it lives in the root navigator, the page's
@@ -437,7 +438,7 @@ Future<T?> _pickNavCard<T>({
           children: [
             for (final value in values)
               _NavPickCard(
-                width: cardWidth,
+                width: _sheetCardWidth(sheetContext),
                 active: value == current,
                 label: label(value),
                 paint: (ink) => paint(value, ink),
@@ -1071,9 +1072,6 @@ class _FontTileState extends State<_FontTile> {
 /// scrolling.
 Future<void> _pickTheme(BuildContext context, WidgetRef ref) async {
   final controller = ref.read(settingsProvider.notifier);
-  final width = MediaQuery.of(context).size.width;
-  // Margins on both sides plus the gap between columns.
-  final cardWidth = (width - kSheetEdge * 2 - 12) / 2;
 
   await showBloomSheetChild<void>(
     context: context,
@@ -1107,6 +1105,7 @@ Future<void> _pickTheme(BuildContext context, WidgetRef ref) async {
         // Read inside: a theme applies at once and new ones appear here,
         // without closing.
         final settings = ref.watch(settingsProvider);
+        final cardWidth = _sheetCardWidth(context);
         Widget card(ThemePreset preset) => _PresetCard(
           preset: preset,
           width: cardWidth,

@@ -899,39 +899,35 @@ Future<void> showPlaylistMenu(
 
   await showBloomSheet(
     context: context,
-    backdrop: cover,
-    header: SheetCoverHeader(
+    header: SheetHero(
       cover: cover,
       title: playlist.name,
-      // Та же подпись, что на плитке в библиотеке: сколько треков, сколько из
-      // них скачано и сколько всего играть.
+      // The same line as on the library's card.
       subtitleWidget: ListMeta(
         tracks: tracks,
-        style: Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 14),
       ),
       meta: sheetDateMeta(context, l10n.commonCreatedOn, playlist.createdAt),
     ),
+    bar: [
+      SheetAction(
+        icon: Bi.playBold,
+        label: context.l.commonPlay,
+        onTap: tracks.isEmpty ? null : play,
+      ),
+      SheetAction(
+        icon: Bi.shuffle,
+        label: context.l.commonShuffle,
+        onTap: tracks.isEmpty ? null : () => play(shuffle: true),
+      ),
+      ...queueSheetActions(
+        context,
+        ref,
+        tracks,
+        source: LibSource(playlist.id),
+      ),
+    ],
     groups: [
-      [
-        SheetAction(
-          icon: Bi.playBold,
-          label: context.l.commonPlay,
-          onTap: tracks.isEmpty ? null : play,
-        ),
-        SheetAction(
-          icon: Bi.shuffle,
-          label: context.l.commonShuffle,
-          onTap: tracks.isEmpty ? null : () => play(shuffle: true),
-        ),
-        ...queueSheetActions(
-          context,
-          ref,
-          tracks,
-          source: LibSource(playlist.id),
-        ),
-      ],
       [
         // Пакет ЭТОГО плейлиста качается прямо сейчас — единственное, что
         // здесь уместно, это его остановить. Чужой пакет пунктов не меняет:
@@ -955,6 +951,7 @@ Future<void> showPlaylistMenu(
                 : context.l.tlListenOffline(
                     offlineStatus.total - offlineStatus.cached,
                   ),
+            subtitle: offlineStatus.all ? null : context.l.tlOfflineHint,
             onTap: () => offlineStatus.all
                 ? removeListOffline(messenger, l10n, ref, tracks)
                 : downloadListOffline(
@@ -969,6 +966,7 @@ Future<void> showPlaylistMenu(
             SheetAction(
               icon: Bi.downloadMinimalistic,
               label: context.l.tlDownloadFiles(offlineStatus.total),
+              subtitle: context.l.tlFilesHint,
               onTap: () =>
                   saveListFiles(messenger, l10n, ref, playlist.id, tracks),
             ),
@@ -979,11 +977,13 @@ Future<void> showPlaylistMenu(
           SheetAction(
             icon: Bi.refresh,
             label: context.l.tlRefreshTracks,
+            subtitle: context.l.tlRefreshHint,
             onTap: () => refreshOnePlaylist(messenger, l10n, ref, playlist),
           ),
         SheetAction(
           icon: Bi.pin,
           label: playlist.pinned ? context.l.commonUnpin : context.l.commonPin,
+          subtitle: playlist.pinned ? null : context.l.commonPinHint,
           onTap: () => ref
               .read(libraryProvider.notifier)
               .setPinned(libKeyOfPlaylist(playlist.id), !playlist.pinned),
@@ -991,7 +991,7 @@ Future<void> showPlaylistMenu(
         SheetAction(
           icon: Bi.import,
           label: context.l.tlMergeWith,
-          chevron: true,
+          subtitle: context.l.tlMergeHint,
           onTap: () => showMergeSheet(context, ref, playlist),
         ),
         // Перенос — копия плейлиста с треками другой площадки. Пустой плейлист
@@ -1000,7 +1000,7 @@ Future<void> showPlaylistMenu(
           SheetAction(
             icon: Bi.arrowRight,
             label: context.l.tlConvert,
-            chevron: true,
+            subtitle: context.l.tlConvertHint,
             onTap: () => showConvertSheet(context, ref, playlist, tracks),
           ),
         // Поиск повторов включается прямо в списке — поэтому сперва открываем
@@ -1009,6 +1009,7 @@ Future<void> showPlaylistMenu(
           SheetAction(
             icon: Bi.copy,
             label: context.l.tlFindDups,
+            subtitle: context.l.tlFindDupsHint,
             onTap: () {
               context.go('/library/list/${playlist.id}');
               ref.read(dupsProvider.notifier).enter(playlist.id);
@@ -1019,6 +1020,7 @@ Future<void> showPlaylistMenu(
         SheetAction(
           icon: Bi.export,
           label: context.l.tlExportPlaylist,
+          subtitle: context.l.tlExportHint,
           onTap: () => _exportPlaylist(messenger, l10n, ref, playlist),
         ),
         // Имя и обложка правятся только в режиме правки: там они видны сразу

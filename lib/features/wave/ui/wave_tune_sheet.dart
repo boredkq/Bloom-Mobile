@@ -38,74 +38,70 @@ class _TuneSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
     final source = ref.watch(waveStoreProvider).source;
     final dislikes = ref.watch(waveStoreProvider).dislikes.length;
     // Именно через провайдер, а не `ym.activeToken()`: модульное состояние не
     // реактивно, и после входа шторка осталась бы с погашенной плиткой.
     final ymAuthed = ref.watch(ymAuthProvider).authed;
 
-    return ClipRRect(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(t.radius * 1.7)),
-      child: SheetSurface(
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SheetHandle(),
-              // Плитки лежат прямо на шторке, без подложки и подписи: что это
-              // выбор площадки, видно по самим логотипам.
-              Padding(
-                // Боковой край — как у блока «Дизлайки» ниже, иначе плитки
-                // вылезают за его границы.
-                padding: const EdgeInsets.fromLTRB(
-                  kSheetEdge,
-                  12,
-                  kSheetEdge,
-                  10,
-                ),
-                child: Row(
-                  children: [
-                    for (final s in kWaveSources) ...[
-                      if (s != kWaveSources.first) const SizedBox(width: 10),
-                      Expanded(
-                        child: _SourceTile(
-                          source: s,
-                          label: s.label10n(context.l),
-                          selected:
-                              source == s &&
-                              (s != MusicSource.yandex || ymAuthed),
-                          enabled: s != MusicSource.yandex || ymAuthed,
-                          // Без аккаунта Яндекса выбирать нечего, но и молчать
-                          // нельзя — говорим, куда идти за входом.
-                          onTap: s == MusicSource.yandex && !ymAuthed
-                              ? () => showToast(
-                                  context,
-                                  context.l.waveToastYmNoAuth,
-                                  kind: ToastKind.warn,
-                                )
-                              : () => _pick(ref, s),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+    return SheetSurface(
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SheetHandle(),
+            // Плитки лежат прямо на шторке, без подложки и подписи: что это
+            // выбор площадки, видно по самим логотипам.
+            Padding(
+              // Боковой край — как у блока «Дизлайки» ниже, иначе плитки
+              // вылезают за его границы.
+              padding: const EdgeInsets.fromLTRB(
+                kSheetEdge,
+                12,
+                kSheetEdge,
+                10,
               ),
-              SheetPanel(
+              child: Row(
                 children: [
-                  _DislikesRow(
-                    count: dislikes,
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      showWaveDislikesSheet(context);
-                    },
-                  ),
+                  for (final s in kWaveSources) ...[
+                    if (s != kWaveSources.first) const SizedBox(width: 10),
+                    Expanded(
+                      child: _SourceTile(
+                        source: s,
+                        label: s.label10n(context.l),
+                        selected:
+                            source == s &&
+                            (s != MusicSource.yandex || ymAuthed),
+                        enabled: s != MusicSource.yandex || ymAuthed,
+                        // Без аккаунта Яндекса выбирать нечего, но и молчать
+                        // нельзя — говорим, куда идти за входом.
+                        onTap: s == MusicSource.yandex && !ymAuthed
+                            ? () => showToast(
+                                context,
+                                context.l.waveToastYmNoAuth,
+                                kind: ToastKind.warn,
+                              )
+                            : () => _pick(ref, s),
+                      ),
+                    ),
+                  ],
                 ],
               ),
-              const SizedBox(height: 8),
-            ],
-          ),
+            ),
+            SheetPanel(
+              children: [
+                _DislikesRow(
+                  count: dislikes,
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    showWaveDislikesSheet(context);
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
         ),
       ),
     );

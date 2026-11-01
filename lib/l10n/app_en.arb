@@ -1586,5 +1586,21 @@
   "pcErrWrong": "Wrong code",
   "pcErrClosed": "“Connect a phone” is closed on the computer",
   "pcErrTooMany": "Too many tries — wait for a new code",
-  "pcErrFailed": "Couldn't connect"
+  "pcErrFailed": "Couldn't connect",
+  "taPlayNextHint": "Plays after the current one",
+  "waveFromTrackHint": "A mix of similar tracks",
+  "waveFromArtistHint": "A mix based on this artist",
+  "waveDislikeHint": "Won't show up in mixes",
+  "waveUndislikeHint": "Back in the mixes",
+  "tiHint": "Album, year, length",
+  "tlOfflineHint": "A copy inside the app",
+  "tlFilesHint": "To the phone's files",
+  "tlRefreshHint": "What's new in the sources",
+  "commonPinHint": "First in the library",
+  "tlMergeHint": "Into a new playlist",
+  "tlConvertHint": "A copy on another platform",
+  "tlFindDupsHint": "Repeats in this list",
+  "tlExportHint": "To a transfer file",
+  "artistImportHint": "Into your library",
+  "commonFollowHint": "The artist joins your library"
 }

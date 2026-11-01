@@ -561,32 +561,24 @@ Future<void> _removeRecent(
   WidgetRef ref,
   RecentItem item,
 ) {
-  final (cover, title, subtitle, circle) = switch (item) {
-    RecentTrack(:final track) => (track.cover, track.name, track.artist, false),
+  final (cover, title, subtitle) = switch (item) {
+    RecentTrack(:final track) => (track.cover, track.name, track.artist),
     RecentArtist(:final artist) => (
       artist.avatar,
       artist.name,
       context.l.commonArtist,
-      true,
     ),
     RecentSet(:final set) => (
       set.cover,
       set.title,
       set.ownerName ??
           (set.isAlbum ? context.l.commonAlbum : context.l.commonPlaylist),
-      false,
     ),
   };
 
   return showBloomSheet(
     context: context,
-    backdrop: cover,
-    header: SheetLineHeader(
-      cover: cover,
-      title: title,
-      subtitle: subtitle,
-      circle: circle,
-    ),
+    header: SheetHero(cover: cover, title: title, subtitle: subtitle),
     groups: [
       [
         SheetAction(

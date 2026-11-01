@@ -3403,4 +3403,52 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pcErrFailed => 'Couldn\'t connect';
+
+  @override
+  String get taPlayNextHint => 'Plays after the current one';
+
+  @override
+  String get waveFromTrackHint => 'A mix of similar tracks';
+
+  @override
+  String get waveFromArtistHint => 'A mix based on this artist';
+
+  @override
+  String get waveDislikeHint => 'Won\'t show up in mixes';
+
+  @override
+  String get waveUndislikeHint => 'Back in the mixes';
+
+  @override
+  String get tiHint => 'Album, year, length';
+
+  @override
+  String get tlOfflineHint => 'A copy inside the app';
+
+  @override
+  String get tlFilesHint => 'To the phone\'s files';
+
+  @override
+  String get tlRefreshHint => 'What\'s new in the sources';
+
+  @override
+  String get commonPinHint => 'First in the library';
+
+  @override
+  String get tlMergeHint => 'Into a new playlist';
+
+  @override
+  String get tlConvertHint => 'A copy on another platform';
+
+  @override
+  String get tlFindDupsHint => 'Repeats in this list';
+
+  @override
+  String get tlExportHint => 'To a transfer file';
+
+  @override
+  String get artistImportHint => 'Into your library';
+
+  @override
+  String get commonFollowHint => 'The artist joins your library';
 }

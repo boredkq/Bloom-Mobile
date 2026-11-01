@@ -171,7 +171,17 @@ class _WaveHeroState extends ConsumerState<WaveHero> {
                       onTap: () =>
                           _start(() => startPersonalWave(context, ref)),
                     )
-                  : _NowPlaying(track: track),
+                  // A low screen shrinks it whole instead of overflowing; its
+                  // row of buttons still needs the real width.
+                  : LayoutBuilder(
+                      builder: (context, box) => FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: SizedBox(
+                          width: box.maxWidth,
+                          child: _NowPlaying(track: track),
+                        ),
+                      ),
+                    ),
             ),
           ),
           if (listOn)

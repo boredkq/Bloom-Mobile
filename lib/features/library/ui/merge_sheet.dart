@@ -59,8 +59,7 @@ Future<void> showMergeSheet(
 
   final plan = await showBloomSheetChild<_MergePlan>(
     context: context,
-    backdrop: source.cover,
-    header: SheetLineHeader(
+    header: SheetHero(
       cover: source.cover,
       title: source.name,
       subtitle: l10n.mgTitle,
@@ -199,21 +198,17 @@ class _MergeBodyState extends ConsumerState<_MergeBody> {
         ),
         SheetPanel(
           children: [
-            for (var i = 0; i < others.length; i++) ...[
-              // Текст строки: 12 + обложка 40 + 12.
-              if (i > 0) sheetDivider(indent: 64),
+            for (final other in others)
               _PlaylistRow(
-                playlist: others[i],
-                tracks: lib.tracksOf(others[i]).length,
-                // Номер в порядке склейки полезнее галочки: он объясняет, в
-                // каком порядке треки лягут в новый плейлист.
-                order: _picked.indexOf(others[i].id),
+                playlist: other,
+                tracks: lib.tracksOf(other).length,
+                // The number says in what order the tracks land in the new
+                // playlist, which a tick wouldn't.
+                order: _picked.indexOf(other.id),
                 onTap: () => setState(() {
-                  final id = others[i].id;
-                  if (!_picked.remove(id)) _picked.add(id);
+                  if (!_picked.remove(other.id)) _picked.add(other.id);
                 }),
               ),
-            ],
           ],
         ),
         SheetPanel(
@@ -224,7 +219,6 @@ class _MergeBodyState extends ConsumerState<_MergeBody> {
               value: _dedup,
               onChanged: (v) => setState(() => _dedup = v),
             ),
-            sheetDivider(),
             _SwitchRow(
               icon: Bi.trashBinTrash,
               label: context.l.mgDeleteSources,
@@ -265,7 +259,7 @@ class _PlaylistRow extends StatelessWidget {
       onTap: onTap,
       scale: 0.98,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: [
             Cover(url: playlist.cover, size: 40),

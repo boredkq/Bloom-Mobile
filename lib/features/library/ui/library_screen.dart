@@ -835,18 +835,17 @@ Future<void> _showArtistMenu(
 
   return showBloomSheet(
     context: context,
-    backdrop: artist.avatar,
-    header: SheetLineHeader(
+    header: SheetHero(
       cover: artist.avatar,
       title: artist.name,
       subtitle: context.l.commonArtist,
-      circle: true,
     ),
     groups: [
       [
         SheetAction(
           icon: Bi.pin,
           label: pinned ? context.l.commonUnpin : context.l.commonPin,
+          subtitle: pinned ? null : context.l.commonPinHint,
           onTap: () => ref
               .read(libraryProvider.notifier)
               .setPinned(libKeyOfArtist(artist.id), !pinned),

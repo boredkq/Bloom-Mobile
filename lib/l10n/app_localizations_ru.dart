@@ -3468,4 +3468,52 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get pcErrFailed => 'Не удалось подключить';
+
+  @override
+  String get taPlayNextHint => 'Сыграет после текущего';
+
+  @override
+  String get waveFromTrackHint => 'Подборка похожего';
+
+  @override
+  String get waveFromArtistHint => 'Подборка по артисту';
+
+  @override
+  String get waveDislikeHint => 'Не попадётся в подборках';
+
+  @override
+  String get waveUndislikeHint => 'Снова будет в подборках';
+
+  @override
+  String get tiHint => 'Альбом, год, длительность';
+
+  @override
+  String get tlOfflineHint => 'Копия в приложении';
+
+  @override
+  String get tlFilesHint => 'В файлы на телефон';
+
+  @override
+  String get tlRefreshHint => 'Новое из источников';
+
+  @override
+  String get commonPinHint => 'Первым в библиотеке';
+
+  @override
+  String get tlMergeHint => 'В новый плейлист';
+
+  @override
+  String get tlConvertHint => 'Копия на другой площадке';
+
+  @override
+  String get tlFindDupsHint => 'Повторы в этом списке';
+
+  @override
+  String get tlExportHint => 'В файл переноса';
+
+  @override
+  String get artistImportHint => 'В вашу библиотеку';
+
+  @override
+  String get commonFollowHint => 'Артист появится в библиотеке';
 }

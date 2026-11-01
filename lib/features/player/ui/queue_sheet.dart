@@ -239,7 +239,6 @@ class _QueueSheetState extends ConsumerState<_QueueSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
     final media = MediaQuery.of(context);
     final state = ref.watch(playbackProvider);
     final ctrl = ref.read(playbackProvider.notifier);
@@ -258,53 +257,48 @@ class _QueueSheetState extends ConsumerState<_QueueSheet> {
 
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: media.size.height * 0.85),
-      child: ClipRRect(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(t.radius * 1.7),
-        ),
-        child: SheetSurface(
-          child: SafeArea(
-            top: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SheetHandle(),
-                _QueueHeader(
-                  count: queue.length,
-                  shuffle: state.shuffle,
-                  onClear: queue.length > 1 ? ctrl.clearExceptCurrent : null,
-                  // «Похожие на очередь» продолжают её подбором. Шторку
-                  // закрываем: очередь под ней сменится целиком, и стоять на
-                  // её старом списке уже незачем.
-                  onWave: queue.isEmpty
-                      ? null
-                      : () {
-                          Navigator.of(context).pop();
-                          startWaveFromQueue(context, ref, queue);
-                        },
-                ),
-                Flexible(
-                  child: CustomScrollView(
-                    controller: _scroll,
-                    shrinkWrap: true,
-                    slivers: [
-                      SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
-                        sliver: SliverMainAxisGroup(
-                          slivers: _slivers(
-                            queue: queue,
-                            keys: keys,
-                            current: state.index,
-                            extended: ref.watch(queueViewProvider).isExtended,
-                            ctrl: ctrl,
-                          ),
+      child: SheetSurface(
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SheetHandle(),
+              _QueueHeader(
+                count: queue.length,
+                shuffle: state.shuffle,
+                onClear: queue.length > 1 ? ctrl.clearExceptCurrent : null,
+                // «Похожие на очередь» продолжают её подбором. Шторку
+                // закрываем: очередь под ней сменится целиком, и стоять на
+                // её старом списке уже незачем.
+                onWave: queue.isEmpty
+                    ? null
+                    : () {
+                        Navigator.of(context).pop();
+                        startWaveFromQueue(context, ref, queue);
+                      },
+              ),
+              Flexible(
+                child: CustomScrollView(
+                  controller: _scroll,
+                  shrinkWrap: true,
+                  slivers: [
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
+                      sliver: SliverMainAxisGroup(
+                        slivers: _slivers(
+                          queue: queue,
+                          keys: keys,
+                          current: state.index,
+                          extended: ref.watch(queueViewProvider).isExtended,
+                          ctrl: ctrl,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

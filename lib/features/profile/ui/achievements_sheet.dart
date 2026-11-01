@@ -53,7 +53,7 @@ class _Head extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: sheetPanelLineColor(context)),
+              border: Border.all(color: sheetLineColor(context)),
             ),
             child: Text(
               '$done/$total',
@@ -112,12 +112,12 @@ class _AchCard extends StatelessWidget {
     final t = context.bloom;
     final a = progress;
     final tint = a.tier == null ? t.muted : tierColor(a.tier!);
-    final line = sheetPanelLineColor(context);
+    final line = sheetLineColor(context);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(sheetPanelRadius(context)),
+        borderRadius: BorderRadius.circular(t.radius),
         border: Border.all(color: line),
       ),
       // Not reached yet: the whole card dimmed.

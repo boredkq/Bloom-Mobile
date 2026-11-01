@@ -16,9 +16,8 @@ import '../util/format.dart';
 import 'bloom_icon.dart';
 import 'bloom_sheet.dart';
 
-/// [addedAt] — когда трек попал в библиотеку: шапка тут та же, что в шторке
-/// действий, и без этой строки при переходе она бы дёргалась. Читает её
-/// звонящий: до библиотеки отсюда не дотянуться, `ref` в шторку не приходит.
+/// [addedAt] is when the track came into the library: the header is the same as
+/// in the actions sheet. The caller reads it: no `ref` comes into the sheet.
 Future<void> showTrackInfoSheet(
   BuildContext context,
   Track track, {
@@ -26,8 +25,7 @@ Future<void> showTrackInfoSheet(
 }) {
   return showBloomSheetChild<void>(
     context: context,
-    backdrop: track.cover,
-    header: SheetLineHeader(
+    header: SheetHero(
       cover: track.cover,
       title: track.name,
       subtitle: track.artist,
@@ -85,16 +83,7 @@ class _TrackInfo extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (track.explicit) const _ExplicitMark(),
-        if (rows.isNotEmpty)
-          SheetPanel(
-            children: [
-              for (var i = 0; i < rows.length; i++) ...[
-                // Иконок у строк нет — текст стоит на отступе 16.
-                if (i > 0) sheetDivider(indent: 16),
-                rows[i],
-              ],
-            ],
-          ),
+        if (rows.isNotEmpty) SheetPanel(children: rows),
         if (track.description case final description?)
           if (description.trim().isNotEmpty)
             SheetPanel(
@@ -106,7 +95,7 @@ class _TrackInfo extends StatelessWidget {
         // открыть шторку без единой строки.
         if (rows.isEmpty && (track.description ?? '').trim().isEmpty)
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
             child: Text(
               l.tiNothing,
               style: Theme.of(context).textTheme.bodyMedium,
@@ -202,7 +191,7 @@ class _ExplicitMark extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
       child: Row(
         children: [
           BloomIcon(Bi.dangerCircle, size: 16, color: t.muted),

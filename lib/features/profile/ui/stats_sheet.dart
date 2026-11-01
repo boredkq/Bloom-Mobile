@@ -331,8 +331,8 @@ class _Overview extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: sheetPanelColor(context),
-        borderRadius: BorderRadius.circular(sheetPanelRadius(context)),
-        border: Border.all(color: sheetPanelLineColor(context)),
+        borderRadius: BorderRadius.circular(context.bloom.radius),
+        border: Border.all(color: sheetLineColor(context)),
       ),
       child: Column(
         children: [

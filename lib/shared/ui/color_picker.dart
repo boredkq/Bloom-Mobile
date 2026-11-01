@@ -84,106 +84,95 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
 
-    return Padding(
-      // Поле hex поднимает клавиатуру — шторка должна встать над ней.
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: ClipRRect(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(t.radius * 1.7),
-        ),
-        child: SheetSurface(
-          child: SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+    return SheetSurface(
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                height: 190,
+                child: _SatBox(
+                  hsv: _hsv,
+                  onChanged: (s, v) =>
+                      _set(_hsv.withSaturation(s).withValue(v)),
+                ),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                height: 26,
+                child: _HueBar(
+                  hue: _hsv.hue,
+                  onChanged: (h) => _set(_hsv.withHue(h)),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
                 children: [
-                  SizedBox(
-                    height: 190,
-                    child: _SatBox(
-                      hsv: _hsv,
-                      onChanged: (s, v) =>
-                          _set(_hsv.withSaturation(s).withValue(v)),
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: _color,
+                      borderRadius: BorderRadius.circular(t.radius * 0.6),
+                      border: Border.all(color: t.ovlLine2),
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    height: 26,
-                    child: _HueBar(
-                      hue: _hsv.hue,
-                      onChanged: (h) => _set(_hsv.withHue(h)),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: _color,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _hex,
+                      onChanged: _onHex,
+                      cursorColor: t.accent,
+                      maxLength: 7,
+                      style: theme.titleMedium,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp('[#0-9a-fA-F]'),
+                        ),
+                      ],
+                      decoration: InputDecoration(
+                        counterText: '',
+                        isDense: true,
+                        filled: true,
+                        fillColor: t.pill,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(t.radius * 0.6),
-                          border: Border.all(color: t.ovlLine2),
+                          borderSide: BorderSide.none,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: _hex,
-                          onChanged: _onHex,
-                          cursorColor: t.accent,
-                          maxLength: 7,
-                          style: theme.titleMedium,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                              RegExp('[#0-9a-fA-F]'),
-                            ),
-                          ],
-                          decoration: InputDecoration(
-                            counterText: '',
-                            isDense: true,
-                            filled: true,
-                            fillColor: t.pill,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 12,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(
-                                t.radius * 0.6,
-                              ),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: BloomButton(
-                          label: context.l.commonCancel,
-                          color: t.text2,
-                          onTap: () => Navigator.of(context).pop(),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: BloomButton(
-                          label: context.l.commonDone,
-                          tone: ButtonTone.accent,
-                          onTap: () => Navigator.of(context).pop(_color),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: BloomButton(
+                      label: context.l.commonCancel,
+                      color: t.text2,
+                      onTap: () => Navigator.of(context).pop(),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: BloomButton(
+                      label: context.l.commonDone,
+                      tone: ButtonTone.accent,
+                      onTap: () => Navigator.of(context).pop(_color),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),

@@ -5797,6 +5797,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t connect'**
   String get pcErrFailed;
+
+  /// No description provided for @taPlayNextHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Plays after the current one'**
+  String get taPlayNextHint;
+
+  /// No description provided for @waveFromTrackHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A mix of similar tracks'**
+  String get waveFromTrackHint;
+
+  /// No description provided for @waveFromArtistHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A mix based on this artist'**
+  String get waveFromArtistHint;
+
+  /// No description provided for @waveDislikeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Won\'t show up in mixes'**
+  String get waveDislikeHint;
+
+  /// No description provided for @waveUndislikeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Back in the mixes'**
+  String get waveUndislikeHint;
+
+  /// No description provided for @tiHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Album, year, length'**
+  String get tiHint;
+
+  /// No description provided for @tlOfflineHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A copy inside the app'**
+  String get tlOfflineHint;
+
+  /// No description provided for @tlFilesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'To the phone\'s files'**
+  String get tlFilesHint;
+
+  /// No description provided for @tlRefreshHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s new in the sources'**
+  String get tlRefreshHint;
+
+  /// No description provided for @commonPinHint.
+  ///
+  /// In en, this message translates to:
+  /// **'First in the library'**
+  String get commonPinHint;
+
+  /// No description provided for @tlMergeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Into a new playlist'**
+  String get tlMergeHint;
+
+  /// No description provided for @tlConvertHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A copy on another platform'**
+  String get tlConvertHint;
+
+  /// No description provided for @tlFindDupsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats in this list'**
+  String get tlFindDupsHint;
+
+  /// No description provided for @tlExportHint.
+  ///
+  /// In en, this message translates to:
+  /// **'To a transfer file'**
+  String get tlExportHint;
+
+  /// No description provided for @artistImportHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Into your library'**
+  String get artistImportHint;
+
+  /// No description provided for @commonFollowHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The artist joins your library'**
+  String get commonFollowHint;
 }
 
 class _AppLocalizationsDelegate
