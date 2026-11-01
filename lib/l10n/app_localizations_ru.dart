@@ -1663,6 +1663,42 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pvStyleVinylSub => 'виниловый диск с вращением';
 
   @override
+  String get pvStyleAura => 'Аура';
+
+  @override
+  String get pvStyleAuraSub => 'живой фон и пружинящая обложка';
+
+  @override
+  String get pvStyleIvory => 'Слоновая кость';
+
+  @override
+  String get pvStyleIvorySub => 'строгая журнальная типографика';
+
+  @override
+  String get recognitionTitle => 'Распознавание музыки';
+
+  @override
+  String get recognitionListening => 'Слушаем то, что играет рядом...';
+
+  @override
+  String get recognitionIdentifying => 'Определяем аудиоотпечаток...';
+
+  @override
+  String get recognitionFound => 'Трек найден';
+
+  @override
+  String get recognitionPlay => 'Слушать в Bloom';
+
+  @override
+  String get recognitionSearch => 'Найти в поиске';
+
+  @override
+  String get recognitionNotFound => 'Не удалось распознать трек';
+
+  @override
+  String get recognitionRetry => 'Попробовать снова';
+
+  @override
   String get pvPlayButtonRow => 'Кнопка воспроизведения';
 
   @override

@@ -1074,11 +1074,15 @@ class _Section extends StatelessWidget {
 String _styleLabel(AppLocalizations l, PlayerStyle style) => switch (style) {
   PlayerStyle.standard => l.pvStyleStandard,
   PlayerStyle.vinyl => l.pvStyleVinyl,
+  PlayerStyle.aura => l.pvStyleAura,
+  PlayerStyle.ivory => l.pvStyleIvory,
 };
 
 String _styleSub(AppLocalizations l, PlayerStyle style) => switch (style) {
   PlayerStyle.standard => l.pvStyleStandardSub,
   PlayerStyle.vinyl => l.pvStyleVinylSub,
+  PlayerStyle.aura => l.pvStyleAuraSub,
+  PlayerStyle.ivory => l.pvStyleIvorySub,
 };
 
 String _modeLabel(AppLocalizations l, LyricsMode mode) => switch (mode) {
@@ -1135,6 +1139,17 @@ class _StylePainter extends CustomPainter {
       case PlayerStyle.vinyl:
         canvas.drawCircle(const Offset(12, 12), 9, stroke);
         canvas.drawCircle(const Offset(12, 12), 3, stroke);
+      // Живая аура Apple Music: рамка со свечением и пружинящей точкой.
+      case PlayerStyle.aura:
+        canvas.drawRRect(
+          RRect.fromLTRBR(4, 4, 20, 20, const Radius.circular(5)),
+          stroke,
+        );
+        canvas.drawCircle(const Offset(12, 12), 3.5, stroke);
+      // Слоновая кость (Ivory): строгий журнальный прямоугольник с линией.
+      case PlayerStyle.ivory:
+        canvas.drawRect(const Rect.fromLTWH(4, 4, 16, 16), stroke);
+        canvas.drawLine(const Offset(7, 12), const Offset(17, 12), stroke);
     }
     canvas.restore();
   }

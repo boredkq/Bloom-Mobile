@@ -34,6 +34,7 @@ import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/platform_logo.dart';
 import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/skeleton.dart';
+import '../../recognition/ui/recognition_sheet.dart';
 import '../recent_store.dart';
 
 /// Похожа ли строка на ссылку. Домены ловим и без протокола — вставляют и так.
@@ -223,7 +224,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     }),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
+                CircleIconButton(
+                  icon: Bi.wave,
+                  onTap: () => showRecognitionSheet(context, ref),
+                ),
+                const SizedBox(width: 8),
                 // Смена площадки перезапускает поиск: выдача целиком принадлежит
                 // выбранному источнику, показывать под новым логотипом старые
                 // строки нельзя.

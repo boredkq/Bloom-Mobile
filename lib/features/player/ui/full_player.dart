@@ -334,49 +334,71 @@ class _Cover extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.bloom;
     final track = state.track!;
     final anim = ref.watch(trackAnimProvider).of(TrackAnimSurface.player);
-    // Пластинка (`playerStyle: 'vinyl'` с ПК): круглая обложка, вращение и
-    // тёмная этикетка по центру.
-    final vinyl = ref.watch(playerStyleProvider).isVinyl;
+    final style = ref.watch(playerStyleProvider);
+    final vinyl = style.isVinyl;
+    final aura = style.isAura;
+    final ivory = style.isIvory;
+    final spinning = ref.watch(playingNowProvider);
+
     return LayoutBuilder(
       builder: (context, box) {
         final side = box.biggest.shortestSide;
-        // Круг — тот же радиус, доведённый до половины стороны: всё, что
-        // обрезается рамкой обложки (сама картинка, панель текста), становится
-        // круглым разом.
-        final radius = vinyl ? side / 2 : _coverRadius;
-        // Крутим ТОЛЬКО пока идёт звук — десктопное `vinyl-paused`
-        // (`animation-play-state:paused`). Состояние берём у самого плеера, а
-        // не у `PlaybackState`: там его нет, а пауза из шторки и с гарнитуры
-        // обязана останавливать диск так же, как кнопка на экране.
-        final spinning = ref.watch(playingNowProvider);
+        // Круг — тот же радиус, доведённый до половины стороны; для слоновой кости — строже (8).
+        final radius = vinyl ? side / 2 : (ivory ? 8.0 : _coverRadius);
+        // В стиле Аура при паузе обложка пружинит до 0.85, как в Apple Music
+        final double scale = (aura && !spinning) ? 0.85 : 1.0;
+
         return Stack(
           children: [
             // Слои смены трека клипует сама рамка обложки, а картинки внутри
             // идут БЕЗ своего радиуса: иначе уезжающая показывала бы
             // скруглённый угол посреди кадра.
-            SizedBox(
-              width: side,
-              height: side,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(radius),
-                child: VinylSpin(
-                  // Вращается вся стопка слоёв смены трека, а не одна текущая
-                  // картинка: иначе приезжающая обложка встала бы ровно, а
-                  // уезжающая продолжала крутиться — два разных движения в
-                  // одном кадре.
-                  enabled: vinyl,
-                  spinning: spinning,
-                  child: TrackSwap(
-                    id: track.id,
-                    kind: anim.cover,
-                    child: Cover(
-                      // Своя обложка из «Кастомизации» важнее обложки трека —
-                      // десктопный `coverOverride` (с учётом режима).
-                      url: ref.watch(playerCoverProvider),
-                      size: side,
-                      radius: 0,
+            AnimatedScale(
+              scale: scale,
+              duration: const Duration(milliseconds: 320),
+              curve: Curves.easeOutBack,
+              child: Container(
+                width: side,
+                height: side,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(radius),
+                  boxShadow: aura
+                      ? [
+                          BoxShadow(
+                            color: t.glow.withValues(
+                              alpha: spinning ? 0.35 : 0.15,
+                            ),
+                            blurRadius: spinning ? 26 : 12,
+                            spreadRadius: spinning ? 4 : 0,
+                          ),
+                        ]
+                      : null,
+                  border: ivory
+                      ? Border.all(color: t.ovlLine2, width: 1.5)
+                      : null,
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(radius),
+                  child: VinylSpin(
+                    // Вращается вся стопка слоёв смены трека, а не одна текущая
+                    // картинка: иначе приезжающая обложка встала бы ровно, а
+                    // уезжающая продолжала крутиться — два разных движения в
+                    // одном кадре.
+                    enabled: vinyl,
+                    spinning: spinning,
+                    child: TrackSwap(
+                      id: track.id,
+                      kind: anim.cover,
+                      child: Cover(
+                        // Своя обложка из «Кастомизации» важнее обложки трека —
+                        // десктопный `coverOverride` (с учётом режима).
+                        url: ref.watch(playerCoverProvider),
+                        size: side,
+                        radius: 0,
+                      ),
                     ),
                   ),
                 ),

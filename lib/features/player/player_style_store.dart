@@ -16,9 +16,17 @@ enum PlayerStyle {
   standard,
 
   /// Круглая обложка, которая крутится, пока играет (`.ps-cover.vinyl-mode`).
-  vinyl;
+  vinyl,
+
+  /// Аура (Apple Music): живой фон и мягко пружинящая обложка.
+  aura,
+
+  /// Слоновая кость (Ivory): строгий журнальный минимализм.
+  ivory;
 
   bool get isVinyl => this == PlayerStyle.vinyl;
+  bool get isAura => this == PlayerStyle.aura;
+  bool get isIvory => this == PlayerStyle.ivory;
 }
 
 final playerStyleProvider =

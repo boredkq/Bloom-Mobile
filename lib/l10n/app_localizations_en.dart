@@ -1632,6 +1632,42 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pvStyleVinylSub => 'a spinning vinyl record';
 
   @override
+  String get pvStyleAura => 'Aura';
+
+  @override
+  String get pvStyleAuraSub => 'living ambient aura & spring cover';
+
+  @override
+  String get pvStyleIvory => 'Ivory';
+
+  @override
+  String get pvStyleIvorySub => 'editorial typographic minimalism';
+
+  @override
+  String get recognitionTitle => 'Music Recognition';
+
+  @override
+  String get recognitionListening => 'Listening to music around you...';
+
+  @override
+  String get recognitionIdentifying => 'Identifying audio fingerprint...';
+
+  @override
+  String get recognitionFound => 'Track identified';
+
+  @override
+  String get recognitionPlay => 'Play in Bloom';
+
+  @override
+  String get recognitionSearch => 'Open in Search';
+
+  @override
+  String get recognitionNotFound => 'Could not identify track';
+
+  @override
+  String get recognitionRetry => 'Try again';
+
+  @override
   String get pvPlayButtonRow => 'Play button';
 
   @override

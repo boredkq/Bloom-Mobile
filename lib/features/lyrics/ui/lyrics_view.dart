@@ -153,6 +153,8 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
           _Line(
             key: _key(i),
             text: lines[i].text,
+            romanized: lines[i].romanized,
+            section: lines[i].section,
             active: i == current,
             color: i == current
                 ? t.text
@@ -202,6 +204,8 @@ class _Line extends StatefulWidget {
   const _Line({
     super.key,
     required this.text,
+    this.romanized,
+    this.section,
     required this.active,
     required this.color,
     required this.layout,
@@ -209,6 +213,8 @@ class _Line extends StatefulWidget {
   });
 
   final String text;
+  final String? romanized;
+  final String? section;
   final bool active;
   final Color color;
   final LyricsLayout layout;
@@ -247,6 +253,7 @@ class _LineState extends State<_Line> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final lay = widget.layout;
+    final t = context.bloom;
     return GestureDetector(
       onTap: widget.onTap,
       behavior: HitTestBehavior.opaque,
@@ -254,29 +261,91 @@ class _LineState extends State<_Line> with SingleTickerProviderStateMixin {
         selected: widget.active,
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: lay.gap),
-          child: AnimatedBuilder(
-            animation: _grow,
-            builder: (context, child) => Transform.scale(
-              scale:
-                  _from +
-                  (1 - _from) * Curves.easeOutQuad.transform(_grow.value),
-              alignment: lay.origin,
-              child: child,
-            ),
-            child: TweenAnimationBuilder<Color?>(
-              tween: ColorTween(end: widget.color),
-              duration: const Duration(milliseconds: 300),
-              builder: (context, color, _) => Text(
-                widget.text,
-                textAlign: lay.align,
-                style: TextStyle(
-                  fontSize: widget.active ? lay.activeSize : lay.fontSize,
-                  height: lay.lineHeight,
-                  fontWeight: widget.active ? FontWeight.w500 : FontWeight.w400,
-                  color: color,
+          child: Column(
+            crossAxisAlignment: lay.align == TextAlign.left
+                ? CrossAxisAlignment.start
+                : CrossAxisAlignment.center,
+            children: [
+              if (widget.section != null) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: widget.active
+                        ? t.accent.withValues(alpha: 0.15)
+                        : t.ovlBg,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: widget.active
+                          ? t.accent.withValues(alpha: 0.35)
+                          : t.ovlLine,
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    widget.section!,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: widget.active ? t.accent : t.muted,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ),
+              ],
+              AnimatedBuilder(
+                animation: _grow,
+                builder: (context, child) => Transform.scale(
+                  scale:
+                      _from +
+                      (1 - _from) * Curves.easeOutQuad.transform(_grow.value),
+                  alignment: lay.origin,
+                  child: child,
+                ),
+                child: TweenAnimationBuilder<Color?>(
+                  tween: ColorTween(end: widget.color),
+                  duration: const Duration(milliseconds: 300),
+                  builder: (context, color, _) => Column(
+                    crossAxisAlignment: lay.align == TextAlign.left
+                        ? CrossAxisAlignment.start
+                        : CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        widget.text,
+                        textAlign: lay.align,
+                        style: TextStyle(
+                          fontSize: widget.active ? lay.activeSize : lay.fontSize,
+                          height: lay.lineHeight,
+                          fontWeight:
+                              widget.active ? FontWeight.w500 : FontWeight.w400,
+                          color: color,
+                        ),
+                      ),
+                      if (widget.romanized != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          widget.romanized!,
+                          textAlign: lay.align,
+                          style: TextStyle(
+                            fontSize: (widget.active
+                                    ? lay.activeSize
+                                    : lay.fontSize) *
+                                0.75,
+                            height: 1.2,
+                            fontStyle: FontStyle.italic,
+                            color: color?.withValues(alpha: 0.72) ??
+                                t.muted.withValues(alpha: 0.72),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
         ),
       ),

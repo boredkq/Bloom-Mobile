@@ -34,6 +34,14 @@ void main() {
     final c = _container(JsonStore.memory({'playerStyle': 'vinyl'}));
     expect(c.read(playerStyleProvider), PlayerStyle.vinyl);
     expect(c.read(playerStyleProvider).isVinyl, isTrue);
+
+    final cAura = _container(JsonStore.memory({'playerStyle': 'aura'}));
+    expect(cAura.read(playerStyleProvider), PlayerStyle.aura);
+    expect(cAura.read(playerStyleProvider).isAura, isTrue);
+
+    final cIvory = _container(JsonStore.memory({'playerStyle': 'ivory'}));
+    expect(cIvory.read(playerStyleProvider), PlayerStyle.ivory);
+    expect(cIvory.read(playerStyleProvider).isIvory, isTrue);
   });
 
   test('десктопный стиль, которого у нас нет, — это обычный плеер', () {
@@ -47,6 +55,14 @@ void main() {
     c.read(playerStyleProvider.notifier).setStyle(PlayerStyle.vinyl);
     expect(c.read(playerStyleProvider), PlayerStyle.vinyl);
     expect(store.read('playerStyle'), 'vinyl');
+
+    c.read(playerStyleProvider.notifier).setStyle(PlayerStyle.aura);
+    expect(c.read(playerStyleProvider), PlayerStyle.aura);
+    expect(store.read('playerStyle'), 'aura');
+
+    c.read(playerStyleProvider.notifier).setStyle(PlayerStyle.ivory);
+    expect(c.read(playerStyleProvider), PlayerStyle.ivory);
+    expect(store.read('playerStyle'), 'ivory');
 
     c.read(playerStyleProvider.notifier).setStyle(PlayerStyle.standard);
     expect(store.read('playerStyle'), 'standard');

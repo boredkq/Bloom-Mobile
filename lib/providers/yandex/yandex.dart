@@ -382,6 +382,29 @@ Future<List<YmRawTrack>> tracksByIds(List<String> ids) async {
   return _parseAll(v['result'], parseTrack, ids.length);
 }
 
+/// Текст трека из supplement: синхронизированный LRC (если есть) и обычный.
+Future<({String synced, String plain})?> trackLyrics(String id) async {
+  try {
+    final v = await apiGet('/tracks/$id/supplement');
+    final res = v['result'];
+    if (res is! Map) return null;
+    final lyrics = res['lyrics'];
+    if (lyrics is! Map) return null;
+    final sync = lyrics['hasAvailableSyncLyrics'] == true;
+    final lrc = lyrics['lrcLyrics'] as String? ?? '';
+    final full = lyrics['fullLyrics'] as String? ?? '';
+    if (sync && lrc.trim().isNotEmpty) {
+      return (synced: lrc, plain: full);
+    }
+    if (full.trim().isNotEmpty) {
+      return (synced: '', plain: full);
+    }
+  } catch (_) {
+    // Нет текстов или ошибка запроса
+  }
+  return null;
+}
+
 // ============================ Сущности ============================
 
 Future<YmEntity> album(String id) async {

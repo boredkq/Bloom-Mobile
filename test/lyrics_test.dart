@@ -56,6 +56,7 @@ ProviderContainer _container({
         required artist,
         required title,
         durationSec,
+        trackId,
       }) {
         onFetch?.call();
         return answer(title);

@@ -2786,6 +2786,19 @@ abstract class AppLocalizations {
   /// **'a spinning vinyl record'**
   String get pvStyleVinylSub;
 
+  String get pvStyleAura;
+  String get pvStyleAuraSub;
+  String get pvStyleIvory;
+  String get pvStyleIvorySub;
+  String get recognitionTitle;
+  String get recognitionListening;
+  String get recognitionIdentifying;
+  String get recognitionFound;
+  String get recognitionPlay;
+  String get recognitionSearch;
+  String get recognitionNotFound;
+  String get recognitionRetry;
+
   /// shape of the play/pause button in the player and the mini player
   ///
   /// In en, this message translates to:

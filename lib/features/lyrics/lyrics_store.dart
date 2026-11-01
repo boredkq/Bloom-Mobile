@@ -118,12 +118,18 @@ typedef LyricsFetcher =
       required String artist,
       required String title,
       int? durationSec,
+      String? trackId,
     });
 
 final lyricsFetcherProvider = Provider<LyricsFetcher>(
   (ref) =>
-      ({required artist, required title, durationSec}) =>
-          fetchLyrics(artist: artist, title: title, durationSec: durationSec),
+      ({required artist, required title, durationSec, trackId}) =>
+          fetchLyrics(
+            artist: artist,
+            title: title,
+            durationSec: durationSec,
+            trackId: trackId,
+          ),
 );
 
 /// Whose lyrics to show — swapped in tests.
@@ -172,6 +178,7 @@ class LyricsController extends Notifier<LyricsState> {
         artist: t.artist,
         title: t.name,
         durationSec: t.duration.inSeconds > 0 ? t.duration.inSeconds : null,
+        trackId: t.id,
       );
       cache.remember(key, found, keep: ref.read(lyricsPrefsProvider).cache);
     }
