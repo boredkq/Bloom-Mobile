@@ -1,9 +1,6 @@
-/// Страница «Релизы» — все новинки площадки сеткой. Порт ветки `releases`
-/// десктопного `DetailView` (`ReleasesBody`).
-///
-/// Карточки те же, что в выдаче поиска («артист · сингл» над датой), тап
-/// открывает альбом. Шапки с обложкой нет — как и у чарта, это не сущность
-/// площадки, а список.
+/// Releases page: all a platform's new releases as a grid. The cards are those
+/// of search results (artist and type over a date), and a tap opens the album.
+/// No cover header: like a chart, this is a list rather than a platform entity.
 library;
 
 import 'package:flutter/material.dart';

@@ -87,8 +87,8 @@ class SimilarToSection extends ConsumerWidget {
   }
 }
 
-/// Что делает тап по сиду. Трек-сид без самого трека (свой файл, которого нет
-/// в библиотеке) играть нечем — тап выключен.
+/// What a tap on a seed does. A track seed with no track (a local file not in
+/// the library) can't play, so the tap is off.
 VoidCallback? _seedAction(
   BuildContext context,
   WidgetRef ref,

@@ -1,7 +1,5 @@
-/// Стопка из трёх обложек веером — порт десктопного `.fy-all`: верхняя по
-/// центру, задние вынесены в стороны, наклонены и притушены. Одна на
-/// «Вся подборка» в «Для вас» и на плашки «Любимые / История» — различаются
-/// только размерами.
+/// A fan of three covers: the top one centred, the back ones set aside, tilted
+/// and dimmed. Used at different sizes.
 library;
 
 import 'dart:math' as math;
@@ -27,7 +25,7 @@ class CoverFan extends StatelessWidget {
     this.shadowScale = 1,
   });
 
-  /// Обложки: верхняя и две задние. Задней нет — её место просто пустое.
+  /// Covers: top and two back. A missing back one leaves an empty place.
   final String? front;
   final String? left;
   final String? right;
@@ -37,17 +35,17 @@ class CoverFan extends StatelessWidget {
   final double frontSize;
   final double backSize;
 
-  /// Вынос задних обложек от центра.
+  /// How far back covers stand from the centre.
   final double shift;
 
-  /// Наклон задних обложек, радианы.
+  /// Back covers' tilt, radians.
   final double tilt;
 
-  /// Яркость задних обложек (десктопный `brightness(.55)`).
+  /// Back covers' brightness.
   final double dim;
 
-  /// Множитель размытия и сдвига теней: на мелкой стопке тени карточки
-  /// «Для вас» растеклись бы на всю плашку.
+  /// Multiplier of shadow blur and offset: on a small stack a large card's
+  /// shadows would spread over the plate.
   final double shadowScale;
 
   @override
@@ -58,7 +56,7 @@ class CoverFan extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         clipBehavior: Clip.none,
-        // Порядок детей = порядок слоёв: задние раньше верхней.
+        // Child order is layer order: back before top.
         children: [
           if (left != null) _back(context, left!, -1),
           if (right != null) _back(context, right!, 1),
@@ -85,8 +83,8 @@ class CoverFan extends StatelessWidget {
           child: Stack(
             children: [
               Cover(url: url, size: backSize),
-              // Плёнка вместо `brightness`: притушить картинку так дешевле, чем
-              // гонять её через цветовой фильтр.
+              // A film rather than a colour filter: dimming a picture this way
+              // is cheaper.
               Positioned.fill(
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(
@@ -105,7 +103,7 @@ class CoverFan extends StatelessWidget {
   }
 }
 
-/// Тень под обложкой той же формы, что и сама обложка.
+/// A shadow under the cover in the cover's own shape.
 class _Shadowed extends StatelessWidget {
   const _Shadowed({
     required this.child,
@@ -123,7 +121,7 @@ class _Shadowed extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        // Та же форма, что у [Cover] по умолчанию.
+        // The same shape as [Cover] by default.
         borderRadius: BorderRadius.circular(context.bloom.radius * 0.72),
         boxShadow: [
           BoxShadow(

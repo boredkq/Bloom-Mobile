@@ -1,10 +1,7 @@
-/// Страница «Чарт» — полный чарт площадки списком. Порт ветки `chart`
-/// десктопного `DetailView`.
-///
-/// Шапки с обложкой нет: чарт — не сущность площадки, а список, и обложка
-/// первого места с «Яндекс.Музыкой» ничего бы не сообщили. Остаются «← Чарт»
-/// и пара play / перемешать — иначе запустить весь список нечем. Слева в
-/// строках — место и его динамика.
+/// Chart page: a platform's full chart as a list. No cover header: a chart is a
+/// list rather than a platform entity, and the first place's cover would say
+/// nothing. Back and play and shuffle remain, or nothing starts the list. Rows
+/// show position and trend on the left.
 library;
 
 import 'package:flutter/material.dart';

@@ -1,7 +1,5 @@
-/// «Для вас» на главной — порт десктопного `ForYouSection.tsx`.
-///
-/// Первой в ленте стоит стопка «Вся подборка» — она ставит всю полосу
-/// очередью; одиночная карточка играет только свой трек, как на ПК.
+/// For you on home. The whole selection stack comes first, queueing the whole
+/// strip; a single card plays only its track.
 library;
 
 import 'package:flutter/material.dart';
@@ -16,9 +14,8 @@ import '../../player/player_controller.dart';
 import '../for_you.dart';
 import 'cover_fan.dart';
 
-/// Геометрия стопки — десктопные ручки `--fy-*`, ужатые под наши карточки:
-/// верхняя обложка стопки ровно с обложкой соседней карточки (132), а не
-/// крупнее её, как на ПК, — на телефоне стопка иначе съедает пол-ленты.
+/// Stack geometry: the top cover is level with a neighbouring card's (132), or
+/// the stack eats half the strip.
 const double _k = 132 / 158;
 const double _fyWidth = 272 * _k;
 const double _fyHeight = 158 * _k;
@@ -39,7 +36,7 @@ class ForYouSection extends ConsumerWidget {
       label: l.homeForYou,
       cover: tracks.first.cover,
     );
-    // Из одного трека стопка не складывается, да и повторяла бы соседа.
+    // One track makes no stack, and would repeat its neighbour.
     final stack = tracks.length > 1 ? 1 : 0;
 
     return Column(
@@ -66,7 +63,7 @@ class ForYouSection extends ConsumerWidget {
   }
 }
 
-/// Стопка «Вся подборка» — порт `.fy-all`, см. [CoverFan].
+/// The whole selection stack; see [CoverFan].
 class _PlayAllCard extends ConsumerWidget {
   const _PlayAllCard({required this.tracks, required this.source});
 

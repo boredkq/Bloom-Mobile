@@ -103,12 +103,9 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-/// Вход в профиль — сам аватар, а не значок «пользователь»: с него же он и
-/// летит в шапку страницы.
-///
-/// Метка перелёта — [UniqueKey] у экземпляра, а не общая строка: две карточки
-/// с одной меткой в дереве роняют переход исключением, и заводить такую мину
-/// на будущее незачем.
+/// Way into the profile: the avatar itself, flying from here into the page's
+/// header. The flight tag is an instance's [UniqueKey] rather than a shared
+/// string: two cards with one tag in a tree throw when the transition starts.
 class _ProfileButton extends ConsumerStatefulWidget {
   const _ProfileButton();
 

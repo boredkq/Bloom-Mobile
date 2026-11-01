@@ -1,14 +1,13 @@
-/// Суточная витрина главной — общее у «Для вас» и «Похожие на»: кэш на день,
-/// тихие повторы и сброс. Порт поведения `ForYouSection`/`SimilarToSection`.
+/// Daily home shelf, shared by For you and Similar to: a day's cache, quiet
+/// retries and a reset.
 ///
-/// Подборка живёт сутки: пересобирать её на каждый заход значит терять трек,
-/// который человек заметил, но не успел открыть. Кэш держит сами треки, а не
-/// id — площадочный трек после перезапуска иначе было бы нечем заиграть.
+/// A selection lives a day: rebuilding per visit loses a track the user noticed
+/// but didn't open. The cache holds the tracks themselves, not ids, or a
+/// platform track couldn't play after a restart.
 ///
-/// Пока данных нет, витрины нет вовсе (ни скелетона, ни «не удалось
-/// загрузить»): пустое место честнее мигающей заглушки. Пустой результат не
-/// кэшируется и тихо повторяется — почти всегда это сеть или ещё не вошедший
-/// Яндекс, а не «похожих нет».
+/// With no data there's no shelf at all (no skeleton or error): an empty place
+/// is more honest than a blinking stand-in. An empty result isn't cached and
+/// quietly retries: it's almost always the network or Yandex not yet logged in.
 library;
 
 import 'dart:async';
@@ -18,39 +17,41 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/store/json_store.dart' show jsonStoreProvider;
 import '../../providers/yandex/ym_auth.dart';
 
-/// Паузы перед тихими повторами сборки (после последней — сдаёмся до
-/// следующего запуска или входа в Яндекс).
+/// Pauses before quiet retries; after the last I give up until the next launch
+/// or Yandex login.
 const List<Duration> kShowcaseRetries = [
   Duration(milliseconds: 1500),
   Duration(seconds: 4),
 ];
 
-/// Локальный день (не UTC): подборка меняется по календарю человека.
+/// Local day, not UTC: a selection changes by the user's calendar.
 String showcaseDay(DateTime now) => '${now.year}-${now.month}-${now.day}';
 
 abstract class DailyShowcase<T extends Object> extends Notifier<T?> {
-  /// Ключ кэша в `bloom.json`.
+  /// Cache key in `bloom.json`.
   String get storeKey;
 
-  /// Версия ЛОГИКИ отбора. Поменял правила — поднимай, иначе до полуночи висит
-  /// выдача, собранная по старым. Отдельно от ключа, чтобы в `bloom.json` не
-  /// копились брошенные записи прошлых версий.
+  /// Version of the selection LOGIC. Raise it on changing rules, or results
+  /// built by the old ones hang until midnight. Apart from the key, so
+  /// abandoned entries don't pile up in `bloom.json`.
   int get version => 1;
 
-  /// Собрать витрину. `null` — показывать нечего (будет повтор).
+  /// Builds the shelf. `null` means nothing to show, and a retry follows.
   Future<T?> fetch();
 
   Object? encode(T value);
   T? decode(Object? raw);
 
-  /// Идущая сборка — её же отдаёт повторный [load], и её можно дождаться.
+  /// The build under way, returned by a second [load] and available to wait
+  /// for.
   Future<void>? _pending;
 
-  /// Поколение сборки: сброс посреди запроса не должен дать старому ответу
-  /// лечь поверх новой витрины.
+  /// Build generation: a reset mid-request shouldn't let an old answer land
+  /// over a new shelf.
   int _gen = 0;
 
-  /// Провайдер закрыт — ответ сети писать уже некуда (`state` бросил бы).
+  /// The provider is closed, so a network answer has nowhere to go (`state`
+  /// would throw).
   bool _disposed = false;
 
   bool _stale(int gen) => _disposed || gen != _gen;
@@ -59,8 +60,8 @@ abstract class DailyShowcase<T extends Object> extends Notifier<T?> {
   T? build() {
     _disposed = false;
     ref.onDispose(() => _disposed = true);
-    // Яндекс добавляет площадку уже по ходу сеанса — пустую витрину стоит
-    // попробовать ещё раз, как только он вошёл.
+    // Yandex adds a platform during a session, so an empty shelf is worth
+    // another try once it logs in.
     ref.listen(ymAuthProvider.select((s) => s.authed), (_, _) {
       if (state == null) unawaited(load());
     });
@@ -80,22 +81,22 @@ abstract class DailyShowcase<T extends Object> extends Notifier<T?> {
     }
   }
 
-  /// Собрать с тихими повторами. Уже идущая сборка второй не запускает — её же
-  /// и возвращает.
+  /// Builds with quiet retries. A build under way starts no second; it's
+  /// returned instead.
   Future<void> load() {
     final running = _pending;
     if (running != null) return running;
     late final Future<void> job;
     job = _load().whenComplete(() {
-      // После сброса здесь уже новая сборка — её не трогаем.
+      // After a reset there's a new build here, not to be touched.
       if (identical(_pending, job)) _pending = null;
     });
     return _pending = job;
   }
 
-  /// Дождаться идущей сборки, если она есть. Нужно соседней витрине, которая
-  /// сверяется с этой: утром обе собираются разом, и без ожидания сверяться
-  /// было бы не с чем.
+  /// Waits for a build under way, if any. For a neighbouring shelf checking
+  /// against this one: both build at once in the morning, and with no wait
+  /// there'd be nothing to check against.
   Future<void> settled() => _pending ?? Future<void>.value();
 
   Future<void> _load() async {
@@ -105,7 +106,7 @@ abstract class DailyShowcase<T extends Object> extends Notifier<T?> {
       try {
         value = await fetch();
       } on Object {
-        // Витрина просто не появится — главная от этого не ломается.
+        // The shelf just won't appear, with no harm to home.
         value = null;
       }
       if (_stale(gen)) return;
@@ -124,8 +125,8 @@ abstract class DailyShowcase<T extends Object> extends Notifier<T?> {
     }
   }
 
-  /// Забыть витрину и собрать заново — часть «Очистить статистику»: сиды взяты
-  /// из стёртого топа, и жить подборке до полуночи незачем.
+  /// Forgets the shelf and rebuilds, part of clearing stats: its seeds came
+  /// from the erased top, with no reason to live until midnight.
   void reset() {
     _gen++;
     _pending = null;
