@@ -758,21 +758,21 @@ class _NextUpPill extends ConsumerWidget {
   }
 }
 
-/// Блок-контейнер: плёнка + рамка + радиус темы.
-class _Block extends StatelessWidget {
-  const _Block({required this.child});
+/// The plate under the player's buttons, with softer corners than a card's.
+class _Plate extends StatelessWidget {
+  const _Plate({required this.padding, required this.child});
 
+  final EdgeInsets padding;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 18),
+      padding: padding,
       decoration: BoxDecoration(
         color: t.ovlBg,
         border: Border.all(color: t.ovlLine),
-        // Круглее общего блока: у транспорта углы мягче, чем у карточек.
         borderRadius: BorderRadius.circular(t.radius * 1.8),
       ),
       child: child,
@@ -807,7 +807,8 @@ class _Transport extends ConsumerWidget {
       _ => null,
     };
 
-    return _Block(
+    return _Plate(
+      padding: const EdgeInsets.symmetric(vertical: 18),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
@@ -1086,24 +1087,15 @@ class _Tools extends ConsumerWidget {
   }
 }
 
-/// Пилюля ряда инструментов: та же плёнка, рамка и радиус, что у блока
-/// транспорта, но по ширине содержимого.
+/// A plate of the tools' row, as wide as what's on it.
 class _ToolPill extends StatelessWidget {
   const _ToolPill({required this.children});
 
   final List<Widget> children;
 
   @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: t.ovlBg,
-        border: Border.all(color: t.ovlLine),
-        borderRadius: BorderRadius.circular(t.radius * 1.8),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: children),
-    );
-  }
+  Widget build(BuildContext context) => _Plate(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    child: Row(mainAxisSize: MainAxisSize.min, children: children),
+  );
 }
