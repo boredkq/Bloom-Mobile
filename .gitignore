@@ -44,9 +44,10 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Отчёты `adb bugreport` — падают в корень проекта и весят десятки мегабайт
+# `adb bugreport` reports: they land in the project root and weigh tens of
+# megabytes
 bugreport-*.zip
 
-# Список непереведённых ключей: пишется `flutter gen-l10n` на каждой сборке
-# (путь задан в l10n.yaml), поэтому в репозитории не нужен
+# The untranslated keys list is written on every build, so it stays out of the
+# repo
 l10n-missing.json

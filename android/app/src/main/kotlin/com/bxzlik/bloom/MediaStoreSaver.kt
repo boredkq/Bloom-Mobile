@@ -9,28 +9,26 @@ import android.provider.MediaStore
 import java.io.File
 
 /**
- * Сохранение скачанного трека в ОБЩУЮ память телефона — «Музыка/Bloom».
+ * Saves a downloaded track to the phone's shared storage, Music/Bloom.
  *
- * Это второе из двух скачиваний, как на десктопе: офлайн-копия живёт внутри
- * приложения и видна только Bloom'у, а этот файл кладётся в медиатеку, виден
- * системным плеерам и переживает удаление приложения.
+ * Unlike the offline copy inside the app, this file sits in the media library:
+ * other players see it and it outlives the app.
  *
- * Двумя путями, потому что хранилище на Android поменялось на десятке:
- *  - Android 10+ — MediaStore: своя папка внутри Музыки, никаких разрешений;
- *  - раньше — обычный File в публичной папке плюс WRITE_EXTERNAL_STORAGE, и
- *    файл нужно скормить сканеру, иначе плееры его не увидят.
+ * Two paths, because Android 10 changed storage. From 10 on it's MediaStore: my
+ * own folder inside Music, no permissions. Below that it's a plain File in the
+ * public folder with WRITE_EXTERNAL_STORAGE, and the scanner has to be told or
+ * players won't see it.
  */
 object MediaStoreSaver {
 
-    /** Подпапка внутри «Музыки»: рядом с чужими файлами свои не теряются. */
+    /** The subfolder inside Music, so my files don't get lost among others. */
     private const val FOLDER = "Bloom"
 
     /**
-     * Кладёт [source] в медиатеку под именем [filename].
+     * Puts [source] in the media library as [filename].
      *
-     * [title]/[artist] пишутся полями медиатеки: у файла с CDN тегов может не
-     * быть вовсе, и без этого плееры показали бы «Unknown». Возвращает путь для
-     * показа пользователю.
+     * [title]/[artist] go to media library fields: a CDN file may have no tags,
+     * and players would show "Unknown". Returns the path to show the user.
      */
     fun save(
         context: Context,
@@ -40,8 +38,8 @@ object MediaStoreSaver {
         title: String?,
         artist: String?,
     ): String {
-        // Обложка («Скачать обложку») идёт тем же путём, но в «Изображения»:
-        // в «Музыке» галерея её не покажет.
+        // A cover takes the same route into Pictures: the gallery wouldn't show
+        // it from Music.
         if (mime.startsWith("image/")) {
             return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 saveImageViaMediaStore(context, source, filename, mime)
@@ -74,10 +72,10 @@ object MediaStoreSaver {
             MediaStore.VOLUME_EXTERNAL_PRIMARY,
         )
         val uri = resolver.insert(collection, values)
-            ?: throw IllegalStateException("медиатека отказала в записи")
+            ?: throw IllegalStateException("the media library refused the write")
         try {
             resolver.openOutputStream(uri).use { out ->
-                out ?: throw IllegalStateException("не открылся поток записи")
+                out ?: throw IllegalStateException("couldn't open the write stream")
                 source.inputStream().use { it.copyTo(out) }
             }
         } catch (e: Exception) {
@@ -106,8 +104,8 @@ object MediaStoreSaver {
             put(MediaStore.Audio.Media.RELATIVE_PATH, relative)
             if (!title.isNullOrEmpty()) put(MediaStore.Audio.Media.TITLE, title)
             if (!artist.isNullOrEmpty()) put(MediaStore.Audio.Media.ARTIST, artist)
-            // Пока идёт запись, файл скрыт от остальных приложений: иначе плеер
-            // успеет проиндексировать половину трека.
+            // The file stays hidden from other apps while being written, or a
+            // player could index half a track.
             put(MediaStore.Audio.Media.IS_PENDING, 1)
         }
 
@@ -115,15 +113,15 @@ object MediaStoreSaver {
             MediaStore.VOLUME_EXTERNAL_PRIMARY,
         )
         val uri = resolver.insert(collection, values)
-            ?: throw IllegalStateException("медиатека отказала в записи")
+            ?: throw IllegalStateException("the media library refused the write")
 
         try {
             resolver.openOutputStream(uri).use { out ->
-                out ?: throw IllegalStateException("не открылся поток записи")
+                out ?: throw IllegalStateException("couldn't open the write stream")
                 source.inputStream().use { it.copyTo(out) }
             }
         } catch (e: Exception) {
-            // Недописанный файл не должен остаться висеть в медиатеке.
+            // A half-written file mustn't stay in the media library.
             resolver.delete(uri, null, null)
             throw e
         }
@@ -145,18 +143,19 @@ object MediaStoreSaver {
             FOLDER,
         )
         if (!dir.exists() && !dir.mkdirs()) {
-            throw IllegalStateException("не создалась папка ${dir.path}")
+            throw IllegalStateException("couldn't create folder ${dir.path}")
         }
         val target = uniqueFile(dir, filename)
         source.inputStream().use { input ->
             target.outputStream().use { input.copyTo(it) }
         }
-        // Без сканера файл лежит на диске, но в плеерах не появляется.
+        // Without the scanner the file is on disk but never shows up in
+        // players.
         MediaScannerConnection.scanFile(context, arrayOf(target.path), null, null)
         return target.path
     }
 
-    /** `Имя.mp3`, `Имя (2).mp3`, … — два трека могут называться одинаково. */
+    /** `Name.mp3`, `Name (2).mp3`, …: two tracks can share a name. */
     private fun uniqueFile(dir: File, filename: String): File {
         val dot = filename.lastIndexOf('.')
         val base = if (dot > 0) filename.substring(0, dot) else filename

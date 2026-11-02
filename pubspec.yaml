@@ -30,8 +30,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # Локализация: встроенные строки Material (меню «копировать/вставить» в полях
-  # ввода, подписи доступности) идут отсюда, наши — из lib/l10n/*.arb.
+  # Material's built-in strings (the copy/paste menu in fields, accessibility
+  # labels) come from here.
   flutter_localizations:
     sdk: flutter
   intl: any
@@ -40,11 +40,10 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   http: ^1.6.0
-  # md5 для подписи прямой mp3-ссылки Яндекса (`SIGN_SALT` + path + s) — на
-  # десктопе это крейт `md5`.
+  # md5 for signing the direct Yandex mp3 link.
   crypto: ^3.0.6
-  # Открыть ya.ru/device при входе в Яндекс.Музыку: device-flow подтверждается
-  # в браузере, внутри приложения этой страницы нет.
+  # Opens ya.ru/device for the Yandex Music sign-in: the device flow is
+  # confirmed in a browser.
   url_launcher: ^6.3.2
   just_audio: ^0.10.6
   flutter_riverpod: ^2.6.1
@@ -57,8 +56,9 @@ dependencies:
   audio_service: ^0.18.19
   file_picker: ^12.3.0
   sqlite3: ^3.5.2
-  # QR-код с экрана ПК при сопряжении («Настройки → Компьютер»): камера и
-  # распознавание на обеих платформах — своими силами это не пара строк.
+  # Reads the QR code off the computer's screen at pairing: camera and
+  # recognition on both platforms are more than a couple of lines to write
+  # myself.
   mobile_scanner: ^7.4.2
 
 dev_dependencies:
@@ -83,29 +83,26 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # Переводы из lib/l10n/*.arb собираются в AppLocalizations на каждом
-  # `flutter run`/`flutter build` — настройки генератора в l10n.yaml.
+  # Translations are built into AppLocalizations on every run and build.
   generate: true
 
   fonts:
-    # Inter — UI-шрифт десктопного Bloom (--font по умолчанию). Файл
-    # вариативный (оси opsz/wght), поэтому вес задаётся через fontVariations
-    # в bloom_theme.dart, а не отдельными начертаниями.
+    # Inter, the UI font. The file is variable (opsz/wght axes), so weight goes
+    # through fontVariations, not separate faces.
     - family: Inter
       fonts:
         - asset: assets/fonts/Inter.ttf
-    # Minecraft Rus v1.1 — второй встроенный шрифт ПК, тот же файл. Одно
-    # начертание 400: жирный Flutter дорисовывает сам, недостающие символы
-    # (№, тире, стрелки) берутся из Inter — см. fontFamilyFallback темы.
+    # Minecraft Rus v1.1, the second built-in font. One 400 face: Flutter draws
+    # bold itself, and missing glyphs (№, dash, arrows) come from Inter through
+    # the theme's fontFamilyFallback.
     - family: Minecraft Rus
       fonts:
         - asset: assets/fonts/MinecraftRus.ttf
 
   assets:
-    # Знак bloom (та же звезда, что в иконке приложения) — шапка, пустые
-    # состояния, заглушки обложек.
+    # The bloom mark, the same star as the app icon.
     - assets/brand/
-    # Логотипы площадок и сервисов — те же файлы, что в десктопном Bloom.
+    # Logos of platforms and services.
     - assets/platform/
 
   # My Wave's living circle.

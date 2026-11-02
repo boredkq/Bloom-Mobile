@@ -6,8 +6,8 @@ import UniformTypeIdentifiers
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
-  /// Канал файла пресетов. Держим ссылкой: он делегат пикера, и без неё его
-  /// съел бы ARC ровно в момент показа диалога.
+  /// I keep a reference: this is the picker's delegate, and ARC would free it
+  /// just as the dialog shows.
   private var files: FilesChannel?
 
   override func application(
@@ -33,23 +33,20 @@ import UniformTypeIdentifiers
   }
 }
 
-/// Звёздочка «в любимые» на экране блокировки — канал `bloom/like`.
+/// The favorite star on the lock screen, over `bloom/like`.
 ///
-/// Своих кнопок iOS в плеер на экране блокировки не пускает, есть только
-/// системный `likeCommand`: слева от «назад» он рисуется звёздочкой, `isActive`
-/// её заливает. Нарисовать там сердце нельзя — значок выбирает система.
+/// iOS only lets the system `likeCommand` in there: a star left of "previous",
+/// filled by `isActive`. I can't draw a heart, the system picks the icon.
 ///
-/// audio_service своего API для него не даёт и, хуже того, при каждом
-/// включении пульта (`activateCommandCenter`, первый play и play после stop)
-/// выключает его сам. Поэтому подменяем этот метод: даём плагину отработать и
-/// включаем звёздочку обратно.
+/// The plugin has no API for it and turns it off on every
+/// `activateCommandCenter`, so I swizzle that method and turn the star back on.
+/// If the method gets renamed, the swap just doesn't happen and there's no
+/// star; nothing here can crash.
 ///
-/// Опора на устройство плагина (0.18.19): если метод переименуют, подмена
-/// молча не встанет и звёздочки просто не будет — падать тут нечему.
-///
-/// ВНИМАНИЕ: живьём не гонялось — Mac'а у проекта нет, собирает только CI.
+/// Untested on a device: CI only builds this.
 enum NowPlayingLike {
-  /// В любимых ли играющий трек и как подписать кнопку — последнее из Dart.
+  /// Whether the playing track is a favorite and the button's title, as last
+  /// sent from Dart.
   static var active = false
   static var title = "Like"
   private static var channel: FlutterMethodChannel?
@@ -64,8 +61,8 @@ enum NowPlayingLike {
         NSObject.self,
         #selector(NSObject.bloom_activateCommandCenter)
       ),
-      // Кладём свой метод в сам класс плагина и меняем местами уже там: иначе
-      // обмен задел бы реализацию на NSObject.
+      // I add my method to the plugin's class and exchange there, otherwise the
+      // swap would hit NSObject's implementation.
       class_addMethod(
         cls,
         #selector(NSObject.bloom_activateCommandCenter),
@@ -76,7 +73,8 @@ enum NowPlayingLike {
     {
       method_exchangeImplementations(original, added)
     }
-    // Цель вешаем один раз: плагин с `likeCommand` целей не снимает.
+    // One target is enough: the plugin never removes targets from
+    // `likeCommand`.
     MPRemoteCommandCenter.shared().likeCommand.addTarget { _ in
       channel?.invokeMethod("toggle", arguments: nil)
       return .success
@@ -111,32 +109,31 @@ enum NowPlayingLike {
 }
 
 extension NSObject {
-  /// После обмена реализаций вызов `bloom_…` внутри — это исходный метод
-  /// плагина.
+  /// After the exchange, calling `bloom_…` here runs the plugin's original
+  /// method.
   @objc dynamic func bloom_activateCommandCenter() {
     bloom_activateCommandCenter()
     NowPlayingLike.apply()
   }
 }
 
-/// «Nightcore» на iOS — канал `bloom/nightcore`.
+/// Nightcore on iOS, over `bloom/nightcore`.
 ///
-/// just_audio на iOS `setPitch` не умеет, а каждому треку ставит
-/// `AVAudioTimePitchAlgorithmTimeDomain` — тон сохраняется при любой скорости.
-/// Тон, едущий за темпом, у AVFoundation называется `varispeed`, но наружу
-/// плагин эту ручку не даёт. Поэтому подменяем два сеттера (swizzling):
-/// алгоритм трека — пока nightcore включён, вместо того что просит плагин
-/// ставим `varispeed`; скорость плеера — запоминаем плеер и докручиваем
-/// алгоритм текущему треку, чтобы тумблер срабатывал не только со следующего.
+/// just_audio can't `setPitch` on iOS and gives every item
+/// `AVAudioTimePitchAlgorithmTimeDomain`, which holds the pitch at any speed. A
+/// pitch that follows the tempo is `varispeed`, and the plugin doesn't expose
+/// it. So I swizzle two setters: the item's algorithm, to force `varispeed`
+/// while nightcore is on, and the player's rate, to remember the player and fix
+/// the current item right away rather than from the next track.
 ///
-/// Это опора на устройство плагина (0.10.6): если он перестанет звать
-/// сеттер алгоритма, nightcore просто замолчит — падать тут нечему.
+/// If the plugin stops calling the algorithm setter, nightcore just stops
+/// working; nothing here can crash.
 ///
-/// ВНИМАНИЕ: живьём не гонялось — Mac'а у проекта нет, собирает только CI.
+/// Untested on a device: CI only builds this.
 enum Nightcore {
-  /// Включён ли nightcore. Всё на главном потоке: и плагин, и канал.
+  /// Whether it's on. All on the main thread: the plugin and the channel alike.
   static var on = false
-  /// Плеер just_audio — узнаём его при первой установке скорости.
+  /// just_audio's player, which I learn from the first rate set.
   static weak var player: AVPlayer?
   private static var installed = false
 
@@ -170,8 +167,8 @@ enum Nightcore {
     }
   }
 
-  /// Переключить на ходу: переставить алгоритм всем трекам очереди. Через
-  /// подменённый сеттер — он сам решит, `varispeed` или `timeDomain`.
+  /// Switches on the fly: re-sets the algorithm on every queued item through
+  /// the swizzled setter, which picks `varispeed` or `timeDomain` itself.
   private static func apply(_ value: Bool) {
     guard value != on else { return }
     on = value
@@ -180,8 +177,8 @@ enum Nightcore {
     for item in items {
       item.audioTimePitchAlgorithm = .timeDomain
     }
-    // Играющему треку новый алгоритм надёжнее всего подсовывать переустановкой
-    // скорости: за `rate` плагин не следит, так что это безопасно.
+    // Re-setting the rate is the surest way to apply the algorithm to the
+    // playing item, and it's safe: the plugin doesn't observe `rate`.
     if player.rate > 0 {
       player.rate = player.rate
     }
@@ -197,14 +194,14 @@ enum Nightcore {
 }
 
 extension AVPlayerItem {
-  /// После обмена реализаций вызов `bloom_…` внутри — это исходный сеттер.
+  /// After the exchange, calling `bloom_…` here runs the original setter.
   @objc dynamic func bloom_setAudioTimePitchAlgorithm(_ value: AVAudioTimePitchAlgorithm) {
     bloom_setAudioTimePitchAlgorithm(Nightcore.on ? .varispeed : value)
   }
 }
 
 extension AVPlayer {
-  /// После обмена реализаций вызов `bloom_…` внутри — это исходный сеттер.
+  /// After the exchange, calling `bloom_…` here runs the original setter.
   @objc dynamic func bloom_setRate(_ value: Float) {
     Nightcore.player = self
     if Nightcore.on, value > 0, let item = currentItem,
@@ -216,28 +213,24 @@ extension AVPlayer {
   }
 }
 
-/// Системные диалоги файлов через `UIDocumentPicker` — iOS-половина канала
-/// `bloom/files` (Android-половина живёт в `FilesChannel.kt` и ходит в SAF).
-/// Их два: файл пресетов кастомизации и добавление своих треков.
+/// System file dialogs through `UIDocumentPicker`, the iOS side of
+/// `bloom/files`: the presets file and adding own tracks.
 ///
-/// Выгрузка идёт через временный файл: пикер экспорта отдаёт наружу именно
-/// файл, а не строку. Отмена — не ошибка: отвечаем `false`/`nil`, как на
-/// Android.
+/// Saving goes through a temp file, since the export picker hands out a file,
+/// not a string. Cancelling isn't an error: I answer `false`/`nil`.
 ///
-/// **Режима «на месте» на iOS нет.** Файл из чужой песочницы живёт под
-/// security scope, и чтобы вернуться к нему после перезапуска, нужна закладка
-/// (security-scoped bookmark) — а её ещё надо где-то держать и обновлять.
-/// Поэтому пикер берётся с `asCopy: true` и свой трек ВСЕГДА копируется внутрь
-/// приложения, какой бы режим ни стоял в настройках.
+/// iOS has no "in place" mode: a file from another sandbox lives under a
+/// security scope, and getting back to it after a restart takes a bookmark I'd
+/// have to store and refresh. So the picker uses `asCopy: true` and a track is
+/// always copied in, whatever the setting says.
 ///
-/// Лежит здесь, а не отдельным файлом, намеренно: новый файл пришлось бы
-/// прописывать в `project.pbxproj` руками, а проверить сборку iOS локально
-/// нечем (Mac'а у проекта нет, собирает только CI).
+/// It stays in this file on purpose: a new file would have to be added to the
+/// Xcode project by hand, and I can't check an iOS build locally.
 ///
-/// ВНИМАНИЕ: живьём этот код не гонялся — по той же причине.
+/// Untested on a device: CI only builds this.
 class FilesChannel: NSObject, UIDocumentPickerDelegate {
 
-  /// Чего ждём от закрывшегося пикера.
+  /// What the closing picker was opened for.
   private enum Kind {
     case save
     case open
@@ -246,14 +239,14 @@ class FilesChannel: NSObject, UIDocumentPickerDelegate {
 
   private var pending: FlutterResult?
   private var kind = Kind.save
-  /// Временный файл выгрузки — удаляем, когда пикер закроется.
+  /// The temp export file, removed when the picker closes.
   private var exported: URL?
 
-  /// Куда класть свои треки и их обложки и что из этого уже добавлено.
+  /// Where own tracks and their covers go, and which are already added.
   private var tracksDir = ""
   private var coversDir = ""
   private var known = Set<String>()
-  /// Разводит имена обложек, записанных в одну секунду.
+  /// Keeps apart the names of covers written in the same second.
   private var coverSeq = 0
 
   init(registrar: FlutterPluginRegistrar) {
@@ -285,27 +278,29 @@ class FilesChannel: NSObject, UIDocumentPickerDelegate {
           result: result
         )
       case "shareFile":
-        // Карточка «Итогов» — в системную шторку. Провайдера, как на Android,
-        // здесь не нужно: файл наш и лежит в песочнице приложения.
+        // To the system share sheet. No provider needed: the file is in the
+        // app's sandbox.
         self.shareFile(
           path: args["path"] as? String ?? "",
           text: args["text"] as? String,
           result: result
         )
       case "releaseAudio":
-        // Возвращать нечего: на iOS файл всегда наша копия, разрешений на
-        // чужие файлы мы не держим. Копию удаляет сам Dart.
+        // Nothing to release: on iOS the file is always my copy, and Dart
+        // deletes it.
         result(nil)
       case "diskSpace":
-        // Память телефона — знаменатель кольца в «Хранилище».
+        // The phone's storage: the denominator of the ring on the storage
+        // screen.
         self.diskSpace(result: result)
       case "appInfo":
-        // Версия сборки — строка «О приложении».
+        // The build version for the About row.
         let info = Bundle.main.infoDictionary
         result([
           "version": info?["CFBundleShortVersionString"] as? String ?? "",
           "build": info?["CFBundleVersion"] as? String ?? "",
-          // Имя в списке устройств на ПК (с iOS 16 без особого права — просто «iPhone»).
+          // The name in the computer's device list (since iOS 16 just "iPhone"
+          // without a special entitlement).
           "device": UIDevice.current.name,
         ])
       default:
@@ -314,8 +309,8 @@ class FilesChannel: NSObject, UIDocumentPickerDelegate {
     }
   }
 
-  /// Сколько всего места на томе приложения и сколько свободно; `nil` —
-  /// система не ответила, и экран просто не покажет долю.
+  /// Total and free space on the app's volume; `nil` when the system doesn't
+  /// answer, and the screen then shows no share.
   private func diskSpace(result: @escaping FlutterResult) {
     guard
       let attrs = try? FileManager.default.attributesOfFileSystem(
@@ -330,17 +325,17 @@ class FilesChannel: NSObject, UIDocumentPickerDelegate {
     result(["total": total, "free": free])
   }
 
-  /// Показать `UIActivityViewController` для готового файла.
+  /// Shows `UIActivityViewController` for a ready file.
   ///
-  /// Ответ отдаём сразу после показа, как и на Android: что человек выберет в
-  /// шторке — не наше дело, а отмена ничем не отличается от отправки.
+  /// I answer right after showing it: what gets picked in the sheet isn't my
+  /// business, and cancelling looks the same as sending.
   ///
-  /// `popoverPresentationController` заполняем обязательно: на iPad шторка
-  /// показывается поповером и без якоря приложение падает.
+  /// `popoverPresentationController` is required: on iPad the sheet is a
+  /// popover and crashes without an anchor.
   private func shareFile(path: String, text: String?, result: @escaping FlutterResult) {
     let url = URL(fileURLWithPath: path)
     guard FileManager.default.fileExists(atPath: path), let top = topController() else {
-      result(FlutterError(code: "share", message: "нечего отправлять", details: nil))
+      result(FlutterError(code: "share", message: "nothing to send", details: nil))
       return
     }
     var items: [Any] = [url]
@@ -370,7 +365,7 @@ class FilesChannel: NSObject, UIDocumentPickerDelegate {
 
   private func saveText(filename: String, content: String, result: @escaping FlutterResult) {
     guard pending == nil else {
-      result(FlutterError(code: "busy", message: "диалог файла уже открыт", details: nil))
+      result(FlutterError(code: "busy", message: "a file dialog is already open", details: nil))
       return
     }
     let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
@@ -390,13 +385,13 @@ class FilesChannel: NSObject, UIDocumentPickerDelegate {
 
   private func openText(result: @escaping FlutterResult) {
     guard pending == nil else {
-      result(FlutterError(code: "busy", message: "диалог файла уже открыт", details: nil))
+      result(FlutterError(code: "busy", message: "a file dialog is already open", details: nil))
       return
     }
     pending = result
     kind = .open
-    // Своего типа у `.bloompresets` не зарегистрировано — пускаем любой файл,
-    // а формат проверит уже Dart, разбирая содержимое (как и на Android).
+    // `.bloompresets` has no registered type, so I allow any file and Dart
+    // checks the format when parsing.
     let picker = UIDocumentPickerViewController(forOpeningContentTypes: [UTType.item])
     picker.delegate = self
     topController()?.present(picker, animated: true)
@@ -409,7 +404,7 @@ class FilesChannel: NSObject, UIDocumentPickerDelegate {
     result: @escaping FlutterResult
   ) {
     guard pending == nil else {
-      result(FlutterError(code: "busy", message: "диалог файла уже открыт", details: nil))
+      result(FlutterError(code: "busy", message: "a file dialog is already open", details: nil))
       return
     }
     pending = result
@@ -448,7 +443,7 @@ class FilesChannel: NSObject, UIDocumentPickerDelegate {
         finish(nil)
         return
       }
-      // Файл из чужой песочницы читается только под security scope.
+      // A file from another sandbox can only be read under a security scope.
       let scoped = url.startAccessingSecurityScopedResource()
       defer { if scoped { url.stopAccessingSecurityScopedResource() } }
       finish(try? String(contentsOf: url, encoding: .utf8))
@@ -457,8 +452,8 @@ class FilesChannel: NSObject, UIDocumentPickerDelegate {
         finish(nil)
         return
       }
-      // Копирование и чтение тегов — это диск, а мы на главном потоке, с
-      // которого рисуется приложение.
+      // Copying and reading tags hit the disk, and this is the main thread the
+      // app draws on.
       DispatchQueue.global(qos: .userInitiated).async { [weak self] in
         guard let self = self else { return }
         let entries = urls.compactMap { self.importAudio($0) }
@@ -471,17 +466,17 @@ class FilesChannel: NSObject, UIDocumentPickerDelegate {
     finish(kind == .save ? false : nil)
   }
 
-  /// Один выбранный файл → запись трека. `nil` — он уже в библиотеке либо не
-  /// читается.
+  /// One picked file to a track entry; `nil` if it's already in the library or
+  /// unreadable.
   ///
-  /// `asCopy: true` уже положил файл во временный каталог — нам остаётся
-  /// перенести его к себе, чтобы система не убрала его из tmp.
+  /// `asCopy: true` already put it in the temp folder, so I move it in before
+  /// the system clears tmp.
   private func importAudio(_ source: URL) -> [String: Any]? {
     let name = source.lastPathComponent
     let attrs = try? FileManager.default.attributesOfItem(atPath: source.path)
     let size = (attrs?[.size] as? NSNumber)?.intValue ?? 0
     let key = "\(name)|\(size)"
-    // Ключ отсекает и дубли ВНУТРИ одной пачки.
+    // The key also drops duplicates within one batch.
     if known.contains(key) { return nil }
     known.insert(key)
 
@@ -491,7 +486,7 @@ class FilesChannel: NSObject, UIDocumentPickerDelegate {
     do {
       try FileManager.default.moveItem(at: source, to: dest)
     } catch {
-      // Не перенеслось — пробуем скопировать: tmp мог оказаться на другом томе.
+      // The move failed, so I try a copy: tmp may be on another volume.
       guard (try? FileManager.default.copyItem(at: source, to: dest)) != nil else {
         known.remove(key)
         return nil
@@ -527,12 +522,12 @@ class FilesChannel: NSObject, UIDocumentPickerDelegate {
     return entry
   }
 
-  /// Встроенная обложка файлом в `covers/`; `nil` — записать не вышло.
+  /// Saves an embedded cover to the covers folder; `nil` if the write failed.
   private func saveCover(_ data: Data) -> String? {
     let dir = URL(fileURLWithPath: coversDir)
     try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-    // Расширение честное только по имени: картинку Flutter узнаёт по самим
-    // байтам (в тегах это почти всегда JPEG).
+    // The extension is only nominal: Flutter recognizes the picture by its
+    // bytes (tags almost always hold JPEG).
     let name = "lt_\(Int(Date().timeIntervalSince1970))_\(coverSeq).jpg"
     coverSeq += 1
     do {
@@ -543,7 +538,7 @@ class FilesChannel: NSObject, UIDocumentPickerDelegate {
     }
   }
 
-  /// `Song.mp3`, `Song (2).mp3`, `Song (3).mp3`… — как на Android и на ПК.
+  /// `Song.mp3`, `Song (2).mp3`, `Song (3).mp3`…
   private func uniqueFile(dir: URL, name: String) -> URL {
     var candidate = dir.appendingPathComponent(name)
     if !FileManager.default.fileExists(atPath: candidate.path) { return candidate }

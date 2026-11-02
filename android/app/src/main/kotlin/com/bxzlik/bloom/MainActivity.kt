@@ -13,12 +13,12 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
 /**
- * AudioServiceActivity вместо FlutterActivity — иначе audio_service не сможет
- * поднять активити из уведомления и с экрана блокировки.
+ * AudioServiceActivity, not FlutterActivity: otherwise audio_service can't
+ * bring the activity up from the notification or the lock screen.
  */
 class MainActivity : AudioServiceActivity() {
 
-    /** Системные диалоги файлов (SAF): пресеты кастомизации и свои треки. */
+    /** System file dialogs (SAF): customization presets and own tracks. */
     private val files by lazy { FilesChannel(this) }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -28,9 +28,9 @@ class MainActivity : AudioServiceActivity() {
             "bloom/notifications",
         ).setMethodCallHandler { call, result ->
             when (call.method) {
-                // Android 13+ прячет шторку воспроизведения без этого
-                // разрешения. Диалог показываем и сразу отвечаем: ответ
-                // пользователя ни на что в плеере не влияет.
+                // Android 13+ hides the playback notification without this
+                // permission. I show the dialog and answer at once: the user's
+                // reply changes nothing in the player.
                 "ensure" -> {
                     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
                         result.success(true)
@@ -56,9 +56,9 @@ class MainActivity : AudioServiceActivity() {
             "bloom/downloads",
         ).setMethodCallHandler { call, result ->
             when (call.method) {
-                // Скачанный трек → общая память («Музыка/Bloom»). Байты уже
-                // лежат файлом, который приготовил Dart: гонять мегабайты через
-                // канал незачем, хватит пути.
+                // A downloaded track to shared storage (Music/Bloom). Dart
+                // already wrote it to a file, so the path is enough: no need to
+                // push megabytes through the channel.
                 "save" -> saveToMusic(call, result)
                 else -> result.notImplemented()
             }
@@ -76,7 +76,8 @@ class MainActivity : AudioServiceActivity() {
                     result = result,
                 )
                 "openText" -> files.openText(result)
-                // Свои треки: выбор аудио и возврат разрешения на чужой файл.
+                // Own tracks: picking audio and giving back the permission on
+                // an outside file.
                 "pickAudio" -> files.pickAudio(
                     mode = call.argument<String>("mode") ?: "inPlace",
                     tracksDir = call.argument<String>("tracksDir").orEmpty(),
@@ -84,7 +85,7 @@ class MainActivity : AudioServiceActivity() {
                     known = call.argument<List<String>>("known") ?: emptyList(),
                     result = result,
                 )
-                // Карточка «Итогов» — в системную шторку «Поделиться».
+                // A ready file to the system share sheet.
                 "shareFile" -> files.shareFile(
                     path = call.argument<String>("path").orEmpty(),
                     mime = call.argument<String>("mime") ?: "image/png",
@@ -95,12 +96,12 @@ class MainActivity : AudioServiceActivity() {
                     uri = call.argument<String>("uri").orEmpty(),
                     result = result,
                 )
-                // Память телефона — знаменатель кольца в «Хранилище». Считаем
-                // по тому тому, где лежат данные приложения: на аппаратах с
-                // адаптируемой картой это может быть не системный раздел.
+                // The phone's storage, the denominator of the storage ring.
+                // Measured on the volume holding the app's data: with adoptable
+                // storage that may not be the system partition.
                 "diskSpace" -> diskSpace(result)
-                // Версия сборки — строка «О приложении». Пакет
-                // `package_info_plus` ради двух строк не тянем.
+                // The build version for the About row. Not worth a package for
+                // two strings.
                 "appInfo" -> appInfo(result)
                 else -> result.notImplemented()
             }
@@ -108,19 +109,15 @@ class MainActivity : AudioServiceActivity() {
     }
 
     /**
-     * Ответ системного диалога файла. Своё обрабатываем первыми и только потом
-     * зовём `super`: без него плагины (тот же выбор картинки) остались бы без
-     * своих результатов.
+     * A file dialog's answer. I take mine first and pass the rest to `super`,
+     * or plugins like the image picker would lose their results.
      */
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (files.onActivityResult(requestCode, resultCode, data)) return
         super.onActivityResult(requestCode, resultCode, data)
     }
 
-    /**
-     * Имя версии и номер сборки из манифеста — `versionName` и `versionCode`
-     * (на них же стоит `--build-name`/`--build-number` из workflow сборки).
-     */
+    /** Version name and build number from the manifest. */
     private fun appInfo(result: MethodChannel.Result) {
         try {
             val info = packageManager.getPackageInfo(packageName, 0)
@@ -138,15 +135,15 @@ class MainActivity : AudioServiceActivity() {
                 ),
             )
         } catch (e: Exception) {
-            // Своего пакета не нашли — такого не бывает, но экран просто
-            // покажет прочерк вместо версии.
+            // My own package wasn't found. That never happens, and the screen
+            // would just show a dash.
             result.success(null)
         }
     }
 
     /**
-     * Как телефон зовут в списке устройств на ПК: имя из «О телефоне», а где его
-     * нет — производитель и модель.
+     * The phone's name in the computer's device list: the one from About phone,
+     * else maker and model.
      */
     private fun deviceName(): String {
         val own = try {
@@ -159,37 +156,37 @@ class MainActivity : AudioServiceActivity() {
         return if (Build.MODEL.startsWith(Build.MANUFACTURER, ignoreCase = true)) Build.MODEL else "$maker ${Build.MODEL}"
     }
 
-    /** Сколько всего места на томе с данными приложения и сколько свободно. */
+    /** Total and free space on the volume with the app's data. */
     private fun diskSpace(result: MethodChannel.Result) {
         try {
             val stat = StatFs(filesDir.absolutePath)
             result.success(mapOf("total" to stat.totalBytes, "free" to stat.availableBytes))
         } catch (e: Exception) {
-            // Тома нет или он не читается — экран просто не покажет долю.
+            // No volume or unreadable: the screen just shows no share.
             result.success(null)
         }
     }
 
     /**
-     * Копирует готовый файл в медиатеку. `deleteSource` — про временный файл
-     * загрузки: офлайн-копию, наоборот, трогать нельзя, она нужна плееру.
+     * Copies a ready file to the media library. `deleteSource` is for a temp
+     * download; an offline copy must stay, the player needs it.
      */
     private fun saveToMusic(call: MethodCall, result: MethodChannel.Result) {
         val sourcePath = call.argument<String>("sourcePath")
         val filename = call.argument<String>("filename")
         if (sourcePath == null || filename == null) {
-            result.error("args", "нужны sourcePath и filename", null)
+            result.error("args", "sourcePath and filename are required", null)
             return
         }
         val source = File(sourcePath)
         if (!source.isFile) {
-            result.error("missing", "файла нет: $sourcePath", null)
+            result.error("missing", "no file: $sourcePath", null)
             return
         }
 
-        // До Android 10 запись в публичную папку требует разрешения. Спрашиваем
-        // и честно говорим «повторите»: ответ приходит асинхронно, а держать
-        // ради него незавершённый result нельзя.
+        // Below Android 10 writing to a public folder needs a permission. I ask
+        // and report a failure so the user retries: the answer comes later, and
+        // I can't hold the result open for it.
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
             checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
             PackageManager.PERMISSION_GRANTED
@@ -198,7 +195,7 @@ class MainActivity : AudioServiceActivity() {
                 arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
                 REQ_STORAGE,
             )
-            result.error("permission", "нет доступа к памяти телефона", null)
+            result.error("permission", "no access to the phone's storage", null)
             return
         }
 
@@ -214,7 +211,7 @@ class MainActivity : AudioServiceActivity() {
             if (call.argument<Boolean>("deleteSource") == true) source.delete()
             result.success(path)
         } catch (e: Exception) {
-            result.error("save", e.message ?: "не удалось сохранить", null)
+            result.error("save", e.message ?: "couldn't save", null)
         }
     }
 

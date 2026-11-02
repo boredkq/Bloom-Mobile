@@ -24,34 +24,32 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
-	<!-- NSPhotoLibraryUsageDescription тут НЕ нужен и намеренно убран: обложки и
-	     аватар берутся через PHPickerViewController (iOS 14+) либо через выбор
-	     файла на iOS 13, а доступа к медиатеке ни то, ни другое не требует —
-	     см. `kPickMetadata` в lib/core/store/cover_store.dart. Вернёшь там
-	     метаданные — верни и ключ сюда, вместе с его переводами. -->
-	<!-- «Настройки → Компьютер»: камера читает QR-код сопряжения с экрана ПК,
-	     а сам ПК стоит в домашней сети (iOS 14+ спрашивает доступ к ней).
-	     Поиск ПК широковещательным пакетом на iOS требует права
-	     com.apple.developer.networking.multicast от Apple — его нет, поэтому
-	     здесь ПК находится по адресам из QR; сопряжение по коду ищет ПК тем же
-	     поиском и на iOS может его не увидеть. -->
+	<!-- No NSPhotoLibraryUsageDescription on purpose: covers and the avatar come
+	     through PHPickerViewController (iOS 14+) or a file picker on iOS 13, and
+	     neither needs library access. If `kPickMetadata` ever turns on, the key
+	     and its translations must come back. -->
+	<!-- The computer link: the camera reads the pairing QR code off the computer's
+	     screen, and the computer is on the home network (iOS 14+ asks for access
+	     to it). Broadcast discovery on iOS needs Apple's
+	     com.apple.developer.networking.multicast entitlement, which I don't have,
+	     so here the computer is found by the addresses in the QR code; pairing by
+	     code uses the same discovery and may not see it on iOS. -->
 	<key>NSCameraUsageDescription</key>
 	<string>Bloom reads the pairing QR code from your computer's screen.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Bloom syncs your library with Bloom on your computer at home.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<!-- «Скачать файлом»: без этой пары папка приложения не появляется в
-	     системных «Файлах», и скачанный трек человеку негде взять. Общей
-	     медиатеки, как «Музыка/Bloom» на Android, у iOS нет.
-	     Служебные файлы (библиотека, обложки, офлайн-копии) сюда НЕ кладутся —
-	     на iOS они живут в Application Support, который «Файлам» не виден
-	     (см. lib/core/store/app_dirs.dart). -->
+	<!-- Saving a file: without this pair the app's folder doesn't show in the
+	     system Files app and a downloaded track is out of reach. iOS has no shared
+	     media library like Music/Bloom on Android. Service files (library, covers,
+	     offline copies) stay out of it, in Application Support, which Files can't
+	     see. -->
 	<key>UIFileSharingEnabled</key>
 	<true/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
-	<!-- Без этого iOS глушит звук при уходе приложения в фон. -->
+	<!-- Without this iOS cuts the sound when the app goes to the background. -->
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
@@ -83,9 +81,9 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
-	<!-- Только портрет, как и в AndroidManifest: вёрстка считана под узкий
-	     экран. Списки ориентаций урезаны здесь, а не только через SystemChrome,
-	     иначе iOS успевает показать первый кадр лежащим. -->
+	<!-- Portrait only: the layout is built for a narrow screen. The orientation
+	     lists are cut here, not only in Dart, or iOS shows the first frame
+	     sideways. -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

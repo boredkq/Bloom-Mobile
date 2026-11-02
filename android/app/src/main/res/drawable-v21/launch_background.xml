@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- См. drawable/launch_background.xml — фон чёрный в обеих системных темах. -->
+<!-- Black in both system themes: the white star wouldn't show on white. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/ic_launcher_background" />
     <item>

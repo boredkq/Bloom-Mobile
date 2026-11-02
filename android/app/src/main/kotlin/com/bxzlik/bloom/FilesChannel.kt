@@ -10,32 +10,31 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
 /**
- * Системные диалоги файлов: файл пресетов (SAF) и добавление своих треков.
+ * System file dialogs: the presets file (SAF) and adding own tracks.
  *
- * Почему SAF, а не MediaStore (как у скачанных треков): пресеты — не медиа, их
- * место выбирает человек, и никаких разрешений на память для этого не нужно ни
- * на одной версии Android. Своим трекам это тоже подходит: `ACTION_OPEN_DOCUMENT`
- * даёт доступ к ОДНОМУ выбранному файлу, а не ко всей памяти телефона, и
- * `READ_MEDIA_AUDIO` спрашивать не приходится.
+ * SAF, not MediaStore: presets aren't media, the user picks where they go, and
+ * no storage permission is needed on any Android version. It suits tracks too:
+ * `ACTION_OPEN_DOCUMENT` grants just the picked file, so I never ask for
+ * `READ_MEDIA_AUDIO`.
  *
- * Ответ канала держим до `onActivityResult`: диалог системный, и результат
- * приходит только оттуда. Второй запрос, пока первый висит, отбиваем — иначе
- * первый `MethodChannel.Result` остался бы без ответа, а это падение в Dart.
+ * I hold the channel's answer until `onActivityResult`, the only place the
+ * dialog's result arrives. A second request while one is pending gets refused,
+ * or the first `MethodChannel.Result` would never be answered.
  */
 class FilesChannel(private val activity: Activity) {
 
     private var pending: MethodChannel.Result? = null
     private var pendingContent: String? = null
 
-    /** Что делать с выбранным аудио: `inPlace` — помнить путь, `copy` — копия. */
+    /** What to do with picked audio: `inPlace` keeps the path, `copy` makes a copy. */
     private var audioMode = MODE_IN_PLACE
     private var audioTracksDir = ""
     private var audioCoversDir = ""
 
-    /** Ключи уже добавленных треков — их не копируем и не разбираем. */
+    /** Keys of tracks already added: I neither copy nor parse them. */
     private var audioKnown = HashSet<String>()
 
-    /** Предложить сохранить текст файлом. Ответ — true/false. */
+    /** Offers to save text as a file. Answers true/false. */
     fun saveText(
         filename: String,
         content: String,
@@ -53,17 +52,15 @@ class FilesChannel(private val activity: Activity) {
     }
 
     /**
-     * Отдать готовый файл системной шторке «Поделиться».
+     * Hands a ready file to the system share sheet.
      *
-     * Ответ отдаём СРАЗУ, не дожидаясь выбора приложения: `ACTION_SEND` не
-     * возвращает результата (какой чат выбрали — не наше дело), а отмена шторки
-     * ничем не отличается от отправки. Для Dart успех здесь значит «шторка
-     * показана».
+     * I answer right away: `ACTION_SEND` returns no result, and cancelling
+     * looks the same as sending. Success here means the sheet was shown.
      */
     fun shareFile(path: String, mime: String, text: String?, result: MethodChannel.Result) {
         val file = File(path)
         if (!file.isFile) {
-            result.error("missing", "файла нет: $path", null)
+            result.error("missing", "no file: $path", null)
             return
         }
         try {
@@ -76,36 +73,36 @@ class FilesChannel(private val activity: Activity) {
                 type = mime
                 putExtra(Intent.EXTRA_STREAM, uri)
                 if (!text.isNullOrEmpty()) putExtra(Intent.EXTRA_TEXT, text)
-                // Без этого приложение-получатель не сможет открыть uri: оно
-                // читает файл нашего провайдера от своего имени.
+                // Without this the receiving app can't open the uri: it reads
+                // my provider's file under its own identity.
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             activity.startActivity(Intent.createChooser(send, null))
             result.success(true)
         } catch (e: Exception) {
-            result.error("share", e.message ?: "не удалось поделиться", null)
+            result.error("share", e.message ?: "couldn't share", null)
         }
     }
 
-    /** Дать выбрать файл и вернуть его текст. */
+    /** Lets the user pick a file and returns its text. */
     fun openText(result: MethodChannel.Result) {
         if (!claim(result)) return
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
-            // Свой тип у `.bloompresets` не зарегистрирован, и по
-            // `application/json` система такой файл НЕ покажет — берём любой,
-            // а формат проверит уже Dart, разбирая содержимое.
+            // `.bloompresets` has no registered type and `application/json`
+            // would hide it, so I allow any file and Dart checks the format
+            // when parsing.
             type = "*/*"
         }
         start(intent, REQ_OPEN)
     }
 
     /**
-     * Дать выбрать свои аудиофайлы и вернуть готовые записи треков.
+     * Lets the user pick audio files and returns ready track entries.
      *
-     * Всё тяжёлое делаем здесь, а не в Dart: копирование, чтение тегов и
-     * вытаскивание обложки. Через канал едут только строки — байты файла и
-     * картинки остаются на диске.
+     * The heavy work stays here, not in Dart: copying, reading tags, extracting
+     * the cover. Only strings cross the channel; file and picture bytes stay on
+     * disk.
      */
     fun pickAudio(
         mode: String,
@@ -121,9 +118,9 @@ class FilesChannel(private val activity: Activity) {
         audioKnown = HashSet(known)
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
-            // Тип широкий, а список допустимых — в EXTRA_MIME_TYPES: часть
-            // провайдеров отдаёт flac и opus как «двоичный файл», и по одному
-            // `audio/*` такие файлы были бы не выбираемы.
+            // A wide type with the real list in EXTRA_MIME_TYPES: some
+            // providers report flac and opus as binary, and `audio/*` alone
+            // wouldn't let them be picked.
             type = "*/*"
             putExtra(Intent.EXTRA_MIME_TYPES, AUDIO_MIME)
             putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
@@ -133,11 +130,11 @@ class FilesChannel(private val activity: Activity) {
     }
 
     /**
-     * Вернуть системе разрешение на чужой файл — трек удалили из библиотеки.
+     * Gives back the permission on an outside file when its track leaves the
+     * library.
      *
-     * Нужно не для порядка: число постоянных разрешений у приложения ограничено
-     * (на Android 11+ это 512), и без возврата добавление-удаление рано или
-     * поздно упёрлось бы в потолок.
+     * Persisted permissions are capped (512 on Android 11+), and adding and
+     * removing tracks would eventually hit the cap.
      */
     fun releaseAudio(uri: String, result: MethodChannel.Result) {
         try {
@@ -146,15 +143,15 @@ class FilesChannel(private val activity: Activity) {
                 Intent.FLAG_GRANT_READ_URI_PERMISSION,
             )
         } catch (_: Exception) {
-            // Разрешения уже нет — ровно то, чего мы и добивались.
+            // The permission is already gone, which is what I wanted.
         }
         result.success(null)
     }
 
-    /** `false` — предыдущий диалог ещё не ответил, этот запрос отбит. */
+    /** `false` when the previous dialog hasn't answered and this request is refused. */
     private fun claim(result: MethodChannel.Result): Boolean {
         if (pending != null) {
-            result.error("busy", "диалог файла уже открыт", null)
+            result.error("busy", "a file dialog is already open", null)
             return false
         }
         pending = result
@@ -165,11 +162,11 @@ class FilesChannel(private val activity: Activity) {
         try {
             activity.startActivityForResult(intent, request)
         } catch (e: Exception) {
-            finish { it.error("dialog", e.message ?: "нет проводника файлов", null) }
+            finish { it.error("dialog", e.message ?: "no file manager", null) }
         }
     }
 
-    /** Вернуть результат в Dart и забыть про запрос. */
+    /** Answers Dart and forgets the request. */
     private fun finish(answer: (MethodChannel.Result) -> Unit) {
         val result = pending ?: return
         pending = null
@@ -177,14 +174,11 @@ class FilesChannel(private val activity: Activity) {
         answer(result)
     }
 
-    /**
-     * Обработать ответ системного диалога. `true` — код наш, дальше по цепочке
-     * его передавать не нужно.
-     */
+    /** Handles a system dialog's answer. `true` means the code was mine and needs no passing on. */
     fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
         if (requestCode == REQ_AUDIO) {
             val uris = if (resultCode == Activity.RESULT_OK) pickedUris(data) else emptyList()
-            // Отмена — не ошибка: Dart отличает её по null.
+            // Cancelling isn't an error: Dart tells it by null.
             if (uris.isEmpty()) {
                 finish { it.success(null) }
             } else {
@@ -195,7 +189,7 @@ class FilesChannel(private val activity: Activity) {
         if (requestCode != REQ_SAVE && requestCode != REQ_OPEN) return false
         val uri = data?.data
         if (resultCode != Activity.RESULT_OK || uri == null) {
-            // Отмена — не ошибка: Dart отличает её по false/null.
+            // Cancelling isn't an error: Dart tells it by false/null.
             finish { if (requestCode == REQ_SAVE) it.success(false) else it.success(null) }
             return true
         }
@@ -204,21 +198,21 @@ class FilesChannel(private val activity: Activity) {
                 val content = pendingContent.orEmpty()
                 activity.contentResolver.openOutputStream(uri, "wt")?.use { out ->
                     out.write(content.toByteArray(Charsets.UTF_8))
-                } ?: throw IllegalStateException("не удалось открыть файл на запись")
+                } ?: throw IllegalStateException("couldn't open the file for writing")
                 finish { it.success(true) }
             } else {
                 val text = activity.contentResolver.openInputStream(uri)?.use { input ->
                     input.readBytes().toString(Charsets.UTF_8)
-                } ?: throw IllegalStateException("не удалось прочитать файл")
+                } ?: throw IllegalStateException("couldn't read the file")
                 finish { it.success(text) }
             }
         } catch (e: Exception) {
-            finish { it.error("io", e.message ?: "ошибка файла", null) }
+            finish { it.error("io", e.message ?: "file error", null) }
         }
         return true
     }
 
-    /** Выбранные файлы: один в `data`, несколько — в `clipData`. */
+    /** Picked files: one in `data`, several in `clipData`. */
     private fun pickedUris(data: Intent?): List<Uri> {
         if (data == null) return emptyList()
         val clip = data.clipData
@@ -229,9 +223,8 @@ class FilesChannel(private val activity: Activity) {
     }
 
     /**
-     * Разобрать выбранное и ответить в Dart. Своим потоком: копирование файла
-     * и чтение тегов — это диск, а мы стоим на главном потоке, с которого
-     * рисуется приложение.
+     * Parses the picks and answers Dart. On its own thread: copying and reading
+     * tags hit the disk, and this is the main thread the app draws on.
      */
     private fun importAudio(uris: List<Uri>) {
         val mode = audioMode
@@ -245,16 +238,15 @@ class FilesChannel(private val activity: Activity) {
                     val entry = importOne(uri, mode, tracksDir, coversDir, known)
                     if (entry != null) out.add(entry)
                 } catch (_: Exception) {
-                    // Не-аудио и нечитаемое пропускаем молча, как `add_files`
-                    // на десктопе: человек выбрал пачку, и падать из-за одного
-                    // файла в ней неправильно.
+                    // I skip non-audio and unreadable files silently: one bad
+                    // file shouldn't fail a whole batch.
                 }
             }
             activity.runOnUiThread { finish { it.success(out) } }
         }.start()
     }
 
-    /** `null` — файл уже в библиотеке либо это не аудио. */
+    /** `null` if the file is already in the library or isn't audio. */
     private fun importOne(
         uri: Uri,
         mode: String,
@@ -265,12 +257,12 @@ class FilesChannel(private val activity: Activity) {
         val name = displayName(uri)
         val size = fileSize(uri)
 
-        // «На месте» держится на постоянном разрешении: без него `content://`
-        // умрёт вместе с текущим запуском. Не дали — честно копируем, иначе
-        // трек молча перестал бы играть после перезапуска.
+        // "In place" relies on a persisted permission: without one a
+        // `content://` uri dies with this run. If it's refused I copy instead,
+        // or the track would stop playing after a restart.
         val persisted = mode == MODE_IN_PLACE && takePersistable(uri)
         val key = if (persisted) uri.toString() else "$name|$size"
-        // Ключ добавляем сразу: он же отсекает дубли ВНУТРИ одной пачки.
+        // I add the key right away: it also drops duplicates within one batch.
         if (!known.add(key)) return null
 
         var copy: File? = null
@@ -297,8 +289,7 @@ class FilesChannel(private val activity: Activity) {
                 retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
                     ?.toLongOrNull() ?: 0L
             entry["title"] = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-            // У сборников исполнитель трека пуст, а альбомный заполнен — на ПК
-            // тот же порядок (`artist` → `AlbumArtist`).
+            // Compilations have an empty track artist and a filled album one.
             entry["artist"] =
                 retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
                     ?: retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
@@ -310,7 +301,7 @@ class FilesChannel(private val activity: Activity) {
             entry["cover"] = saveCover(retriever.embeddedPicture, coversDir)
             return entry
         } catch (e: Exception) {
-            // Файл не открылся как аудио — копию за собой убираем.
+            // It didn't open as audio, so I remove the copy.
             copy?.delete()
             known.remove(key)
             throw e
@@ -319,7 +310,7 @@ class FilesChannel(private val activity: Activity) {
         }
     }
 
-    /** Постоянное разрешение на чтение чужого файла. `false` — не дали. */
+    /** A persisted read permission on an outside file. `false` if refused. */
     private fun takePersistable(uri: Uri): Boolean = try {
         activity.contentResolver.takePersistableUriPermission(
             uri,
@@ -348,19 +339,19 @@ class FilesChannel(private val activity: Activity) {
         return 0L
     }
 
-    /** Копия внутри приложения. `null` — скопировать не вышло. */
+    /** A copy inside the app. `null` if copying failed. */
     private fun copyInto(dir: File, uri: Uri, name: String): File? = try {
         dir.mkdirs()
         val dest = uniqueFile(dir, safeName(name))
         activity.contentResolver.openInputStream(uri)?.use { input ->
             dest.outputStream().use { out -> input.copyTo(out) }
-        } ?: throw IllegalStateException("не удалось прочитать файл")
+        } ?: throw IllegalStateException("couldn't read the file")
         dest
     } catch (_: Exception) {
         null
     }
 
-    /** `Song.mp3`, `Song (2).mp3`, `Song (3).mp3`… — как `unique_file` на ПК. */
+    /** `Song.mp3`, `Song (2).mp3`, `Song (3).mp3`… */
     private fun uniqueFile(dir: File, name: String): File {
         var candidate = File(dir, name)
         if (!candidate.exists()) return candidate
@@ -379,13 +370,13 @@ class FilesChannel(private val activity: Activity) {
         return if (clean.isEmpty()) "audio" else clean.take(120)
     }
 
-    /** Встроенная обложка файлом в `covers/`; `null` — её в тегах нет. */
+    /** Saves an embedded cover to the covers folder; `null` if there's none or the write failed. */
     private fun saveCover(bytes: ByteArray?, dir: File): String? {
         if (bytes == null || bytes.isEmpty()) return null
         return try {
             dir.mkdirs()
-            // Расширение честное только по имени: картинку Flutter узнаёт по
-            // самим байтам (в тегах это почти всегда JPEG).
+            // The extension is only nominal: Flutter recognizes the picture by
+            // its bytes (tags almost always hold JPEG).
             val name = "lt_${System.currentTimeMillis()}_${coverSeq++}.jpg"
             File(dir, name).writeBytes(bytes)
             name
@@ -394,7 +385,7 @@ class FilesChannel(private val activity: Activity) {
         }
     }
 
-    /** Разводит имена обложек, записанных в одну миллисекунду. */
+    /** Keeps apart the names of covers written in the same millisecond. */
     private var coverSeq = 0
 
     private companion object {
@@ -406,7 +397,7 @@ class FilesChannel(private val activity: Activity) {
 
         val AUDIO_MIME = arrayOf(
             "audio/*",
-            // Контейнеры, которые провайдеры нередко отдают не как аудио.
+            // Containers that providers often don't report as audio.
             "application/ogg",
             "application/x-flac",
             "application/octet-stream",

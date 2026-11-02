@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Adaptive icon (API 26+): фон — цвет surface тёмной темы, передний план —
-     звезда bloom со свечением, monochrome — силуэт для themed icons (Android 13+). -->
+<!-- Adaptive icon (API 26+): the background is the dark theme's surface, the
+     foreground is the glowing bloom star, monochrome is the silhouette for
+     themed icons (Android 13+). -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/ic_launcher_background" />
     <foreground android:drawable="@mipmap/ic_launcher_foreground" />

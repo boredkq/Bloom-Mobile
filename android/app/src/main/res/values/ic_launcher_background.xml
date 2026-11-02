@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Тот же чёрный, что surface тёмной темы приложения (AppTheme.dark). -->
+    <!-- The same black as the dark theme's surface. -->
     <color name="ic_launcher_background">#0A0A0A</color>
 </resources>

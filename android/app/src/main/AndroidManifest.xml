@@ -1,16 +1,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET"/>
-    <!-- Фоновое воспроизведение: служба переднего плана + шторка. WAKE_LOCK
-         нужен, чтобы звук не рвался при уснувшем экране; POST_NOTIFICATIONS —
-         Android 13+, без него шторка воспроизведения просто не показывается. -->
+    <!-- Background playback: a foreground service plus the notification.
+         WAKE_LOCK keeps the sound from breaking off when the screen sleeps;
+         POST_NOTIFICATIONS, Android 13+, is needed for the playback
+         notification to show. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    <!-- «Скачать файлом» в общую папку «Музыка/Bloom». С Android 10 своя папка
-         внутри Музыки пишется через MediaStore без разрешений — поэтому
-         maxSdkVersion, иначе система ругается на лишнее право. -->
+    <!-- Saving a file to the shared Music/Bloom folder. From Android 10 my own
+         folder inside Music goes through MediaStore with no permission, hence
+         maxSdkVersion; otherwise the system complains about an excess
+         permission. -->
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28"/>
@@ -18,10 +20,10 @@
         android:label="Bloom"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
-        <!-- screenOrientation="portrait" — замок ориентации. Стоит именно в
-             манифесте, а не одним SystemChrome в Dart: система разворачивает
-             активити ещё до старта движка, поэтому с телефона на боку
-             приложение открывается сразу портретом, без кадра в ландшафте. -->
+        <!-- screenOrientation="portrait" locks the orientation. It's in the
+             manifest, not only in Dart, because the system rotates the activity
+             before the engine starts: a phone on its side opens in portrait
+             right away, with no landscape frame. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -45,8 +47,8 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <!-- Служба audio_service: живёт дольше активити, поэтому музыка
-             продолжает играть со свёрнутым приложением. -->
+        <!-- This service outlives the activity, so music keeps playing with the
+             app minimized. -->
         <service
             android:name="com.ryanheise.audioservice.AudioService"
             android:foregroundServiceType="mediaPlayback"
@@ -57,7 +59,7 @@
             </intent-filter>
         </service>
 
-        <!-- Кнопки гарнитуры и Bluetooth. -->
+        <!-- Headset and Bluetooth buttons. -->
         <receiver
             android:name="com.ryanheise.audioservice.MediaButtonReceiver"
             android:exported="true"
@@ -67,12 +69,11 @@
             </intent-filter>
         </receiver>
 
-        <!-- «Поделиться» карточкой «Итогов». Отдать наружу file:// с Android 7
-             нельзя (FileUriExposedException), поэтому картинка уходит через
-             провайдера; он видит ровно один подкаталог кеша, см.
-             res/xml/bloom_share_paths.xml. Своя authority с суффиксом:
-             image_picker ставит собственного провайдера, и совпадение
-             authority уронило бы установку приложения. -->
+        <!-- Sharing a picture. From Android 7 a file:// can't go out
+             (FileUriExposedException), so it goes through a provider that sees
+             exactly one cache subfolder. The authority has its own suffix:
+             image_picker installs a provider too, and a clash would fail the
+             app's install. -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.share"
@@ -99,8 +100,8 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
-        <!-- Без этого на Android 11+ система прячет браузер от приложения, и
-             url_launcher не откроет страницу подтверждения Яндекс ID. -->
+        <!-- Without this, from Android 11 the system hides browsers from the
+             app, and the Yandex ID confirmation page won't open. -->
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />

@@ -1,11 +1,8 @@
-# Кодогенерация переводов. Запускается сама на каждом `flutter run`/`flutter
-# build` (в pubspec.yaml `flutter: generate: true`), отдельным шагом дёргать
-# ничего не надо — но при добавлении ключа нужна пересборка, одного hot reload
-# мало.
+# Translations codegen. It runs by itself on every `flutter run` and `flutter
+# build`, but a new key needs a rebuild: hot reload isn't enough.
 #
-# Источник истины — английский: `flutter gen-l10n` берёт из него список ключей
-# и типы плейсхолдеров. Русский обязан покрывать его целиком; недостающие ключи
-# ловятся при генерации (`untranslated-messages-file`).
+# English is the source of truth: it gives the key list and placeholder types.
+# Russian must cover all of it; missing keys are caught at generation.
 arb-dir: lib/l10n
 template-arb-file: app_en.arb
 output-localization-file: app_localizations.dart

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Что FileProvider вправе отдавать наружу. Ровно один подкаталог кеша, куда
-     Dart кладёт картинку перед «Поделиться» (`share_image.dart`): открывать
-     провайдеру каталог с библиотекой и офлайн-копиями незачем. -->
+<!-- What FileProvider may hand out: exactly one cache subfolder, where Dart
+     puts the picture before sharing. The provider has no reason to open the
+     folder with the library and offline copies. -->
 <paths>
     <cache-path name="bloom-share" path="share/"/>
 </paths>

@@ -7,14 +7,13 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// Ключ подписи релиза описан в android/key.properties (в git его нет — см.
-// android/.gitignore). Файла нет — релиз подписывается отладочным ключом, как в
-// шаблоне Flutter: локальная сборка `flutter build apk --release` работает без
-// всякой настройки, а настоящий ключ нужен только тому, кто раздаёт APK.
+// The release signing key is described in key.properties, which isn't in git.
+// Without that file the release is signed with the debug key: a local `flutter
+// build apk --release` needs no setup, and only whoever hands out APKs needs
+// the real key.
 //
-// ВАЖНО про отладочный ключ: он генерируется на каждой машине свой (а в CI —
-// заново на каждый запуск), поэтому APK из разных сборок не ставятся друг
-// поверх друга — Android считает их приложениями от разных авторов.
+// The debug key differs per machine and per CI run, so APKs from different
+// builds don't install over each other: Android sees different authors.
 val keystoreProperties = Properties()
 val keystoreFile = rootProject.file("key.properties")
 if (keystoreFile.exists()) {
@@ -47,8 +46,8 @@ android {
     signingConfigs {
         if (releaseKey != null) {
             create("release") {
-                // Путь считается от папки android/ — так же, как key.properties.
-                // Абсолютный путь тоже подойдёт.
+                // Relative to android/, like key.properties. An absolute path
+                // works too.
                 storeFile = rootProject.file(releaseKey)
                 storePassword = keystoreProperties.getProperty("storePassword")
                 keyAlias = keystoreProperties.getProperty("keyAlias")

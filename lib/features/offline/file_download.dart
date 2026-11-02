@@ -276,7 +276,7 @@ class DownloadFailure implements Exception {
 
   final DownloadFailureKind kind;
 
-  /// The platform's text for `unknown`: Android sends its own message.
+  /// Technical text for `unknown`, such as an HTTP status.
   final String? detail;
 }
 
@@ -287,7 +287,8 @@ DownloadFailure readableSaveError(Object e) {
     if (e.code == 'permission') {
       return const DownloadFailure(DownloadFailureKind.needPermission);
     }
-    return DownloadFailure(DownloadFailureKind.unknown, e.message);
+    // The channel's text is technical, so the user gets the translated phrase.
+    return const DownloadFailure(DownloadFailureKind.unknown);
   }
   if (e is SocketException) {
     return const DownloadFailure(DownloadFailureKind.noConnection);

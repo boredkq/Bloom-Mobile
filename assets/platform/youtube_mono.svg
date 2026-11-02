@@ -1,8 +1,6 @@
-<!-- Одноцветная версия знака YouTube Music: прямоугольник со скруглением, из
-     которого ВЫРЕЗАН треугольник (fill-rule evenodd) — тот же единственный path,
-     что в десктопном `SourceBadge.tsx`. Нужна для бейджей: цветной ассет
-     (красный прямоугольник + белый треугольник) при перекраске в один цвет
-     превращается в сплошное пятно. -->
+<!-- One-color YouTube Music mark: a rounded rectangle with a triangle cut out
+     (fill-rule evenodd), a single path. For badges: the colored asset (red
+     rectangle, white triangle) recolored to one color turns into a solid blob. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 313.23315 216.02286" fill="#000000">
   <path
     fill-rule="evenodd"

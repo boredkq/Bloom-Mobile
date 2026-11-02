@@ -1,15 +1,15 @@
 name: Проверки
 
-# Быстрая проверка на каждый пуш и pull request: форматирование, анализатор,
-# тесты. Сборки приложений сюда не входят — они долгие и живут в release.yml.
+# A quick check on every push and pull request: formatting, analyzer, tests. App
+# builds are slow and have their own workflow.
 on:
   push:
     branches: ['**']
   pull_request:
   workflow_dispatch:
 
-# Новый пуш в ту же ветку отменяет предыдущий прогон: проверять устаревший
-# коммит смысла нет.
+# A new push to the same branch cancels the previous run: there's no point
+# checking a stale commit.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -38,7 +38,7 @@ jobs:
       - name: flutter analyze
         run: flutter analyze lib test tool
 
-      # tool/sc_smoke.dart ходит в живой SoundCloud — здесь только `flutter
-      # test`, сетевой smoke гоняется руками.
+      # The smoke tools hit live services, so only `flutter test` runs here and
+      # smoke runs by hand.
       - name: flutter test
         run: flutter test
