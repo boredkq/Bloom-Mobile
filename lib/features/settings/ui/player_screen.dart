@@ -433,11 +433,41 @@ class _StylePreview extends ConsumerWidget {
     final vinyl = style.isVinyl;
     final aura = style.isAura;
     final ivory = style.isIvory;
+    final cosmic = style.isLevyraCosmic;
+    final cyber = style.isLevyraCyber;
+    final aurora = style.isLevyraAurora;
+    final ember = style.isLevyraEmber;
+    final oled = style.isLevyraOled;
+    final cassette = style.isLevyraCassette;
     final url = ref.watch(playerCoverProvider);
 
     final targetRadius = vinyl
         ? side / 2
-        : (ivory ? 8.0 : (aura ? 22.0 : side * 0.12));
+        : (ivory
+            ? 8.0
+            : (aura
+                ? 22.0
+                : (cosmic
+                    ? 24.0
+                    : (cyber
+                        ? 8.0
+                        : (aurora
+                            ? 28.0
+                            : (ember
+                                ? 18.0
+                                : (oled
+                                    ? 12.0
+                                    : (cassette ? 14.0 : side * 0.12))))))));
+
+    final glowColor = aura
+        ? t.accent
+        : (cosmic
+            ? const Color(0xFF00E5FF)
+            : (cyber
+                ? const Color(0xFF00F0FF)
+                : (aurora
+                    ? const Color(0xFF00FF87)
+                    : (ember ? const Color(0xFFFF416C) : null))));
 
     return SheetPanel(
       gap: 10,
@@ -447,12 +477,12 @@ class _StylePreview extends ConsumerWidget {
           curve: Curves.easeOutCubic,
           padding: const EdgeInsets.symmetric(vertical: 22),
           decoration: BoxDecoration(
-            gradient: aura
+            gradient: glowColor != null
                 ? RadialGradient(
                     center: const Alignment(0, -0.2),
                     radius: 0.95,
                     colors: [
-                      t.accent.withValues(alpha: 0.28),
+                      glowColor.withValues(alpha: 0.30),
                       Colors.transparent,
                     ],
                   )
@@ -1038,6 +1068,12 @@ String _styleLabel(AppLocalizations l, PlayerStyle style) => switch (style) {
   PlayerStyle.vinyl => l.pvStyleVinyl,
   PlayerStyle.aura => l.pvStyleAura,
   PlayerStyle.ivory => l.pvStyleIvory,
+  PlayerStyle.levyraCosmic => 'Levyra Cosmic',
+  PlayerStyle.levyraCyber => 'Levyra Cyberpunk',
+  PlayerStyle.levyraAurora => 'Levyra Aurora',
+  PlayerStyle.levyraEmber => 'Levyra Ember',
+  PlayerStyle.levyraOled => 'Levyra OLED Black',
+  PlayerStyle.levyraCassette => 'Levyra Cassette',
 };
 
 String _styleSub(AppLocalizations l, PlayerStyle style) => switch (style) {
@@ -1045,6 +1081,12 @@ String _styleSub(AppLocalizations l, PlayerStyle style) => switch (style) {
   PlayerStyle.vinyl => l.pvStyleVinylSub,
   PlayerStyle.aura => l.pvStyleAuraSub,
   PlayerStyle.ivory => l.pvStyleIvorySub,
+  PlayerStyle.levyraCosmic => 'Глубокий стеклянный градиент и космический неон',
+  PlayerStyle.levyraCyber => 'Неоновый кибернетический HUD и бирюзовый фрейм',
+  PlayerStyle.levyraAurora => 'Изумрудное северное сияние и арктический градиент',
+  PlayerStyle.levyraEmber => 'Теплый закатный свет и ламповый аналоговый блеск',
+  PlayerStyle.levyraOled => 'Ультра-черная эстетика с тонкими контурами',
+  PlayerStyle.levyraCassette => 'Винтажная кассета со вращающимися катушками',
 };
 
 String _modeLabel(AppLocalizations l, LyricsMode mode) => switch (mode) {
@@ -1111,6 +1153,39 @@ class _StylePainter extends CustomPainter {
       case PlayerStyle.ivory:
         canvas.drawRect(const Rect.fromLTWH(4, 4, 16, 16), stroke);
         canvas.drawLine(const Offset(7, 12), const Offset(17, 12), stroke);
+      case PlayerStyle.levyraCosmic:
+        canvas.drawRRect(
+          RRect.fromLTRBR(3, 3, 21, 21, const Radius.circular(8)),
+          stroke,
+        );
+        canvas.drawCircle(const Offset(12, 12), 4, stroke);
+      case PlayerStyle.levyraCyber:
+        canvas.drawRect(const Rect.fromLTWH(3, 3, 18, 18), stroke);
+        canvas.drawRect(const Rect.fromLTWH(8, 8, 8, 8), stroke);
+      case PlayerStyle.levyraAurora:
+        canvas.drawRRect(
+          RRect.fromLTRBR(3, 3, 21, 21, const Radius.circular(10)),
+          stroke,
+        );
+        canvas.drawArc(const Rect.fromLTWH(6, 6, 12, 12), 0, 3.14, false, stroke);
+      case PlayerStyle.levyraEmber:
+        canvas.drawRRect(
+          RRect.fromLTRBR(4, 4, 20, 20, const Radius.circular(6)),
+          stroke,
+        );
+        canvas.drawCircle(const Offset(12, 12), 5, stroke);
+      case PlayerStyle.levyraOled:
+        canvas.drawRRect(
+          RRect.fromLTRBR(4, 4, 20, 20, const Radius.circular(4)),
+          stroke,
+        );
+      case PlayerStyle.levyraCassette:
+        canvas.drawRRect(
+          RRect.fromLTRBR(2, 5, 22, 19, const Radius.circular(3)),
+          stroke,
+        );
+        canvas.drawCircle(const Offset(7, 12), 2.5, stroke);
+        canvas.drawCircle(const Offset(17, 12), 2.5, stroke);
     }
     canvas.restore();
   }

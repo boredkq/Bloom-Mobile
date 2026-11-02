@@ -760,13 +760,14 @@ class CircleIconButton extends StatelessWidget {
         child: SizedBox(
           width: size,
           height: size,
-          child:
-              child ??
-              BloomIcon(
-                icon,
-                size: iconSize,
-                color: color ?? (onTap == null ? t.muted : t.iconFg),
-              ),
+          child: Center(
+            child: child ??
+                BloomIcon(
+                  icon,
+                  size: iconSize,
+                  color: color ?? (onTap == null ? t.muted : t.iconFg),
+                ),
+          ),
         ),
       ),
     );

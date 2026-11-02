@@ -324,15 +324,128 @@ class _Cover extends ConsumerWidget {
     final vinyl = style.isVinyl;
     final aura = style.isAura;
     final ivory = style.isIvory;
+    final cosmic = style.isLevyraCosmic;
+    final cyber = style.isLevyraCyber;
+    final aurora = style.isLevyraAurora;
+    final ember = style.isLevyraEmber;
+    final oled = style.isLevyraOled;
+    final cassette = style.isLevyraCassette;
     final spinning = ref.watch(playingNowProvider);
 
     return LayoutBuilder(
       builder: (context, box) {
         final side = box.biggest.shortestSide;
-        final radius = vinyl
+        final double radius = vinyl
             ? side / 2
-            : (ivory ? 8.0 : (aura ? 24.0 : _coverRadius));
-        final double scale = (aura && !spinning) ? 0.88 : 1.0;
+            : (ivory
+                ? 8.0
+                : (aura
+                    ? 24.0
+                    : (cosmic
+                        ? 28.0
+                        : (cyber
+                            ? 8.0
+                            : (aurora
+                                ? 32.0
+                                : (ember
+                                    ? 20.0
+                                    : (oled
+                                        ? 14.0
+                                        : (cassette
+                                            ? 16.0
+                                            : _coverRadius))))))));
+        final double scale = ((aura || cosmic || aurora) && !spinning) ? 0.88 : 1.0;
+
+        List<BoxShadow>? shadows;
+        Border? border;
+
+        if (aura) {
+          shadows = [
+            BoxShadow(
+              color: t.accent.withValues(alpha: spinning ? 0.55 : 0.25),
+              blurRadius: spinning ? 38 : 18,
+              spreadRadius: spinning ? 5 : 0,
+              offset: const Offset(0, 8),
+            ),
+            BoxShadow(
+              color: t.accent.withValues(alpha: spinning ? 0.32 : 0.12),
+              blurRadius: spinning ? 58 : 28,
+              spreadRadius: spinning ? 10 : 2,
+            ),
+          ];
+        } else if (cosmic) {
+          shadows = [
+            BoxShadow(
+              color: const Color(0xFF00E5FF).withValues(alpha: spinning ? 0.55 : 0.25),
+              blurRadius: spinning ? 42 : 20,
+              spreadRadius: spinning ? 4 : 0,
+              offset: const Offset(0, 8),
+            ),
+            BoxShadow(
+              color: const Color(0xFF7C4DFF).withValues(alpha: spinning ? 0.35 : 0.15),
+              blurRadius: spinning ? 64 : 32,
+              spreadRadius: spinning ? 8 : 2,
+            ),
+          ];
+          border = Border.all(color: const Color(0xFF00E5FF).withValues(alpha: 0.6), width: 1.2);
+        } else if (cyber) {
+          border = Border.all(color: const Color(0xFF00F0FF), width: 2.0);
+          shadows = [
+            BoxShadow(
+              color: const Color(0xFF0066FF).withValues(alpha: spinning ? 0.55 : 0.25),
+              blurRadius: spinning ? 32 : 16,
+              spreadRadius: spinning ? 4 : 1,
+            ),
+          ];
+        } else if (aurora) {
+          shadows = [
+            BoxShadow(
+              color: const Color(0xFF00FF87).withValues(alpha: spinning ? 0.55 : 0.22),
+              blurRadius: spinning ? 46 : 22,
+              spreadRadius: spinning ? 6 : 1,
+            ),
+            BoxShadow(
+              color: const Color(0xFF60EFFF).withValues(alpha: spinning ? 0.35 : 0.12),
+              blurRadius: spinning ? 68 : 36,
+            ),
+          ];
+          border = Border.all(color: const Color(0xFF00FF87).withValues(alpha: 0.5), width: 1.2);
+        } else if (ember) {
+          shadows = [
+            BoxShadow(
+              color: const Color(0xFFFF416C).withValues(alpha: spinning ? 0.55 : 0.25),
+              blurRadius: spinning ? 42 : 20,
+              spreadRadius: spinning ? 5 : 1,
+            ),
+            BoxShadow(
+              color: const Color(0xFFFF4B2B).withValues(alpha: spinning ? 0.35 : 0.15),
+              blurRadius: spinning ? 60 : 30,
+            ),
+          ];
+          border = Border.all(color: const Color(0xFFFF416C).withValues(alpha: 0.55), width: 1.2);
+        } else if (oled) {
+          border = Border.all(color: const Color(0xFF334155), width: 1.0);
+        } else if (cassette) {
+          border = Border.all(color: const Color(0xFFF72585).withValues(alpha: 0.8), width: 1.5);
+          shadows = [
+            BoxShadow(
+              color: const Color(0xFF7209B7).withValues(alpha: spinning ? 0.45 : 0.20),
+              blurRadius: spinning ? 36 : 18,
+            ),
+          ];
+        } else if (ivory) {
+          shadows = [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.35),
+              blurRadius: 14,
+              offset: const Offset(0, 5),
+            ),
+          ];
+          border = Border.all(
+            color: t.accent.withValues(alpha: 0.75),
+            width: 1.5,
+          );
+        }
 
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
@@ -354,39 +467,8 @@ class _Cover extends ConsumerWidget {
                   height: side,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(radius),
-                    boxShadow: aura
-                        ? [
-                            BoxShadow(
-                              color: t.accent.withValues(
-                                alpha: spinning ? 0.55 : 0.25,
-                              ),
-                              blurRadius: spinning ? 38 : 18,
-                              spreadRadius: spinning ? 5 : 0,
-                              offset: const Offset(0, 8),
-                            ),
-                            BoxShadow(
-                              color: t.accent.withValues(
-                                alpha: spinning ? 0.32 : 0.12,
-                              ),
-                              blurRadius: spinning ? 58 : 28,
-                              spreadRadius: spinning ? 10 : 2,
-                            ),
-                          ]
-                        : (ivory
-                              ? [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.35),
-                                    blurRadius: 14,
-                                    offset: const Offset(0, 5),
-                                  ),
-                                ]
-                              : null),
-                    border: ivory
-                        ? Border.all(
-                            color: t.accent.withValues(alpha: 0.75),
-                            width: 1.5,
-                          )
-                        : null,
+                    boxShadow: shadows,
+                    border: border,
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(radius),
@@ -406,8 +488,6 @@ class _Cover extends ConsumerWidget {
                   ),
                 ),
               ),
-              // The label stands OVER the cover but under the text panel, and
-              // doesn't spin with the disc.
               if (vinyl)
                 Positioned(
                   left: 0,
@@ -417,6 +497,10 @@ class _Cover extends ConsumerWidget {
                   child: Center(
                     child: VinylLabel(size: side * VinylLabel.share),
                   ),
+                ),
+              if (cassette)
+                Positioned.fill(
+                  child: _CassetteOverlay(spinning: spinning),
                 ),
               // Text panel over the cover: the block's colour at 96%, appearing
               // with a fade and a slight zoom. ALWAYS drawn, visibility by
@@ -779,6 +863,122 @@ class _NextUpPill extends ConsumerWidget {
   }
 }
 
+class _CassetteOverlay extends StatelessWidget {
+  const _CassetteOverlay({required this.spinning});
+
+  final bool spinning;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.all(24),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.65),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFFF72585).withValues(alpha: 0.7),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _CassetteSpool(spinning: spinning),
+            Container(
+              width: 50,
+              height: 20,
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1E2E).withValues(alpha: 0.9),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: Colors.white24),
+              ),
+              child: const Center(
+                child: Text(
+                  'BLOOM',
+                  style: TextStyle(
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.5,
+                    color: Color(0xFFF72585),
+                  ),
+                ),
+              ),
+            ),
+            _CassetteSpool(spinning: spinning),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CassetteSpool extends StatefulWidget {
+  const _CassetteSpool({required this.spinning});
+
+  final bool spinning;
+
+  @override
+  State<_CassetteSpool> createState() => _CassetteSpoolState();
+}
+
+class _CassetteSpoolState extends State<_CassetteSpool>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 4),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.spinning) _ctrl.repeat();
+  }
+
+  @override
+  void didUpdateWidget(covariant _CassetteSpool old) {
+    super.didUpdateWidget(old);
+    if (widget.spinning && !_ctrl.isAnimating) {
+      _ctrl.repeat();
+    } else if (!widget.spinning && _ctrl.isAnimating) {
+      _ctrl.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RotationTransition(
+      turns: _ctrl,
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color: const Color(0xFF12121A),
+          shape: BoxShape.circle,
+          border: Border.all(color: const Color(0xFFF72585), width: 1.5),
+        ),
+        child: Center(
+          child: Container(
+            width: 14,
+            height: 14,
+            decoration: const BoxDecoration(
+              color: Colors.white70,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// The plate under the player's buttons, adapting to the chosen PlayerStyle.
 class _Plate extends ConsumerWidget {
   const _Plate({required this.padding, required this.child});
@@ -792,27 +992,96 @@ class _Plate extends ConsumerWidget {
     final style = ref.watch(playerStyleProvider);
     final ivory = style.isIvory;
     final aura = style.isAura;
+    final cosmic = style.isLevyraCosmic;
+    final cyber = style.isLevyraCyber;
+    final aurora = style.isLevyraAurora;
+    final ember = style.isLevyraEmber;
+    final oled = style.isLevyraOled;
+    final cassette = style.isLevyraCassette;
+
+    Color borderColor = t.ovlLine;
+    double borderWidth = 1.0;
+    double radius = t.radius * 1.8;
+    List<BoxShadow>? shadows;
+
+    if (ivory) {
+      borderColor = t.accent.withValues(alpha: 0.40);
+      borderWidth = 1.2;
+      radius = 10.0;
+    } else if (aura) {
+      radius = t.radius * 2.0;
+      shadows = [
+        BoxShadow(
+          color: t.accent.withValues(alpha: 0.12),
+          blurRadius: 20,
+          spreadRadius: 1,
+        ),
+      ];
+    } else if (cosmic) {
+      borderColor = const Color(0xFF00E5FF).withValues(alpha: 0.35);
+      borderWidth = 1.2;
+      radius = 24.0;
+      shadows = [
+        BoxShadow(
+          color: const Color(0xFF7C4DFF).withValues(alpha: 0.20),
+          blurRadius: 22,
+          spreadRadius: 2,
+        ),
+      ];
+    } else if (cyber) {
+      borderColor = const Color(0xFF00F0FF).withValues(alpha: 0.65);
+      borderWidth = 1.5;
+      radius = 12.0;
+      shadows = [
+        BoxShadow(
+          color: const Color(0xFF0066FF).withValues(alpha: 0.25),
+          blurRadius: 18,
+          spreadRadius: 1,
+        ),
+      ];
+    } else if (aurora) {
+      borderColor = const Color(0xFF00FF87).withValues(alpha: 0.35);
+      borderWidth = 1.2;
+      radius = 26.0;
+      shadows = [
+        BoxShadow(
+          color: const Color(0xFF60EFFF).withValues(alpha: 0.18),
+          blurRadius: 24,
+        ),
+      ];
+    } else if (ember) {
+      borderColor = const Color(0xFFFF416C).withValues(alpha: 0.40);
+      borderWidth = 1.2;
+      radius = 20.0;
+      shadows = [
+        BoxShadow(
+          color: const Color(0xFFFF4B2B).withValues(alpha: 0.22),
+          blurRadius: 20,
+        ),
+      ];
+    } else if (oled) {
+      borderColor = const Color(0xFF334155);
+      borderWidth = 1.0;
+      radius = 14.0;
+    } else if (cassette) {
+      borderColor = const Color(0xFFF72585).withValues(alpha: 0.45);
+      borderWidth = 1.3;
+      radius = 16.0;
+      shadows = [
+        BoxShadow(
+          color: const Color(0xFF7209B7).withValues(alpha: 0.25),
+          blurRadius: 20,
+        ),
+      ];
+    }
 
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: t.ovlBg,
-        border: Border.all(
-          color: ivory ? t.accent.withValues(alpha: 0.40) : t.ovlLine,
-          width: ivory ? 1.2 : 1.0,
-        ),
-        borderRadius: BorderRadius.circular(
-          ivory ? 10.0 : (aura ? t.radius * 2.0 : t.radius * 1.8),
-        ),
-        boxShadow: aura
-            ? [
-                BoxShadow(
-                  color: t.accent.withValues(alpha: 0.12),
-                  blurRadius: 20,
-                  spreadRadius: 1,
-                ),
-              ]
-            : null,
+        color: oled ? const Color(0xFF0A0A0A) : t.ovlBg,
+        border: Border.all(color: borderColor, width: borderWidth),
+        borderRadius: BorderRadius.circular(radius),
+        boxShadow: shadows,
       ),
       child: child,
     );

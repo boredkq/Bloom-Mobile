@@ -9,7 +9,7 @@ import '../../core/db/db.dart';
 import '../../core/store/json_store.dart';
 import '../../core/sync/full_backup.dart';
 
-const String defaultVercelUrl = 'https://bloom-auth.vercel.app';
+const String defaultVercelUrl = 'https://bloom-ten-beta.vercel.app';
 
 class TelegramUser {
   final int id;

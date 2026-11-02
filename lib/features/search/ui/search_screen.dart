@@ -536,7 +536,20 @@ class _PlatformButton extends ConsumerWidget {
         .byId(ref.watch(activeProviderIdProvider));
     return CircleIconButton(
       icon: Bi.widget4,
-      child: provider == null ? null : PlatformLogo(provider.source, size: 23),
+      iconSize: 20,
+      child: provider == null
+          ? null
+          : Center(
+              child: ClipOval(
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: Center(
+                    child: PlatformLogo(provider.source, size: 18),
+                  ),
+                ),
+              ),
+            ),
       onTap: () => _pickSource(context, ref, onPicked),
     );
   }

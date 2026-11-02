@@ -1,4 +1,4 @@
-/// Player style: standard or vinyl.
+/// Player style: standard, vinyl, aura, ivory, and Levyra themes.
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,11 +16,43 @@ enum PlayerStyle {
   aura,
 
   /// Ivory: clean editorial magazine minimalism.
-  ivory;
+  ivory,
+
+  /// Levyra Cosmic: deep space frosted glass with cyan and purple aura.
+  levyraCosmic,
+
+  /// Levyra Cyber: cybernetic HUD neon cyan & cobalt blue frame.
+  levyraCyber,
+
+  /// Levyra Aurora: Nordic Borealis emerald and arctic glow.
+  levyraAurora,
+
+  /// Levyra Ember: warm analog sunset glow and vacuum tube amber.
+  levyraEmber,
+
+  /// Levyra OLED: pitch black zero-power card with hairline borders.
+  levyraOled,
+
+  /// Levyra Cassette: retro audio cassette with rotating tape spools.
+  levyraCassette;
 
   bool get isVinyl => this == PlayerStyle.vinyl;
   bool get isAura => this == PlayerStyle.aura;
   bool get isIvory => this == PlayerStyle.ivory;
+  bool get isLevyraCosmic => this == PlayerStyle.levyraCosmic;
+  bool get isLevyraCyber => this == PlayerStyle.levyraCyber;
+  bool get isLevyraAurora => this == PlayerStyle.levyraAurora;
+  bool get isLevyraEmber => this == PlayerStyle.levyraEmber;
+  bool get isLevyraOled => this == PlayerStyle.levyraOled;
+  bool get isLevyraCassette => this == PlayerStyle.levyraCassette;
+
+  bool get isLevyra =>
+      isLevyraCosmic ||
+      isLevyraCyber ||
+      isLevyraAurora ||
+      isLevyraEmber ||
+      isLevyraOled ||
+      isLevyraCassette;
 }
 
 final playerStyleProvider =

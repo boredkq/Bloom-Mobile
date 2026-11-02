@@ -1,5 +1,5 @@
 /// First launch onboarding experience: authentic editorial showcase,
-/// Telegram cloud sync, Yandex Music integration, and direct entry.
+/// in-tree Telegram cloud sync, Yandex Music integration, and direct entry.
 ///
 /// Designed with the Unslop philosophy: zero corporate buzzwords, high content
 /// density, honest descriptions, and refined tactile typography.
@@ -13,7 +13,6 @@ import '../core/l10n/l10n.dart';
 import '../features/telegram/telegram_store.dart';
 import '../providers/yandex/ym_auth.dart';
 import '../shared/ui/bloom_icon.dart';
-import '../shared/ui/bloom_sheet.dart';
 import 'theme/bloom_theme.dart';
 import 'theme/tokens.dart';
 
@@ -98,6 +97,8 @@ class _WelcomeState extends ConsumerState<Welcome>
   }
 }
 
+enum _OnboardingModal { none, telegram, yandex }
+
 class _OnboardingScreen extends ConsumerStatefulWidget {
   const _OnboardingScreen({required this.onContinue});
 
@@ -110,6 +111,12 @@ class _OnboardingScreen extends ConsumerStatefulWidget {
 class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  _OnboardingModal _activeModal = _OnboardingModal.none;
+
+  // Controllers for manual inputs
+  final TextEditingController _tgNameCtrl = TextEditingController();
+  final TextEditingController _tgUserCtrl = TextEditingController();
+  final TextEditingController _ymTokenCtrl = TextEditingController();
 
   static const List<_FeatureSlide> _slides = [
     _FeatureSlide(
@@ -145,7 +152,14 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
   @override
   void dispose() {
     _pageController.dispose();
+    _tgNameCtrl.dispose();
+    _tgUserCtrl.dispose();
+    _ymTokenCtrl.dispose();
     super.dispose();
+  }
+
+  void _closeModal() {
+    setState(() => _activeModal = _OnboardingModal.none);
   }
 
   @override
@@ -157,704 +171,707 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
     return Scaffold(
       backgroundColor: t.bg,
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            // Top Bar: Clean Brand & Skip
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 20, 0),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: t.accent.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: t.accent.withValues(alpha: 0.25),
-                        width: 1.0,
-                      ),
-                    ),
-                    padding: const EdgeInsets.all(7),
-                    child: Image.asset(
-                      'assets/brand/bloom_mark.png',
-                      errorBuilder: (_, _, _) =>
-                          BloomIcon(Bi.soundwave, color: t.accent, size: 20),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Bloom',
-                    style: bloomText(
-                      size: 20,
-                      weight: 700,
-                      color: t.text,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                  const Spacer(),
-                  GestureDetector(
-                    onTap: widget.onContinue,
-                    behavior: HitTestBehavior.opaque,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      child: Text(
-                        'Пропустить',
-                        style: TextStyle(
-                          color: t.text2,
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w500,
+            Column(
+              children: [
+                // Top Bar: Clean Brand & Skip
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 20, 0),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: t.accent.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: t.accent.withValues(alpha: 0.25),
+                            width: 1.0,
+                          ),
+                        ),
+                        padding: const EdgeInsets.all(7),
+                        child: Image.asset(
+                          'assets/brand/bloom_mark.png',
+                          errorBuilder: (_, _, _) => BloomIcon(
+                            Bi.soundwave,
+                            color: t.accent,
+                            size: 20,
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Middle Carousel: Feature Slides
-            Expanded(
-              child: PageView.builder(
-                controller: _pageController,
-                itemCount: _slides.length,
-                onPageChanged: (i) => setState(() => _currentPage = i),
-                itemBuilder: (context, index) {
-                  final slide = _slides[index];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Visual Centerpiece
-                        _SlideVisual(kind: slide.kind),
-                        const SizedBox(height: 32),
-                        // Eyebrow Tag
-                        Container(
+                      const SizedBox(width: 12),
+                      Text(
+                        'Bloom',
+                        style: bloomText(
+                          size: 20,
+                          weight: 700,
+                          color: t.text,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: widget.onContinue,
+                        behavior: HitTestBehavior.opaque,
+                        child: Padding(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,
-                            vertical: 3.5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: t.ovlBg,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: t.ovlLine),
+                            vertical: 6,
                           ),
                           child: Text(
-                            slide.eyebrow,
+                            'Пропустить',
                             style: TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.2,
-                              color: t.accent,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        // Slide Title
-                        Text(
-                          slide.title,
-                          textAlign: TextAlign.center,
-                          style: bloomText(
-                            size: 24,
-                            weight: 700,
-                            color: t.text,
-                            letterSpacing: -0.4,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        // Slide Subtitle
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 320),
-                          child: Text(
-                            slide.description,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 14,
                               color: t.text2,
-                              height: 1.45,
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            // Page Dots
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(_slides.length, (i) {
-                final active = i == _currentPage;
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
-                  margin: const EdgeInsets.symmetric(horizontal: 3.5),
-                  width: active ? 20 : 6,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: active ? t.accent : t.muted.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                );
-              }),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Auth Connectors & Primary Start Button
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Telegram Connect Button
-                  _AuthButton(
-                    onTap: () => _openTelegramAuth(context, ref),
-                    icon: Bi.send,
-                    brandColor: const Color(0xFF2AABEE),
-                    title: tgState.authed
-                        ? 'Telegram: ${tgState.user?.displayName ?? "Подключен"}'
-                        : 'Подключить Telegram',
-                    subtitle: tgState.authed
-                        ? (tgState.user?.handle != null
-                              ? '@${tgState.user!.handle} · Синхронизация активна'
-                              : 'Облачная копия активна')
-                        : 'Синхронизация фонотеки, плейлистов и уровня',
-                    isConnected: tgState.authed,
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  // Yandex Music Connect Button
-                  _AuthButton(
-                    onTap: () => _openYandexAuth(context, ref),
-                    icon: Bi.musicNote,
-                    brandColor: const Color(0xFFFC3F1D),
-                    title: ymState.authed
-                        ? 'Яндекс Музыка подключена'
-                        : 'Подключить Яндекс Музыку',
-                    subtitle: ymState.authed
-                        ? (ymState.hasPlus == true
-                              ? 'Подписка Плюс активна · Моя волна доступна'
-                              : 'Каталог подключен')
-                        : 'Быстрый вход по коду ya.ru/device или токену',
-                    isConnected: ymState.authed,
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  // Primary Action
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: t.accent,
-                        foregroundColor: t.accentText,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        elevation: 0,
                       ),
-                      onPressed: widget.onContinue,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            context.l.welcomeContinue,
-                            style: const TextStyle(
-                              fontSize: 15.5,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.1,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          BloomIcon(
-                            Bi.altArrowRight,
-                            size: 16,
-                            color: t.accentText,
-                          ),
-                        ],
-                      ),
-                    ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── Telegram Auth Dialog / Sheet ──────────────────────────────────────────
-  void _openTelegramAuth(BuildContext context, WidgetRef ref) {
-    final tg = ref.read(telegramAuthProvider);
-    if (tg.authed) {
-      showBloomSheetChild<void>(
-        context: context,
-        child: Padding(
-          padding: const EdgeInsets.all(22),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2AABEE).withValues(alpha: 0.18),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Center(
-                      child: BloomIcon(
-                        Bi.send,
-                        color: Color(0xFF2AABEE),
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          tg.user?.displayName ?? 'Telegram подключен',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: context.bloom.text,
-                          ),
-                        ),
-                        if (tg.user?.handle != null)
-                          Text(
-                            '@${tg.user!.handle}',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: context.bloom.text2,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: context.bloom.text,
-                  side: BorderSide(
-                    color: context.bloom.accent.withValues(alpha: 0.4),
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-                icon: BloomIcon(
-                  Bi.refresh,
-                  size: 16,
-                  color: context.bloom.accent,
-                ),
-                label: const Text('Синхронизировать сейчас'),
-                onPressed: () async {
-                  final ok = await ref
-                      .read(telegramAuthProvider.notifier)
-                      .pushBackup();
-                  if (context.mounted) {
-                    Navigator.of(context).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          ok
-                              ? 'Фонотека и плейлисты сохранены в Vercel!'
-                              : 'Ошибка связи с Vercel',
+
+                // Middle Carousel: Feature Slides
+                Expanded(
+                  child: PageView.builder(
+                    controller: _pageController,
+                    itemCount: _slides.length,
+                    onPageChanged: (i) => setState(() => _currentPage = i),
+                    itemBuilder: (context, index) {
+                      final slide = _slides[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Visual Centerpiece
+                            _SlideVisual(kind: slide.kind),
+                            const SizedBox(height: 32),
+                            // Eyebrow Tag
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 3.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: t.ovlBg,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: t.ovlLine),
+                              ),
+                              child: Text(
+                                slide.eyebrow,
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1.2,
+                                  color: t.accent,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            // Slide Title
+                            Text(
+                              slide.title,
+                              textAlign: TextAlign.center,
+                              style: bloomText(
+                                size: 24,
+                                weight: 700,
+                                color: t.text,
+                                letterSpacing: -0.4,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            // Slide Subtitle
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 320),
+                              child: Text(
+                                slide.description,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: t.text2,
+                                  height: 1.45,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
+                      );
+                    },
+                  ),
+                ),
+
+                // Page Dots
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(_slides.length, (i) {
+                    final active = i == _currentPage;
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 220),
+                      margin: const EdgeInsets.symmetric(horizontal: 3.5),
+                      width: active ? 20 : 6,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: active
+                            ? t.accent
+                            : t.muted.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(3),
                       ),
                     );
-                  }
-                },
-              ),
-              const SizedBox(height: 10),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: context.bloom.danger,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  elevation: 0,
+                  }),
                 ),
-                onPressed: () {
-                  ref.read(telegramAuthProvider.notifier).logout();
-                  Navigator.of(context).pop();
-                },
-                child: const Text('Отключить аккаунт'),
-              ),
-            ],
-          ),
-        ),
-      );
-      return;
-    }
 
-    final vercelController = TextEditingController(text: defaultVercelUrl);
+                const SizedBox(height: 24),
 
-    showBloomSheetChild<void>(
-      context: context,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2AABEE).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const BloomIcon(
-                    Bi.send,
-                    size: 20,
-                    color: Color(0xFF2AABEE),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  'Вход через Telegram',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: context.bloom.text,
+                // Auth Connectors & Primary Start Button
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Telegram Connect Button
+                      _AuthButton(
+                        onTap: () {
+                          setState(() => _activeModal = _OnboardingModal.telegram);
+                        },
+                        icon: Bi.send,
+                        brandColor: const Color(0xFF2AABEE),
+                        title: tgState.authed
+                            ? 'Telegram: ${tgState.user?.displayName ?? "Подключен"}'
+                            : 'Подключить Telegram',
+                        subtitle: tgState.authed
+                            ? (tgState.user?.handle != null
+                                  ? '@${tgState.user!.handle} · Синхронизация активна'
+                                  : 'Облачная копия активна')
+                            : 'Синхронизация фонотеки, плейлистов и уровня',
+                        isConnected: tgState.authed,
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // Yandex Music Connect Button
+                      _AuthButton(
+                        onTap: () {
+                          setState(() => _activeModal = _OnboardingModal.yandex);
+                        },
+                        icon: Bi.musicNote,
+                        brandColor: const Color(0xFFFC3F1D),
+                        title: ymState.authed
+                            ? 'Яндекс Музыка подключена'
+                            : 'Подключить Яндекс Музыку',
+                        subtitle: ymState.authed
+                            ? (ymState.hasPlus == true
+                                  ? 'Подписка Плюс активна · Моя волна доступна'
+                                  : 'Каталог подключен')
+                            : 'Быстрый вход по коду ya.ru/device или токену',
+                        isConnected: ymState.authed,
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      // Primary Action
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: t.accent,
+                            foregroundColor: t.accentText,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            elevation: 0,
+                          ),
+                          onPressed: widget.onContinue,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                context.l.welcomeContinue,
+                                style: const TextStyle(
+                                  fontSize: 15.5,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.1,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              BloomIcon(
+                                Bi.altArrowRight,
+                                size: 16,
+                                color: t.accentText,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 14),
-            Text(
-              'Для входа через официальный Telegram Login Widget укажите адрес развернутого бэкенда Vercel:',
-              style: TextStyle(
-                fontSize: 13,
-                color: context.bloom.text2,
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: vercelController,
-              decoration: InputDecoration(
-                hintText: defaultVercelUrl,
-                filled: true,
-                fillColor: context.bloom.ovlBg,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: context.bloom.ovlLine),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2AABEE),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 13),
-                elevation: 0,
-              ),
-              onPressed: () {
-                final url = vercelController.text.trim();
-                if (url.isNotEmpty) {
-                  ref.read(telegramAuthProvider.notifier).startWebLogin(url);
-                  Navigator.of(context).pop();
-                }
-              },
-              child: const Text(
-                'Открыть Telegram Login Widget',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () => _manualTelegramDataDialog(context, ref),
-              child: Text(
-                'Ввести имя и username вручную',
-                style: TextStyle(fontSize: 12.5, color: context.bloom.text2),
-              ),
-            ),
+
+            // In-tree Modal Sheet Overlay
+            if (_activeModal != _OnboardingModal.none)
+              _buildInTreeModal(context, t, tgState, ymState),
           ],
         ),
       ),
     );
   }
 
-  void _manualTelegramDataDialog(BuildContext context, WidgetRef ref) {
-    Navigator.of(context).pop();
-    final nameCtrl = TextEditingController();
-    final userCtrl = TextEditingController();
-
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: context.bloom.blockColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Данные Telegram профиля'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameCtrl,
-              decoration: const InputDecoration(labelText: 'Отображаемое имя'),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: userCtrl,
-              decoration: const InputDecoration(
-                labelText: '@username (без символа @)',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Отмена'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final name = nameCtrl.text.trim();
-              if (name.isNotEmpty) {
-                ref.read(telegramAuthProvider.notifier).loginWithData({
-                  'id': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-                  'first_name': name,
-                  'username': userCtrl.text.trim().replaceAll('@', ''),
-                  'auth_date': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-                });
-                Navigator.of(ctx).pop();
-              }
-            },
-            child: const Text('Сохранить'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Yandex Music Auth Sheet ───────────────────────────────────────────────
-  void _openYandexAuth(BuildContext context, WidgetRef ref) {
-    final ym = ref.read(ymAuthProvider);
-    if (ym.authed) {
-      showBloomSheetChild<void>(
-        context: context,
-        child: Padding(
-          padding: const EdgeInsets.all(22),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFC3F1D).withValues(alpha: 0.18),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Center(
-                      child: BloomIcon(
-                        Bi.musicNote,
-                        color: Color(0xFFFC3F1D),
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Яндекс Музыка',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: context.bloom.text,
-                          ),
-                        ),
-                        Text(
-                          ym.hasPlus == true
-                              ? 'Подписка Плюс активна ✓'
-                              : 'Аккаунт подключен',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: ym.hasPlus == true
-                                ? const Color(0xFF00C853)
-                                : context.bloom.text2,
-                          ),
-                        ),
-                      ],
-                    ),
+  Widget _buildInTreeModal(
+    BuildContext context,
+    BloomTokens t,
+    TelegramAuthState tgState,
+    YmAuthState ymState,
+  ) {
+    return Positioned.fill(
+      child: GestureDetector(
+        onTap: _closeModal,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          color: Colors.black.withValues(alpha: 0.65),
+          alignment: Alignment.bottomCenter,
+          child: GestureDetector(
+            onTap: () {}, // Prevent click propagation inside card
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                color: t.blockColor,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: t.ovlLine, width: 1.2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    blurRadius: 36,
+                    offset: const Offset(0, 10),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: context.bloom.danger,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  elevation: 0,
+              child: _activeModal == _OnboardingModal.telegram
+                  ? _buildTelegramModal(t, tgState)
+                  : _buildYandexModal(t, ymState),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTelegramModal(BloomTokens t, TelegramAuthState tgState) {
+    if (tgState.authed) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2AABEE).withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
                 ),
-                onPressed: () {
-                  ref.read(ymAuthProvider.notifier).logout();
-                  Navigator.of(context).pop();
-                },
-                child: const Text('Отключить Яндекс Музыку'),
+                child: const Center(
+                  child: BloomIcon(Bi.send, color: Color(0xFF2AABEE), size: 22),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      tgState.user?.displayName ?? 'Telegram подключен',
+                      style: TextStyle(
+                        fontSize: 16.5,
+                        fontWeight: FontWeight.w700,
+                        color: t.text,
+                      ),
+                    ),
+                    if (tgState.user?.handle != null)
+                      Text(
+                        '@${tgState.user!.handle}',
+                        style: TextStyle(fontSize: 13, color: t.text2),
+                      ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const BloomIcon(Bi.close, size: 20),
+                onPressed: _closeModal,
               ),
             ],
           ),
-        ),
-      );
-      return;
-    }
-
-    final tokenController = TextEditingController();
-
-    showBloomSheetChild<void>(
-      context: context,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFC3F1D).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const BloomIcon(
-                    Bi.musicNote,
-                    size: 20,
-                    color: Color(0xFFFC3F1D),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  'Вход в Яндекс Музыку',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: context.bloom.text,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFC3F1D),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 13),
-                elevation: 0,
+          const SizedBox(height: 20),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: t.text,
+              side: BorderSide(color: t.accent.withValues(alpha: 0.45)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
               ),
-              onPressed: () {
-                ref.read(ymAuthProvider.notifier).startAuth();
-                Navigator.of(context).pop();
-              },
-              child: const Text(
-                'Быстрый вход по коду (ya.ru/device)',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
+              padding: const EdgeInsets.symmetric(vertical: 13),
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(child: Divider(color: context.bloom.ovlLine)),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: Text(
-                    'ИЛИ ПО ТОКЕНУ',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: context.bloom.text2,
+            icon: BloomIcon(Bi.refresh, size: 18, color: t.accent),
+            label: const Text('Синхронизировать сейчас'),
+            onPressed: () async {
+              final ok = await ref.read(telegramAuthProvider.notifier).pushBackup();
+              if (mounted) {
+                _closeModal();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      ok
+                          ? 'Фонотека и плейлисты сохранены в Vercel!'
+                          : 'Ошибка связи с Vercel',
                     ),
                   ),
-                ),
-                Expanded(child: Divider(color: context.bloom.ovlLine)),
-              ],
+                );
+              }
+            },
+          ),
+          const SizedBox(height: 10),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: t.danger,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              elevation: 0,
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: tokenController,
-              decoration: InputDecoration(
-                hintText: 'Вставьте токен y0_...',
-                filled: true,
-                fillColor: context.bloom.ovlBg,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: context.bloom.ovlLine),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
+            onPressed: () {
+              ref.read(telegramAuthProvider.notifier).logout();
+              _closeModal();
+            },
+            child: const Text('Отключить Telegram'),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2AABEE).withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const BloomIcon(
+                Bi.send,
+                size: 22,
+                color: Color(0xFF2AABEE),
               ),
             ),
-            const SizedBox(height: 12),
-            OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(color: context.bloom.ovlLine),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              onPressed: () async {
-                final token = tokenController.text.trim();
-                if (token.isNotEmpty) {
-                  await ref.read(ymAuthProvider.notifier).loginWithToken(token);
-                  if (context.mounted) {
-                    Navigator.of(context).pop();
-                  }
-                }
-              },
+            const SizedBox(width: 12),
+            Expanded(
               child: Text(
-                'Сохранить токен',
-                style: TextStyle(color: context.bloom.text),
+                'Вход через Telegram',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: t.text,
+                ),
               ),
+            ),
+            IconButton(
+              icon: const BloomIcon(Bi.close, size: 20),
+              onPressed: _closeModal,
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 12),
+        Text(
+          'Быстрый вход через официальный Telegram Login Widget:',
+          style: TextStyle(fontSize: 13, color: t.text2, height: 1.35),
+        ),
+        const SizedBox(height: 14),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF2AABEE),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 13),
+            elevation: 0,
+          ),
+          onPressed: () {
+            ref.read(telegramAuthProvider.notifier).startWebLogin(defaultVercelUrl);
+            _closeModal();
+          },
+          child: const Text(
+            'Войти через Telegram Login Widget',
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(child: Divider(color: t.ovlLine)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Text(
+                'ИЛИ ВВЕДИТЕ ДАННЫЕ ВРУЧНУЮ',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: t.text2,
+                ),
+              ),
+            ),
+            Expanded(child: Divider(color: t.ovlLine)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _tgNameCtrl,
+          decoration: InputDecoration(
+            hintText: 'Ваше имя',
+            filled: true,
+            fillColor: t.ovlBg,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: t.ovlLine),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _tgUserCtrl,
+          decoration: InputDecoration(
+            hintText: '@username (без символа @)',
+            filled: true,
+            fillColor: t.ovlBg,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: t.ovlLine),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          ),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: t.text,
+            side: BorderSide(color: t.ovlLine),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 11),
+          ),
+          onPressed: () {
+            final name = _tgNameCtrl.text.trim();
+            if (name.isNotEmpty) {
+              ref.read(telegramAuthProvider.notifier).loginWithData({
+                'id': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+                'first_name': name,
+                'username': _tgUserCtrl.text.trim().replaceAll('@', ''),
+                'auth_date': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+              });
+              _closeModal();
+            }
+          },
+          child: const Text('Сохранить профиль'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildYandexModal(BloomTokens t, YmAuthState ymState) {
+    if (ymState.authed) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFC3F1D).withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Center(
+                  child: BloomIcon(Bi.musicNote, color: Color(0xFFFC3F1D), size: 22),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Яндекс Музыка',
+                      style: TextStyle(
+                        fontSize: 16.5,
+                        fontWeight: FontWeight.w700,
+                        color: t.text,
+                      ),
+                    ),
+                    Text(
+                      ymState.hasPlus == true
+                          ? 'Подписка Плюс активна ✓'
+                          : 'Аккаунт подключен',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: ymState.hasPlus == true
+                            ? const Color(0xFF00C853)
+                            : t.text2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const BloomIcon(Bi.close, size: 20),
+                onPressed: _closeModal,
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: t.danger,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              elevation: 0,
+            ),
+            onPressed: () {
+              ref.read(ymAuthProvider.notifier).logout();
+              _closeModal();
+            },
+            child: const Text('Отключить Яндекс Музыку'),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFC3F1D).withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const BloomIcon(
+                Bi.musicNote,
+                size: 22,
+                color: Color(0xFFFC3F1D),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Вход в Яндекс Музыку',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: t.text,
+                ),
+              ),
+            ),
+            IconButton(
+              icon: const BloomIcon(Bi.close, size: 20),
+              onPressed: _closeModal,
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFFC3F1D),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 13),
+            elevation: 0,
+          ),
+          onPressed: () {
+            ref.read(ymAuthProvider.notifier).startAuth();
+            _closeModal();
+          },
+          child: const Text(
+            'Быстрый вход по коду (ya.ru/device)',
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(child: Divider(color: t.ovlLine)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Text(
+                'ИЛИ ПО ТОКЕНУ',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: t.text2,
+                ),
+              ),
+            ),
+            Expanded(child: Divider(color: t.ovlLine)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _ymTokenCtrl,
+          decoration: InputDecoration(
+            hintText: 'Вставьте токен y0_...',
+            filled: true,
+            fillColor: t.ovlBg,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: t.ovlLine),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          ),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: t.text,
+            side: BorderSide(color: t.ovlLine),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 11),
+          ),
+          onPressed: () async {
+            final token = _ymTokenCtrl.text.trim();
+            if (token.isNotEmpty) {
+              await ref.read(ymAuthProvider.notifier).loginWithToken(token);
+              _closeModal();
+            }
+          },
+          child: const Text('Сохранить токен'),
+        ),
+      ],
     );
   }
 }
@@ -992,7 +1009,7 @@ class _SlideVisual extends StatelessWidget {
   }
 }
 
-/// Slide 0: Unified catalog pill cluster
+/// Slide 0: Unified catalog pill cluster with comfortable wrapping
 class _SourcesVisual extends StatelessWidget {
   const _SourcesVisual({required this.t});
   final BloomTokens t;
@@ -1000,48 +1017,37 @@ class _SourcesVisual extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 220,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      constraints: const BoxConstraints(minWidth: 280, maxWidth: 320),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
         color: t.ovlBg,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: t.ovlLine),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 8,
+        runSpacing: 8,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _SourceChip(
-                label: 'Яндекс Музыка',
-                dotColor: const Color(0xFFFC3F1D),
-                t: t,
-              ),
-              const SizedBox(width: 8),
-              _SourceChip(
-                label: 'SoundCloud',
-                dotColor: const Color(0xFFFF5500),
-                t: t,
-              ),
-            ],
+          _SourceChip(
+            label: 'Яндекс Музыка',
+            dotColor: const Color(0xFFFC3F1D),
+            t: t,
           ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _SourceChip(
-                label: 'Локальные FLAC/MP3',
-                dotColor: t.accent,
-                t: t,
-              ),
-              const SizedBox(width: 8),
-              _SourceChip(
-                label: 'YouTube',
-                dotColor: const Color(0xFFFF0000),
-                t: t,
-              ),
-            ],
+          _SourceChip(
+            label: 'SoundCloud',
+            dotColor: const Color(0xFFFF5500),
+            t: t,
+          ),
+          _SourceChip(
+            label: 'Локальные файлы',
+            dotColor: t.accent,
+            t: t,
+          ),
+          _SourceChip(
+            label: 'YouTube Music',
+            dotColor: const Color(0xFFFF0033),
+            t: t,
           ),
         ],
       ),
@@ -1125,8 +1131,8 @@ class _DecksVisual extends StatelessWidget {
             active: false,
           ),
           _DeckBadge(
-            title: 'Ivory',
-            subtitle: 'Editorial',
+            title: 'Levyra',
+            subtitle: 'Cyber',
             icon: Bi.soundwave,
             t: t,
             active: false,
@@ -1276,7 +1282,11 @@ class _CloudVisual extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: const Center(
-              child: BloomIcon(Bi.send, size: 20, color: Color(0xFF2AABEE)),
+              child: BloomIcon(
+                Bi.send,
+                size: 20,
+                color: Color(0xFF2AABEE),
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -1306,7 +1316,10 @@ class _CloudVisual extends StatelessWidget {
                     const SizedBox(width: 5),
                     Text(
                       'Vercel Cloud Sync',
-                      style: TextStyle(fontSize: 11, color: t.text2),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: t.text2,
+                      ),
                     ),
                   ],
                 ),

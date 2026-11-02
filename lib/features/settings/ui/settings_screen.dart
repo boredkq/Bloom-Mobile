@@ -12,6 +12,7 @@ import '../../../core/l10n/l10n.dart';
 import '../../../core/store/settings_store.dart';
 import '../../../providers/yandex/ym_auth.dart';
 import '../../../shared/ui/bloom_icon.dart';
+import '../../../features/customization/cloud_customizations.dart';
 import '../../lastfm/lastfm_store.dart';
 import '../../pc/pc_store.dart';
 import '../../telegram/telegram_store.dart';
@@ -86,6 +87,11 @@ class SettingsScreen extends StatelessWidget {
                 icon: Bi.album,
                 title: context.l.stCustom,
                 onTap: () => context.go('/settings/customization'),
+              ),
+              SettingsRow(
+                icon: Bi.magicStick,
+                title: 'Облачные темы Vercel',
+                onTap: () => showCloudCustomizationsSheet(context),
               ),
             ],
           ),
@@ -457,10 +463,6 @@ Future<void> _openTelegramSettings(BuildContext context, WidgetRef ref) async {
     return;
   }
 
-  final vercelCtrl = TextEditingController(
-    text: 'https://bloom-auth.vercel.app',
-  );
-
   await showBloomSheetChild<void>(
     context: context,
     child: Padding(
@@ -494,25 +496,8 @@ Future<void> _openTelegramSettings(BuildContext context, WidgetRef ref) async {
           ),
           const SizedBox(height: 14),
           Text(
-            'Адрес Vercel-бэкенда с Telegram Login Widget:',
+            'Синхронизация фонотеки, плейлистов и уровня слушателя через облако Vercel:',
             style: TextStyle(fontSize: 13, color: t.text2),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: vercelCtrl,
-            decoration: InputDecoration(
-              hintText: 'https://your-bloom.vercel.app',
-              filled: true,
-              fillColor: t.ovlBg,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: t.ovlLine),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 12,
-              ),
-            ),
           ),
           const SizedBox(height: 16),
           ElevatedButton(
@@ -525,15 +510,67 @@ Future<void> _openTelegramSettings(BuildContext context, WidgetRef ref) async {
               padding: const EdgeInsets.symmetric(vertical: 13),
             ),
             onPressed: () {
-              final url = vercelCtrl.text.trim();
-              if (url.isNotEmpty) {
-                ref.read(telegramAuthProvider.notifier).startWebLogin(url);
-                Navigator.of(context).pop();
-              }
+              ref.read(telegramAuthProvider.notifier).startWebLogin(defaultVercelUrl);
+              Navigator.of(context).pop();
             },
             child: const Text(
-              'Открыть Telegram Login Widget',
+              'Войти через Telegram Login Widget',
               style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              final nameCtrl = TextEditingController();
+              final userCtrl = TextEditingController();
+              showDialog<void>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  backgroundColor: t.blockColor,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  title: const Text('Ввод профиля Telegram'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: nameCtrl,
+                        decoration: const InputDecoration(labelText: 'Отображаемое имя'),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: userCtrl,
+                        decoration: const InputDecoration(labelText: '@username (без @)'),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: const Text('Отмена'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        final name = nameCtrl.text.trim();
+                        if (name.isNotEmpty) {
+                          ref.read(telegramAuthProvider.notifier).loginWithData({
+                            'id': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+                            'first_name': name,
+                            'username': userCtrl.text.trim().replaceAll('@', ''),
+                            'auth_date': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+                          });
+                          Navigator.of(ctx).pop();
+                        }
+                      },
+                      child: const Text('Сохранить'),
+                    ),
+                  ],
+                ),
+              );
+            },
+            child: Text(
+              'Ввести имя и username вручную',
+              style: TextStyle(fontSize: 12.5, color: t.text2),
             ),
           ),
         ],

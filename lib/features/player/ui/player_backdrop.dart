@@ -78,8 +78,14 @@ class PlayerBackdrop extends ConsumerWidget {
     final mode = ref.watch(playerBgProvider);
     final style = ref.watch(playerStyleProvider);
 
-    // Living Apple Music Aura backdrop if mode is none but style is Aura.
-    if (mode.isNone && !style.isAura) return const SizedBox.shrink();
+    final glowStyle = style.isAura ||
+        style.isLevyraCosmic ||
+        style.isLevyraCyber ||
+        style.isLevyraAurora ||
+        style.isLevyraEmber;
+
+    // Living Apple Music Aura / Levyra backdrop if mode is none but style is glowing.
+    if (mode.isNone && !glowStyle) return const SizedBox.shrink();
 
     final cover = playerBgCover(ref);
 
@@ -87,7 +93,7 @@ class PlayerBackdrop extends ConsumerWidget {
     // progress bar creeps, and blurring and recomputing for each of their
     // frames isn't needed.
     return RepaintBoundary(
-      child: (mode.isNone && style.isAura)
+      child: (mode.isNone && glowStyle)
           ? _AuraWash(cover: cover)
           : switch (mode) {
               PlayerBg.cover => _CoverWash(cover: cover),
