@@ -215,13 +215,20 @@ double _bigSize(BuildContext context) =>
 
 TextStyle? _bigStyle(BuildContext context) {
   final size = _bigSize(context);
+  final t = context.bloom;
   return Theme.of(context).textTheme.headlineLarge?.copyWith(
     fontSize: size,
     height: 1.0,
     letterSpacing: -0.03 * size,
     fontWeight: FontWeight.w700,
-    // Cut in the page's colour: it reads on any cover's tone and on the accent.
-    color: context.bloom.bg,
+    color: t.text,
+    shadows: [
+      Shadow(
+        color: Colors.black.withValues(alpha: 0.4),
+        blurRadius: 18,
+        offset: const Offset(0, 2),
+      ),
+    ],
   );
 }
 
@@ -235,7 +242,7 @@ class _WaveTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = _bigSize(context);
-    final bg = context.bloom.bg;
+    final textCol = context.bloom.text;
     return Semantics(
       button: true,
       label: context.l.waveStart,
@@ -247,8 +254,8 @@ class _WaveTitle extends StatelessWidget {
             ? BloomSpinner(
                 size: size * 0.6,
                 stroke: 3,
-                color: bg,
-                trackColor: bg.withValues(alpha: 0.25),
+                color: textCol,
+                trackColor: textCol.withValues(alpha: 0.25),
               )
             : Text(
                 context.l.waveTitle,
