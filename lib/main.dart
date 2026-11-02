@@ -30,6 +30,7 @@ import 'features/player/player_controller.dart';
 import 'features/player/session_store.dart';
 import 'features/settings/auto_accent.dart';
 import 'features/settings/user_fonts.dart';
+import 'features/telegram/telegram_store.dart';
 import 'providers/yandex/ym_auth.dart';
 import 'shared/ui/bloom_toast.dart';
 
@@ -96,6 +97,8 @@ Future<void> main() async {
   // The Yandex token comes up right away: until the store exists the platform
   // counts as off and the first search would skip it.
   container.read(ymAuthProvider);
+  // Telegram auth profile initialization.
+  container.read(telegramAuthProvider);
   // The auto accent bridge lives as long as the process: the colour follows the
   // cover always, not only on one settings page.
   container.read(autoAccentProvider);

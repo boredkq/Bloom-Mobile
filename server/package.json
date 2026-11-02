@@ -1,0 +1,19 @@
+{
+  "name": "bloom-serverless",
+  "version": "1.0.0",
+  "description": "Vercel Serverless Backend for Bloom Mobile (Telegram & Yandex Music Auth)",
+  "main": "api/health.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "vercel dev",
+    "deploy": "vercel"
+  },
+  "keywords": ["bloom", "telegram", "yandex-music", "vercel", "oauth"],
+  "author": "Bloom Team",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  }
+}

@@ -244,6 +244,22 @@ class YmAuthController extends Notifier<YmAuthState> {
     state = state.copyWith(connecting: false, clearCode: true, clearNote: true);
   }
 
+  /// Direct login with an access token (e.g. from Vercel OAuth callback or user input).
+  Future<bool> loginWithToken(String token) async {
+    final clean = token.trim();
+    if (clean.isEmpty) return false;
+    _pollGen++;
+    _saveToken(clean);
+    state = state.copyWith(
+      authed: true,
+      connecting: false,
+      clearCode: true,
+      clearNote: true,
+    );
+    await refresh();
+    return state.authed;
+  }
+
   /// Logs out: the token is deleted and the platform leaves search.
   void logout() {
     _pollGen++; // stops polling

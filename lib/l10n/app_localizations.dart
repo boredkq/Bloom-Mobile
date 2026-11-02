@@ -4547,8 +4547,15 @@ abstract class AppLocalizations {
   /// desktop: welcome.title
   ///
   /// In en, this message translates to:
-  /// **'Welcome'**
+  /// **'Welcome to Bloom'**
   String get welcomeTitle;
+
+  String get welcomeSubtitle;
+  String get welcomeContinue;
+  String get welcomeTelegramLogin;
+  String get welcomeYandexLogin;
+  String get welcomeTelegramConnected;
+  String get welcomeYandexConnected;
 
   /// desktop: wave.title
   ///

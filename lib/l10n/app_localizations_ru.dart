@@ -2628,7 +2628,25 @@ class AppLocalizationsRu extends AppLocalizations {
   String get apTrOverlaysSub => 'Стекло для шторок, меню и диалогов';
 
   @override
-  String get welcomeTitle => 'Добро пожаловать';
+  String get welcomeTitle => 'Добро пожаловать в Bloom';
+
+  @override
+  String get welcomeSubtitle => 'Ваша музыка без ограничений';
+
+  @override
+  String get welcomeContinue => 'Начать слушать';
+
+  @override
+  String get welcomeTelegramLogin => 'Войти через Telegram';
+
+  @override
+  String get welcomeYandexLogin => 'Войти в Яндекс Музыку';
+
+  @override
+  String get welcomeTelegramConnected => 'Telegram подключен';
+
+  @override
+  String get welcomeYandexConnected => 'Яндекс Музыка подключена';
 
   @override
   String get waveTitle => 'Моя волна';

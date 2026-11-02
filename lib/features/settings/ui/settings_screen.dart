@@ -14,6 +14,7 @@ import '../../../providers/yandex/ym_auth.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../lastfm/lastfm_store.dart';
 import '../../pc/pc_store.dart';
+import '../../telegram/telegram_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/language_flag.dart';
@@ -108,10 +109,21 @@ class _IntegrationsGroup extends ConsumerWidget {
     final off = context.bloom.muted;
     final ymOn = ref.watch(ymAuthProvider.select((s) => s.authed));
     final lfmOn = ref.watch(lastfmProvider.select((s) => s.connected));
+    final tg = ref.watch(telegramAuthProvider);
     final pcName = ref.watch(pcProvider.select((s) => s.link?.name));
     return SettingsGroup(
       title: context.l.setGroupIntegrations,
       rows: [
+        SettingsRow(
+          title: 'Telegram',
+          leading: const BloomIcon(
+            Bi.send,
+            size: 20,
+            color: Color(0xFF2AABEE),
+          ),
+          value: tg.authed ? (tg.user?.displayName ?? 'Подключен') : null,
+          onTap: () => _openTelegramSettings(context, ref),
+        ),
         SettingsRow(
           title: 'SoundCloud',
           leading: const PlatformLogo(MusicSource.soundcloud, size: 20),
@@ -313,4 +325,160 @@ class _VersionSettingsRowState extends ConsumerState<VersionSettingsRow> {
       onTap: () => context.go('/settings/version'),
     );
   }
+}
+
+Future<void> _openTelegramSettings(BuildContext context, WidgetRef ref) async {
+  final tg = ref.read(telegramAuthProvider);
+  final t = context.bloom;
+
+  if (tg.authed) {
+    await showBloomSheetChild<void>(
+      context: context,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2AABEE).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const BloomIcon(
+                    Bi.send,
+                    size: 20,
+                    color: Color(0xFF2AABEE),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        tg.user?.displayName ?? 'Telegram',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (tg.user?.handle case final handle?)
+                        Text(
+                          handle,
+                          style: TextStyle(color: t.text2, fontSize: 13),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: t.danger,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              onPressed: () {
+                ref.read(telegramAuthProvider.notifier).logout();
+                Navigator.of(context).pop();
+              },
+              child: const Text('Отключить Telegram'),
+            ),
+          ],
+        ),
+      ),
+    );
+    return;
+  }
+
+  final vercelCtrl = TextEditingController(
+    text: 'https://bloom-auth.vercel.app',
+  );
+
+  await showBloomSheetChild<void>(
+    context: context,
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2AABEE).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const BloomIcon(
+                  Bi.send,
+                  size: 20,
+                  color: Color(0xFF2AABEE),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Подключение Telegram',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Адрес Vercel-бэкенда с Telegram Login Widget:',
+            style: TextStyle(fontSize: 13, color: t.text2),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: vercelCtrl,
+            decoration: InputDecoration(
+              hintText: 'https://your-bloom.vercel.app',
+              filled: true,
+              fillColor: t.ovlBg,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: t.ovlLine),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2AABEE),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 13),
+            ),
+            onPressed: () {
+              final url = vercelCtrl.text.trim();
+              if (url.isNotEmpty) {
+                ref.read(telegramAuthProvider.notifier).startWebLogin(url);
+                Navigator.of(context).pop();
+              }
+            },
+            child: const Text(
+              'Открыть Telegram Login Widget',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }

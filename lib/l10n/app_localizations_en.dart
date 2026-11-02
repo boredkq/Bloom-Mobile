@@ -2590,7 +2590,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apTrOverlaysSub => 'Glass for sheets, menus and dialogs';
 
   @override
-  String get welcomeTitle => 'Welcome';
+  String get welcomeTitle => 'Welcome to Bloom';
+
+  @override
+  String get welcomeSubtitle => 'Your music without limits';
+
+  @override
+  String get welcomeContinue => 'Start listening';
+
+  @override
+  String get welcomeTelegramLogin => 'Sign in with Telegram';
+
+  @override
+  String get welcomeYandexLogin => 'Sign in with Yandex Music';
+
+  @override
+  String get welcomeTelegramConnected => 'Telegram connected';
+
+  @override
+  String get welcomeYandexConnected => 'Yandex Music connected';
 
   @override
   String get waveTitle => 'My Wave';
