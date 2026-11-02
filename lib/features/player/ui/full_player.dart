@@ -339,123 +339,126 @@ class _Cover extends ConsumerWidget {
           onTap: () {
             final next = !lyricsOpen;
             ref.read(lyricsOpenProvider.notifier).state = next;
-            if (next &&
-                ref.read(lyricsProvider).status != LyricsStatus.ready) {
+            if (next && ref.read(lyricsProvider).status != LyricsStatus.ready) {
               ref.read(lyricsProvider.notifier).load(track);
             }
           },
           child: Stack(
-          children: [
-            AnimatedScale(
-              scale: scale,
-              duration: const Duration(milliseconds: 340),
-              curve: Curves.easeOutBack,
-              child: Container(
-                width: side,
-                height: side,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(radius),
-                  boxShadow: aura
-                      ? [
-                          BoxShadow(
-                            color: t.accent.withValues(
-                              alpha: spinning ? 0.55 : 0.25,
+            children: [
+              AnimatedScale(
+                scale: scale,
+                duration: const Duration(milliseconds: 340),
+                curve: Curves.easeOutBack,
+                child: Container(
+                  width: side,
+                  height: side,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(radius),
+                    boxShadow: aura
+                        ? [
+                            BoxShadow(
+                              color: t.accent.withValues(
+                                alpha: spinning ? 0.55 : 0.25,
+                              ),
+                              blurRadius: spinning ? 38 : 18,
+                              spreadRadius: spinning ? 5 : 0,
+                              offset: const Offset(0, 8),
                             ),
-                            blurRadius: spinning ? 38 : 18,
-                            spreadRadius: spinning ? 5 : 0,
-                            offset: const Offset(0, 8),
-                          ),
-                          BoxShadow(
-                            color: t.accent.withValues(
-                              alpha: spinning ? 0.32 : 0.12,
+                            BoxShadow(
+                              color: t.accent.withValues(
+                                alpha: spinning ? 0.32 : 0.12,
+                              ),
+                              blurRadius: spinning ? 58 : 28,
+                              spreadRadius: spinning ? 10 : 2,
                             ),
-                            blurRadius: spinning ? 58 : 28,
-                            spreadRadius: spinning ? 10 : 2,
-                          ),
-                        ]
-                      : (ivory
-                            ? [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.35),
-                                  blurRadius: 14,
-                                  offset: const Offset(0, 5),
-                                ),
-                              ]
-                            : null),
-                  border: ivory
-                      ? Border.all(
-                          color: t.accent.withValues(alpha: 0.75),
-                          width: 1.5,
-                        )
-                      : null,
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(radius),
-                  child: VinylSpin(
-                    enabled: vinyl,
-                    spinning: spinning,
-                    child: TrackSwap(
-                      id: track.id,
-                      fade: true,
-                      child: Cover(
-                        url: ref.watch(playerCoverProvider),
-                        size: side,
-                        radius: 0,
-                      ),
-                    ),
+                          ]
+                        : (ivory
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.35),
+                                    blurRadius: 14,
+                                    offset: const Offset(0, 5),
+                                  ),
+                                ]
+                              : null),
+                    border: ivory
+                        ? Border.all(
+                            color: t.accent.withValues(alpha: 0.75),
+                            width: 1.5,
+                          )
+                        : null,
                   ),
-                ),
-              ),
-            ),
-            // The label stands OVER the cover but under the text panel, and
-            // doesn't spin with the disc.
-            if (vinyl)
-              Positioned(
-                left: 0,
-                top: 0,
-                width: side,
-                height: side,
-                child: Center(child: VinylLabel(size: side * VinylLabel.share)),
-              ),
-            // Text panel over the cover: the block's colour at 96%, appearing
-            // with a fade and a slight zoom. ALWAYS drawn, visibility by
-            // opacity, or the animation has nothing to play.
-            Positioned(
-              left: 0,
-              top: 0,
-              width: side,
-              height: side,
-              child: IgnorePointer(
-                ignoring: !lyricsOpen,
-                child: AnimatedOpacity(
-                  opacity: lyricsOpen ? 1 : 0,
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeOut,
-                  child: AnimatedScale(
-                    scale: lyricsOpen ? 1 : 0.97,
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeOut,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(radius),
-                      child: ColoredBox(
-                        color: context.bloom.blockColor.withValues(alpha: 0.96),
-                        child: LyricsView(
-                          live: lyricsOpen,
-                          // A disc keeps the lines off its edge: 52 on a 380
-                          // disc.
-                          padding: vinyl
-                              ? EdgeInsets.all(side * 0.14)
-                              : const EdgeInsets.fromLTRB(14, 36, 14, 16),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(radius),
+                    child: VinylSpin(
+                      enabled: vinyl,
+                      spinning: spinning,
+                      child: TrackSwap(
+                        id: track.id,
+                        fade: true,
+                        child: Cover(
+                          url: ref.watch(playerCoverProvider),
+                          size: side,
+                          radius: 0,
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-      );
+              // The label stands OVER the cover but under the text panel, and
+              // doesn't spin with the disc.
+              if (vinyl)
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  width: side,
+                  height: side,
+                  child: Center(
+                    child: VinylLabel(size: side * VinylLabel.share),
+                  ),
+                ),
+              // Text panel over the cover: the block's colour at 96%, appearing
+              // with a fade and a slight zoom. ALWAYS drawn, visibility by
+              // opacity, or the animation has nothing to play.
+              Positioned(
+                left: 0,
+                top: 0,
+                width: side,
+                height: side,
+                child: IgnorePointer(
+                  ignoring: !lyricsOpen,
+                  child: AnimatedOpacity(
+                    opacity: lyricsOpen ? 1 : 0,
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOut,
+                    child: AnimatedScale(
+                      scale: lyricsOpen ? 1 : 0.97,
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOut,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(radius),
+                        child: ColoredBox(
+                          color: context.bloom.blockColor.withValues(
+                            alpha: 0.96,
+                          ),
+                          child: LyricsView(
+                            live: lyricsOpen,
+                            // A disc keeps the lines off its edge: 52 on a 380
+                            // disc.
+                            padding: vinyl
+                                ? EdgeInsets.all(side * 0.14)
+                                : const EdgeInsets.fromLTRB(14, 36, 14, 16),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
       },
     );
   }
