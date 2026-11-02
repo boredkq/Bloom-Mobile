@@ -140,7 +140,7 @@ abstract class AppLocalizations {
   /// **'Apply'**
   String get commonApply;
 
-  /// desktop: common.undo — default toast action label
+  /// default toast action label
   ///
   /// In en, this message translates to:
   /// **'Undo'**
@@ -152,7 +152,7 @@ abstract class AppLocalizations {
   /// **'Upload'**
   String get commonUpload;
 
-  /// phone only: collapses the setup block on a platform page
+  /// collapses the setup block on a platform page
   ///
   /// In en, this message translates to:
   /// **'Hide'**
@@ -164,25 +164,25 @@ abstract class AppLocalizations {
   /// **'Clear'**
   String get commonClear;
 
-  /// phone only: separator between the guide card and manual input
+  /// separator between the guide card and manual input
   ///
   /// In en, this message translates to:
   /// **'or'**
   String get commonOr;
 
-  /// desktop: settings.interface.titlebar.item.pin
+  /// No description provided for @commonPin.
   ///
   /// In en, this message translates to:
   /// **'Pin'**
   String get commonPin;
 
-  /// desktop: lib.sidebar.unpin
+  /// No description provided for @commonUnpin.
   ///
   /// In en, this message translates to:
   /// **'Unpin'**
   String get commonUnpin;
 
-  /// desktop: player.aria.play
+  /// No description provided for @commonPlay.
   ///
   /// In en, this message translates to:
   /// **'Play'**
@@ -194,31 +194,31 @@ abstract class AppLocalizations {
   /// **'Pause'**
   String get commonPause;
 
-  /// desktop: player.aria.shuffle
+  /// No description provided for @commonShuffle.
   ///
   /// In en, this message translates to:
   /// **'Shuffle'**
   String get commonShuffle;
 
-  /// desktop: search.follow
+  /// No description provided for @commonFollow.
   ///
   /// In en, this message translates to:
   /// **'Follow'**
   String get commonFollow;
 
-  /// desktop: search.unfollow
+  /// No description provided for @commonUnfollow.
   ///
   /// In en, this message translates to:
   /// **'Unfollow'**
   String get commonUnfollow;
 
-  /// desktop: search.loadMore
+  /// No description provided for @commonLoadMore.
   ///
   /// In en, this message translates to:
   /// **'Load more'**
   String get commonLoadMore;
 
-  /// desktop: search.kind.track
+  /// No description provided for @commonTrack.
   ///
   /// In en, this message translates to:
   /// **'Track'**
@@ -242,13 +242,13 @@ abstract class AppLocalizations {
   /// **'Artist'**
   String get commonArtist;
 
-  /// desktop: search.kind.profile
+  /// No description provided for @commonProfile.
   ///
   /// In en, this message translates to:
   /// **'Profile'**
   String get commonProfile;
 
-  /// desktop: search.tab.tracks
+  /// No description provided for @commonTracks.
   ///
   /// In en, this message translates to:
   /// **'Tracks'**
@@ -260,49 +260,49 @@ abstract class AppLocalizations {
   /// **'Playlists'**
   String get commonPlaylists;
 
-  /// desktop: search.tab.albums
+  /// No description provided for @commonAlbums.
   ///
   /// In en, this message translates to:
   /// **'Albums'**
   String get commonAlbums;
 
-  /// desktop: search.tab.artists
+  /// No description provided for @commonArtists.
   ///
   /// In en, this message translates to:
   /// **'Artists'**
   String get commonArtists;
 
-  /// desktop: player.queueTitle.all
+  /// No description provided for @commonAllTracks.
   ///
   /// In en, this message translates to:
   /// **'All tracks'**
   String get commonAllTracks;
 
-  /// desktop: player.queueTitle.fav
+  /// No description provided for @commonFavorites.
   ///
   /// In en, this message translates to:
   /// **'Liked'**
   String get commonFavorites;
 
-  /// desktop: settings.home.item.history
+  /// No description provided for @commonHistory.
   ///
   /// In en, this message translates to:
   /// **'History'**
   String get commonHistory;
 
-  /// desktop: player.add.newPlaylist
+  /// No description provided for @commonNewPlaylist.
   ///
   /// In en, this message translates to:
   /// **'New playlist'**
   String get commonNewPlaylist;
 
-  /// desktop: player.add.createPlaylist
+  /// No description provided for @commonCreatePlaylist.
   ///
   /// In en, this message translates to:
   /// **'Create playlist'**
   String get commonCreatePlaylist;
 
-  /// desktop: player.add.toLib
+  /// No description provided for @commonAddToLibrary.
   ///
   /// In en, this message translates to:
   /// **'Add to library'**
@@ -314,13 +314,13 @@ abstract class AppLocalizations {
   /// **'Already in your library'**
   String get commonAlreadyInLibrary;
 
-  /// desktop: common.unknownArtist — a local file whose tags carry no artist
+  /// a local file whose tags carry no artist
   ///
   /// In en, this message translates to:
   /// **'Unknown'**
   String get commonUnknownArtist;
 
-  /// desktop: lib.plmenu.offlineBadge
+  /// No description provided for @commonOfflineBadge.
   ///
   /// In en, this message translates to:
   /// **'offline'**
@@ -338,25 +338,25 @@ abstract class AppLocalizations {
   /// **'Created'**
   String get commonCreatedOn;
 
-  /// desktop: fmtTotalDur — total time of a list, an hour or longer
+  /// total time of a list, an hour or longer
   ///
   /// In en, this message translates to:
   /// **'{h}h {m}m'**
   String commonDurHm(int h, int m);
 
-  /// desktop: fmtTotalDur — total time of a list, under an hour
+  /// total time of a list, under an hour
   ///
   /// In en, this message translates to:
   /// **'{m} min'**
   String commonDurMin(int m);
 
-  /// Replaces the hand-rolled tracksCount() from shared/util/format.dart
+  /// No description provided for @tracksCount.
   ///
   /// In en, this message translates to:
   /// **'{count, plural, one{{count} track} other{{count} tracks}}'**
   String tracksCount(int count);
 
-  /// desktop: stats.playsCount
+  /// No description provided for @playsCount.
   ///
   /// In en, this message translates to:
   /// **'{count, plural, one{{count} play} other{{count} plays}}'**
@@ -392,7 +392,7 @@ abstract class AppLocalizations {
   /// **'Local'**
   String get sourceLocal;
 
-  /// desktop: settings.nav.yandex
+  /// No description provided for @sourceYandex.
   ///
   /// In en, this message translates to:
   /// **'Yandex Music'**
@@ -410,13 +410,13 @@ abstract class AppLocalizations {
   /// **'Releases'**
   String get homeNewReleases;
 
-  /// desktop: chart.up
+  /// No description provided for @chartUp.
   ///
   /// In en, this message translates to:
   /// **'Up {n}'**
   String chartUp(int n);
 
-  /// desktop: chart.down
+  /// No description provided for @chartDown.
   ///
   /// In en, this message translates to:
   /// **'Down {n}'**
@@ -464,7 +464,7 @@ abstract class AppLocalizations {
   /// **'podcast'**
   String get relPodcast;
 
-  /// desktop: home.rel.ep
+  /// No description provided for @relEp.
   ///
   /// In en, this message translates to:
   /// **'EP'**
@@ -488,103 +488,103 @@ abstract class AppLocalizations {
   /// **'Similar to'**
   String get homeSimilarTo;
 
-  /// desktop: settings.view.mpEl.queue
+  /// No description provided for @playerQueue.
   ///
   /// In en, this message translates to:
   /// **'Queue'**
   String get playerQueue;
 
-  /// desktop: player.queue.section.played — section of the extended queue view
+  /// section of the extended queue view
   ///
   /// In en, this message translates to:
   /// **'Played'**
   String get queueSecPlayed;
 
-  /// desktop: player.queue.section.now
+  /// No description provided for @queueSecNow.
   ///
   /// In en, this message translates to:
   /// **'Now playing'**
   String get queueSecNow;
 
-  /// desktop: player.queue.section.next
+  /// No description provided for @queueSecNext.
   ///
   /// In en, this message translates to:
   /// **'Up next'**
   String get queueSecNext;
 
-  /// Плашка под слайдером плеера: какой трек заиграет следующим
+  /// pill under the player slider: the track that plays next
   ///
   /// In en, this message translates to:
   /// **'Up next: {title}'**
   String playerNextUp(String title);
 
-  /// Подпись источника очереди, набранной из выдачи поиска
+  /// source label of a queue built from search results
   ///
   /// In en, this message translates to:
   /// **'Search: {query}'**
   String playerSourceSearch(String query);
 
-  /// desktop: player.toast.copied
+  /// No description provided for @playerCopied.
   ///
   /// In en, this message translates to:
   /// **'Copied'**
   String get playerCopied;
 
-  /// desktop: player.toast.copyError
+  /// No description provided for @playerCopyError.
   ///
   /// In en, this message translates to:
   /// **'Error'**
   String get playerCopyError;
 
-  /// desktop: player.aria.speed (Playback speed)
+  /// No description provided for @playerSpeed.
   ///
   /// In en, this message translates to:
   /// **'Speed'**
   String get playerSpeed;
 
-  /// desktop: player.speed.custom
+  /// No description provided for @playerSpeedCustom.
   ///
   /// In en, this message translates to:
   /// **'Custom speed'**
   String get playerSpeedCustom;
 
-  /// desktop: player.speed.reset
+  /// No description provided for @playerSpeedReset.
   ///
   /// In en, this message translates to:
   /// **'Reset to 1×'**
   String get playerSpeedReset;
 
-  /// desktop: player.speed.nightcore
+  /// No description provided for @playerSpeedNightcore.
   ///
   /// In en, this message translates to:
   /// **'Nightcore'**
   String get playerSpeedNightcore;
 
-  /// desktop: player.speed.nightcoreSub
+  /// No description provided for @playerSpeedNightcoreSub.
   ///
   /// In en, this message translates to:
   /// **'Pitch follows the speed'**
   String get playerSpeedNightcoreSub;
 
-  /// Мобильная фича, десктопного оригинала нет
+  /// No description provided for @playerSleep.
   ///
   /// In en, this message translates to:
   /// **'Sleep timer'**
   String get playerSleep;
 
-  /// Подпись под числом на карточке-пресете таймера сна
+  /// label under the number on a sleep timer preset card
   ///
   /// In en, this message translates to:
   /// **'min'**
   String get playerSleepMin;
 
-  /// Время таймера сна в пилюле и на краях полосы
+  /// sleep timer time in the pill and at the ends of the bar
   ///
   /// In en, this message translates to:
   /// **'{count} min'**
   String playerSleepMinutes(int count);
 
-  /// Остаток таймера сна в шапке шторки
+  /// sleep timer time left in the sheet header
   ///
   /// In en, this message translates to:
   /// **'{time} left'**
@@ -650,13 +650,13 @@ abstract class AppLocalizations {
   /// **'Artist not found'**
   String get artistNotFound;
 
-  /// desktop: search.popular
+  /// No description provided for @artistPopular.
   ///
   /// In en, this message translates to:
   /// **'Popular'**
   String get artistPopular;
 
-  /// desktop: search.similarArtists
+  /// No description provided for @artistSimilar.
   ///
   /// In en, this message translates to:
   /// **'Fans might also like'**
@@ -902,7 +902,7 @@ abstract class AppLocalizations {
   /// **'Nothing liked yet'**
   String get tlEmptyFav;
 
-  /// desktop: historyLabel() group header in the History view
+  /// group header in the History view
   ///
   /// In en, this message translates to:
   /// **'Today'**
@@ -944,7 +944,7 @@ abstract class AppLocalizations {
   /// **'In this list'**
   String get tlSearchHint;
 
-  /// desktop: lib.jumpToNow — floating pill that scrolls the tracklist back to the playing track
+  /// floating pill that scrolls the tracklist back to the playing track
   ///
   /// In en, this message translates to:
   /// **'Now playing'**
@@ -956,7 +956,7 @@ abstract class AppLocalizations {
   /// **'Stop saving'**
   String get tlStopSaving;
 
-  /// desktop: lib.plmenu.removeOfflinePlaylist
+  /// No description provided for @tlRemoveOffline.
   ///
   /// In en, this message translates to:
   /// **'Remove from offline'**
@@ -980,31 +980,31 @@ abstract class AppLocalizations {
   /// **'Refresh tracks'**
   String get tlRefreshTracks;
 
-  /// desktop: lib.plmenu.toQueue — append the whole list to the queue
+  /// append the whole list to the queue
   ///
   /// In en, this message translates to:
   /// **'Add to queue'**
   String get tlToQueue;
 
-  /// desktop: lib.plmenu.playNext
+  /// No description provided for @tlPlayNext.
   ///
   /// In en, this message translates to:
   /// **'Play next'**
   String get tlPlayNext;
 
-  /// desktop: toast.addedToQueue
+  /// No description provided for @tlQueuedTracks.
   ///
   /// In en, this message translates to:
   /// **'Added to queue: {count}'**
   String tlQueuedTracks(int count);
 
-  /// desktop: toast.queuedNext
+  /// No description provided for @tlQueuedNext.
   ///
   /// In en, this message translates to:
   /// **'Playing next: {count}'**
   String tlQueuedNext(int count);
 
-  /// desktop: lib.plmenu.exportPlaylist
+  /// No description provided for @tlExportPlaylist.
   ///
   /// In en, this message translates to:
   /// **'Export playlist'**
@@ -1022,7 +1022,7 @@ abstract class AppLocalizations {
   /// **'Playlist “{name}” deleted'**
   String tlPlaylistDeleted(String name);
 
-  /// desktop: lib.plmenu.deletePlaylistWithTracks
+  /// No description provided for @tlDeletePlaylistWithTracks.
   ///
   /// In en, this message translates to:
   /// **'Delete playlist and tracks'**
@@ -1088,7 +1088,7 @@ abstract class AppLocalizations {
   /// **'My playlist'**
   String get cpNameHint;
 
-  /// desktop: lib.add.import
+  /// No description provided for @cpImport.
   ///
   /// In en, this message translates to:
   /// **'Import'**
@@ -1100,7 +1100,7 @@ abstract class AppLocalizations {
   /// **'Paste a link…'**
   String get cpLinkHint;
 
-  /// desktop: lib.import.fromFile
+  /// No description provided for @cpFromFile.
   ///
   /// In en, this message translates to:
   /// **'From file'**
@@ -1568,13 +1568,13 @@ abstract class AppLocalizations {
   /// **'Downloading cover…'**
   String get fdDownloadingCover;
 
-  /// desktop: lib.plmenu.convert
+  /// No description provided for @tlConvert.
   ///
   /// In en, this message translates to:
   /// **'Transfer to source…'**
   String get tlConvert;
 
-  /// desktop: lib.convert.title
+  /// No description provided for @cvTitle.
   ///
   /// In en, this message translates to:
   /// **'Transfer to source'**
@@ -1586,7 +1586,7 @@ abstract class AppLocalizations {
   /// **'Looking up tracks on {source}…'**
   String cvScanning(String source);
 
-  /// desktop: lib.convert.hint.scanning
+  /// No description provided for @cvScanHint.
   ///
   /// In en, this message translates to:
   /// **'You can leave — the transfer will be cancelled'**
@@ -1598,7 +1598,7 @@ abstract class AppLocalizations {
   /// **'Moved {moved} · kept {kept} · skipped {skipped}'**
   String cvSummary(int moved, int kept, int skipped);
 
-  /// desktop: lib.convert.takeBest
+  /// No description provided for @cvTakeBest.
   ///
   /// In en, this message translates to:
   /// **'Take the best'**
@@ -1664,7 +1664,7 @@ abstract class AppLocalizations {
   /// **'“{name}” created — {tracks}'**
   String cvCreated(String name, String tracks);
 
-  /// desktop: lib.ctx.switchSrc
+  /// No description provided for @spSwitch.
   ///
   /// In en, this message translates to:
   /// **'Switch source'**
@@ -1676,31 +1676,31 @@ abstract class AppLocalizations {
   /// **'Looking on {source}…'**
   String spSearching(String source);
 
-  /// desktop: toast.srcNow
+  /// No description provided for @spNow.
   ///
   /// In en, this message translates to:
   /// **'Now playing from {source}'**
   String spNow(String source);
 
-  /// desktop: toast.trackNotOnSrc
+  /// No description provided for @spNotFound.
   ///
   /// In en, this message translates to:
   /// **'This track isn’t on {source}'**
   String spNotFound(String source);
 
-  /// desktop: toast.srcSwitchFail
+  /// No description provided for @spFailed.
   ///
   /// In en, this message translates to:
   /// **'The source didn’t answer — try again'**
   String get spFailed;
 
-  /// desktop: toast.srcUnavailable
+  /// No description provided for @spUnavailable.
   ///
   /// In en, this message translates to:
   /// **'This source is unavailable'**
   String get spUnavailable;
 
-  /// desktop: lib.plmenu.mergeWith
+  /// No description provided for @tlMergeWith.
   ///
   /// In en, this message translates to:
   /// **'Merge with…'**
@@ -1760,13 +1760,13 @@ abstract class AppLocalizations {
   /// **'“{name}” collected — {tracks}'**
   String mgMerged(String name, String tracks);
 
-  /// desktop: lib.plmenu.findDups
+  /// No description provided for @tlFindDups.
   ///
   /// In en, this message translates to:
   /// **'Find duplicates'**
   String get tlFindDups;
 
-  /// desktop: lib.dups.title
+  /// No description provided for @dupsTitle.
   ///
   /// In en, this message translates to:
   /// **'Duplicate tracks'**
@@ -1808,13 +1808,13 @@ abstract class AppLocalizations {
   /// **'No duplicates found'**
   String get dupsNone;
 
-  /// desktop: lib.dups.delAll
+  /// No description provided for @dupsDelAll.
   ///
   /// In en, this message translates to:
   /// **'Remove all'**
   String get dupsDelAll;
 
-  /// desktop: lib.dups.delGroup
+  /// No description provided for @dupsDelGroup.
   ///
   /// In en, this message translates to:
   /// **'Remove copies'**
@@ -1826,7 +1826,7 @@ abstract class AppLocalizations {
   /// **'{count, plural, one{{count} copy removed} other{{count} copies removed}}'**
   String dupsRemoved(int count);
 
-  /// desktop: lib.ctx.trackInfo
+  /// No description provided for @tiTitle.
   ///
   /// In en, this message translates to:
   /// **'Track info'**
@@ -1886,7 +1886,7 @@ abstract class AppLocalizations {
   /// **'File'**
   String get tiFile;
 
-  /// desktop: TrackInfoModal ti-credited — artist as credited by the source
+  /// artist as credited by the source
   ///
   /// In en, this message translates to:
   /// **'Credited'**
@@ -1904,31 +1904,31 @@ abstract class AppLocalizations {
   /// **'The source didn’t share anything else about this track'**
   String get tiNothing;
 
-  /// desktop: lib.ctx.toQueue
+  /// No description provided for @taToQueue.
   ///
   /// In en, this message translates to:
   /// **'To queue'**
   String get taToQueue;
 
-  /// desktop: lib.ctx.playNext
+  /// No description provided for @taPlayNext.
   ///
   /// In en, this message translates to:
   /// **'Play next'**
   String get taPlayNext;
 
-  /// desktop: player.aria.removeFromQueue
+  /// No description provided for @taRemoveFromQueue.
   ///
   /// In en, this message translates to:
   /// **'Remove from queue'**
   String get taRemoveFromQueue;
 
-  /// desktop: lib.ctx.removeFromPl
+  /// No description provided for @taRemoveFromPlaylist.
   ///
   /// In en, this message translates to:
   /// **'Remove from playlist'**
   String get taRemoveFromPlaylist;
 
-  /// desktop: lib.ctx.download — flyout with the two kinds of download
+  /// flyout with the two kinds of download
   ///
   /// In en, this message translates to:
   /// **'Download'**
@@ -1952,13 +1952,13 @@ abstract class AppLocalizations {
   /// **'Add to playlist'**
   String get taAddToPlaylist;
 
-  /// desktop: player.dl.offline
+  /// No description provided for @taListenOffline.
   ///
   /// In en, this message translates to:
   /// **'Listen offline'**
   String get taListenOffline;
 
-  /// desktop: player.dl.offlineRemove
+  /// No description provided for @taRemoveOffline.
   ///
   /// In en, this message translates to:
   /// **'Remove from offline'**
@@ -1988,7 +1988,7 @@ abstract class AppLocalizations {
   /// **'Added to library'**
   String get taAddedToLibrary;
 
-  /// desktop: search.tab.all
+  /// No description provided for @searchTabAll.
   ///
   /// In en, this message translates to:
   /// **'Everything'**
@@ -2000,19 +2000,19 @@ abstract class AppLocalizations {
   /// **'Search'**
   String get searchHint;
 
-  /// desktop: search.allSources
+  /// No description provided for @searchSourceAll.
   ///
   /// In en, this message translates to:
   /// **'All sources'**
   String get searchSourceAll;
 
-  /// desktop: search.recentQueries
+  /// No description provided for @searchRecent.
   ///
   /// In en, this message translates to:
   /// **'Recent searches'**
   String get searchRecent;
 
-  /// desktop: search.recentOpened
+  /// No description provided for @searchRecentOpened.
   ///
   /// In en, this message translates to:
   /// **'Recently opened'**
@@ -2054,7 +2054,7 @@ abstract class AppLocalizations {
   /// **'Nickname copied!'**
   String get profileNickCopied;
 
-  /// desktop: ach.title
+  /// No description provided for @profileAchievements.
   ///
   /// In en, this message translates to:
   /// **'Achievements'**
@@ -2132,7 +2132,7 @@ abstract class AppLocalizations {
   /// **'With us since {date}'**
   String profileSince(String date);
 
-  /// desktop: profile.sum.plays
+  /// No description provided for @profileSumPlays.
   ///
   /// In en, this message translates to:
   /// **'{count, plural, one{play} other{plays}}'**
@@ -2198,7 +2198,7 @@ abstract class AppLocalizations {
   /// **'Zoom  {percent}%'**
   String profileZoom(int percent);
 
-  /// desktop: ach.unlocked
+  /// No description provided for @achUnlockedToast.
   ///
   /// In en, this message translates to:
   /// **'🏅 Achievement unlocked: {name} — {tier}'**
@@ -2630,31 +2630,31 @@ abstract class AppLocalizations {
   /// **'👤 Top artists:'**
   String get statsShareTopArtists;
 
-  /// desktop: settings.nav.group.main
+  /// No description provided for @setGroupApp.
   ///
   /// In en, this message translates to:
   /// **'APP'**
   String get setGroupApp;
 
-  /// desktop: settings.nav.group.appearance
+  /// No description provided for @setGroupInterface.
   ///
   /// In en, this message translates to:
   /// **'INTERFACE'**
   String get setGroupInterface;
 
-  /// desktop: settings.nav.group.integrations
+  /// No description provided for @setGroupIntegrations.
   ///
   /// In en, this message translates to:
   /// **'INTEGRATIONS'**
   String get setGroupIntegrations;
 
-  /// desktop: settings.nav.system
+  /// No description provided for @setSystem.
   ///
   /// In en, this message translates to:
   /// **'System'**
   String get setSystem;
 
-  /// desktop: settings.nav.audio
+  /// No description provided for @setAudio.
   ///
   /// In en, this message translates to:
   /// **'Audio'**
@@ -2672,37 +2672,37 @@ abstract class AppLocalizations {
   /// **'Language'**
   String get setLanguage;
 
-  /// desktop: settings.nav.storage
+  /// No description provided for @setStorage.
   ///
   /// In en, this message translates to:
   /// **'Storage'**
   String get setStorage;
 
-  /// desktop: settings.nav.player
+  /// No description provided for @setPlayer.
   ///
   /// In en, this message translates to:
   /// **'Player'**
   String get setPlayer;
 
-  /// desktop: settings.nav.interface
+  /// No description provided for @setAppearance.
   ///
   /// In en, this message translates to:
   /// **'Appearance'**
   String get setAppearance;
 
-  /// desktop: settings.view.miniPlayer
+  /// No description provided for @setMiniPlayer.
   ///
   /// In en, this message translates to:
   /// **'Mini player'**
   String get setMiniPlayer;
 
-  /// desktop: settings.view.titleAlign — the group holding it
+  /// the group holding the title alignment
   ///
   /// In en, this message translates to:
   /// **'Title'**
   String get pvGroupTitle;
 
-  /// desktop: settings.view.titleAlign
+  /// No description provided for @pvTitleAlign.
   ///
   /// In en, this message translates to:
   /// **'Title alignment'**
@@ -2750,13 +2750,13 @@ abstract class AppLocalizations {
   /// **'Appearance'**
   String get pvGroupLook;
 
-  /// desktop: settings.view.style
+  /// No description provided for @pvStyleRow.
   ///
   /// In en, this message translates to:
   /// **'Player style'**
   String get pvStyleRow;
 
-  /// desktop: settings.view.style.standard
+  /// No description provided for @pvStyleStandard.
   ///
   /// In en, this message translates to:
   /// **'Standard'**
@@ -2768,7 +2768,7 @@ abstract class AppLocalizations {
   /// **'the classic look with a square cover'**
   String get pvStyleStandardSub;
 
-  /// desktop: settings.view.style.vinyl
+  /// No description provided for @pvStyleVinyl.
   ///
   /// In en, this message translates to:
   /// **'Vinyl'**
@@ -2828,31 +2828,31 @@ abstract class AppLocalizations {
   /// **'Slider'**
   String get pvGroupSlider;
 
-  /// desktop: settings.view.slider
+  /// No description provided for @pvSliderRow.
   ///
   /// In en, this message translates to:
   /// **'Slider type'**
   String get pvSliderRow;
 
-  /// desktop: settings.view.slider.default
+  /// No description provided for @pvSliderStandard.
   ///
   /// In en, this message translates to:
   /// **'Standard'**
   String get pvSliderStandard;
 
-  /// desktop: settings.view.slider.thin
+  /// No description provided for @pvSliderThin.
   ///
   /// In en, this message translates to:
   /// **'Thin'**
   String get pvSliderThin;
 
-  /// desktop: settings.view.slider.wave
+  /// No description provided for @pvSliderWave.
   ///
   /// In en, this message translates to:
   /// **'Wave'**
   String get pvSliderWave;
 
-  /// desktop: settings.view.lyrics
+  /// No description provided for @pvGroupLyrics.
   ///
   /// In en, this message translates to:
   /// **'Lyrics'**
@@ -2888,25 +2888,25 @@ abstract class AppLocalizations {
   /// **'Instead of the cover'**
   String get pvLyricsModeReplace;
 
-  /// desktop: settings.view.queueView — the group holding the queue view cards
+  /// the group holding the queue view cards
   ///
   /// In en, this message translates to:
   /// **'Queue'**
   String get pvGroupQueue;
 
-  /// desktop: settings.view.queueView.normal
+  /// No description provided for @pvQueueNormal.
   ///
   /// In en, this message translates to:
   /// **'Normal'**
   String get pvQueueNormal;
 
-  /// desktop: settings.view.queueView.extended
+  /// No description provided for @pvQueueExtended.
   ///
   /// In en, this message translates to:
   /// **'Extended'**
   String get pvQueueExtended;
 
-  /// toggle: show the «Up next» pill under the player slider; mobile-only, no desktop counterpart
+  /// toggle: show the «Up next» pill under the player slider
   ///
   /// In en, this message translates to:
   /// **'Next track'**
@@ -2918,7 +2918,7 @@ abstract class AppLocalizations {
   /// **'A pill under the slider with what plays next'**
   String get pvNextUpSub;
 
-  /// the group holding the full-screen player background row; mobile-only, no desktop counterpart
+  /// the group holding the full-screen player background row
   ///
   /// In en, this message translates to:
   /// **'Player background'**
@@ -2984,7 +2984,7 @@ abstract class AppLocalizations {
   /// **'No background'**
   String get pvBgNoneSub;
 
-  /// row shown under pvBgRow only while the player background is the track cover; mobile-only, no desktop counterpart
+  /// row shown under pvBgRow only while the player background is the track cover
   ///
   /// In en, this message translates to:
   /// **'Cover background effect'**
@@ -3032,7 +3032,7 @@ abstract class AppLocalizations {
   /// **'Controls'**
   String get pvGroupMiniControls;
 
-  /// desktop: settings.view.mpBg
+  /// No description provided for @pvMiniBgRow.
   ///
   /// In en, this message translates to:
   /// **'Background'**
@@ -3062,7 +3062,7 @@ abstract class AppLocalizations {
   /// **'The cover itself'**
   String get pvMiniBgCover;
 
-  /// desktop: settings.view.mpProgress
+  /// No description provided for @pvMiniProgressRow.
   ///
   /// In en, this message translates to:
   /// **'Progress indicators'**
@@ -3098,7 +3098,7 @@ abstract class AppLocalizations {
   /// **'Ring around the cover'**
   String get pvMiniProgressRing;
 
-  /// desktop: settings.view.mpCoverShape
+  /// No description provided for @pvMiniShapeRow.
   ///
   /// In en, this message translates to:
   /// **'Cover shape'**
@@ -3116,7 +3116,7 @@ abstract class AppLocalizations {
   /// **'Circle'**
   String get pvMiniShapeCircle;
 
-  /// desktop: settings.view.mpRounded
+  /// No description provided for @pvMiniRadiusRow.
   ///
   /// In en, this message translates to:
   /// **'Corner rounding'**
@@ -3146,7 +3146,7 @@ abstract class AppLocalizations {
   /// **'Pill'**
   String get pvMiniRadiusPill;
 
-  /// desktop: settings.view.mpHide
+  /// No description provided for @pvMiniButtonsRow.
   ///
   /// In en, this message translates to:
   /// **'Controls'**
@@ -3212,13 +3212,13 @@ abstract class AppLocalizations {
   /// **'Peeking at the edges'**
   String get pvMiniNeighborsOn;
 
-  /// desktop: lyrics.loading
+  /// No description provided for @lyricsLoading.
   ///
   /// In en, this message translates to:
   /// **'Loading lyrics…'**
   String get lyricsLoading;
 
-  /// desktop: lyrics.notFound
+  /// No description provided for @lyricsNotFound.
   ///
   /// In en, this message translates to:
   /// **'Lyrics not found'**
@@ -3278,7 +3278,7 @@ abstract class AppLocalizations {
   /// **'Add to queue'**
   String get swActQueue;
 
-  /// desktop: lib.ctx.playNext — insert right after the current track
+  /// insert right after the current track
   ///
   /// In en, this message translates to:
   /// **'Play next'**
@@ -3356,7 +3356,7 @@ abstract class AppLocalizations {
   /// **'English'**
   String get apLanguageEn;
 
-  /// desktop: settings.interface.cat.theme
+  /// No description provided for @apTheme.
   ///
   /// In en, this message translates to:
   /// **'THEME'**
@@ -3368,103 +3368,103 @@ abstract class AppLocalizations {
   /// **'Theme'**
   String get apThemeRow;
 
-  /// desktop: theme.ownName — title of the theme creator sheet
+  /// title of the theme creator sheet
   ///
   /// In en, this message translates to:
   /// **'Custom theme'**
   String get thNew;
 
-  /// desktop: theme.defaultName
+  /// No description provided for @thNameDefault.
   ///
   /// In en, this message translates to:
   /// **'My theme'**
   String get thNameDefault;
 
-  /// desktop: theme.slot.bg
+  /// No description provided for @thSlotBg.
   ///
   /// In en, this message translates to:
   /// **'Background'**
   String get thSlotBg;
 
-  /// desktop: theme.slot.card
+  /// No description provided for @thSlotCard.
   ///
   /// In en, this message translates to:
   /// **'Card'**
   String get thSlotCard;
 
-  /// desktop: theme.slot.accent
+  /// No description provided for @thSlotAccent.
   ///
   /// In en, this message translates to:
   /// **'Accent'**
   String get thSlotAccent;
 
-  /// desktop: theme.random
+  /// No description provided for @thRandom.
   ///
   /// In en, this message translates to:
   /// **'Random colors'**
   String get thRandom;
 
-  /// desktop: theme.toast.created
+  /// No description provided for @thCreated.
   ///
   /// In en, this message translates to:
   /// **'Theme “{name}” created'**
   String thCreated(String name);
 
-  /// desktop: theme.toast.deleted
+  /// No description provided for @thDeleted.
   ///
   /// In en, this message translates to:
   /// **'Preset deleted'**
   String get thDeleted;
 
-  /// desktop: theme.auto.name
+  /// No description provided for @thAutoName.
   ///
   /// In en, this message translates to:
   /// **'Auto theme'**
   String get thAutoName;
 
-  /// desktop: theme.auto.card — label of the auto theme card in the picker
+  /// label of the auto theme card in the picker
   ///
   /// In en, this message translates to:
   /// **'Match track cover'**
   String get thAutoCard;
 
-  /// desktop: settings.interface.autoAccent.title
+  /// No description provided for @apAutoAccent.
   ///
   /// In en, this message translates to:
   /// **'Auto accent'**
   String get apAutoAccent;
 
-  /// desktop: settings.interface.autoAccent.sub
+  /// No description provided for @apAutoAccentSub.
   ///
   /// In en, this message translates to:
   /// **'Accent color from the track cover'**
   String get apAutoAccentSub;
 
-  /// desktop: settings.interface.autoAccent.level
+  /// No description provided for @apAutoAccentLevel.
   ///
   /// In en, this message translates to:
   /// **'Accent brightness'**
   String get apAutoAccentLevel;
 
-  /// desktop: settings.custom.tabs.bg
+  /// No description provided for @apBgGroup.
   ///
   /// In en, this message translates to:
   /// **'BACKGROUND'**
   String get apBgGroup;
 
-  /// desktop: settings.interface.accentBadges.title
+  /// No description provided for @apBadgesTitle.
   ///
   /// In en, this message translates to:
   /// **'Badges in accent color'**
   String get apBadgesTitle;
 
-  /// desktop: settings.interface.accentBadges.sub
+  /// No description provided for @apBadgesSubtitle.
   ///
   /// In en, this message translates to:
   /// **'Source badges use their brand colors by default; enable to tint them with the accent'**
   String get apBadgesSubtitle;
 
-  /// phone only: the desktop app navigates from a sidebar
+  /// No description provided for @apNavBar.
   ///
   /// In en, this message translates to:
   /// **'TAB BAR'**
@@ -3572,13 +3572,13 @@ abstract class AppLocalizations {
   /// **'Active tab only'**
   String get apNavLabelsActive;
 
-  /// desktop: settings.interface.nav.homeLogo.title
+  /// No description provided for @apNavHomeLogoRow.
   ///
   /// In en, this message translates to:
   /// **'Logo instead of Home'**
   String get apNavHomeLogoRow;
 
-  /// desktop: settings.interface.nav.homeLogo.sub
+  /// No description provided for @apNavHomeLogoSub.
   ///
   /// In en, this message translates to:
   /// **'Show the Bloom mark in place of the Home tab icon'**
@@ -3644,7 +3644,7 @@ abstract class AppLocalizations {
   /// **'Running on your own client_id'**
   String get scStatusManual;
 
-  /// desktop: settings.sc.help.title
+  /// No description provided for @scGuideTitle.
   ///
   /// In en, this message translates to:
   /// **'How to get a client_id'**
@@ -3656,7 +3656,7 @@ abstract class AppLocalizations {
   /// **'Step-by-step guide — usually not needed'**
   String get scGuideSubtitle;
 
-  /// desktop: settings.sc.step1.* (**bold** marks what to look for)
+  /// **bold** marks what to look for
   ///
   /// In en, this message translates to:
   /// **'Open **soundcloud.com** in a desktop browser'**
@@ -3686,73 +3686,73 @@ abstract class AppLocalizations {
   /// **'Copy the **client_id** parameter from the URL'**
   String get scStep5;
 
-  /// desktop: settings.ym.checking
+  /// No description provided for @ymChecking.
   ///
   /// In en, this message translates to:
   /// **'Checking…'**
   String get ymChecking;
 
-  /// desktop: settings.ym.connected
+  /// No description provided for @ymConnected.
   ///
   /// In en, this message translates to:
   /// **'✓ Connected'**
   String get ymConnected;
 
-  /// desktop: settings.ym.notConnected
+  /// No description provided for @ymNotConnected.
   ///
   /// In en, this message translates to:
   /// **'Not connected'**
   String get ymNotConnected;
 
-  /// desktop: settings.ym.logout
+  /// No description provided for @ymLogout.
   ///
   /// In en, this message translates to:
   /// **'Log out'**
   String get ymLogout;
 
-  /// desktop: settings.ym.plus.active.a
+  /// No description provided for @ymPlusActiveA.
   ///
   /// In en, this message translates to:
   /// **'Yandex Plus active'**
   String get ymPlusActiveA;
 
-  /// desktop: settings.ym.plus.active.b
+  /// No description provided for @ymPlusActiveB.
   ///
   /// In en, this message translates to:
   /// **'— tracks play directly from Yandex.'**
   String get ymPlusActiveB;
 
-  /// desktop: settings.ym.plus.none.a
+  /// No description provided for @ymPlusNoneA.
   ///
   /// In en, this message translates to:
   /// **'No Plus'**
   String get ymPlusNoneA;
 
-  /// desktop: settings.ym.plus.none.b
+  /// No description provided for @ymPlusNoneB.
   ///
   /// In en, this message translates to:
   /// **'— some tracks may be unavailable for playback.'**
   String get ymPlusNoneB;
 
-  /// desktop: settings.ym.plus.unknown
+  /// No description provided for @ymPlusUnknown.
   ///
   /// In en, this message translates to:
   /// **'Subscription status unknown.'**
   String get ymPlusUnknown;
 
-  /// desktop: settings.ym.connect
+  /// No description provided for @ymConnect.
   ///
   /// In en, this message translates to:
   /// **'Connect Yandex Music'**
   String get ymConnect;
 
-  /// desktop: settings.ym.codePrompt.a
+  /// No description provided for @ymCodePromptA.
   ///
   /// In en, this message translates to:
   /// **'Open'**
   String get ymCodePromptA;
 
-  /// desktop: settings.ym.codePrompt.b
+  /// No description provided for @ymCodePromptB.
   ///
   /// In en, this message translates to:
   /// **'and enter the code:'**
@@ -3770,19 +3770,19 @@ abstract class AppLocalizations {
   /// **'Code copied'**
   String get ymCodeCopied;
 
-  /// desktop: ym.auth.gettingCode
+  /// No description provided for @ymGettingCode.
   ///
   /// In en, this message translates to:
   /// **'Getting code…'**
   String get ymGettingCode;
 
-  /// desktop: ym.auth.waiting
+  /// No description provided for @ymWaiting.
   ///
   /// In en, this message translates to:
   /// **'Waiting for confirmation…'**
   String get ymWaiting;
 
-  /// desktop: ym.auth.codeExpired
+  /// No description provided for @ymCodeExpired.
   ///
   /// In en, this message translates to:
   /// **'Code expired — press “Connect” again.'**
@@ -3848,19 +3848,19 @@ abstract class AppLocalizations {
   /// **'Without a Yandex Plus subscription some tracks won\'t play — those can be listened to from other platforms.'**
   String get ymGuideNote;
 
-  /// desktop: settings.ytm.status
+  /// No description provided for @ytmConfigured.
   ///
   /// In en, this message translates to:
   /// **'Configured'**
   String get ytmConfigured;
 
-  /// desktop: settings.ytm.noAuth
+  /// No description provided for @ytmNoAuth.
   ///
   /// In en, this message translates to:
   /// **'No authentication needed for now'**
   String get ytmNoAuth;
 
-  /// desktop: settings.ytm.help (без запасного пути через SoundCloud — в мобилке бриджа нет)
+  /// No description provided for @ytmHelp.
   ///
   /// In en, this message translates to:
   /// **'Search, pages and link import work without auth. Playback and downloads come straight from YouTube.'**
@@ -3896,19 +3896,19 @@ abstract class AppLocalizations {
   /// **'Playback and downloads come straight from **YouTube**'**
   String get ytmStep3;
 
-  /// desktop: settings.storage.offline
+  /// No description provided for @stOfflineCache.
   ///
   /// In en, this message translates to:
   /// **'Offline track cache'**
   String get stOfflineCache;
 
-  /// desktop: settings.storage.lyrics
+  /// No description provided for @stLyrics.
   ///
   /// In en, this message translates to:
   /// **'Lyrics'**
   String get stLyrics;
 
-  /// desktop: settings.storage.customization
+  /// No description provided for @stCustom.
   ///
   /// In en, this message translates to:
   /// **'Customization'**
@@ -3920,25 +3920,25 @@ abstract class AppLocalizations {
   /// **'Counting…'**
   String get stCounting;
 
-  /// desktop: settings.storage.used
+  /// No description provided for @stUsed.
   ///
   /// In en, this message translates to:
   /// **'Used'**
   String get stUsed;
 
-  /// desktop: settings.storage.manage
+  /// No description provided for @stManage.
   ///
   /// In en, this message translates to:
   /// **'Clear data'**
   String get stManage;
 
-  /// desktop: settings.storage.items
+  /// No description provided for @stItems.
   ///
   /// In en, this message translates to:
   /// **'{count, plural, one{{count} item} other{{count} items}}'**
   String stItems(int count);
 
-  /// desktop: settings.storage.of
+  /// No description provided for @stUsedOf.
   ///
   /// In en, this message translates to:
   /// **'{percent}% of {total}'**
@@ -4016,49 +4016,49 @@ abstract class AppLocalizations {
   /// **'Lyrics cache cleared'**
   String get stLyricsCleared;
 
-  /// desktop: the switch on the settings.storage.lyrics row
+  /// the switch on the lyrics storage row
   ///
   /// In en, this message translates to:
   /// **'Keep lyrics'**
   String get stLyricsKeep;
 
-  /// desktop: settings.storage.toast.staleRemoved
+  /// No description provided for @stStaleRemoved.
   ///
   /// In en, this message translates to:
   /// **'Stale entries removed: {count}'**
   String stStaleRemoved(int count);
 
-  /// desktop: settings.storage.ttl.never
+  /// No description provided for @stKeepNever.
   ///
   /// In en, this message translates to:
   /// **'No limit'**
   String get stKeepNever;
 
-  /// desktop: settings.storage.ttl.restart
+  /// No description provided for @stKeepRestart.
   ///
   /// In en, this message translates to:
   /// **'Until restart'**
   String get stKeepRestart;
 
-  /// desktop: settings.storage.ttl.24h
+  /// No description provided for @stKeepDay.
   ///
   /// In en, this message translates to:
   /// **'24 hours'**
   String get stKeepDay;
 
-  /// desktop: settings.storage.ttl.3d
+  /// No description provided for @stKeep3Days.
   ///
   /// In en, this message translates to:
   /// **'3 days'**
   String get stKeep3Days;
 
-  /// desktop: settings.storage.ttl.1w
+  /// No description provided for @stKeepWeek.
   ///
   /// In en, this message translates to:
   /// **'1 week'**
   String get stKeepWeek;
 
-  /// desktop: settings.storage.ttl.1m
+  /// No description provided for @stKeepMonth.
   ///
   /// In en, this message translates to:
   /// **'1 month'**
@@ -4100,37 +4100,37 @@ abstract class AppLocalizations {
   /// **'{value} GB'**
   String stGigabytes(String value);
 
-  /// desktop: settings.library.import.title, narrowed: the phone has no watched folders, only single files
+  /// single files only, no watched folders
   ///
   /// In en, this message translates to:
   /// **'Your own tracks'**
   String get ltImportTitle;
 
-  /// desktop: settings.library.import.desc
+  /// No description provided for @ltImportDesc.
   ///
   /// In en, this message translates to:
   /// **'What Bloom does with a file you add with + in All tracks. Tracks already added stay as they are.'**
   String get ltImportDesc;
 
-  /// desktop: settings.library.import.inPlace
+  /// No description provided for @ltImportInPlace.
   ///
   /// In en, this message translates to:
   /// **'In place'**
   String get ltImportInPlace;
 
-  /// desktop: settings.library.import.inPlaceTip
+  /// No description provided for @ltImportInPlaceTip.
   ///
   /// In en, this message translates to:
   /// **'The file stays where it is and takes no extra space. Delete or move it and the track stops playing.'**
   String get ltImportInPlaceTip;
 
-  /// desktop: settings.library.import.copy
+  /// No description provided for @ltImportCopy.
   ///
   /// In en, this message translates to:
   /// **'Into Bloom'**
   String get ltImportCopy;
 
-  /// desktop: settings.library.import.copyTip
+  /// No description provided for @ltImportCopyTip.
   ///
   /// In en, this message translates to:
   /// **'Bloom copies the file into itself. The track plays even if the original is gone, but the space is used twice.'**
@@ -4142,19 +4142,19 @@ abstract class AppLocalizations {
   /// **'{count, plural, one{Added {count} track} other{Added {count} tracks}}'**
   String ltAdded(int count);
 
-  /// desktop: lib.import.nothingAdded
+  /// No description provided for @ltNothingAdded.
   ///
   /// In en, this message translates to:
   /// **'Nothing to add: these tracks are already in the library, or the format is unsupported'**
   String get ltNothingAdded;
 
-  /// phone only: the desktop opens a native dialog from Rust and cannot fail this way
+  /// No description provided for @ltImportFailed.
   ///
   /// In en, this message translates to:
   /// **'Could not open the file picker'**
   String get ltImportFailed;
 
-  /// phone only: shown in the player when a content:// grant is gone or the copy was wiped
+  /// shown in the player when a content:// grant is gone or the copy was wiped
   ///
   /// In en, this message translates to:
   /// **'File is not available'**
@@ -4418,13 +4418,13 @@ abstract class AppLocalizations {
   /// **'Use the current track cover as the app background'**
   String get apCoverAsBgSub;
 
-  /// desktop: settings.interface.cat.transparency
+  /// No description provided for @apTrGroup.
   ///
   /// In en, this message translates to:
   /// **'TRANSPARENCY'**
   String get apTrGroup;
 
-  /// desktop: settings.interface.transparency.title
+  /// No description provided for @apTrTitle.
   ///
   /// In en, this message translates to:
   /// **'Transparency'**
@@ -4436,259 +4436,259 @@ abstract class AppLocalizations {
   /// **'On ({percent}%)'**
   String apTrOn(int percent);
 
-  /// desktop: settings.interface.transparency.off
+  /// No description provided for @apTrOff.
   ///
   /// In en, this message translates to:
   /// **'Off'**
   String get apTrOff;
 
-  /// desktop: settings.interface.transparency.blockOpacity, inverted — here it is how much shows through
+  /// how much shows through
   ///
   /// In en, this message translates to:
   /// **'Transparency level'**
   String get apTrLevel;
 
-  /// desktop: settings.interface.transparency.glassStr
+  /// No description provided for @apTrBrightness.
   ///
   /// In en, this message translates to:
   /// **'Glass brightness'**
   String get apTrBrightness;
 
-  /// desktop: settings.interface.transparency.glassBlur
+  /// No description provided for @apTrBlur.
   ///
   /// In en, this message translates to:
   /// **'Glass blur'**
   String get apTrBlur;
 
-  /// desktop: settings.interface.transparency.overlays.title
+  /// No description provided for @apTrOverlays.
   ///
   /// In en, this message translates to:
   /// **'Overlay transparency'**
   String get apTrOverlays;
 
-  /// desktop: settings.interface.transparency.overlays.sub — no side panels or context menus on the phone
+  /// No description provided for @apTrOverlaysSub.
   ///
   /// In en, this message translates to:
   /// **'Glass for sheets, menus and dialogs'**
   String get apTrOverlaysSub;
 
-  /// desktop: welcome.title
+  /// No description provided for @welcomeTitle.
   ///
   /// In en, this message translates to:
   /// **'Welcome'**
   String get welcomeTitle;
 
-  /// desktop: wave.title
+  /// No description provided for @waveTitle.
   ///
   /// In en, this message translates to:
   /// **'My Wave'**
   String get waveTitle;
 
-  /// desktop: wave.start
+  /// No description provided for @waveStart.
   ///
   /// In en, this message translates to:
   /// **'Start My Wave'**
   String get waveStart;
 
-  /// desktop: wave.pick.artist
+  /// No description provided for @wavePickArtist.
   ///
   /// In en, this message translates to:
   /// **'In the style of'**
   String get wavePickArtist;
 
-  /// desktop: wave.pick.track
+  /// No description provided for @wavePickTrack.
   ///
   /// In en, this message translates to:
   /// **'By track'**
   String get wavePickTrack;
 
-  /// desktop: wave.pick.now
+  /// No description provided for @wavePickNow.
   ///
   /// In en, this message translates to:
   /// **'Now playing'**
   String get wavePickNow;
 
-  /// desktop: wave.back
+  /// No description provided for @waveBack.
   ///
   /// In en, this message translates to:
   /// **'Back to the usual'**
   String get waveBack;
 
-  /// desktop: wave.shake
+  /// No description provided for @waveShake.
   ///
   /// In en, this message translates to:
   /// **'Shake up My Wave'**
   String get waveShake;
 
-  /// desktop: wave.label.track
+  /// No description provided for @waveLabelTrack.
   ///
   /// In en, this message translates to:
   /// **'Track wave'**
   String get waveLabelTrack;
 
-  /// desktop: wave.label.queue
+  /// No description provided for @waveLabelQueue.
   ///
   /// In en, this message translates to:
   /// **'Similar to queue'**
   String get waveLabelQueue;
 
-  /// desktop: wave.label.artist
+  /// No description provided for @waveLabelArtist.
   ///
   /// In en, this message translates to:
   /// **'Artist wave'**
   String get waveLabelArtist;
 
-  /// track menu item; desktop: wave.startFrom takes the name, here the menu already stands on the track
+  /// track menu item: the menu already stands on the track
   ///
   /// In en, this message translates to:
   /// **'Wave from this track'**
   String get waveFromTrack;
 
-  /// artist page action; desktop: wave.label.artist
+  /// artist page action
   ///
   /// In en, this message translates to:
   /// **'Artist wave'**
   String get waveFromArtist;
 
-  /// desktop: wave.dislikes
+  /// No description provided for @waveDislikes.
   ///
   /// In en, this message translates to:
   /// **'Dislikes'**
   String get waveDislikes;
 
-  /// desktop: wave.dislikesTitle
+  /// No description provided for @waveDislikesTitle.
   ///
   /// In en, this message translates to:
   /// **'Wave dislikes'**
   String get waveDislikesTitle;
 
-  /// desktop: wave.noDislikes
+  /// No description provided for @waveNoDislikes.
   ///
   /// In en, this message translates to:
   /// **'Nothing disliked yet'**
   String get waveNoDislikes;
 
-  /// desktop: wave.dislike
+  /// No description provided for @waveDislike.
   ///
   /// In en, this message translates to:
   /// **'Dislike'**
   String get waveDislike;
 
-  /// desktop: wave.unlike
+  /// No description provided for @waveUndislike.
   ///
   /// In en, this message translates to:
   /// **'Remove dislike'**
   String get waveUndislike;
 
-  /// desktop: wave.toast.added
+  /// No description provided for @waveToastDisliked.
   ///
   /// In en, this message translates to:
   /// **'Disliked — won’t suggest it in the wave again'**
   String get waveToastDisliked;
 
-  /// desktop: wave.toast.removed
+  /// No description provided for @waveToastUndisliked.
   ///
   /// In en, this message translates to:
   /// **'Dislike removed'**
   String get waveToastUndisliked;
 
-  /// desktop: wave.toast.stopped
+  /// No description provided for @waveToastStopped.
   ///
   /// In en, this message translates to:
   /// **'Wave stopped'**
   String get waveToastStopped;
 
-  /// desktop: wave.toast.notEnough
+  /// No description provided for @waveToastNotEnough.
   ///
   /// In en, this message translates to:
   /// **'Not enough data for My Wave — listen to some music first'**
   String get waveToastNotEnough;
 
-  /// desktop: wave.toast.noSeed
+  /// No description provided for @waveToastNoSeed.
   ///
   /// In en, this message translates to:
   /// **'Couldn’t find a track for the wave'**
   String get waveToastNoSeed;
 
-  /// desktop: wave.toast.queueEmpty
+  /// No description provided for @waveToastQueueEmpty.
   ///
   /// In en, this message translates to:
   /// **'Queue is empty'**
   String get waveToastQueueEmpty;
 
-  /// desktop: wave.toast.noSeedsInQueue
+  /// No description provided for @waveToastNoSeedsInQueue.
   ///
   /// In en, this message translates to:
   /// **'No platform tracks in the queue to find similar ones'**
   String get waveToastNoSeedsInQueue;
 
-  /// desktop: wave.toast.artistNoSeeds
+  /// No description provided for @waveToastArtistNoSeeds.
   ///
   /// In en, this message translates to:
   /// **'No tracks of this artist to build a wave from'**
   String get waveToastArtistNoSeeds;
 
-  /// desktop: wave.toast.noSimilar
+  /// No description provided for @waveToastNoSimilar.
   ///
   /// In en, this message translates to:
   /// **'The platform returned no similar tracks'**
   String get waveToastNoSimilar;
 
-  /// desktop: wave.toast.ymNoAuth
+  /// No description provided for @waveToastYmNoAuth.
   ///
   /// In en, this message translates to:
   /// **'Not signed in to Yandex Music (Settings → Platforms)'**
   String get waveToastYmNoAuth;
 
-  /// desktop: settings.lastfm.connectedAs, without the ✓ — the page shows it in green
+  /// without the ✓: the page shows it in green
   ///
   /// In en, this message translates to:
   /// **'Connected as {user}'**
   String lfmConnectedAs(String user);
 
-  /// desktop: settings.lastfm.notConnected
+  /// No description provided for @lfmNotConnected.
   ///
   /// In en, this message translates to:
   /// **'Not connected'**
   String get lfmNotConnected;
 
-  /// desktop: settings.lastfm.login
+  /// No description provided for @lfmLogin.
   ///
   /// In en, this message translates to:
   /// **'Sign in with Last.fm'**
   String get lfmLogin;
 
-  /// desktop: settings.lastfm.done
+  /// No description provided for @lfmDone.
   ///
   /// In en, this message translates to:
   /// **'Done — I confirmed'**
   String get lfmDone;
 
-  /// desktop: settings.lastfm.logout
+  /// No description provided for @lfmLogout.
   ///
   /// In en, this message translates to:
   /// **'Log out'**
   String get lfmLogout;
 
-  /// phone only: button that opens the key form (on desktop it lives under the “?” popup)
+  /// button that opens the key form
   ///
   /// In en, this message translates to:
   /// **'API keys'**
   String get lfmKeys;
 
-  /// desktop: settings.lastfm.saveKeys
+  /// No description provided for @lfmSaveKeys.
   ///
   /// In en, this message translates to:
   /// **'Save keys'**
   String get lfmSaveKeys;
 
-  /// desktop: settings.lastfm.scrobble
+  /// No description provided for @lfmScrobble.
   ///
   /// In en, this message translates to:
   /// **'Scrobbling'**
   String get lfmScrobble;
 
-  /// desktop: settings.lastfm.scrobble.sub
+  /// No description provided for @lfmScrobbleSub.
   ///
   /// In en, this message translates to:
   /// **'Count listened tracks on Last.fm'**
@@ -4700,13 +4700,13 @@ abstract class AppLocalizations {
   /// **'{count, plural, one{{count} scrobble waits to be sent} other{{count} scrobbles wait to be sent}}'**
   String lfmPending(int count);
 
-  /// desktop: settings.lastfm.nowPlaying.sub
+  /// No description provided for @lfmNowPlayingSub.
   ///
   /// In en, this message translates to:
   /// **'Update the “Now Playing” status'**
   String get lfmNowPlayingSub;
 
-  /// phone only: the guide sheet, built from the desktop “?” popup
+  /// the guide sheet
   ///
   /// In en, this message translates to:
   /// **'How to connect Last.fm'**
@@ -4748,67 +4748,67 @@ abstract class AppLocalizations {
   /// **'The key has to be your own — Bloom has no shared Last.fm key. Your password is never entered into the app.'**
   String get lfmGuideNote;
 
-  /// desktop: lastfm.oauth.gettingToken
+  /// No description provided for @lfmGettingToken.
   ///
   /// In en, this message translates to:
   /// **'Getting token…'**
   String get lfmGettingToken;
 
-  /// desktop: lastfm.oauth.confirmAccess
+  /// No description provided for @lfmConfirmAccess.
   ///
   /// In en, this message translates to:
   /// **'Confirm access on Last.fm, then press “Done”'**
   String get lfmConfirmAccess;
 
-  /// desktop: lastfm.oauth.checking
+  /// No description provided for @lfmChecking.
   ///
   /// In en, this message translates to:
   /// **'Checking…'**
   String get lfmChecking;
 
-  /// desktop: lastfm.oauth.notConfirmed
+  /// No description provided for @lfmNotConfirmed.
   ///
   /// In en, this message translates to:
   /// **'Not confirmed — try again'**
   String get lfmNotConfirmed;
 
-  /// desktop: lastfm.oauth.loginFirst
+  /// No description provided for @lfmLoginFirst.
   ///
   /// In en, this message translates to:
   /// **'Press “Sign in with Last.fm” first'**
   String get lfmLoginFirst;
 
-  /// desktop: lastfm.toast.saveApiKeyFirst + lastfm.toast.enterBothKeys, merged into one reason
+  /// No description provided for @lfmNeedKeys.
   ///
   /// In en, this message translates to:
   /// **'Save the API Key and Secret first'**
   String get lfmNeedKeys;
 
-  /// desktop: lastfm.oauth.networkError
+  /// No description provided for @lfmNetworkError.
   ///
   /// In en, this message translates to:
   /// **'Network error'**
   String get lfmNetworkError;
 
-  /// desktop: lastfm.oauth.error
+  /// No description provided for @lfmError.
   ///
   /// In en, this message translates to:
   /// **'Error: {msg}'**
   String lfmError(String msg);
 
-  /// desktop: lastfm.toast.connectedAs
+  /// No description provided for @lfmToastConnected.
   ///
   /// In en, this message translates to:
   /// **'Last.fm: connected as {name}'**
   String lfmToastConnected(String name);
 
-  /// desktop: lastfm.toast.disconnected
+  /// No description provided for @lfmToastDisconnected.
   ///
   /// In en, this message translates to:
   /// **'Last.fm: disconnected'**
   String get lfmToastDisconnected;
 
-  /// desktop: lastfm.toast.keysSaved
+  /// No description provided for @lfmToastKeysSaved.
   ///
   /// In en, this message translates to:
   /// **'Last.fm: keys saved'**
@@ -4832,19 +4832,19 @@ abstract class AppLocalizations {
   /// **'Next'**
   String get wrNext;
 
-  /// desktop: common.close — the button under the last slide
+  /// the button under the last slide
   ///
   /// In en, this message translates to:
   /// **'Close'**
   String get wrClose;
 
-  /// desktop: wrapped.watch — the pill on both entry cards
+  /// the pill on both entry cards
   ///
   /// In en, this message translates to:
   /// **'Watch'**
   String get wrWatch;
 
-  /// desktop: wrapped.new — badge on an entry nobody opened yet
+  /// badge on an entry nobody opened yet
   ///
   /// In en, this message translates to:
   /// **'New'**
@@ -4898,7 +4898,7 @@ abstract class AppLocalizations {
   /// **'Heard for the first time: {count}'**
   String wrCountsNewTracks(int count);
 
-  /// desktop: wrapped.artists.total — the note under the artists list
+  /// the note under the artists list
   ///
   /// In en, this message translates to:
   /// **'{count, plural, one{{count} artist in total} other{{count} artists in total}}'**
@@ -5084,7 +5084,7 @@ abstract class AppLocalizations {
   /// **'{count, plural, one{minute} other{minutes}}'**
   String wrMinutesWord(int count);
 
-  /// desktop: wrapped.n.times — the short form for tight spots: under an artist name the full «plays» eats the line
+  /// the short form for tight spots: under an artist name the full «plays» eats the line
   ///
   /// In en, this message translates to:
   /// **'{count, plural, one{{count} time} other{{count} times}}'**
@@ -5102,7 +5102,7 @@ abstract class AppLocalizations {
   /// **'{from} — {to}'**
   String wrHourRange(Object from, Object to);
 
-  /// desktop: settings.system.startup
+  /// No description provided for @sysStartup.
   ///
   /// In en, this message translates to:
   /// **'Startup'**
@@ -5138,19 +5138,19 @@ abstract class AppLocalizations {
   /// **'Automatically load similar tracks when there is no next one'**
   String get audAutoSimilarSub;
 
-  /// desktop: settings.system.autoplay.title
+  /// No description provided for @audAutoplayTitle.
   ///
   /// In en, this message translates to:
   /// **'Autoplay'**
   String get audAutoplayTitle;
 
-  /// desktop: settings.system.autoplay.sub
+  /// No description provided for @audAutoplaySub.
   ///
   /// In en, this message translates to:
   /// **'Restore the last session on launch and keep playing right away'**
   String get audAutoplaySub;
 
-  /// desktop: settings.about.version
+  /// No description provided for @aboutVersion.
   ///
   /// In en, this message translates to:
   /// **'Version'**
@@ -5174,19 +5174,19 @@ abstract class AppLocalizations {
   /// **'Version {v} installed'**
   String aboutInstalled(String v);
 
-  /// desktop: settings.about.uptodate
+  /// No description provided for @aboutUptodate.
   ///
   /// In en, this message translates to:
   /// **'You have the latest version'**
   String get aboutUptodate;
 
-  /// desktop: settings.about.available
+  /// No description provided for @aboutAvailable.
   ///
   /// In en, this message translates to:
   /// **'Version {v} is available'**
   String aboutAvailable(String v);
 
-  /// desktop: settings.about.error
+  /// No description provided for @aboutError.
   ///
   /// In en, this message translates to:
   /// **'Couldn’t check for updates'**
@@ -5204,13 +5204,13 @@ abstract class AppLocalizations {
   /// **'In this version'**
   String get updInThis;
 
-  /// desktop: update.whatsNew
+  /// No description provided for @updWhatsNew.
   ///
   /// In en, this message translates to:
   /// **'What’s new'**
   String get updWhatsNew;
 
-  /// desktop: update.history
+  /// No description provided for @updHistory.
   ///
   /// In en, this message translates to:
   /// **'Update history'**
@@ -5222,13 +5222,13 @@ abstract class AppLocalizations {
   /// **'Notes for previous versions'**
   String get updHistorySub;
 
-  /// desktop: update.historyEmpty
+  /// No description provided for @updHistoryEmpty.
   ///
   /// In en, this message translates to:
   /// **'There are no release notes yet'**
   String get updHistoryEmpty;
 
-  /// desktop: update.notesEmpty
+  /// No description provided for @updNotesEmpty.
   ///
   /// In en, this message translates to:
   /// **'No notes for this version'**
@@ -5240,13 +5240,13 @@ abstract class AppLocalizations {
   /// **'Couldn’t load the release notes'**
   String get updNotesError;
 
-  /// desktop: settings.system.importExport
+  /// No description provided for @sysImportExport.
   ///
   /// In en, this message translates to:
   /// **'Import/Export'**
   String get sysImportExport;
 
-  /// desktop: settings.system.exportAll.title
+  /// No description provided for @sysExportTitle.
   ///
   /// In en, this message translates to:
   /// **'Export all'**
@@ -5258,7 +5258,7 @@ abstract class AppLocalizations {
   /// **'Save every playlist to a .bloomplaylist file'**
   String get sysExportSub;
 
-  /// desktop: settings.system.export.filename
+  /// No description provided for @sysExportFilename.
   ///
   /// In en, this message translates to:
   /// **'bloom-playlists.bloomplaylist'**
@@ -5270,7 +5270,7 @@ abstract class AppLocalizations {
   /// **'File saved'**
   String get sysExported;
 
-  /// desktop: settings.system.import.title
+  /// No description provided for @sysImportTitle.
   ///
   /// In en, this message translates to:
   /// **'Import'**
@@ -5282,7 +5282,7 @@ abstract class AppLocalizations {
   /// **'Load playlists from a .bloomplaylist file'**
   String get sysImportSub;
 
-  /// desktop: settings.system.toast.importInvalid
+  /// No description provided for @sysImportInvalid.
   ///
   /// In en, this message translates to:
   /// **'Error: invalid file'**
@@ -5294,37 +5294,37 @@ abstract class AppLocalizations {
   /// **'No playlists found'**
   String get sysImportNoPlaylists;
 
-  /// desktop: lib.file.oldFormat
+  /// No description provided for @sysImportOld.
   ///
   /// In en, this message translates to:
   /// **'A file from the old Bloom — it can’t be read'**
   String get sysImportOld;
 
-  /// desktop: lib.file.newer
+  /// No description provided for @sysImportNewer.
   ///
   /// In en, this message translates to:
   /// **'A file from a newer Bloom — update the app'**
   String get sysImportNewer;
 
-  /// desktop: settings.system.toast.importedFull
+  /// No description provided for @sysImportedFull.
   ///
   /// In en, this message translates to:
   /// **'Imported: {pl} pl., {tr} tr.'**
   String sysImportedFull(int pl, int tr);
 
-  /// desktop: settings.system.toast.importedPlaylists
+  /// No description provided for @sysImportedPlaylists.
   ///
   /// In en, this message translates to:
   /// **'Playlists imported: {pl}'**
   String sysImportedPlaylists(int pl);
 
-  /// desktop: settings.system.logs
+  /// No description provided for @sysLogs.
   ///
   /// In en, this message translates to:
   /// **'Logs'**
   String get sysLogs;
 
-  /// desktop: settings.system.log.title
+  /// No description provided for @sysLogTitle.
   ///
   /// In en, this message translates to:
   /// **'Activity log'**
@@ -5342,7 +5342,7 @@ abstract class AppLocalizations {
   /// **'{count, plural, one{{count} entry} other{{count} entries}}'**
   String sysLogEntries(int count);
 
-  /// desktop: logs.copy
+  /// No description provided for @logsCopy.
   ///
   /// In en, this message translates to:
   /// **'Copy'**
@@ -5354,49 +5354,49 @@ abstract class AppLocalizations {
   /// **'Save'**
   String get logsSave;
 
-  /// desktop: settings.system.log.clear
+  /// No description provided for @logsClear.
   ///
   /// In en, this message translates to:
   /// **'Clear'**
   String get logsClear;
 
-  /// desktop: logs.copied
+  /// No description provided for @logsCopied.
   ///
   /// In en, this message translates to:
   /// **'Copied'**
   String get logsCopied;
 
-  /// desktop: settings.system.toast.logsSaved
+  /// No description provided for @logsSaved.
   ///
   /// In en, this message translates to:
   /// **'Logs saved'**
   String get logsSaved;
 
-  /// desktop: settings.system.toast.logsCleared
+  /// No description provided for @logsCleared.
   ///
   /// In en, this message translates to:
   /// **'Logs cleared'**
   String get logsCleared;
 
-  /// desktop: logs.empty
+  /// No description provided for @logsEmpty.
   ///
   /// In en, this message translates to:
   /// **'The log is empty'**
   String get logsEmpty;
 
-  /// desktop: settings.system.dangerZone
+  /// No description provided for @sysDangerZone.
   ///
   /// In en, this message translates to:
   /// **'Danger zone'**
   String get sysDangerZone;
 
-  /// desktop: settings.system.resetSettings.title
+  /// No description provided for @sysResetTitle.
   ///
   /// In en, this message translates to:
   /// **'Reset settings'**
   String get sysResetTitle;
 
-  /// desktop: settings.system.resetSettings.sub
+  /// No description provided for @sysResetSub.
   ///
   /// In en, this message translates to:
   /// **'Return the look and the options to their defaults'**
@@ -5408,7 +5408,7 @@ abstract class AppLocalizations {
   /// **'The look, the player, gestures, transparency and customization presets go back to their defaults. Your library, history, profile and platform logins stay.'**
   String get sysResetBody;
 
-  /// desktop: settings.system.resetSettings.btn
+  /// No description provided for @sysResetBtn.
   ///
   /// In en, this message translates to:
   /// **'Reset'**
@@ -5420,13 +5420,13 @@ abstract class AppLocalizations {
   /// **'Settings reset'**
   String get sysResetDone;
 
-  /// desktop: settings.system.hardReset.title
+  /// No description provided for @sysHardResetTitle.
   ///
   /// In en, this message translates to:
   /// **'Reset everything'**
   String get sysHardResetTitle;
 
-  /// desktop: settings.system.hardReset.sub
+  /// No description provided for @sysHardResetSub.
   ///
   /// In en, this message translates to:
   /// **'Delete tracks, playlists, history and settings'**
@@ -5438,7 +5438,7 @@ abstract class AppLocalizations {
   /// **'The library, playlists, history, profile, downloads and every setting will be erased for good. There will be nothing to bring them back with.'**
   String get sysHardResetBody;
 
-  /// desktop: settings.system.hardReset.btn
+  /// No description provided for @sysHardResetBtn.
   ///
   /// In en, this message translates to:
   /// **'Reset everything'**
@@ -5450,127 +5450,127 @@ abstract class AppLocalizations {
   /// **'Everything is erased'**
   String get sysHardResetDone;
 
-  /// desktop: toast.drmSkip
+  /// No description provided for @playerSkipDrm.
   ///
   /// In en, this message translates to:
   /// **'Track is DRM-protected — skipping'**
   String get playerSkipDrm;
 
-  /// desktop: toast.unavailableSkip
+  /// No description provided for @playerSkipUnavailable.
   ///
   /// In en, this message translates to:
   /// **'Track unavailable — skipping'**
   String get playerSkipUnavailable;
 
-  /// desktop: toast.noPlayable
+  /// No description provided for @playerNoPlayable.
   ///
   /// In en, this message translates to:
   /// **'No tracks available to play'**
   String get playerNoPlayable;
 
-  /// desktop: search.err.drm / sc.err.drm
+  /// No description provided for @errDrm.
   ///
   /// In en, this message translates to:
   /// **'Track is DRM-protected'**
   String get errDrm;
 
-  /// desktop: search.err.noStream / sc.err.noStream
+  /// No description provided for @errNoStream.
   ///
   /// In en, this message translates to:
   /// **'No stream data'**
   String get errNoStream;
 
-  /// desktop: search.err.trackNotFound
+  /// No description provided for @errTrackNotFound.
   ///
   /// In en, this message translates to:
   /// **'Track not found'**
   String get errTrackNotFound;
 
-  /// desktop: sc.err.unavailable
+  /// No description provided for @errScUnavailable.
   ///
   /// In en, this message translates to:
   /// **'SoundCloud is not responding'**
   String get errScUnavailable;
 
-  /// desktop: sc.err.forbidden
+  /// No description provided for @errScForbidden.
   ///
   /// In en, this message translates to:
   /// **'SoundCloud: access denied (401/403)'**
   String get errScForbidden;
 
-  /// desktop: sc.err.clientIdInvalid / sc.err.clientIdExpired
+  /// No description provided for @errScClientId.
   ///
   /// In en, this message translates to:
   /// **'SoundCloud: client_id is invalid or expired'**
   String get errScClientId;
 
-  /// desktop: ytm.err.noAudio
+  /// No description provided for @errYtmNoAudio.
   ///
   /// In en, this message translates to:
   /// **'YouTube returned no audio stream'**
   String get errYtmNoAudio;
 
-  /// desktop: ytm.err.network
+  /// No description provided for @errYtmNetwork.
   ///
   /// In en, this message translates to:
   /// **'YouTube is not responding'**
   String get errYtmNetwork;
 
-  /// desktop: settings.interface.cat.font
+  /// No description provided for @apFontCat.
   ///
   /// In en, this message translates to:
   /// **'FONT'**
   String get apFontCat;
 
-  /// desktop: settings.interface.font.title
+  /// No description provided for @apFontTitle.
   ///
   /// In en, this message translates to:
   /// **'Interface font'**
   String get apFontTitle;
 
-  /// desktop: settings.interface.font.desc
+  /// No description provided for @apFontDesc.
   ///
   /// In en, this message translates to:
   /// **'Choose a font for the whole app'**
   String get apFontDesc;
 
-  /// desktop: settings.interface.font.add
+  /// No description provided for @apFontAdd.
   ///
   /// In en, this message translates to:
   /// **'Upload your own font'**
   String get apFontAdd;
 
-  /// desktop: settings.interface.font.remove
+  /// No description provided for @apFontRemove.
   ///
   /// In en, this message translates to:
   /// **'Remove font'**
   String get apFontRemove;
 
-  /// desktop: settings.interface.font.toast.added
+  /// No description provided for @apFontAdded.
   ///
   /// In en, this message translates to:
   /// **'Fonts added: {n}'**
   String apFontAdded(int n);
 
-  /// desktop: settings.interface.font.toast.badFormat, without .woff/.woff2 — Flutter cannot read them
+  /// without .woff/.woff2: Flutter cannot read them
   ///
   /// In en, this message translates to:
   /// **'Only .ttf and .otf are supported'**
   String get apFontBadFormat;
 
-  /// desktop: settings.interface.font.toast.tooBig
+  /// No description provided for @apFontTooBig.
   ///
   /// In en, this message translates to:
   /// **'Font file is larger than {mb} MB'**
   String apFontTooBig(int mb);
 
-  /// desktop: settings.interface.font.toast.readErr
+  /// No description provided for @apFontReadErr.
   ///
   /// In en, this message translates to:
   /// **'Could not read the font file'**
   String get apFontReadErr;
 
-  /// phone only: Settings → Integrations row and page title — sync with Bloom on the computer (desktop: Integrations → Phone)
+  /// Settings → Integrations row and page title: sync with Bloom on the computer
   ///
   /// In en, this message translates to:
   /// **'Computer'**
