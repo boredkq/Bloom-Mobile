@@ -418,8 +418,8 @@ class _QueueGlyphPainter extends CustomPainter {
       old.extended != extended || old.color != color;
 }
 
-/// The style's preview: the playing track's real cover, the disc spinning with
-/// the same [VinylSpin]. With nothing playing, the usual placeholder.
+/// The style's preview: the playing track's real cover, dynamically adapting to
+/// Standard, Vinyl, Apple Music Aura, or Ivory Editorial.
 class _StylePreview extends ConsumerWidget {
   const _StylePreview({required this.style});
 
@@ -431,60 +431,204 @@ class _StylePreview extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
     final vinyl = style.isVinyl;
+    final aura = style.isAura;
+    final ivory = style.isIvory;
     final url = ref.watch(playerCoverProvider);
+
+    final targetRadius = vinyl
+        ? side / 2
+        : (ivory ? 8.0 : (aura ? 22.0 : side * 0.12));
 
     return SheetPanel(
       gap: 10,
       children: [
-        Padding(
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeOutCubic,
           padding: const EdgeInsets.symmetric(vertical: 22),
+          decoration: BoxDecoration(
+            gradient: aura
+                ? RadialGradient(
+                    center: const Alignment(0, -0.2),
+                    radius: 0.95,
+                    colors: [
+                      t.accent.withValues(alpha: 0.28),
+                      Colors.transparent,
+                    ],
+                  )
+                : null,
+          ),
           child: Column(
             children: [
               SizedBox(
-                width: side,
-                height: side,
-                child: Stack(
-                  children: [
-                    // The square rounds into a circle before the eyes: that shows
-                    // what the setting did. The player's radius is taken as a
-                    // share of the side, or a small picture looks sharper.
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0, end: vinyl ? 1 : 0),
-                      duration: const Duration(milliseconds: 320),
-                      curve: Curves.easeOutCubic,
-                      builder: (context, k, child) => ClipRRect(
-                        borderRadius: BorderRadius.circular(
-                          side * (0.11 + 0.39 * k),
-                        ),
-                        child: child,
-                      ),
-                      child: VinylSpin(
-                        enabled: vinyl,
-                        // Always spinning here: no sound in settings, and a still
-                        // circle would hide half of the mode.
-                        spinning: true,
-                        child: Cover(url: url, size: side, radius: 0),
-                      ),
+                width: side + 32,
+                height: side + 16,
+                child: Center(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 320),
+                    curve: Curves.easeOutCubic,
+                    width: side,
+                    height: side,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(targetRadius),
+                      boxShadow: aura
+                          ? [
+                              BoxShadow(
+                                color: t.accent.withValues(alpha: 0.65),
+                                blurRadius: 28,
+                                spreadRadius: 3,
+                                offset: const Offset(0, 6),
+                              ),
+                              BoxShadow(
+                                color: t.accent.withValues(alpha: 0.35),
+                                blurRadius: 48,
+                                spreadRadius: 8,
+                              ),
+                            ]
+                          : (ivory
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.35),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ]
+                              : (!vinyl
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.20),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ]
+                                  : null)),
+                      border: ivory
+                          ? Border.all(
+                              color: t.accent.withValues(alpha: 0.8),
+                              width: 1.5,
+                            )
+                          : null,
                     ),
-                    if (vinyl)
-                      Positioned.fill(
-                        child: Center(
-                          child: VinylLabel(size: side * VinylLabel.share),
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(targetRadius),
+                          child: VinylSpin(
+                            enabled: vinyl,
+                            spinning: true,
+                            child: Cover(url: url, size: side, radius: 0),
+                          ),
                         ),
-                      ),
-                  ],
+                        if (vinyl)
+                          Positioned.fill(
+                            child: Center(
+                              child: VinylLabel(size: side * VinylLabel.share),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 18),
-              // Bars, not text: the preview shows the layout, a live title would
-              // take all the attention.
-              _Bar(
-                width: 104,
-                height: 9,
-                color: t.text.withValues(alpha: 0.55),
-              ),
-              const SizedBox(height: 8),
-              _Bar(width: 68, height: 7, color: t.text.withValues(alpha: 0.24)),
+              if (ivory) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: t.accent.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(3),
+                    border: Border.all(
+                      color: t.accent.withValues(alpha: 0.5),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    'IVORY EDITORIAL',
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.6,
+                      color: t.accent,
+                    ),
+                  ),
+                ),
+                _Bar(
+                  width: 94,
+                  height: 6,
+                  color: t.text.withValues(alpha: 0.65),
+                  radius: 2,
+                ),
+                const SizedBox(height: 5),
+                _Bar(
+                  width: 56,
+                  height: 4,
+                  color: t.text.withValues(alpha: 0.30),
+                  radius: 1.5,
+                ),
+              ] else if (aura) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: t.accent.withValues(alpha: 0.20),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 5,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: t.accent,
+                          boxShadow: [
+                            BoxShadow(
+                              color: t.accent.withValues(alpha: 0.8),
+                              blurRadius: 4,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        'APPLE AURA',
+                        style: TextStyle(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.3,
+                          color: t.accent,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _Bar(
+                  width: 104,
+                  height: 9,
+                  color: t.accent.withValues(alpha: 0.70),
+                ),
+                const SizedBox(height: 8),
+                _Bar(
+                  width: 68,
+                  height: 7,
+                  color: t.text.withValues(alpha: 0.28),
+                ),
+              ] else ...[
+                _Bar(
+                  width: 104,
+                  height: 9,
+                  color: t.text.withValues(alpha: 0.55),
+                ),
+                const SizedBox(height: 8),
+                _Bar(
+                  width: 68,
+                  height: 7,
+                  color: t.text.withValues(alpha: 0.24),
+                ),
+              ],
             ],
           ),
         ),
@@ -495,11 +639,17 @@ class _StylePreview extends ConsumerWidget {
 
 /// A bar in place of a text line.
 class _Bar extends StatelessWidget {
-  const _Bar({required this.width, required this.height, required this.color});
+  const _Bar({
+    required this.width,
+    required this.height,
+    required this.color,
+    this.radius,
+  });
 
   final double width;
   final double height;
   final Color color;
+  final double? radius;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -507,7 +657,7 @@ class _Bar extends StatelessWidget {
     height: height,
     decoration: BoxDecoration(
       color: color,
-      borderRadius: BorderRadius.circular(height / 2),
+      borderRadius: BorderRadius.circular(radius ?? (height / 2)),
     ),
   );
 }

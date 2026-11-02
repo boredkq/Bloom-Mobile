@@ -17,6 +17,7 @@ import '../../../core/store/cover_store.dart';
 import '../../customization/custom_store.dart';
 import '../../customization/ui/app_background.dart';
 import '../player_bg_store.dart';
+import '../player_style_store.dart';
 
 /// Blur of the background cover, sigma. Large: colour patches should show, not
 /// the picture, or details turn to mush behind captions and buttons.
@@ -75,17 +76,61 @@ class PlayerBackdrop extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(playerBgProvider);
-    if (mode.isNone) return const SizedBox.shrink();
+    final style = ref.watch(playerStyleProvider);
     final cover = playerBgCover(ref);
+
+    // Living Apple Music Aura backdrop if mode is none but style is Aura.
+    if (mode.isNone && !style.isAura) return const SizedBox.shrink();
+
     // Own repaint boundary: under the background time ticks each second and the
     // progress bar creeps, and blurring and recomputing for each of their
     // frames isn't needed.
     return RepaintBoundary(
-      child: switch (mode) {
-        PlayerBg.cover => _CoverWash(cover: cover),
-        PlayerBg.app => const _AppWash(),
-        PlayerBg.color => _ColorWash(cover: cover),
-        PlayerBg.none => const SizedBox.shrink(),
+      child: (mode.isNone && style.isAura)
+          ? _AuraWash(cover: cover)
+          : switch (mode) {
+              PlayerBg.cover => _CoverWash(cover: cover),
+              PlayerBg.app => const _AppWash(),
+              PlayerBg.color => _ColorWash(cover: cover),
+              PlayerBg.none => const SizedBox.shrink(),
+            },
+    );
+  }
+}
+
+/// Living Apple Music Aura backdrop: an ambient radial aura mesh sampled from
+/// the track cover's dominant color.
+class _AuraWash extends ConsumerWidget {
+  const _AuraWash({required this.cover});
+
+  final String? cover;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.bloom;
+    final color = ref.watch(playerBgColorProvider(cover)).value ?? t.accent;
+
+    return TweenAnimationBuilder<Color?>(
+      tween: ColorTween(end: color),
+      duration: kPlayerBgFade,
+      curve: Curves.easeOut,
+      builder: (context, c, _) {
+        final tint = c ?? t.accent;
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: const Alignment(0, -0.4),
+              radius: 1.15,
+              colors: [
+                tint.withValues(alpha: 0.40),
+                Color.lerp(tint, t.bg, 0.65)!.withValues(alpha: 0.25),
+                t.bg,
+              ],
+              stops: const [0.0, 0.55, 1.0],
+            ),
+          ),
+          child: const SizedBox.expand(),
+        );
       },
     );
   }

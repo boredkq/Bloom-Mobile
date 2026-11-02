@@ -347,17 +347,32 @@ class _Cover extends ConsumerWidget {
                       ? [
                           BoxShadow(
                             color: t.accent.withValues(
-                              alpha: spinning ? 0.50 : 0.22,
+                              alpha: spinning ? 0.55 : 0.25,
                             ),
-                            blurRadius: spinning ? 34 : 16,
-                            spreadRadius: spinning ? 4 : 0,
+                            blurRadius: spinning ? 38 : 18,
+                            spreadRadius: spinning ? 5 : 0,
                             offset: const Offset(0, 8),
                           ),
+                          BoxShadow(
+                            color: t.accent.withValues(
+                              alpha: spinning ? 0.32 : 0.12,
+                            ),
+                            blurRadius: spinning ? 58 : 28,
+                            spreadRadius: spinning ? 10 : 2,
+                          ),
                         ]
-                      : null,
+                      : (ivory
+                          ? [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.35),
+                                blurRadius: 14,
+                                offset: const Offset(0, 5),
+                              ),
+                            ]
+                          : null),
                   border: ivory
                       ? Border.all(
-                          color: t.accent.withValues(alpha: 0.5),
+                          color: t.accent.withValues(alpha: 0.75),
                           width: 1.5,
                         )
                       : null,
@@ -375,11 +390,6 @@ class _Cover extends ConsumerWidget {
                         size: side,
                         radius: 0,
                       ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
                     ),
                   ),
                 ),
@@ -494,6 +504,19 @@ class _TitleBlock extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: align.cross,
           children: [
+            if (ref.watch(playerStyleProvider).isIvory)
+              Padding(
+                padding: pad + const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  'NOW PLAYING',
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    letterSpacing: 2.2,
+                    fontWeight: FontWeight.w700,
+                    color: t.accent.withValues(alpha: 0.8),
+                  ),
+                ),
+              ),
             // A tap on the title copies "Title — Artist". The trap is wider
             // than the row at the sides, not in height: vertical gaps are
             // exact, and extra pixels would move the block.
@@ -740,22 +763,40 @@ class _NextUpPill extends ConsumerWidget {
   }
 }
 
-/// The plate under the player's buttons, with softer corners than a card's.
-class _Plate extends StatelessWidget {
+/// The plate under the player's buttons, adapting to the chosen PlayerStyle.
+class _Plate extends ConsumerWidget {
   const _Plate({required this.padding, required this.child});
 
   final EdgeInsets padding;
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
+    final style = ref.watch(playerStyleProvider);
+    final ivory = style.isIvory;
+    final aura = style.isAura;
+
     return Container(
       padding: padding,
       decoration: BoxDecoration(
         color: t.ovlBg,
-        border: Border.all(color: t.ovlLine),
-        borderRadius: BorderRadius.circular(t.radius * 1.8),
+        border: Border.all(
+          color: ivory ? t.accent.withValues(alpha: 0.40) : t.ovlLine,
+          width: ivory ? 1.2 : 1.0,
+        ),
+        borderRadius: BorderRadius.circular(
+          ivory ? 10.0 : (aura ? t.radius * 2.0 : t.radius * 1.8),
+        ),
+        boxShadow: aura
+            ? [
+                BoxShadow(
+                  color: t.accent.withValues(alpha: 0.12),
+                  blurRadius: 20,
+                  spreadRadius: 1,
+                ),
+              ]
+            : null,
       ),
       child: child,
     );
