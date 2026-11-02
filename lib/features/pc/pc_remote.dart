@@ -119,7 +119,9 @@ class PcRemoteController extends Notifier<PcPlayback?> {
     _report?.cancel();
     _ownPlaying?.cancel();
     _ownPlaying = null;
-    if (state != null) logInfo('connect', 'телефон больше не пульт ПК');
+    if (state != null) {
+      logInfo('connect', 'the phone is no longer a remote for the computer');
+    }
     state = null;
   }
 
@@ -279,7 +281,7 @@ class PcRemoteController extends Notifier<PcPlayback?> {
       _sentQueue = own?.queue;
       _reported = own != null;
     } catch (e) {
-      logWarn('connect', 'своё состояние до ПК не дошло: $e');
+      logWarn('connect', 'my state did not reach the computer: $e');
     }
   }
 
@@ -304,7 +306,7 @@ class PcRemoteController extends Notifier<PcPlayback?> {
       _pinned = true;
       _pinnedAt = BloomDb.now();
       state = null;
-      logInfo('connect', 'звук — на телефон');
+      logInfo('connect', 'sound goes to the phone');
       await ref
           .read(playbackProvider.notifier)
           .resumeSession(
@@ -321,7 +323,7 @@ class PcRemoteController extends Notifier<PcPlayback?> {
           );
       await client.json('POST', '/v1/connect/took', body: const {});
     } catch (e) {
-      logWarn('connect', 'звук с ПК не забран: $e');
+      logWarn('connect', 'sound not taken from the computer: $e');
     }
   }
 
@@ -346,14 +348,14 @@ class PcRemoteController extends Notifier<PcPlayback?> {
           'source': own.source?.toJson() ?? const {},
         },
       );
-      logInfo('connect', 'звук — на ПК');
+      logInfo('connect', 'sound goes to the computer');
       _pinned = false;
       await playback.pauseLocal();
       _pc?.playing = true;
       _pc?.at = BloomDb.now();
       _decide();
     } catch (e) {
-      logWarn('connect', 'звук на ПК не ушёл: $e');
+      logWarn('connect', 'sound did not go to the computer: $e');
     }
   }
 
@@ -447,7 +449,7 @@ class PcRemoteController extends Notifier<PcPlayback?> {
         timeout: const Duration(seconds: 8),
       );
     } catch (e) {
-      logWarn('connect', '$path не дошло до ПК: $e');
+      logWarn('connect', '$path did not reach the computer: $e');
     }
   }
 
@@ -483,7 +485,7 @@ class PcRemoteController extends Notifier<PcPlayback?> {
       _pc = pc;
       _decide();
     } catch (e) {
-      logWarn('connect', 'состояние ПК не получено: $e');
+      logWarn('connect', 'the computer state did not arrive: $e');
     }
   }
 
@@ -522,7 +524,9 @@ class PcRemoteController extends Notifier<PcPlayback?> {
       _local();
       return;
     }
-    if (state == null) logInfo('connect', 'телефон — пульт ПК');
+    if (state == null) {
+      logInfo('connect', 'the phone is a remote for the computer');
+    }
     state = PcPlayback(
       playback: PlaybackState(
         queue: pc.tracks,

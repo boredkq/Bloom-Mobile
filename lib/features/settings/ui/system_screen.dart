@@ -119,7 +119,7 @@ Future<void> _exportAll(BuildContext context, WidgetRef ref) async {
     await buildExportAllBundle(lib),
   );
   if (!ok) return;
-  logInfo('transfer', 'выгружено плейлистов: ${lib.playlists.length}');
+  logInfo('transfer', 'playlists exported: ${lib.playlists.length}');
   messenger.toast(l.sysExported, kind: ToastKind.success);
 }
 

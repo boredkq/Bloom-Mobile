@@ -15,6 +15,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 
+import '../../core/providers/provider_text.dart';
 import 'models.dart';
 
 const String kApi = 'https://api.music.yandex.net';
@@ -227,8 +228,8 @@ YmRawTrack? parseTrack(Object? node) {
       : null;
   return YmRawTrack(
     id: id,
-    title: node['title'] as String? ?? kYmUntitled,
-    artist: names.isEmpty ? kYmUnknownArtist : names.join(', '),
+    title: node['title'] as String? ?? providerText.untitled,
+    artist: names.isEmpty ? providerText.unknownArtist : names.join(', '),
     artistId: (firstArtist is Map ? idStr(firstArtist['id']) : null) ?? '',
     artists: [
       if (artists is List)
@@ -388,7 +389,7 @@ Future<YmEntity> album(String id) async {
   }
   final artists = r['artists'];
   return YmEntity(
-    title: r['title'] as String? ?? 'Альбом',
+    title: r['title'] as String? ?? providerText.album,
     subtitle: _artistsJoin(r),
     cover: coverFrom(r),
     tracks: tracks,
@@ -451,7 +452,7 @@ Future<YmEntity> artist(String id) async {
   var popularTracks = _parseAll(pop, parseTrack, 30);
   final needsFetch =
       popularTracks.isEmpty ||
-      popularTracks.every((t) => t.title == kYmUntitled);
+      popularTracks.every((t) => t.title == providerText.untitled);
   if (needsFetch && pop is List) {
     final ids = [for (final item in pop) ?_trackIdOf(item)];
     final full = await tracksByIds(ids).catchError((_) => <YmRawTrack>[]);
@@ -466,8 +467,8 @@ Future<YmEntity> artist(String id) async {
   ).catchError((_) => const YmTracksPage());
 
   return YmEntity(
-    title: (a is Map ? a['name'] as String? : null) ?? 'Артист',
-    subtitle: 'Артист',
+    title: (a is Map ? a['name'] as String? : null) ?? providerText.artist,
+    subtitle: providerText.artist,
     cover: coverFrom(a),
     tracks: first.tracks,
     tracksNextPage: first.nextPage,
@@ -482,7 +483,7 @@ Future<YmEntity> artist(String id) async {
 /// Parses a playlist's `result` object, shared by both URL formats.
 YmEntity playlistEntity(Object? node) {
   if (node is! Map) {
-    return const YmEntity(title: 'Плейлист', subtitle: '', cover: '');
+    return YmEntity(title: providerText.playlist, subtitle: '', cover: '');
   }
   final rawTracks = node['tracks'];
   final tracks = <YmRawTrack>[];
@@ -501,9 +502,9 @@ YmEntity playlistEntity(Object? node) {
       (ownerNode is Map
           ? (ownerNode['name'] as String? ?? ownerNode['login'] as String?)
           : null) ??
-      'Плейлист';
+      providerText.playlist;
   return YmEntity(
-    title: node['title'] as String? ?? 'Плейлист',
+    title: node['title'] as String? ?? providerText.playlist,
     subtitle: owner,
     cover: coverFrom(node),
     tracks: tracks,

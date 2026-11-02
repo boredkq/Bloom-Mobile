@@ -197,18 +197,18 @@ class PcController extends Notifier<PcState> {
     } on PcUnreachable {
       state = state.copyWith(status: PcStatus.offline);
     } on PcPrintMismatch {
-      logWarn('sync', 'сертификат ПК не тот — нужно подключить заново');
+      logWarn('sync', 'wrong computer certificate: pair again');
       state = state.copyWith(status: PcStatus.repair);
     } on PcChanged {
-      logWarn('sync', 'по адресу ответил другой ПК — нужно подключить заново');
+      logWarn('sync', 'another computer answered at this address: pair again');
       state = state.copyWith(status: PcStatus.repair);
     } on PcHttpError catch (e) {
-      logWarn('sync', 'ПК ответил ${e.status} ${e.code}');
+      logWarn('sync', 'the computer answered ${e.status} ${e.code}');
       state = state.copyWith(
         status: e.status == 401 ? PcStatus.repair : PcStatus.failed,
       );
     } catch (e, st) {
-      logError('sync', 'круг с ПК сломался: $e', st);
+      logError('sync', 'a sync round with the computer broke: $e', st);
       state = state.copyWith(status: PcStatus.failed);
     }
     // Didn't get there: what was asked to follow goes with the next scheduled
@@ -250,7 +250,7 @@ class PcController extends Notifier<PcState> {
     _live = null;
     ref.read(pcRemoteProvider.notifier).detach();
     state = state.copyWith(live: false);
-    logInfo('sync', 'поток событий ПК оборвался: $why');
+    logInfo('sync', 'the computer event stream broke: $why');
     if (!_shown || !state.paired) return;
     _retry?.cancel();
     _retry = Timer(_kRetry, sync);
@@ -324,7 +324,7 @@ class PcController extends Notifier<PcState> {
     _db.set(_kLink, null);
     _db.set(_kAt, null);
     state = const PcState();
-    logInfo('sync', 'ПК забыт');
+    logInfo('sync', 'computer forgotten');
   }
 
   Future<PairResult> _pair(Future<PcLink?> Function() run) async {
@@ -333,7 +333,7 @@ class PcController extends Notifier<PcState> {
       if (link == null) return PairResult.unreachable;
       _db.set(_kLink, link.toJson());
       state = PcState(link: link, lastSync: state.lastSync, live: state.live);
-      logInfo('sync', 'сопряжён с ПК «${link.name}»');
+      logInfo('sync', 'paired with the computer "${link.name}"');
       unawaited(sync());
       return PairResult.ok;
     } on PcHttpError catch (e) {
@@ -346,7 +346,7 @@ class PcController extends Notifier<PcState> {
     } on PcPrintMismatch {
       return PairResult.notBloom;
     } catch (e) {
-      logWarn('sync', 'сопряжение не вышло: $e');
+      logWarn('sync', 'pairing failed: $e');
       return PairResult.failed;
     }
   }

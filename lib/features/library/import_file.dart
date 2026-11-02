@@ -41,7 +41,10 @@ Future<ImportResult?> importPlaylistFile(
     messenger.toast(l.sysImportNoPlaylists, kind: ToastKind.warn);
     return null;
   }
-  logInfo('transfer', 'импорт: ${result.playlists} пл., ${result.tracks} тр.');
+  logInfo(
+    'transfer',
+    'import: ${result.playlists} playlists, ${result.tracks} tracks',
+  );
   messenger.toast(
     result.tracks > 0
         ? l.sysImportedFull(result.playlists, result.tracks)

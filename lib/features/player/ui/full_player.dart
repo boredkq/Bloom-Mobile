@@ -85,7 +85,7 @@ class _FullPlayerBodyState extends ConsumerState<FullPlayerBody> {
     // Opening the player goes to the log, straight to disk. The screen is
     // heavy: blurs, the cover's shadow, animations. If the process dies
     // silently here rather than on sound, this line is the only clue.
-    logInfo('ui', 'открыт полноэкранный плеер', now: true);
+    logInfo('ui', 'full-screen player opened', now: true);
   }
 
   @override

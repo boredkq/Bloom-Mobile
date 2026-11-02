@@ -8,10 +8,10 @@
 library;
 
 enum MusicSource {
-  local('local', 'local', 'Локальные', 'lf:'),
+  local('local', 'local', 'Local', 'lf:'),
   soundcloud('soundcloud', 'sc', 'SoundCloud', 'sc:'),
   ytmusic('ytmusic', 'ytm', 'YouTube Music', 'ytm:'),
-  yandex('yandex', 'ym', 'Яндекс.Музыка', 'ym:');
+  yandex('yandex', 'ym', 'Yandex Music', 'ym:');
 
   const MusicSource(this.id, this.code, this.label, this.prefix);
 

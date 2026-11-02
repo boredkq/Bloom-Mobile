@@ -4,7 +4,7 @@
 ///
 /// The note stands on the page: reading it is what the page is for. It's the
 /// found version's, or the installed one's if the manifest lacks it. The APK
-/// isn't installed from here (see `about_store.dart`): the release page opens
+/// isn't installed from here: the release page opens
 /// in the browser.
 library;
 
@@ -249,7 +249,7 @@ class _NoteBlockState extends ConsumerState<_NoteBlock> {
           );
         }
         if (snapshot.hasError) {
-          logWarn('notes', 'заметка не загрузилась: ${snapshot.error}');
+          logWarn('notes', 'note did not load: ${snapshot.error}');
           return Text(l.updNotesError, style: theme.bodyMedium);
         }
         final note = snapshot.data;

@@ -15,8 +15,7 @@ import 'app_dirs.dart';
 
 /// File store, overridden in `main()` with the real one (in tests, memory).
 final jsonStoreProvider = Provider<JsonStore>(
-  (ref) =>
-      throw UnimplementedError('jsonStoreProvider должен быть переопределён'),
+  (ref) => throw UnimplementedError('jsonStoreProvider must be overridden'),
 );
 
 const Duration _saveDelay = Duration(milliseconds: 400);

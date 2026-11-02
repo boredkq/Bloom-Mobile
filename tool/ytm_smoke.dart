@@ -13,7 +13,7 @@ library;
 import 'dart:io';
 
 import 'package:bloom/core/providers/music_provider.dart';
-import 'package:bloom/providers/ytmusic/models.dart';
+import 'package:bloom/core/providers/provider_text.dart';
 import 'package:bloom/providers/ytmusic/ytm_provider.dart';
 import 'package:bloom/providers/ytmusic/ytmusic.dart' as ytm;
 
@@ -34,37 +34,37 @@ Future<void> main(List<String> args) async {
   // thing to break and the first to look for in the output.
   final visitor = await ytm.visitorData();
   print(
-    'visitorData: ${visitor.isEmpty ? "ПУСТО" : "${visitor.length} симв."}',
+    'visitorData: ${visitor.isEmpty ? "EMPTY" : "${visitor.length} chars"}',
   );
-  check(visitor.isNotEmpty, 'visitorData не получен');
+  check(visitor.isNotEmpty, 'no visitorData received');
 
   // ---- Search: sections don't mix ----
   final found = await provider.search(query);
   print(
-    'search «$query»: ${found.tracks.length} треков, '
-    '${found.artists.length} артистов, ${found.albums.length} альбомов, '
-    '${found.playlists.length} плейлистов',
+    'search "$query": ${found.tracks.length} tracks, '
+    '${found.artists.length} artists, ${found.albums.length} albums, '
+    '${found.playlists.length} playlists',
   );
-  check(found.tracks.isNotEmpty, 'треков нет');
-  check(found.artists.isNotEmpty, 'артистов нет');
+  check(found.tracks.isNotEmpty, 'no tracks');
+  check(found.artists.isNotEmpty, 'no artists');
   check(
     found.tracks.every((t) => t.duration > Duration.zero),
-    'у трека нулевая длительность',
+    'a track has zero duration',
   );
   check(
-    found.tracks.every((t) => t.artist != kYtmUnknownArtist),
-    'трек без исполнителя (метка типа съела артиста)',
+    found.tracks.every((t) => t.artist != providerText.unknownArtist),
+    'a track with no artist (the type label ate it)',
   );
   // What I search for must land in its own section (catches mixed-up results).
   check(
     found.artists.any(
       (a) => a.name.toLowerCase().contains(query.toLowerCase()),
     ),
-    'искомого артиста нет среди артистов',
+    'the searched artist is not among the artists',
   );
 
   final track = found.tracks.first;
-  print('первый трек: ${track.artist} — ${track.name} (${track.duration})');
+  print('first track: ${track.artist} — ${track.name} (${track.duration})');
 
   // ---- Paging: pages without duplicates ----
   if (found.tracksHasMore) {
@@ -72,58 +72,58 @@ Future<void> main(List<String> args) async {
     final ids = found.tracks.map((t) => t.id).toSet();
     final dupes = (more?.tracks ?? const []).where((t) => ids.contains(t.id));
     print(
-      'loadMoreTracks: +${more?.tracks.length} треков, дублей ${dupes.length}',
+      'loadMoreTracks: +${more?.tracks.length} tracks, ${dupes.length} duplicates',
     );
-    check((more?.tracks.length ?? 0) > 0, 'догрузка ничего не дала');
-    check(dupes.isEmpty, 'догрузка вернула уже показанные треки');
+    check((more?.tracks.length ?? 0) > 0, 'loading more gave nothing');
+    check(dupes.isEmpty, 'loading more returned tracks already shown');
   } else {
-    print('loadMoreTracks: продолжения нет (вкладка Songs не ответила)');
+    print('loadMoreTracks: no continuation (the Songs tab did not answer)');
   }
 
   // ---- Artist: full lists, bio, similar ----
   final artistId = found.artists.first.id;
   final page = await provider.getArtist(artistId);
   print(
-    'getArtist ${page?.artist.name}: ${page?.topTracks.length} популярных, '
-    '${page?.tracks.length} треков, ${page?.albums.length} релизов, '
-    '${page?.similarArtists.length} похожих',
+    'getArtist ${page?.artist.name}: ${page?.topTracks.length} popular, '
+    '${page?.tracks.length} tracks, ${page?.albums.length} releases, '
+    '${page?.similarArtists.length} similar',
   );
-  check((page?.topTracks.length ?? 0) > 0, 'у артиста нет популярных треков');
+  check((page?.topTracks.length ?? 0) > 0, 'the artist has no popular tracks');
   check(
     (page?.tracks.length ?? 0) > (page?.topTracks.length ?? 0),
-    'полный список песен не длиннее шапки — сломалась кнопка «ещё»',
+    'the full song list is no longer than the header: the more button broke',
   );
-  check((page?.albums.length ?? 0) > 0, 'у артиста нет релизов');
+  check((page?.albums.length ?? 0) > 0, 'the artist has no releases');
 
   // ---- Album: the artist in rows, the count ----
   if (page != null && page.albums.isNotEmpty) {
     final album = await provider.getAlbum(page.albums.first.id);
     print(
-      'getAlbum ${album?.playlist.title}: ${album?.tracks.length} треков, '
-      'год ${album?.playlist.year}',
+      'getAlbum ${album?.playlist.title}: ${album?.tracks.length} tracks, '
+      'year ${album?.playlist.year}',
     );
-    check((album?.tracks.length ?? 0) > 0, 'альбом без треков');
+    check((album?.tracks.length ?? 0) > 0, 'an album with no tracks');
     check(
       album?.tracks.every((t) => t.artist.isNotEmpty) ?? false,
-      'в строках альбома пустой исполнитель',
+      'album rows have an empty artist',
     );
-    check((album?.playlist.cover ?? '').isNotEmpty, 'у альбома нет обложки');
+    check((album?.playlist.cover ?? '').isNotEmpty, 'the album has no cover');
   }
 
   // ---- Playlist ----
   if (found.playlists.isNotEmpty) {
     final pl = await provider.getPlaylist(found.playlists.first.id);
-    print('getPlaylist ${pl?.playlist.title}: ${pl?.tracks.length} треков');
-    check((pl?.tracks.length ?? 0) > 0, 'плейлист без треков');
+    print('getPlaylist ${pl?.playlist.title}: ${pl?.tracks.length} tracks');
+    check((pl?.tracks.length ?? 0) > 0, 'a playlist with no tracks');
   }
   // Only official playlists have a track count, but where it exists it must
   // make sense.
   final counted = found.playlists.where((p) => p.trackCount != null);
-  print('плейлистов со счётчиком: ${counted.length}');
-  check(counted.every((p) => p.trackCount! > 0), 'счётчик треков нулевой');
+  print('playlists with a count: ${counted.length}');
+  check(counted.every((p) => p.trackCount! > 0), 'the track count is zero');
   check(
     found.albums.every((a) => a.trackCount == null || a.trackCount! > 0),
-    'у альбома счётчик нулём',
+    'an album has a zero count',
   );
 
   // ---- Links ----
@@ -131,13 +131,13 @@ Future<void> main(List<String> args) async {
   final byWatch = await provider.resolveUrl(
     'https://music.youtube.com/watch?v=$videoId',
   );
-  check(byWatch is ResolvedTrack, 'ссылка watch?v= не дала трек');
+  check(byWatch is ResolvedTrack, 'a watch?v= link gave no track');
 
   final browseId = parseYtmArtistId(artistId)!;
   final byChannel = await provider.resolveUrl(
     'https://www.youtube.com/channel/$browseId',
   );
-  check(byChannel is ResolvedArtist, 'ссылка на канал не дала артиста');
+  check(byChannel is ResolvedArtist, 'a channel link gave no artist');
 
   if (page != null && page.albums.isNotEmpty) {
     final byBrowse = await provider.resolveUrl(
@@ -145,40 +145,43 @@ Future<void> main(List<String> args) async {
     );
     check(
       byBrowse is ResolvedSet && byBrowse.playlist.isAlbum,
-      'ссылка /browse/MPRE не дала альбом',
+      'a /browse/MPRE link gave no album',
     );
   }
 
   // A foreign link goes on through the registry, with no request to YouTube.
   check(
     await provider.resolveUrl('https://soundcloud.com/x/y') == null,
-    'YTM взялся резолвить чужую ссылку',
+    'YouTube Music tried to resolve a foreign link',
   );
 
   // ---- Stream: the link is playable and really gives bytes ----
   final stream = await provider.resolveStream(track);
   print('resolveStream: ${stream?.url.substring(0, 60)}…');
-  check(stream != null && stream.url.startsWith('http'), 'нет ссылки на поток');
+  check(stream != null && stream.url.startsWith('http'), 'no stream link');
   if (stream != null) {
     final client = HttpClient();
     final req = await client.getUrl(Uri.parse(stream.url));
     req.headers.set('Range', 'bytes=0-4095');
     final resp = await req.close();
     final bytes = await resp.fold<int>(0, (n, chunk) => n + chunk.length);
-    print('байт получено: $bytes (HTTP ${resp.statusCode})');
+    print('bytes received: $bytes (HTTP ${resp.statusCode})');
     check(
       resp.statusCode == 206 || resp.statusCode == 200,
-      'CDN не отдал байты',
+      'the CDN gave no bytes',
     );
-    check(bytes > 0, 'поток пуст');
+    check(bytes > 0, 'the stream is empty');
     client.close();
   }
 
   // ---- Re-resolving a track by id (for recents after a restart) ----
   final again = await provider.resolveTrackById(track.id);
   print('resolveTrackById: ${again?.name}');
-  check(again != null && again.name.isNotEmpty, 'трек по id не восстановился');
+  check(
+    again != null && again.name.isNotEmpty,
+    'the track did not come back by id',
+  );
 
-  print(failed == 0 ? '\nВСЁ ОК' : '\nПРОВАЛОВ: $failed');
+  print(failed == 0 ? '\nALL OK' : '\nFAILED: $failed');
   exit(failed == 0 ? 0 : 1);
 }

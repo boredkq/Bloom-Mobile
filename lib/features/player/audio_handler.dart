@@ -64,7 +64,7 @@ class BloomAudioHandler extends BaseAudioHandler with SeekHandler {
       onError: (Object e, StackTrace st) {
         // The only place that hears about a failure of ExoPlayer itself; the
         // rest of the app just sees a track not starting.
-        logError('player', 'сбой воспроизведения', e);
+        logError('player', 'playback failure', e);
         _broadcast(player.playbackEvent);
       },
     );
@@ -95,7 +95,7 @@ class BloomAudioHandler extends BaseAudioHandler with SeekHandler {
     final report = '${player.processingState.name} · playing=$playing';
     if (report != _lastReported) {
       _lastReported = report;
-      logInfo('player', 'плеер: $report', now: true);
+      logInfo('player', 'player: $report', now: true);
     }
     playbackState.add(
       playbackState.value.copyWith(

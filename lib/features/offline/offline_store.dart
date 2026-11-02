@@ -389,7 +389,7 @@ Future<File> fetchAudioToFile({
           // Mid-download that would duplicate what's written, so only at the
           // start.
           if (received > 0) {
-            throw const HttpException('CDN потерял позицию в файле');
+            throw const HttpException('the CDN lost the file position');
           }
           total = response.contentLength;
           done = true;
@@ -400,7 +400,7 @@ Future<File> fetchAudioToFile({
           // so the end may match a chunk boundary.
           break;
         } else {
-          throw HttpException('CDN ответил ${response.statusCode}');
+          throw HttpException('the CDN answered ${response.statusCode}');
         }
 
         final before = received;
@@ -437,11 +437,11 @@ Future<File> fetchAudioToFile({
 
     if (received == 0) {
       await part.delete();
-      throw const HttpException('пустой ответ');
+      throw const HttpException('empty answer');
     }
     if (total != null && received < total) {
       await part.delete();
-      throw const HttpException('файл доехал не целиком');
+      throw const HttpException('the file arrived incomplete');
     }
 
     final name = _uniqueName(dir, base, ext ?? 'mp3');

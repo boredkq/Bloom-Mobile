@@ -320,6 +320,12 @@ abstract class AppLocalizations {
   /// **'Unknown'**
   String get commonUnknownArtist;
 
+  /// No description provided for @commonUntitled.
+  ///
+  /// In en, this message translates to:
+  /// **'Untitled'**
+  String get commonUntitled;
+
   /// No description provided for @commonOfflineBadge.
   ///
   /// In en, this message translates to:
@@ -4967,7 +4973,7 @@ abstract class AppLocalizations {
   /// tracks is an already-formatted wrTracksN string
   ///
   /// In en, this message translates to:
-  /// **'{tracks} В· {date}'**
+  /// **'{tracks} · {date}'**
   String wrHabitsRecordValue(Object tracks, Object date);
 
   /// No description provided for @wrShareKicker.
@@ -5297,7 +5303,7 @@ abstract class AppLocalizations {
   /// No description provided for @sysImportOld.
   ///
   /// In en, this message translates to:
-  /// **'A file from the old Bloom — it can’t be read'**
+  /// **'This file format isn’t supported'**
   String get sysImportOld;
 
   /// No description provided for @sysImportNewer.

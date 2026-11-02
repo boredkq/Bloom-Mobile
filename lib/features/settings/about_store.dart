@@ -108,7 +108,7 @@ class AboutController extends Notifier<AboutState> {
         releaseUrl: url,
       );
     } catch (e) {
-      logWarn('update', 'проверка обновлений не удалась: $e');
+      logWarn('update', 'update check failed: $e');
       state = state.copyWith(phase: UpdatePhase.error);
     }
   }

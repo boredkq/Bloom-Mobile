@@ -23,7 +23,7 @@ const List<BloomFont> kBuiltinFonts = [
 /// Replaced fonts: a saved choice moves over instead of resetting.
 const Map<String, String> _replaced = {'Monocraft': 'Minecraft Rus'};
 
-/// First family of a CSS font-family value, unquoted, so
+/// First family of a font stack, unquoted, so
 /// `'Inter',system-ui,sans-serif` is recognised too.
 String firstFontFamily(String value) =>
     value.split(',').first.trim().replaceAll(RegExp(r'''^['"]|['"]$'''), '');

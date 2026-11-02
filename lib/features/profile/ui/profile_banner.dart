@@ -51,7 +51,7 @@ class ProfileBannerFill extends ConsumerWidget {
         to = Color.lerp(from, t.blockColor, 0.65)!;
         angle = 135;
     }
-    // The CSS angle counts clockwise from up, while [Alignment]'s Y axis points
+    // The angle counts clockwise from up, while [Alignment]'s Y axis points
     // down: hence the flipped signs.
     final a = angle * pi / 180;
     final dx = sin(a);

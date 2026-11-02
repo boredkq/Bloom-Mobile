@@ -10,6 +10,7 @@ import 'dart:io';
 
 import '../../core/entities/entities.dart';
 import '../../core/providers/music_provider.dart';
+import '../../core/providers/provider_text.dart';
 import 'models.dart';
 import 'ytmusic.dart' as ytm;
 
@@ -41,8 +42,8 @@ String? _blankToNull(String s) => s.isEmpty ? null : s;
 
 Track trackFromYtm(YtmRawTrack t) => Track(
   id: ytmTrackId(t.id),
-  name: t.title.isEmpty ? kYtmUntitled : t.title,
-  artist: t.artist.isEmpty ? kYtmUnknownArtist : t.artist,
+  name: t.title.isEmpty ? providerText.untitled : t.title,
+  artist: t.artist.isEmpty ? providerText.unknownArtist : t.artist,
   duration: t.duration,
   cover: _blankToNull(t.cover),
   source: MusicSource.ytmusic,
@@ -58,14 +59,14 @@ Track trackFromYtm(YtmRawTrack t) => Track(
 
 Artist artistFromYtm(YtmRawArtist a) => Artist(
   id: ytmArtistId(a.id),
-  name: a.name.isEmpty ? kYtmUnknownArtist : a.name,
+  name: a.name.isEmpty ? providerText.unknownArtist : a.name,
   avatar: _blankToNull(a.cover),
   source: MusicSource.ytmusic,
 );
 
 Playlist albumFromYtm(YtmRawAlbum a) => Playlist(
   id: ytmAlbumId(a.id),
-  title: a.title.isEmpty ? kYtmAlbumFallback : a.title,
+  title: a.title.isEmpty ? providerText.album : a.title,
   cover: _blankToNull(a.cover),
   ownerName: _blankToNull(a.artist),
   year: _blankToNull(a.year),
@@ -77,7 +78,7 @@ Playlist albumFromYtm(YtmRawAlbum a) => Playlist(
 
 Playlist playlistFromYtm(YtmRawPlaylist p) => Playlist(
   id: ytmPlaylistId(p.id),
-  title: p.title.isEmpty ? kYtmPlaylistFallback : p.title,
+  title: p.title.isEmpty ? providerText.playlist : p.title,
   cover: _blankToNull(p.cover),
   // The count isn't filled with zero: YTM gives it only on its own playlists,
   // and 0 for unknown looks like an empty playlist.
@@ -165,7 +166,7 @@ class YtmusicProvider extends MusicProvider {
         return ResolvedArtist(
           Artist(
             id: ytmArtistId(r.id),
-            name: e.title.isEmpty ? kYtmUnknownArtist : e.title,
+            name: e.title.isEmpty ? providerText.unknownArtist : e.title,
             avatar: _blankToNull(e.cover),
             source: MusicSource.ytmusic,
           ),
@@ -196,7 +197,7 @@ class YtmusicProvider extends MusicProvider {
     return ArtistPageData(
       artist: Artist(
         id: id,
-        name: e.title.isEmpty ? kYtmUnknownArtist : e.title,
+        name: e.title.isEmpty ? providerText.unknownArtist : e.title,
         avatar: _blankToNull(e.cover),
         description: _blankToNull(e.description),
         source: MusicSource.ytmusic,
@@ -217,7 +218,7 @@ class YtmusicProvider extends MusicProvider {
     return SetContent(
       playlist: Playlist(
         id: id,
-        title: e.title.isEmpty ? kYtmAlbumFallback : e.title,
+        title: e.title.isEmpty ? providerText.album : e.title,
         cover: _blankToNull(e.cover),
         ownerName: _blankToNull(e.subtitle),
         ownerAvatar: _blankToNull(e.ownerAvatar),
@@ -240,7 +241,7 @@ class YtmusicProvider extends MusicProvider {
     return SetContent(
       playlist: Playlist(
         id: id,
-        title: e.title.isEmpty ? kYtmPlaylistFallback : e.title,
+        title: e.title.isEmpty ? providerText.playlist : e.title,
         cover: _blankToNull(e.cover),
         ownerName: _blankToNull(e.subtitle),
         ownerAvatar: _blankToNull(e.ownerAvatar),

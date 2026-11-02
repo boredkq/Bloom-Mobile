@@ -120,6 +120,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonUnknownArtist => 'Unknown';
 
   @override
+  String get commonUntitled => 'Untitled';
+
+  @override
   String get commonOfflineBadge => 'offline';
 
   @override
@@ -2845,7 +2848,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String wrHabitsRecordValue(Object tracks, Object date) {
-    return '$tracks В· $date';
+    return '$tracks · $date';
   }
 
   @override
@@ -3117,7 +3120,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sysImportNoPlaylists => 'No playlists found';
 
   @override
-  String get sysImportOld => 'A file from the old Bloom — it can’t be read';
+  String get sysImportOld => 'This file format isn’t supported';
 
   @override
   String get sysImportNewer => 'A file from a newer Bloom — update the app';

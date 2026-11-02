@@ -133,7 +133,7 @@ Future<SyncRound> syncWithPc(PcLink link, BloomDb db, String coversDir) async {
   }
   logInfo(
     'sync',
-    'с ПК «${link.name}»: отдал $sent, взял $took · ${touched.join(' ')}',
+    'with the computer "${link.name}": sent $sent, took $took · ${touched.join(' ')}',
   );
   return SyncRound(
     link: link,

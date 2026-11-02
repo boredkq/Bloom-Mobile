@@ -133,7 +133,7 @@ Future<void> initUserFonts(JsonStore store) async {
         await File('${dir.path}/${font.file}').readAsBytes(),
       );
     } catch (e) {
-      logWarn('fonts', 'шрифт «${font.name}» не поднялся: $e');
+      logWarn('fonts', 'font "${font.name}" did not load: $e');
     }
   }
 }
@@ -187,7 +187,7 @@ class UserFontsController extends Notifier<List<UserFont>> {
       try {
         bytes = await picked.read();
       } catch (e) {
-        logWarn('fonts', 'не прочитался ${picked.name}: $e');
+        logWarn('fonts', 'could not read ${picked.name}: $e');
         errors.add(FontAddError.read);
         continue;
       }
@@ -225,7 +225,7 @@ class UserFontsController extends Notifier<List<UserFont>> {
         await File('${dir.path}/${font.file}').writeAsBytes(bytes, flush: true);
         await _register(font.family, bytes);
       } catch (e) {
-        logWarn('fonts', 'не сохранился ${picked.name}: $e');
+        logWarn('fonts', 'could not save ${picked.name}: $e');
         errors.add(FontAddError.read);
         continue;
       }
@@ -256,7 +256,7 @@ class UserFontsController extends Notifier<List<UserFont>> {
       final file = File('${dir.path}/${font.file}');
       if (file.existsSync()) await file.delete();
     } catch (e) {
-      logWarn('fonts', 'файл шрифта «${font.name}» не удалился: $e');
+      logWarn('fonts', 'font file "${font.name}" not deleted: $e');
     }
   }
 }

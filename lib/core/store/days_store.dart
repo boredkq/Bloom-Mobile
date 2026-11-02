@@ -137,7 +137,7 @@ class UsageTracker with WidgetsBindingObserver {
     // log: otherwise a log can't tell "the user left" from "the system killed
     // it", and diagnosing launch failures relies on that. On leaving active I
     // flush the log: the background process gets killed with no warning.
-    logInfo('app', 'состояние: ${state.name}');
+    logInfo('app', 'state: ${state.name}');
     if (state != AppLifecycleState.resumed) {
       unawaited(BloomLog.instance.flush());
     }

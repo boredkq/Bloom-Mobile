@@ -4,8 +4,8 @@
 library;
 
 import '../../core/entities/entities.dart';
-import '../../core/l10n/l10n.dart';
 import '../../core/providers/music_provider.dart';
+import '../../core/providers/provider_text.dart';
 import 'models.dart';
 import 'sc_sources.dart' show similarTracks, waveRelated, waveStation;
 import 'soundcloud.dart' as sc;
@@ -83,7 +83,7 @@ Playlist setFromSc(ScRawPlaylist p, {required bool isAlbum}) => Playlist(
 /// linked as a source, named in the language of the moment.
 Playlist scLikesOf(Artist account) => Playlist(
   id: 'sc:likes:${scNumericId(account.id)}',
-  title: globalL10n?.iuLikesTitle(account.name) ?? 'Likes · ${account.name}',
+  title: providerText.likesOf(account.name),
   cover: account.avatar,
   ownerName: account.name,
   ownerAvatar: account.avatar,

@@ -10,10 +10,7 @@ class YmException implements Exception {
   String toString() => code;
 }
 
-/// Field defaults, used only when the platform gave no field at all. They reach
-/// the UI so rarely that they get no translation keys.
-const String kYmUntitled = 'Без названия';
-const String kYmUnknownArtist = 'Неизвестен';
+/// A field default for what the platform left out.
 const String kYmDash = '—';
 
 class YmRawTrack {

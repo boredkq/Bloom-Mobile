@@ -11,13 +11,6 @@ class YtmException implements Exception {
   String toString() => code;
 }
 
-/// Field defaults, the same words as Yandex's. Duplicated rather than imported
-/// from the neighbour: platforms don't know about each other.
-const String kYtmUntitled = 'Без названия';
-const String kYtmUnknownArtist = 'Неизвестен';
-const String kYtmAlbumFallback = 'Альбом';
-const String kYtmPlaylistFallback = 'Плейлист';
-
 class YtmRawTrack {
   /// videoId YouTube.
   final String id;

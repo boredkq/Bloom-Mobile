@@ -189,7 +189,7 @@ class SessionStore extends Notifier<SessionData?> {
         }
       });
     } on Object catch (e) {
-      logWarn('session', 'очередь не записана: $e');
+      logWarn('session', 'queue not written: $e');
     }
     return _db.value('SELECT count(*) FROM session_tracks WHERE list = ?', [
           'queue',

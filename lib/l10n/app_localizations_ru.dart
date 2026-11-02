@@ -120,6 +120,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get commonUnknownArtist => 'Неизвестный';
 
   @override
+  String get commonUntitled => 'Без названия';
+
+  @override
   String get commonOfflineBadge => 'офлайн';
 
   @override
@@ -3182,7 +3185,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sysImportNoPlaylists => 'Плейлисты не найдены';
 
   @override
-  String get sysImportOld => 'Файл из старой версии Bloom — его не прочитать';
+  String get sysImportOld => 'Этот формат файла не поддерживается';
 
   @override
   String get sysImportNewer =>

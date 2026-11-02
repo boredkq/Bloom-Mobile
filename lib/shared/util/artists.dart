@@ -3,7 +3,6 @@ library;
 
 import '../../core/entities/entities.dart';
 import '../../l10n/app_localizations.dart';
-import '../../providers/yandex/models.dart' show kYmUnknownArtist;
 
 /// The track's artists with their pages, where known. One rule for every place
 /// that opens an artist or shows their avatars.
@@ -38,11 +37,11 @@ String? ownArtistAvatar(Track t) {
 }
 
 /// "Unknown artist" in every language and the platforms' own stand-in: not a
-/// name. Every language, as the line is written into the track at import.
+/// name. Every language, as the line is written into the track when it's saved.
 final Set<String> _unknown = {
   for (final locale in AppLocalizations.supportedLocales)
     lookupAppLocalizations(locale).commonUnknownArtist,
-  kYmUnknownArtist,
+  'Неизвестен',
 };
 
 /// `,` `&` `×` and feat./ft./vs. Not "and", "x", "и": they are part of too many

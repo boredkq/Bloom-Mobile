@@ -42,18 +42,18 @@ Future<void> main() async {
   // The log opens first, so it catches what happens to the other stores.
   await BloomLog.instance.open();
   _catchUnhandled();
-  logInfo('app', 'запуск · ${Platform.operatingSystemVersion}');
+  logInfo('app', 'start · ${Platform.operatingSystemVersion}');
   // The store is read BEFORE the first frame, or the library and theme blink
   // empty and screens need loading states.
   final store = await _step('bloom.json', JsonStore.open);
   // The listener's data: library, play log, follows.
   final db = await _step('bloom.db', BloomDb.open);
   // User fonts before the first frame, or the chosen one flashes as Inter.
-  await _step('шрифты', () => initUserFonts(store));
-  await _step('обложки', initCoverStore);
-  await _step('кеш обложек', initCoverCache);
-  await _step('офлайн', initOfflineStore);
-  await _step('свои треки', initLocalTracks);
+  await _step('fonts', () => initUserFonts(store));
+  await _step('covers', initCoverStore);
+  await _step('cover cache', initCoverCache);
+  await _step('offline', initOfflineStore);
+  await _step('own tracks', initLocalTracks);
 
   // The notification channel is created BEFORE the first frame, so there's no
   // `context.l` yet and I load translations from the delegate directly, in the
@@ -63,7 +63,7 @@ Future<void> main() async {
   // it updates on the next launch.
   final saved = readSavedLocale(store.readMap('settings'));
   final l10n = await _step(
-    'переводы',
+    'translations',
     () => AppLocalizations.delegate.load(
       saved ??
           basicLocaleListResolution(
@@ -86,7 +86,7 @@ Future<void> main() async {
     ],
   );
   container.read(playbackProvider);
-  // Kept lyrics past their time go at launch, as `Lyrics::start` on the PC.
+  // Kept lyrics past their time go at launch.
   container
       .read(lyricsCacheProvider)
       .start(container.read(lyricsPrefsProvider).keep);
@@ -135,7 +135,7 @@ Future<void> main() async {
   WidgetsBinding.instance.addPostFrameCallback((_) {
     // Pairs with every `→` above: launch reached the screen. A log without this
     // line means stuck on the splash, and the last step with no `✓` says where.
-    logInfo('boot', '✓ первый кадр');
+    logInfo('boot', '✓ first frame');
     _restoreSession(container);
   });
 }
@@ -149,7 +149,7 @@ Future<T> _step<T>(String name, Future<T> Function() run) async {
   final started = DateTime.now();
   final result = await run();
   final took = DateTime.now().difference(started).inMilliseconds;
-  logInfo('boot', '✓ $name ($took мс)');
+  logInfo('boot', '✓ $name ($took ms)');
   return result;
 }
 
@@ -175,7 +175,7 @@ BloomAudioHandler _buildAudioHandler() => _audioHandler ??= BloomAudioHandler();
 Future<BloomAudioHandler> _initAudioService(AppLocalizations l10n) async {
   try {
     return await _step(
-      'аудио-служба',
+      'audio service',
       () => AudioService.init(
         builder: _buildAudioHandler,
         config: AudioServiceConfig(
@@ -193,11 +193,11 @@ Future<BloomAudioHandler> _initAudioService(AppLocalizations l10n) async {
   } on TimeoutException {
     logError(
       'boot',
-      'аудио-служба не ответила за ${_audioInitTimeout.inSeconds} с — '
-          'запускаюсь без неё (шторки и фона не будет)',
+      'the audio service did not answer in ${_audioInitTimeout.inSeconds} s: '
+          'starting without it (no notification or background play)',
     );
   } catch (e) {
-    logError('boot', 'аудио-служба не поднялась — запускаюсь без неё', e);
+    logError('boot', 'the audio service did not start: starting without it', e);
   }
   return _buildAudioHandler();
 }
@@ -228,8 +228,8 @@ void _restoreSession(ProviderContainer container) {
   if (data == null || data.cleared) return;
   logInfo(
     'player',
-    'восстанавливаю сессию: ${data.track.name} '
-        '(${settings.autoplay ? 'играем' : 'на паузе'})',
+    'restoring the session: ${data.track.name} '
+        '(${settings.autoplay ? 'playing' : 'paused'})',
   );
   unawaited(
     container

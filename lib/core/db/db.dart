@@ -250,7 +250,7 @@ const List<List<String>> kMigrations = [
 
 /// Opened at launch and overridden in `main()`; in tests, [BloomDb.memory].
 final dbProvider = Provider<BloomDb>(
-  (ref) => throw UnimplementedError('dbProvider должен быть переопределён'),
+  (ref) => throw UnimplementedError('dbProvider must be overridden'),
 );
 
 class BloomDb {

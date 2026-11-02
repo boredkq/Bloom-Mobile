@@ -67,7 +67,7 @@ Future<void> switchTrackPlatform(
     );
     found = results.tracks;
   } catch (e) {
-    logWarn('library', 'смена площадки: поиск на ${target.id} не удался: $e');
+    logWarn('library', 'platform switch: search on ${target.id} failed: $e');
     messenger.toast(l10n.spFailed, kind: ToastKind.error);
     return;
   }

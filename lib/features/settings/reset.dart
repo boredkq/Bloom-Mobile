@@ -111,7 +111,7 @@ Future<void> resetSettings(WidgetRef ref) async {
   // rebuilt store would be left without its timer until restart.
   ref.read(plAutoProvider.notifier).startScheduler();
 
-  logInfo('reset', 'настройки сброшены к умолчаниям');
+  logInfo('reset', 'settings reset to defaults');
 }
 
 /// No way back: call only after confirming.
@@ -172,7 +172,7 @@ Future<void> hardReset(WidgetRef ref) async {
   ref.read(pcProvider.notifier).unpair();
   await resetSettings(ref);
 
-  logInfo('reset', 'полный сброс: библиотека, настройки и файлы стёрты');
+  logInfo('reset', 'full reset: library, settings and files erased');
 }
 
 Future<void> _wipeDirs(List<String> names) async {
@@ -185,7 +185,7 @@ Future<void> _wipeDirs(List<String> names) async {
     } catch (e) {
       // A busy file or no rights: the other folders still go, and litter isn't
       // worth failing in the middle of a reset.
-      logWarn('reset', 'каталог $name не стёрся: $e');
+      logWarn('reset', 'folder $name not erased: $e');
     }
   }
 }

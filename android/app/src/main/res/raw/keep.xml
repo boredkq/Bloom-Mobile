@@ -1,32 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    Что здесь и почему: иконку уведомления плеера нельзя выбрасывать при сборке
-    релиза.
-
-    В релизе Gradle прогоняет ресурсы через оптимизатор, и тот выкидывает всё,
-    на что нет ссылок из кода и разметки. На `ic_stat_bloom` таких ссылок нет
-    ВООБЩЕ: имя иконки едет из Dart строкой (`androidNotificationIcon` в
-    `main.dart`), а audio_service ищет её по этому имени уже во время работы,
-    через `getIdentifier`. Оптимизатор такую связь не видит и иконку удаляет.
-
-    Чем это кончается: при первом же включении трека служба пытается повесить
-    шторку, у уведомления нет маленькой иконки — и система убивает процесс
-    целиком:
-
-        java.lang.IllegalArgumentException:
-            Invalid notification (no valid small icon)
-
-    То есть приложение вылетает ровно в момент нажатия «играть», и только в
-    релизной сборке — в отладочной ресурсы не режутся, поэтому на эмуляторе
-    ничего подобного не видно.
-
-    Держать иконку тут — стандартный для Android способ сказать «этот ресурс
-    нужен, хотя ссылок на него не видно».
-
-    С сердечками в шторке (`ic_notif_heart*`) та же история: имя едет из Dart
-    строкой (`audio_handler.dart`). Без них релиз не падает, но кнопка лайка
-    осталась бы без иконки.
--->
+<!-- The optimizer drops resources nothing references at release, and the
+     notification icon has no references: Dart passes its name as a string and
+     the audio plugin looks it up at runtime. Without it the first notification
+     kills the process with "Invalid notification (no valid small icon)", on
+     pressing play and only in release builds, since debug builds keep all
+     resources. The heart icons are named the same way; without them the like
+     button would lose its icon. -->
 <resources
     xmlns:tools="http://schemas.android.com/tools"
     tools:keep="@drawable/ic_stat_bloom,@drawable/ic_notif_heart,@drawable/ic_notif_heart_filled" />

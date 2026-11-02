@@ -139,7 +139,7 @@ class UpdateNotes {
       return fresh != null && fresh.hasContent ? fresh : null;
     } catch (e) {
       // Offline after an update is fine: it opens by hand.
-      logWarn('notes', 'заметка к версии $version не загрузилась: $e');
+      logWarn('notes', 'note for version $version did not load: $e');
       return null;
     }
   }
@@ -160,7 +160,7 @@ class UpdateNotes {
     try {
       final body = await _ref.read(notesFetchProvider)(_manifestUrl);
       final decoded = jsonDecode(body);
-      if (decoded is! Map) throw const FormatException('не JSON-объект');
+      if (decoded is! Map) throw const FormatException('not a JSON object');
       final manifest = decoded.cast<String, dynamic>();
       // The last run's version lives in the same key: not overwritten.
       final data = Map<String, dynamic>.from(_store.readMap(kNotesCacheKey))
@@ -170,7 +170,7 @@ class UpdateNotes {
     } catch (e) {
       final cached = _store.readMap(kNotesCacheKey)['manifest'];
       if (cached is Map) {
-        logWarn('notes', 'манифест не скачался ($e), берём кэш');
+        logWarn('notes', 'manifest did not download ($e), using the cache');
         return cached.cast<String, dynamic>();
       }
       rethrow;

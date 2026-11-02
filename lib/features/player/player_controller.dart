@@ -46,7 +46,7 @@ enum PlayerRepeat { off, all, one }
 
 /// Overridden in `main()` with the instance from `AudioService.init`.
 final audioHandlerProvider = Provider<BloomAudioHandler>((ref) {
-  throw StateError('audioHandlerProvider не переопределён в main()');
+  throw StateError('audioHandlerProvider is not overridden in main()');
 });
 
 final audioPlayerProvider = Provider<AudioPlayer>(
@@ -816,10 +816,10 @@ class PlaybackController extends Notifier<PlaybackState>
     // hears, and the log's last line shows what didn't survive: the link,
     // opening the stream or playback itself.
     final startedAt = DateTime.now();
-    var via = 'стрим';
+    var via = 'stream';
     logInfo(
       'player',
-      'ставлю: ${track.name} · ${track.source.name}',
+      'loading: ${track.name} · ${track.source.name}',
       now: true,
     );
     try {
@@ -827,10 +827,10 @@ class PlaybackController extends Notifier<PlaybackState>
       // with no network.
       final offlinePath = ref.read(offlineProvider.notifier).pathOf(track.id);
       if (offlinePath != null) {
-        via = 'офлайн';
+        via = 'offline';
         await _player.setFilePath(offlinePath, initialPosition: startAt);
       } else if (isLocalTrack(track)) {
-        via = 'свой файл';
+        via = 'own file';
         // A local file: no platform behind it to ask. The copy inside the app
         // comes as `file://`, a user's file as `content://`, and both take
         // `AudioSource.uri`.
@@ -843,16 +843,16 @@ class PlaybackController extends Notifier<PlaybackState>
       } else {
         final provider = ref.read(registryProvider).forEntity(track.id);
         if (provider == null) {
-          throw StateError('нет провайдера для ${track.id}');
+          throw StateError('no provider for ${track.id}');
         }
         final stream = await provider.resolveStream(track);
         if (stream == null) throw StateError('search.err.noStream');
         if (gen != _generation) return; // the user already changed the track
         logInfo(
           'player',
-          'ссылка получена за '
-              '${DateTime.now().difference(startedAt).inMilliseconds} мс, '
-              'открываю поток',
+          'link received in '
+              '${DateTime.now().difference(startedAt).inMilliseconds} ms, '
+              'opening the stream',
           now: true,
         );
         await _player.setUrl(
@@ -864,8 +864,8 @@ class PlaybackController extends Notifier<PlaybackState>
       if (gen != _generation) return;
       logInfo(
         'player',
-        'поток открыт: $via · '
-            '${DateTime.now().difference(startedAt).inMilliseconds} мс',
+        'stream open: $via · '
+            '${DateTime.now().difference(startedAt).inMilliseconds} ms',
         now: true,
       );
       _loadedId = track.id;
@@ -877,7 +877,7 @@ class PlaybackController extends Notifier<PlaybackState>
         // Loaded but not playing: track-started events wait for the first play.
         _pendingStart = track;
       }
-      if (autoplay) logInfo('player', 'играю', now: true);
+      if (autoplay) logInfo('player', 'playing', now: true);
       // just_audio's play() completes NOT when playback starts but when the
       // track ends or pauses. Waiting on it leaves `loading` up all song and
       // the play button a spinner.
@@ -887,7 +887,7 @@ class PlaybackController extends Notifier<PlaybackState>
       final code = playErrorCode(e);
       _st = _st.copyWith(loading: false, error: code);
       _handler.setResolving(false);
-      logError('player', 'трек не заиграл: ${track.id}', e);
+      logError('player', 'the track did not play: ${track.id}', e);
       _skipUnplayable(track, code, autoplay: autoplay, skipped: skipped);
     }
   }
