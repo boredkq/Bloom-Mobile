@@ -1,13 +1,10 @@
-/// Перетянуть треки плейлиста из его источников — порт десктопного
-/// `refreshPlaylistSilent`.
+/// Pulls a playlist's tracks from its sources. There may be several, from
+/// different platforms ([UserPlaylist.sources]); each goes by collection id on
+/// its platform ([fetchSource]), with no link parsing.
 ///
-/// Источников у плейлиста может быть несколько и с разных площадок
-/// ([UserPlaylist.sources]): каждый берётся по id коллекции у своей площадки
-/// ([fetchSource]), как на ПК, — ссылку заново не разбираем.
-///
-/// Состав НЕ заменяется: новые треки ложатся наверх плейлиста, всё, что в него
-/// добавили руками, остаётся на месте. Иначе привязать чужую коллекцию к своему
-/// плейлисту было бы нельзя — первое же обновление стёрло бы его.
+/// Contents are NOT replaced: new tracks land on top and what was added by hand
+/// stays. Otherwise tying someone's collection to your playlist would wipe it
+/// on the first update.
 library;
 
 import 'package:flutter/material.dart';
@@ -22,11 +19,10 @@ import '../../shared/ui/bloom_toast.dart';
 import 'import_url.dart';
 import 'pl_auto_store.dart';
 
-/// Обновить состав плейлиста из всех его [UserPlaylist.sources].
-///
-/// Возвращает, сколько треков прибавилось; `null` — обновлять неоткуда или НИ
-/// ОДИН источник не ответил. Упавший источник не отменяет остальные: частичный
-/// успех считаем успехом — привязанную коллекцию могли удалить на площадке.
+/// Updates a playlist from all its [UserPlaylist.sources]. Returns how many
+/// tracks were added; `null` if there's nowhere to update from or NO source
+/// answered. A failed source doesn't cancel the rest, and partial success
+/// counts: a tied collection may have been deleted on the platform.
 Future<int?> refreshPlaylistFromSource(
   ProviderRegistry registry,
   LibraryController library,
@@ -34,28 +30,27 @@ Future<int?> refreshPlaylistFromSource(
 ) async {
   if (playlist.sources.isEmpty) return null;
 
-  // Источники тянем по очереди: их обычно единицы, а параллель зря душит
-  // площадки.
+  // Sources are pulled in turn: there are usually few, and parallel only
+  // strains the platforms.
   final fresh = <Track>[];
   for (final source in playlist.sources) {
     try {
       fresh.addAll(await fetchSource(registry, source) ?? const []);
     } catch (_) {
-      // Один недоступный источник не должен прерывать остальные.
+      // One unavailable source mustn't stop the rest.
     }
   }
-  // Пустой ответ считаем ошибкой, а не «в источниках ничего не осталось».
+  // An empty answer counts as an error, not as nothing left in the sources.
   if (fresh.isEmpty) return null;
 
-  // Дубли и порядок разбирает сам стор: состав мог измениться, пока шла сеть.
+  // The store sorts out duplicates and order: contents may have changed during
+  // the network trip.
   return library.addTracksToPlaylist(playlist.id, fresh);
 }
 
-/// «Обновить треки» одного плейлиста — кнопка в его шапке (порт пункта
-/// `refreshPlaylist` из десктопного `PlMenu`). Итог показывает тост.
-///
-/// Мессенджер, а не `BuildContext`: из шторки пункт вызывается уже после её
-/// закрытия, и искать предка по её контексту поздно.
+/// Refresh tracks for one playlist, from a button in its header. A toast shows
+/// the result. A messenger rather than `BuildContext`: from a sheet the item
+/// runs after it closes, too late to look up ancestors.
 Future<void> refreshOnePlaylist(
   ScaffoldMessengerState messenger,
   AppLocalizations l,

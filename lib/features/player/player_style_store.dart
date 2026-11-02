@@ -1,10 +1,4 @@
-/// Стиль плеера — порт `playerStyle` из десктопного
-/// `settings/model/playerViewStore.ts`.
-///
-/// Вариантов у нас два из четырёх. Десктопные `large` и `cinema` — это
-/// grid-раскладки на широкое окно (обложка крупно слева, очередь колонкой
-/// справа), на телефоне им негде развернуться: очередь у нас и так шторка.
-/// Остались «Обычный» и «Пластинка».
+/// Player style: standard or vinyl.
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,16 +6,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/store/json_store.dart' show jsonStoreProvider;
 
 enum PlayerStyle {
-  /// Квадратная обложка со скруглением — как было.
+  /// A rounded square cover.
   standard,
 
-  /// Круглая обложка, которая крутится, пока играет (`.ps-cover.vinyl-mode`).
+  /// A round cover that spins while playing.
   vinyl,
 
-  /// Аура (Apple Music): живой фон и мягко пружинящая обложка.
+  /// Apple Music Aura: live glow and dynamic spring cover.
   aura,
 
-  /// Слоновая кость (Ivory): строгий журнальный минимализм.
+  /// Ivory: clean editorial magazine minimalism.
   ivory;
 
   bool get isVinyl => this == PlayerStyle.vinyl;
@@ -38,9 +32,8 @@ class PlayerStyleController extends Notifier<PlayerStyle> {
   @override
   PlayerStyle build() {
     final raw = ref.read(jsonStoreProvider).read('playerStyle');
-    // Незнакомая запись (правили файл руками, откат на старую сборку, приехал
-    // десктопный `large`) молча становится обычным плеером — стиль не повод
-    // ронять запуск.
+    // An unknown entry silently becomes the standard player: a style is no
+    // reason to crash a launch.
     for (final style in PlayerStyle.values) {
       if (style.name == raw) return style;
     }

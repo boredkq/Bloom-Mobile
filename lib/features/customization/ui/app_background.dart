@@ -1,20 +1,14 @@
-/// Фоновый слой приложения — порт десктопного `#bgl` (`base.css` +
-/// `applyBackground`/`applyBgDim`).
+/// The app's background layer. It lies BELOW the whole UI, drawn once for the
+/// app: a full-screen `cover` picture with blur and a black dim film over it.
+/// The numbers come from the picture itself ([MediaItem.blur],
+/// [MediaItem.dim]).
 ///
-/// Слой лежит НИЖЕ всего интерфейса и рисуется один раз на всё приложение:
-/// картинка на весь экран `cover`, поверх неё размытие и чёрная плёнка
-/// затемнения. Числа берутся у самой картинки ([MediaItem.blur]/[MediaItem.dim]),
-/// а не у общей настройки, — так решил пользователь.
+/// No picture, nothing drawn: the shell's `Scaffold` paints the theme's `bg`.
+/// With a picture, pages must go clear or it's under a solid fill (`_Page` in
+/// the router and the shell watch [backgroundOnProvider]).
 ///
-/// Картинки нет — не рисуем ничего: `Scaffold` каркаса и так красит `bg` темы.
-/// А вот когда картинка есть, страницам приходится стать прозрачными, иначе
-/// фон был бы под сплошной заливкой (`_Page` в роутере и каркас смотрят на
-/// [backgroundOnProvider]).
-///
-/// Сквозь сами плашки фон идёт только при включённой «Прозрачности»
-/// (`features/settings/transparency_store.dart`) — на ПК это ровно так же
-/// отдельная настройка «Интерфейса», и без неё фон виден лишь в зазорах между
-/// блоками.
+/// The background shows through plates only with transparency on; otherwise
+/// only in gaps between blocks.
 library;
 
 import 'dart:ui' as ui;
@@ -27,12 +21,8 @@ import '../../../core/store/settings_store.dart';
 import '../../player/player_controller.dart';
 import '../custom_store.dart';
 
-/// Что показываем фоном: своя картинка из библиотеки либо обложка играющего
-/// трека («Обложка трека как фон» в «Интерфейсе»). Оба слагаемых пустые — фона
-/// нет.
-///
-/// Своя картинка ВАЖНЕЕ обложки: на десктопе ровно тот же порядок
-/// (`if (!url && s.coverAsBg) url = shownCover()`).
+/// What shows as the background: an own library picture or the playing cover.
+/// Both empty, no background. An own picture WINS over the cover.
 final backgroundProvider = Provider<({String src, double blur, double dim})?>((
   ref,
 ) {
@@ -43,14 +33,14 @@ final backgroundProvider = Provider<({String src, double blur, double dim})?>((
   if (!ref.watch(settingsProvider).coverAsBg) return null;
   final cover = ref.watch(playbackProvider).track?.cover;
   if (cover == null || cover.isEmpty) return null;
-  // Своей страницы с ползунками у обложки трека нет (картинки-то в библиотеке
-  // нет) — размытие и затемнение ей крутят из «Интерфейса», а хранит их
+  // A track cover has no page with sliders, since it isn't in the library: its
+  // blur and dim are set in appearance settings and kept in
   // [coverAsBgFxProvider].
   final fx = ref.watch(coverAsBgFxProvider);
   return (src: cover, blur: fx.blur.toDouble(), dim: fx.dim.toDouble());
 });
 
-/// Фон включён — страницам нельзя красить себя сплошным.
+/// Background on: pages can't paint themselves solid.
 final backgroundOnProvider = Provider<bool>(
   (ref) => ref.watch(backgroundProvider) != null,
 );
@@ -78,13 +68,11 @@ class AppBackground extends ConsumerWidget {
   }
 }
 
-/// Сама картинка фона: размытие, увеличение и плёнка затемнения.
-///
-/// Отдельным виджетом (и берёт готовый [ImageProvider], а не ссылку) ради
-/// полноэкранного плеера: в режиме «Фон приложения» (`PlayerBg.app`) он рисует
-/// ЭТИ ЖЕ слои у себя внутри — сквозь него фон приложения не виден, `Scaffold`
-/// плеера кроет заливкой темы всё, что под ним. Общий виджет нужен, чтобы
-/// картинка на открытии плеера не дрогнула: числа у неё те же самые.
+/// The background picture: blur, scale and dim film. A separate widget (taking
+/// a ready [ImageProvider]) for the full player: in app background mode
+/// (`PlayerBg.app`) it draws THESE layers inside itself, since its `Scaffold`
+/// covers what's below. Shared so the picture doesn't flinch when the player
+/// opens.
 class BackgroundLayers extends StatelessWidget {
   const BackgroundLayers({
     super.key,
@@ -95,22 +83,22 @@ class BackgroundLayers extends StatelessWidget {
 
   final ImageProvider image;
 
-  /// Размытие (σ) и затемнение (0–100) — у самой картинки, не общей настройки.
+  /// Blur (sigma) and dim (0–100), the picture's own.
   final double blur;
   final double dim;
 
   @override
   Widget build(BuildContext context) {
-    // Картинка чуть крупнее экрана (десктопное `#bgl{transform:scale(1.1)}`):
-    // размытие тянет края внутрь, и без запаса по краям просвечивала бы
-    // пустота. Обрезка обязательна — иначе увеличенный слой вылезет за экран.
+    // A picture a bit larger than the screen: blur pulls the edges in, and with
+    // no margin emptiness shows there. The clip is a must, or the scaled layer
+    // overflows the screen.
     Widget layer = Image(
       image: image,
       fit: BoxFit.cover,
       width: double.infinity,
       height: double.infinity,
-      // Пока грузится и если не загрузится — фона просто нет, интерфейс
-      // остаётся на своём месте.
+      // While loading or if it fails there's just no background, and the UI
+      // stays put.
       errorBuilder: (_, _, _) => const SizedBox.shrink(),
     );
     if (blur > 0) {
@@ -124,7 +112,7 @@ class BackgroundLayers extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         ClipRect(child: Transform.scale(scale: 1.1, child: layer)),
-        // Плёнка затемнения — десктопный `#bgl::after`.
+        // Dim film.
         if (dim > 0)
           ColoredBox(color: Colors.black.withValues(alpha: dim / 100)),
       ],

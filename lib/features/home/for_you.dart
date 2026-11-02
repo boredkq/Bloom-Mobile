@@ -1,10 +1,8 @@
-/// Витрина «Для вас» на главной: похожие на то, что человек слушает, —
-/// `Home::buildForYou` ПК.
-///
-/// Сиды — самое слушаемое из журнала прослушиваний ([PlayStats]), потом свежие
-/// лайки и свежее в библиотеке: трек, залайканный вчера и ещё не сыгранный,
-/// говорит о вкусе не меньше. Сначала по одному на артиста — пять хитов одного
-/// артиста сделали бы полосу его витриной.
+/// For you on home: similar to what the user plays. Seeds are the most played
+/// from the play log ([PlayStats]), then fresh likes and the newest in the
+/// library: a track liked yesterday and not yet played says as much about
+/// taste. First one per artist: five hits by one artist would make the strip
+/// theirs.
 library;
 
 import 'dart:math' as math;
@@ -17,18 +15,18 @@ import '../../core/store/play_stats.dart';
 import '../../shared/util/taste.dart';
 import 'daily_showcase.dart';
 
-/// Сколько сидов опрашиваем. Каждый — сетевой запрос, поэтому немного.
+/// Seeds to ask; each is a network request, so few.
 const int _seedLimit = 5;
 
-/// Сколько карточек в полосе.
+/// Cards in the strip.
 const int kForYouMax = 20;
 
-/// Больше двух треков одного артиста полоса не выдерживает — становится его
-/// витриной. Считается по каждому имени трека.
+/// More than two tracks by one artist makes the strip theirs. Counted per each
+/// name on a track.
 const int kRecsPerArtistMax = 2;
 
-/// Похожие на трек у его площадки. Площадку решает префикс id; без метода или
-/// с упавшей сетью — пусто: один сид не повод хоронить витрину.
+/// Similar to a track on its platform, decided by the id prefix. With no method
+/// or a network failure it's empty: one seed is no reason to bury the shelf.
 Future<List<Track>> similarTracksFor(
   ProviderRegistry registry,
   String seedId,
@@ -42,8 +40,8 @@ Future<List<Track>> similarTracksFor(
   }
 }
 
-/// Сиды: самое слушаемое, свежие лайки, свежее в библиотеке; первым проходом —
-/// по одному на артиста, вторым — добор.
+/// Seeds: most played, fresh likes, newest in the library; a first pass with
+/// one per artist, a second to fill up.
 List<String> pickForYouSeeds(RecsInput input, {int limit = _seedLimit}) {
   final all = [
     for (final r in recsTopPlayed(input, limit: limit * 3, minPlays: 2))
@@ -72,14 +70,14 @@ List<String> pickForYouSeeds(RecsInput input, {int limit = _seedLimit}) {
   return out;
 }
 
-/// Собрать полосу. По кругу — по треку от каждого сида за проход: иначе
-/// длинный список первого сида забивает всю полосу.
+/// Builds the strip, round-robin with a track per seed per pass: otherwise the
+/// first seed's long list fills it all.
 Future<List<Track>> buildForYou(RecsInput input) async {
   final seeds = pickForYouSeeds(input);
   if (seeds.isEmpty) return const [];
 
-  // Последовательно: у SoundCloud общая очередь запросов, веером они всё равно
-  // выстроятся в неё, зато параллельный старт мешает остальной главной.
+  // In sequence: SoundCloud has a shared request queue, a fan-out would line up
+  // anyway, and a parallel start gets in the way of the rest of home.
   final batches = <List<Track>>[];
   for (final seed in seeds) {
     final batch = await similarTracksFor(input.registry, seed);
@@ -88,8 +86,8 @@ Future<List<Track>> buildForYou(RecsInput input) async {
   if (batches.isEmpty) return const [];
 
   final known = {...input.known, ...seeds};
-  // Сверка не только по id: один трек на двух площадках имеет разные id, а на
-  // SoundCloud ещё и реаплоады от разных загрузчиков.
+  // The check isn't only by id: one track on two platforms has two ids, and
+  // SoundCloud also has reuploads by different uploaders.
   final dup = input.knownDups();
   final cap = ArtistCap(kRecsPerArtistMax);
 
@@ -102,7 +100,7 @@ Future<List<Track>> buildForYou(RecsInput input) async {
       final t = batch[i];
       if (known.contains(t.id) || input.disliked.contains(t.id)) continue;
       if (!cap.fits(t)) continue;
-      // Последней — самая дорогая проверка, чтобы не гонять её на отсеянных.
+      // Most expensive check last, not to run it on those already out.
       if (!dup.accept(t)) continue;
       known.add(t.id);
       cap.take(t);
@@ -120,8 +118,8 @@ class ForYouController extends DailyShowcase<List<Track>> {
   @override
   String get storeKey => 'forYou';
 
-  /// 3 — правила ПК: сиды по одному на артиста, YouTube Music тоже сид,
-  /// потолок артиста по каждому имени.
+  /// 3: seeds one per artist, YouTube Music as a seed too, the artist cap per
+  /// each name.
   @override
   int get version => 3;
 

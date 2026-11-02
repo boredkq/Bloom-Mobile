@@ -1,18 +1,14 @@
-/// Таймер сна: через сколько сама встанет пауза. Своя мобильная вещь — на
-/// десктопе таймера нет вовсе, портировать нечего.
+/// Sleep timer: when a pause comes by itself. The store is CLEAN, like
+/// `speed_store`: it knows only time and mode, and `PlaybackController`, the
+/// player's sole owner, does the pause and fade by subscribing here.
 ///
-/// Стор ЧИСТЫЙ, как `speed_store`: он знает только про время и режим, а паузу и
-/// затухание громкости делает `PlaybackController` (он один владеет плеером),
-/// подписавшись на этот провайдер.
+/// Time runs on the WALL CLOCK (`endsAt`), not by subtracting per tick: a
+/// background tick can run late, and half an hour must mean half an hour. So a
+/// manual pause doesn't stop the timer, it runs on like an alarm.
 ///
-/// Время считается по СТЕННЫМ ЧАСАМ (`endsAt`), а не вычитанием из остатка на
-/// каждом тике: тик в фоне может и опоздать, а «выключить через полчаса» должно
-/// значить полчаса. Из-за этого ручная пауза таймер не останавливает — он идёт
-/// дальше, как будильник.
-///
-/// Активный таймер на диск НЕ пишем: пережить перезапуск процесса ему незачем
-/// (музыка после него всё равно молчит). В файле только настройки — затухание и
-/// последнее выбранное время, чтобы ползунок открывался там, где его оставили.
+/// An active timer isn't saved: it needn't survive a process restart, since the
+/// music is silent after one. The file holds only settings: the fade and last
+/// chosen time.
 library;
 
 import 'dart:async';
@@ -21,7 +17,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/store/json_store.dart' show jsonStoreProvider;
 
-/// Карточки-пресеты шторки.
+/// Preset cards of the sheet.
 const List<Duration> kSleepPresets = [
   Duration(minutes: 15),
   Duration(minutes: 30),
@@ -30,31 +26,30 @@ const List<Duration> kSleepPresets = [
   Duration(minutes: 90),
 ];
 
-/// Границы и шаг полосы «своё время», в минутах.
+/// Bounds and step of the custom time bar, in minutes.
 const int kSleepMinMinutes = 5;
 const int kSleepMaxMinutes = 120;
 const int kSleepStepMinutes = 5;
 
-/// Число делений полосы.
+/// Divisions of the bar.
 int get kSleepDivisions =>
     (kSleepMaxMinutes - kSleepMinMinutes) ~/ kSleepStepMinutes;
 
-/// Сколько добавляет кнопка «+5 минут» у идущего таймера.
+/// What the +5 minutes button adds to a running timer.
 const Duration kSleepExtend = Duration(minutes: 5);
 
-/// Сколько длится затухание перед паузой. Отсчитывается НАЗАД от срабатывания:
-/// «через 30 минут» с затуханием — это тишина ровно на тридцатой минуте, а не
-/// на тридцатой с четвертью.
+/// Fade length before the pause. It counts BACK from firing: 30 minutes with a
+/// fade means silence right at minute thirty.
 const Duration kSleepFade = Duration(seconds: 20);
 
 enum SleepMode {
-  /// Таймера нет.
+  /// No timer.
   off,
 
-  /// Пауза в назначенное время ([SleepTimerState.endsAt]).
+  /// Pause at the set time ([SleepTimerState.endsAt]).
   timer,
 
-  /// Пауза, когда доиграет текущий трек, — сколько бы в нём ни осталось.
+  /// Pause when the current track ends, however much is left.
   endOfTrack,
 }
 
@@ -69,22 +64,22 @@ class SleepTimerState {
 
   final SleepMode mode;
 
-  /// Момент срабатывания. Не `null` только в режиме [SleepMode.timer].
+  /// Firing moment; not `null` only in [SleepMode.timer].
   final DateTime? endsAt;
 
-  /// Остаток до срабатывания, пересчитанный на последнем тике. Ноль в режиме
-  /// [SleepMode.timer] — сигнал контроллеру: пора вставать на паузу.
+  /// Time left, recounted on the last tick. Zero in [SleepMode.timer] tells the
+  /// controller to pause.
   final Duration remaining;
 
-  /// Последнее выбранное время — с него открывается полоса «своё время».
+  /// Last chosen time, where the custom bar opens.
   final Duration choice;
 
-  /// Плавно уводить громкость в ноль перед паузой.
+  /// Fades the volume to zero before the pause.
   final bool fade;
 
   bool get active => mode != SleepMode.off;
 
-  /// Таймер дошёл до нуля и ждёт, пока его исполнят.
+  /// The timer hit zero and waits to be carried out.
   bool get expired => mode == SleepMode.timer && remaining <= Duration.zero;
 
   SleepTimerState copyWith({
@@ -103,8 +98,8 @@ class SleepTimerState {
   );
 }
 
-/// Часы стора отдельным провайдером — чтобы тесты могли подменить «сейчас»
-/// вместо того, чтобы ждать полчаса.
+/// The store's clock as its own provider, so tests can swap now instead of
+/// waiting half an hour.
 final sleepClockProvider = Provider<DateTime Function()>((_) => DateTime.now);
 
 final sleepTimerProvider =
@@ -115,8 +110,8 @@ final sleepTimerProvider =
 class SleepTimerController extends Notifier<SleepTimerState> {
   static const _key = 'sleep';
 
-  /// Тик остатка — ради надписи на кнопке; он же доводит остаток до нуля, и по
-  /// этому нулю контроллер плеера жмёт паузу.
+  /// Tick of the time left, for the button's caption; it also brings it to
+  /// zero, which is when the player controller pauses.
   Timer? _tick;
 
   DateTime get _now => ref.read(sleepClockProvider)();
@@ -130,18 +125,16 @@ class SleepTimerController extends Notifier<SleepTimerState> {
       choice: minutes is num
           ? Duration(minutes: clampSleepMinutes(minutes.round()))
           : const Duration(minutes: 30),
-      // Битую запись читаем как «затухание включено» — это умолчание.
+      // A broken entry reads as fade on, the default.
       fade: raw['fade'] != false,
     );
   }
 
-  /// Завести таймер на [d] — заново, с этой секунды. Ползунок зовёт этот же
-  /// метод на каждое движение: срок переставляется под пальцем, отдельной
-  /// кнопки «Пуск» в шторке нет.
+  /// Starts a timer for [d] afresh from this second. The slider calls this on
+  /// every move: the time follows the finger, with no Start button.
   ///
-  /// Отмену вешает на себя UI (тап по уже выбранному пресету): здесь [d]
-  /// приходит и от ползунка, и совпадение с текущим выбором там ничего не
-  /// значит.
+  /// The UI handles cancelling (a tap on the selected preset): [d] also comes
+  /// from the slider, where matching the current choice means nothing.
   void start(Duration d) {
     _tick?.cancel();
     state = state.copyWith(
@@ -154,8 +147,8 @@ class SleepTimerController extends Notifier<SleepTimerState> {
     _tick = Timer.periodic(const Duration(seconds: 1), (_) => _onTick());
   }
 
-  /// «До конца трека». Своего времени у режима нет — ждём `_onCompleted` в
-  /// плеере, поэтому и тик здесь не нужен.
+  /// Until the end of the track. The mode has no time of its own, it waits for
+  /// `_onCompleted` in the player, so no tick.
   void untilTrackEnd() {
     _tick?.cancel();
     _tick = null;
@@ -166,15 +159,15 @@ class SleepTimerController extends Notifier<SleepTimerState> {
     );
   }
 
-  /// «+5 минут» у идущего таймера. Считаем ОТ НАЗНАЧЕННОГО СРОКА, а не от
-  /// «сейчас»: иначе нажатие за минуту до конца отняло бы четыре.
+  /// +5 minutes on a running timer. Counted FROM THE SET TIME, not now: pressed
+  /// a minute before the end, it would otherwise take away four.
   void extend([Duration by = kSleepExtend]) {
     final endsAt = state.endsAt;
     if (state.mode != SleepMode.timer || endsAt == null) return;
     final next = endsAt.add(by);
     state = state.copyWith(endsAt: next, remaining: next.difference(_now));
-    // Тик мог остановиться на нуле — если таймер продлили в последнюю секунду,
-    // заводим его заново.
+    // The tick may have stopped at zero; if extended in the last second, it
+    // starts again.
     _tick ??= Timer.periodic(const Duration(seconds: 1), (_) => _onTick());
   }
 
@@ -200,8 +193,8 @@ class SleepTimerController extends Notifier<SleepTimerState> {
     if (state.mode != SleepMode.timer || endsAt == null) return;
     final left = endsAt.difference(_now);
     if (left <= Duration.zero) {
-      // Дальше тикать нечего: ноль — это сигнал, а снимет его контроллер
-      // плеера, когда встанет на паузу.
+      // Nothing left to tick: zero is the signal, cleared by the player
+      // controller when it pauses.
       _tick?.cancel();
       _tick = null;
       state = state.copyWith(remaining: Duration.zero);
@@ -216,15 +209,15 @@ class SleepTimerController extends Notifier<SleepTimerState> {
   });
 }
 
-/// Клемп минут к границам полосы «своё время».
+/// Clamps minutes to the custom bar's bounds.
 int clampSleepMinutes(int minutes) =>
     minutes.clamp(kSleepMinMinutes, kSleepMaxMinutes);
 
-/// Остаток на кнопке в ряду инструментов: `23:14` до часа и `1:05` дальше.
-/// Часы и минуты вместо минут и секунд — иначе `1:05:00` не влезает в коробку
-/// надписи и FittedBox сжимает её до нечитаемого.
+/// Time left on the tool row's button: `23:14` up to an hour and `1:05` after.
+/// Hours and minutes there, or `1:05:00` won't fit and FittedBox shrinks it
+/// past reading.
 ///
-/// Секунды округляем ВВЕРХ: пока звук ещё идёт, `0:00` на кнопке — враньё.
+/// Seconds round UP: `0:00` while sound still plays is a lie.
 String sleepLabel(Duration left) {
   final total = left.isNegative ? 0 : (left.inMilliseconds / 1000).ceil();
   if (total >= 3600) {

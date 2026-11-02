@@ -1,32 +1,23 @@
-/// YouTube Music — неофициальный InnerTube API (`music.youtube.com/youtubei`),
-/// порт десктопного `src-tauri/src/ytm.rs` (c:\bloom\bloom), функция-в-функцию.
+/// YouTube Music, the unofficial InnerTube API (`music.youtube.com/youtubei`).
+/// HTTP comes from the app itself, and the player fetches the direct
+/// `googlevideo` link. No auth (public search and stream).
 ///
-/// На десктопе весь этот код живёт в Rust: у `music.youtube.com` нет CORS, а
-/// аудио с `googlevideo.com` — range-based и в WebView2 напрямую не отдаётся
-/// (идёт через локальный `audio_proxy`). В мобилке обе причины отпадают: HTTP
-/// делает само приложение, а прямую ссылку `googlevideo` плеер тянет сам —
-/// прокси не переносился намеренно.
+/// Search and pages use the `WEB_REMIX` client, parsing
+/// `musicResponsiveListItemRenderer`. The stream uses the `VISIONOS` client on
+/// the `player` endpoint: it gives `streamingData.adaptiveFormats[]` with
+/// DIRECT urls (no signatureCipher or n-throttling) and, unlike web, ios and
+/// android, **needs no PoToken**.
 ///
-/// Без авторизации (публичный поиск/стрим). Поиск и страницы — клиент
-/// `WEB_REMIX`, разбор `musicResponsiveListItemRenderer`. Стрим — клиент
-/// `VISIONOS` к `player`-эндпоинту: он отдаёт `streamingData.adaptiveFormats[]`
-/// с ПРЯМЫМИ url (без расшифровки signatureCipher / n-throttling) и, в отличие
-/// от web/ios/android, **не требует PoToken** (гайд yt-dlp «PO Token»).
+/// Don't use `ANDROID_VR`: googlevideo answers its links with 403 past the
+/// file's first 1 MiB. `player` still says `OK` with direct urls, the link
+/// looks alive, ExoPlayer and AVPlayer ask for the whole file, and the track
+/// sits at 0:00.
 ///
-/// ВАЖНО (2026-08-31): раньше основным был `ANDROID_VR`, теперь он мёртв —
-/// googlevideo отдаёт по его ссылкам 403 на всё, что выходит за первый 1 MiB
-/// файла. Симптом коварный: `player` отвечает `OK` и с прямыми url, ссылка
-/// «выглядит рабочей», а ExoPlayer/AVPlayer первым делом просит файл целиком
-/// → 403 → трек включается и стоит на 0:00. yt-dlp подтверждает пометкой у
-/// `android_vr`: «Since 2026.08.17, ALL formats are 403'd». Здесь прокси нет,
-/// перехватить 403 негде, поэтому ANDROID_VR убран из цепочки совсем.
+/// CRITICAL: all requests carry `visitorData` (see [visitorData]). Without it
+/// `player` answers `LOGIN_REQUIRED`.
 ///
-/// КРИТИЧНО: во все запросы идёт `visitorData` (см. [visitorData]). Без него
-/// `player` отвечает `LOGIN_REQUIRED` («Sign in to confirm you're not a bot»).
-///
-/// Константы клиентов YouTube время от времени ломает — все собраны вверху
-/// файла, обновлять из yt-dlp `yt_dlp/extractor/youtube/_base.py`,
-/// `INNERTUBE_CLIENTS`.
+/// YouTube breaks client constants now and then; they're all at the top of the
+/// file.
 library;
 
 import 'dart:async';
@@ -45,7 +36,8 @@ const String kPlayerUrl =
 const String kVisitorUrl =
     'https://www.youtube.com/youtubei/v1/visitor_id?prettyPrint=false';
 
-/// Веб-клиент YouTube Music — поиск/браузинг (ключ публичный, общеизвестен).
+/// YouTube Music's web client, for search and browsing (the key is public and
+/// widely known).
 const String kWebKey = 'AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX30';
 const String kWebClientName = 'WEB_REMIX';
 const String kWebClientVersion = '1.20260707.12.00';
@@ -53,13 +45,12 @@ const String kWebUa =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
     '(KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36';
 
-/// Клиент обычного youtube.com — только чтобы выпросить `visitorData`.
+/// Plain youtube.com's client, only to get `visitorData`.
 const String kYtClientVersion = '2.20260708.00.00';
 
-/// VISIONOS (Apple Vision Pro) — основной (и единственный) клиент для `player`.
-/// Не требует PoToken, отдаёт прямые url и, в отличие от ANDROID_VR, честно
-/// обслуживает произвольные Range-запросы: файл целиком, перемотку в середину
-/// и в хвост. Версию/UA/deviceModel обновлять по yt-dlp `INNERTUBE_CLIENTS`.
+/// VISIONOS (Apple Vision Pro), the main and only client for `player`. It needs
+/// no PoToken, gives direct urls and honestly serves any Range request: the
+/// whole file, a seek to the middle and to the tail.
 const String kVisionClientVersion = '1.02';
 const String kVisionUa =
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 '
@@ -73,20 +64,19 @@ const Duration _timeout = Duration(seconds: 20);
 
 // ============================ visitorData ============================
 
-/// Кеш `visitorData` на процесс. Это идентификатор анонимной сессии: без него
-/// каждый запрос выглядит как новый холодный клиент, и YouTube помечает его
-/// ботом. Сбрасывается в [resetVisitorData] при отказе `player`.
+/// `visitorData` cache per process. It identifies an anonymous session: without
+/// it each request looks like a new cold client, which YouTube marks as a bot.
+/// [resetVisitorData] clears it when `player` refuses.
 String? _visitor;
 Future<String>? _visitorInFlight;
 
-/// Достать `visitorData` (из кеша либо у `visitor_id`-эндпоинта). Ошибку не
-/// поднимаем: пустая строка означает «шлём без него» — поиск/браузинг работают
-/// и так, страдает только `player`.
+/// Gets `visitorData`, from cache or the `visitor_id` endpoint. No error is
+/// raised: an empty string means send without it; search and browsing work
+/// anyway, and only `player` suffers.
 ///
-/// Отличие от десктопа: параллельные запросы ждут ОДИН поход в сеть. На старте
-/// поиск уходит пятью запросами разом, и без этого мобилка брала бы пять разных
-/// `visitorData` — пять «холодных клиентов» подряд ровно то, что YouTube и
-/// считает ботом.
+/// Parallel requests wait for ONE network trip: search goes out as five
+/// requests at once, and five different `visitorData`, five cold clients in a
+/// row, is just what YouTube counts as a bot.
 Future<String> visitorData() async {
   final cached = _visitor;
   if (cached != null) return cached;
@@ -123,7 +113,7 @@ Future<String> _fetchVisitorData() async {
   return str(at(v, ['responseContext', 'visitorData']));
 }
 
-/// Забыть текущий `visitorData` — следующий вызов возьмёт свежий.
+/// Forgets the current `visitorData`, so the next call takes a fresh one.
 void resetVisitorData() {
   _visitor = null;
   _visitorInFlight = null;
@@ -140,11 +130,9 @@ Map<String, dynamic>? _decode(List<int> bytes) {
   }
 }
 
-/// POST с телом-JSON и единой обработкой сбоев.
-///
-/// Лёгкий ретрай на транзиентное (сеть/5xx/429), как у SC и Яндекса: 3 попытки,
-/// бэкофф 600 мс. На десктопе его нет — там одиночный блип виден в UI, здесь же
-/// мобильная сеть роняла бы весь поиск.
+/// POST with a JSON body and one way of handling failures. A light retry on
+/// transient ones (network, 5xx, 429): 3 tries, 600 ms backoff. A mobile
+/// network would otherwise bring down all search.
 Future<Map<String, dynamic>> _postJson(
   String url,
   Map<String, dynamic> body, {
@@ -167,7 +155,7 @@ Future<Map<String, dynamic>> _postJson(
           .post(uri, headers: headers, body: payload)
           .timeout(_timeout);
     } catch (_) {
-      // сетевая ошибка — транзиентна
+      // a network error is transient
     }
     final status = resp?.statusCode ?? 0;
     final transient =
@@ -189,7 +177,7 @@ Future<Map<String, dynamic>> _postJson(
   }
 }
 
-/// Тело запроса InnerTube с веб-контекстом (+ `visitorData` — см. модуль-док).
+/// InnerTube request body with the web context, plus `visitorData`.
 Future<Map<String, dynamic>> _webBody(Map<String, dynamic> extra) async => {
   'context': {
     'client': {
@@ -208,10 +196,9 @@ const Map<String, String> _musicHeaders = {
   'Referer': 'https://music.youtube.com/',
 };
 
-// ============================ Обход JSON ============================
+// ── JSON walking ────────────────────────────────────────────────────────
 
-/// Значение по пути: строковые ключи — в объектах, числовые — в массивах.
-/// Аналог `Value::pointer` из Rust, но без склейки пути в строку.
+/// Value by path: string keys in objects, numeric ones in arrays.
 Object? at(Object? v, List<Object> path) {
   var cur = v;
   for (final k in path) {
@@ -228,8 +215,8 @@ Object? at(Object? v, List<Object> path) {
 
 String str(Object? v) => v is String ? v : '';
 
-/// Рекурсивно собрать все значения ключа [key] (`musicResponsiveListItemRenderer`
-/// и т.п.). Надёжнее навигации по точному пути — структура секций меняется.
+/// Recursively collects all values of [key] (`musicResponsiveListItemRenderer`
+/// and such). More reliable than an exact path: section structure changes.
 void collectRenderers(Object? v, String key, List<Object?> out) {
   if (v is Map) {
     for (final e in v.entries) {
@@ -243,21 +230,21 @@ void collectRenderers(Object? v, String key, List<Object?> out) {
   }
 }
 
-/// Строки выдачи.
+/// Result rows.
 List<Object?> collectMrlir(Object? v) {
   final out = <Object?>[];
   collectRenderers(v, 'musicResponsiveListItemRenderer', out);
   return out;
 }
 
-/// Карточки каруселей.
+/// Carousel cards.
 List<Object?> collectTwoRow(Object? v) {
   final out = <Object?>[];
   collectRenderers(v, 'musicTwoRowItemRenderer', out);
   return out;
 }
 
-/// Первый рендерер по ключу (рекурсивно).
+/// First renderer by key, recursively.
 Object? findRenderer(Object? v, String key) {
   if (v is Map) {
     final direct = v[key];
@@ -275,9 +262,8 @@ Object? findRenderer(Object? v, String key) {
   return null;
 }
 
-/// Обойти все строковые поля `text`/`simpleText` узла. `visit` возвращает
-/// `false`, когда искомое найдено, — дальше не идём (Rust обходит всё и
-/// проверяет флаг внутри, здесь дешевле остановиться).
+/// Walks all `text` and `simpleText` string fields of a node. `visit` returns
+/// `false` when it found what it wants, stopping there.
 bool collectText(Object? v, bool Function(String) visit) {
   if (v is Map) {
     for (final e in v.entries) {
@@ -295,14 +281,14 @@ bool collectText(Object? v, bool Function(String) visit) {
   return true;
 }
 
-/// Первый токен продолжения в ответе. InnerTube кладёт его то в
-/// `nextContinuationData.continuation`, то в `continuationCommand.token` —
-/// ищем оба, не привязываясь к пути (структура секций плавает).
+/// First continuation token in an answer. InnerTube puts it in
+/// `nextContinuationData.continuation` or `continuationCommand.token`, so I
+/// look for both with no fixed path.
 String? findContinuation(Object? v) {
   if (v is Map) {
     for (final e in v.entries) {
       final val = e.value;
-      // Короткие строки с таким ключом встречаются в трекинге.
+      // Short strings under this key occur in tracking.
       if ((e.key == 'continuation' || e.key == 'token') &&
           val is String &&
           val.length > 20) {
@@ -320,9 +306,10 @@ String? findContinuation(Object? v) {
   return null;
 }
 
-// ============================ Разбор строк ============================
+// ── Parsing rows ────────────────────────────────────────────────────────
 
-/// pageType основного перехода строки (ARTIST/ALBUM/PLAYLIST) либо null (трек).
+/// pageType of a row's main navigation (ARTIST, ALBUM, PLAYLIST), or null for a
+/// track.
 String? pageType(Object? it) {
   final v = at(it, [
     'navigationEndpoint',
@@ -334,13 +321,13 @@ String? pageType(Object? it) {
   return v is String ? v : null;
 }
 
-/// browseId основного перехода строки.
+/// browseId of a row's main navigation.
 String? itemBrowseId(Object? it) {
   final v = at(it, ['navigationEndpoint', 'browseEndpoint', 'browseId']);
   return v is String && v.isNotEmpty ? v : null;
 }
 
-/// flexColumn[i] → его узел `text` (с runs).
+/// flexColumn[i] to its `text` node (with runs).
 Object? flexText(Object? it, int i) => at(it, [
   'flexColumns',
   i,
@@ -348,11 +335,11 @@ Object? flexText(Object? it, int i) => at(it, [
   'text',
 ]);
 
-/// Метки типа сущности, с которых YTM начинает подпись строки или карточки
-/// («Song • Artist • Album», «Single • BahaVibe»). Это не имя артиста и не
-/// владелец — из подписей их выкидываем, иначе они утекают в UI. Запросы уходят
-/// с `hl=en`, поэтому список английский; русские — на случай, если YTM всё же
-/// ответит на языке региона.
+/// Entity type labels YTM starts a row's or card's caption with ("Song • Artist
+/// • Album", "Single • BahaVibe"). They aren't an artist's name or an owner,
+/// and go from captions, or they leak into the UI. Requests go with `hl=en`, so
+/// the list is English, with Russian in case YTM answers in the region's
+/// language.
 const List<String> kTypeLabels = [
   'song',
   'video',
@@ -375,7 +362,7 @@ const List<String> kTypeLabels = [
 
 bool isTypeLabel(String s) => kTypeLabels.contains(s.trim().toLowerCase());
 
-/// Смысловые куски подписи (`{runs:[…]}`): без сепараторов и без метки типа.
+/// Meaningful caption pieces (`{runs:[…]}`), with no separators or type label.
 List<String> meaningfulRuns(Object? node) {
   final runs = at(node, ['runs']);
   if (runs is! List) return const [];
@@ -388,7 +375,7 @@ List<String> meaningfulRuns(Object? node) {
 /// text.runs[0].text.
 String firstRun(Object? text) => str(at(text, ['runs', 0, 'text']));
 
-/// Самая крупная обложка строки (`thumbnail.musicThumbnailRenderer…`).
+/// A row's largest cover (`thumbnail.musicThumbnailRenderer…`).
 String thumb(Object? it) {
   final arr = at(it, [
     'thumbnail',
@@ -402,7 +389,7 @@ String thumb(Object? it) {
 String _lastThumbUrl(Object? arr) =>
     arr is List && arr.isNotEmpty ? str(at(arr.last, ['url'])) : '';
 
-/// YTM-обложки масштабируются параметрами в URL: `=w120-h120` → `=w544-h544`.
+/// YTM covers scale by URL parameters: `=w120-h120` to `=w544-h544`.
 String upscaleThumb(String url) {
   final i = url.indexOf('=w');
   if (i < 0) return url;
@@ -414,7 +401,7 @@ String upscaleThumb(String url) {
   return '${url.substring(0, i)}=w544-h544$after';
 }
 
-/// Самая крупная обложка из первого `thumbnails`-массива в поддереве (апскейл).
+/// Largest cover from the first `thumbnails` array in the subtree, upscaled.
 String biggestThumb(Object? v) => upscaleThumb(_lastThumbUrl(_findThumbs(v)));
 
 Object? _findThumbs(Object? v) {
@@ -434,7 +421,7 @@ Object? _findThumbs(Object? v) {
   return null;
 }
 
-/// videoId трека: playlistItemData либо play-button overlay.
+/// A track's videoId: playlistItemData or the play-button overlay.
 String? videoId(Object? it) {
   final direct = at(it, ['playlistItemData', 'videoId']);
   if (direct is String && direct.isNotEmpty) return direct;
@@ -450,7 +437,7 @@ String? videoId(Object? it) {
   return overlay is String && overlay.isNotEmpty ? overlay : null;
 }
 
-/// «m:ss»/«h:mm:ss» → секунды; null, если это не часы.
+/// m:ss or h:mm:ss to seconds; null if it isn't a time.
 int? parseClock(String s) {
   final parts = s.trim().split(':');
   if (parts.length < 2 || parts.length > 3) return null;
@@ -463,17 +450,18 @@ int? parseClock(String s) {
   return secs;
 }
 
-/// Имя артиста из col1. В неотфильтрованном поиске первый run — это ТИП
-/// («Song»/«Video»), поэтому [firstRun] бесполезен. Берём runs со ссылкой на
-/// артиста (pageType ARTIST); если их нет — первый смысловой run.
+/// Artist's name from col1. In unfiltered search the first run is the TYPE
+/// (Song, Video), so [firstRun] is no use. I take runs linking to an artist
+/// (pageType ARTIST), or the first meaningful run if none.
 String col1Artist(Object? col1) {
-  // Артисты-ссылки (может быть несколько — джойним).
+  // Artist links; there may be several, joined.
   final names = col1Artists(col1);
   if (names.isNotEmpty) return names.map((a) => a.name).join(', ');
 
-  // Фолбэк — первый смысловой кусок подписи. Безусловно пропускать нулевой run
-  // нельзя: в строках плейлиста артист как раз в нулевом (у чарт-плейлистов
-  // подпись = один run с каналом), и все треки чарта выходили без исполнителя.
+  // Fallback: the first meaningful caption piece. Run zero can't be skipped
+  // unconditionally: in playlist rows it's the artist (a chart playlist's
+  // caption is one run with the channel), and all chart tracks would come out
+  // with no artist.
   for (final s in meaningfulRuns(col1)) {
     if (parseClock(s) == null) return s;
   }
@@ -497,7 +485,7 @@ String _firstPage(List<({String id, String name})> artists) => artists
     .map((a) => a.id)
     .firstWhere((id) => id.isNotEmpty, orElse: () => '');
 
-/// Длительность из последнего run col1 формата «m:ss» → секунды.
+/// Duration from col1's last m:ss run, in seconds.
 int col1Duration(Object? col1) {
   final runs = at(col1, ['runs']);
   if (runs is! List) return 0;
@@ -508,7 +496,7 @@ int col1Duration(Object? col1) {
   return 0;
 }
 
-/// Длительность из fixedColumns (строки альбома: «m:ss» отдельной колонкой).
+/// Duration from fixedColumns (album rows have m:ss as a separate column).
 int fixedDuration(Object? it) =>
     parseClock(
       str(
@@ -534,7 +522,7 @@ YtmRawTrack? parseTrack(Object? it) {
 
   final artists = col1Artists(col1);
 
-  // Длительность: в строках поиска — в col1; в строках альбома — в fixedColumns.
+  // Duration: in col1 for search rows, in fixedColumns for album rows.
   final d = col1Duration(col1);
   return YtmRawTrack(
     id: id,
@@ -563,7 +551,7 @@ YtmRawAlbum? parseAlbum(Object? it) {
   final title = firstRun(flexText(it, 0));
   if (title.isEmpty) return null;
   final col1 = flexText(it, 1);
-  // Год — 4-значный run в col1.
+  // Year, a 4-digit run in col1.
   var year = '';
   final runs = at(col1, ['runs']);
   if (runs is List) {
@@ -576,7 +564,7 @@ YtmRawAlbum? parseAlbum(Object? it) {
     }
   }
   // The caption opens with the kind ("Album", "Single", "EP"), not the
-  // artist: the artist is the linked runs, as on the PC.
+  // artist: the artist is the linked runs.
   final artist = col1Artist(col1);
   return YtmRawAlbum(
     id: id,
@@ -609,15 +597,14 @@ YtmRawPlaylist? parsePlaylist(Object? it) {
   );
 }
 
-/// Число треков из подписи строки. Официальные плейлисты YTM пишут его в
-/// подзаголовке («Playlist • YouTube Music • 48 songs»), пользовательские —
-/// нет (у них «автор • 4.3M views»), а у альбомов его нет вовсе. Поэтому
-/// nullable: «неизвестно» и «ноль треков» — разные вещи, и UI не должен
-/// показывать «0 тр.» там, где счётчика просто не дали.
+/// Track count from a row's caption. Official YTM playlists write it in the
+/// subtitle ("Playlist • YouTube Music • 48 songs"), user ones don't, and
+/// albums never do. So nullable: unknown and zero are different, and the UI
+/// shouldn't show 0 where no count was given.
 int? rowTrackCount(Object? it) {
   int? found;
   collectText(it, (s) {
-    // «48 songs» / «104 треков» — число, за ним слово про треки.
+    // "48 songs" or "104 треков": a number, then a word about tracks.
     final parts = s.split(RegExp(r'\s+'));
     if (parts.length < 2) return true;
     const words = {'songs', 'song', 'треков', 'трека', 'трек'};
@@ -628,34 +615,33 @@ int? rowTrackCount(Object? it) {
   return found;
 }
 
-// ============================ Поиск ============================
+// ── Search ──────────────────────────────────────────────────────────────
 
-/// Фильтр выдачи «только песни» — тот же `params`, что шлёт веб-клиент при
-/// выборе вкладки «Songs». Без него YTM подмешивает в треки любые ролики
-/// (каверы, хореографию, реакции) и они всплывают выше оригинала.
+/// Songs only result filter, the `params` the web client sends for the Songs
+/// tab. Without it YTM mixes in any videos (covers, choreography, reactions),
+/// which rise above the original.
 const String kParamsSongs = 'EgWKAQIIAWoKEAkQBRAKEAMQBA==';
 
-/// Фильтр «только артисты». В общей выдаче искомый артист лежит в карточке
-/// топ-результата, а строками идут «похожие» — из-за этого по «the weeknd» в
-/// артистах оказывались Gesaffelstein и Metro Boomin, а самого The Weeknd не
-/// было. Вкладка отдаёт нужного первым.
+/// Artists only filter. In general results the wanted artist lies in the top
+/// card, with similar ones as rows, so an artist's own name might not list them
+/// at all. The tab gives the wanted one first.
 const String kParamsArtists = 'EgWKAQIgAWoKEAkQChAFEAMQBA==';
 
-/// Фильтры «только альбомы» / «только плейлисты».
+/// Albums only and playlists only filters.
 const String kParamsAlbums = 'EgWKAQIYAWoKEAkQChAFEAMQBA==';
 const String kParamsPlaylists = 'EgWKAQIoAWoKEAkQChAFEAMQBA==';
 
-/// Состояние листания поиска. Держим только последний запрос — пользователь
-/// листает одну выдачу за раз, а привязка к строке запроса не даёт отдать
-/// чужую страницу, если поиск успели сменить.
+/// Search paging state. Only the last query is held: the user pages one result
+/// set at a time, and tying it to the query string won't give a foreign page if
+/// search changed.
 class _SearchPaging {
   final String query;
 
-  /// Токен следующей страницы; null — страницы кончились.
+  /// Next page token; null when pages ran out.
   String? token;
 
-  /// Уже отданные videoId: YTM повторяет треки между страницами, и без этого
-  /// в выдаче появляются дубли (проверено — «Ashura-chan» на 1-й и 3-й).
+  /// videoIds already given: YTM repeats tracks between pages, and without this
+  /// duplicates appear.
   final Set<String> seen;
 
   _SearchPaging(this.query, this.token, this.seen);
@@ -663,11 +649,11 @@ class _SearchPaging {
 
 _SearchPaging? _searchCont;
 
-/// Сколько раз подряд тянуть следующую страницу, если предыдущая целиком
-/// оказалась дублями: иначе кнопка «Загрузить ещё» молча ничего не добавляет.
+/// How many times in a row to fetch the next page if the last was all
+/// duplicates, or Load more silently adds nothing.
 const int kPagingMaxFetches = 3;
 
-/// Один запрос к `search`. [params] — фильтр вкладки (null = общая выдача).
+/// One `search` request. [params] is the tab filter (null for general results).
 Future<Map<String, dynamic>> searchRaw(String query, [String? params]) async =>
     _postJson(
       '$kSearchUrl&key=$kWebKey',
@@ -686,8 +672,8 @@ Future<Map<String, dynamic>> _searchContinuation(String token) async =>
       errCode: 'ytm.err.searchMore',
     );
 
-/// Разобрать строки ответа отфильтрованной вкладки: отобрать по [keep],
-/// распарсить, снять дубли по [key], обрезать до [limit].
+/// Parses a filtered tab's answer rows: selects by [keep], parses, removes
+/// duplicates by [key], cuts to [limit].
 List<T> filteredRows<T>(
   Object? v,
   bool Function(Object?) keep,
@@ -707,9 +693,9 @@ List<T> filteredRows<T>(
   return out;
 }
 
-/// Дописать в конец раздела то, чего в нём ещё нет (порядок базового списка
-/// сохраняется — он же и есть порядок релевантности). [cap] — предел раздела
-/// выдачи; null означает «без предела» (полная дискография артиста).
+/// Adds to a section's end what isn't in it (the base list's order stays, being
+/// relevance order). [cap] is the section's limit; null means none (an artist's
+/// whole discography).
 List<T> mergeById<T>(
   List<T> base,
   List<T> extra,
@@ -731,11 +717,11 @@ Future<Map<String, dynamic>?> _searchOrNull(String query, String params) =>
     ).then<Map<String, dynamic>?>((v) => v, onError: (_) => null);
 
 Future<YtmSearchRaw> search(String query) async {
-  // Пять запросов параллельно: общая выдача + по вкладке на каждый раздел.
-  // Вкладки дают чистые и правильно отсортированные списки, общая выдача
-  // остаётся источником по умолчанию и даёт карточку топ-результата. Если
-  // фильтр перестанет работать (YouTube меняет `params`), берём раздел из
-  // общей выдачи — поломка фильтра деградирует, а не роняет поиск.
+  // Five requests in parallel: general results plus one tab per section. Tabs
+  // give clean, properly sorted lists, and general results stay the default and
+  // give the top card. If a filter stops working (YouTube changes `params`),
+  // the section comes from general results: a broken filter degrades rather
+  // than downing search.
   final responses = await Future.wait([
     searchRaw(query),
     _searchOrNull(query, kParamsSongs),
@@ -755,8 +741,8 @@ Future<YtmSearchRaw> search(String query) async {
   );
 }
 
-/// Сборка выдачи из ответов (вынесена из [search] отдельно — она чистая и
-/// проверяется тестами без сети).
+/// Builds results from answers. Apart from [search]: it's pure, tested with no
+/// network.
 YtmSearchRaw parseSearch(
   Object? v, {
   required String query,
@@ -771,7 +757,7 @@ YtmSearchRaw parseSearch(
   var playlists = <YtmRawPlaylist>[];
   final seen = <String>{};
 
-  // Классифицируем строки общей выдачи по основному navigationEndpoint.
+  // Classifies general result rows by their main navigationEndpoint.
   for (final it in collectMrlir(v)) {
     switch (pageType(it)) {
       case 'MUSIC_PAGE_TYPE_ARTIST':
@@ -789,7 +775,7 @@ YtmSearchRaw parseSearch(
           final p = parsePlaylist(it);
           if (p != null && seen.add(p.id)) playlists.add(p);
         }
-      // Нет browse-страницы → это трек/видео (играбельный videoId).
+      // No browse page means a track or video (a playable videoId).
       default:
         if (tracks.length < 20) {
           final t = parseTrack(it);
@@ -807,7 +793,7 @@ YtmSearchRaw parseSearch(
       (t) => t.id,
     );
     if (found.isNotEmpty) {
-      // Листаем именно вкладку «Songs» — так догрузка даёт чистые песни.
+      // Paging goes on the Songs tab, so loading gives clean songs.
       _searchCont = _SearchPaging(
         query,
         findContinuation(songs),
@@ -826,10 +812,9 @@ YtmSearchRaw parseSearch(
     );
     if (found.isNotEmpty) artists = found;
   }
-  // Альбомы и плейлисты вкладки не ЗАМЕЩАЮТ общую выдачу, а дополняют её.
-  // Здесь, в отличие от артистов, общая выдача не врёт, зато содержит то, чего
-  // во вкладке нет: официальные плейлисты YouTube Music («Presenting Ado») —
-  // единственные, у кого известно число треков.
+  // Tab albums and playlists don't REPLACE general results but add to them.
+  // Unlike artists, general results don't lie here and hold what the tab lacks:
+  // official YouTube Music playlists, the only ones with a known track count.
   if (albumsOnly != null) {
     albums = mergeById(
       albums,
@@ -861,9 +846,9 @@ YtmSearchRaw parseSearch(
     );
   }
 
-  // Топ-результат — самая релевантная сущность по запросу; поднимаем её на
-  // первое место своего раздела (вкладки сортируют внутри типа, но не знают,
-  // что именно искал пользователь).
+  // The top result is the most relevant entity for the query, raised to first
+  // in its section: tabs sort within a type but don't know what the user
+  // searched for.
   final top = parseTopCard(v);
   switch (top) {
     case final YtmRawArtist a:
@@ -884,13 +869,12 @@ YtmSearchRaw parseSearch(
   );
 }
 
-/// Разобрать карточку топ-результата общей выдачи (`musicCardShelfRenderer`).
-/// Она лежит НЕ в строках, поэтому обычный сбор её не видит, и самый
-/// релевантный результат раньше терялся целиком.
+/// Parses the general results' top card (`musicCardShelfRenderer`). It's NOT
+/// among rows, so the usual collection doesn't see it.
 ///
-/// Тип определяем по `navigationEndpoint` первого run'а заголовка (у карточки
-/// трека там `watchEndpoint` без pageType — такие пропускаем: чистый список
-/// песен даёт вкладка «Songs», а длительности в карточке нет).
+/// The type comes from the title's first run's `navigationEndpoint`. A track
+/// card has `watchEndpoint` with no pageType and is skipped: the Songs tab
+/// gives a clean list, and the card has no duration.
 Object? parseTopCard(Object? v) {
   final card = findRenderer(v, 'musicCardShelfRenderer');
   if (card == null) return null;
@@ -927,18 +911,18 @@ Object? parseTopCard(Object? v) {
   }
 }
 
-/// Следующая страница треков поиска (по 20). Пусто + `false`, если продолжения
-/// нет либо запрос сменился с момента прошлой выдачи.
+/// Next page of search tracks (20 at a time). Empty and `false` if there's no
+/// continuation or the query changed since the last results.
 Future<YtmSearchMore> searchMore(String query) async {
   final fresh = <YtmRawTrack>[];
 
   for (var i = 0; i < kPagingMaxFetches; i++) {
     final state = _searchCont;
     if (state == null || state.query != query) {
-      return const YtmSearchMore(); // запрос сменился
+      return const YtmSearchMore(); // the query changed
     }
     final token = state.token;
-    if (token == null) break; // страницы кончились
+    if (token == null) break; // pages ran out
 
     final v = await _searchContinuation(token);
     final page = filteredRows(
@@ -951,7 +935,7 @@ Future<YtmSearchMore> searchMore(String query) async {
 
     final now = _searchCont;
     if (now == null || now.query != query) {
-      return const YtmSearchMore(); // запрос сменили, пока ходили в сеть
+      return const YtmSearchMore(); // the query changed during the network trip
     }
     now.token = findContinuation(v);
     for (final t in page) {
@@ -967,14 +951,13 @@ Future<YtmSearchMore> searchMore(String query) async {
   );
 }
 
-// ============================ Радио ============================
+// ── Radio ───────────────────────────────────────────────────────────────
 
 const String kNextUrl =
     'https://music.youtube.com/youtubei/v1/next?prettyPrint=false';
 
-/// Радио трека — watch-плейлист с включённым радио, как
-/// `get_watch_playlist(radio=True)` у ytmusicapi (и `YtMusic::station` ПК).
-/// Открывается самим треком — его отбрасываем; дальше ведёт токен [cursor].
+/// A track's radio: a watch playlist with radio on. It opens with the track
+/// itself, which is dropped; token [cursor] leads on.
 Future<({List<YtmRawTrack> tracks, String cursor})> radio(
   String id, {
   String cursor = '',
@@ -1002,8 +985,8 @@ Future<({List<YtmRawTrack> tracks, String cursor})> radio(
     final vid = str(at(it, ['videoId']));
     final title = firstRun(at(it, ['title']));
     if (vid.isEmpty || title.isEmpty || !seen.add(vid)) continue;
-    // «Артисты • Альбом • Год»: артисты — первая часть (игра или канал
-    // дальше тоже бывают ссылкой на артиста).
+    // "Artists • Album • Year": artists are the first part (a game or channel
+    // further on can also link to an artist).
     final first = <Object?>[];
     final runs = at(it, ['longBylineText', 'runs']);
     if (runs is List) {
@@ -1034,10 +1017,10 @@ Future<({List<YtmRawTrack> tracks, String cursor})> radio(
   return (tracks: tracks, cursor: str(at(more, ['continuation'])));
 }
 
-// ============================ Страницы (browse) ============================
+// ── Pages (browse) ──────────────────────────────────────────────────────
 
-/// POST browse с веб-контекстом → сырой JSON ответа. [params] — им YTM кодирует
-/// «какую вкладку раздела показать» (например «Singles & EPs» у артиста).
+/// POST browse with the web context, giving raw answer JSON. [params] is how
+/// YTM encodes which section tab to show (like an artist's Singles & EPs).
 Future<Map<String, dynamic>> browse(String browseId, [String? params]) async =>
     _postJson(
       '$kBrowseUrl&key=$kWebKey',
@@ -1047,7 +1030,7 @@ Future<Map<String, dynamic>> browse(String browseId, [String? params]) async =>
       errCode: 'ytm.err.browse',
     );
 
-/// Альбом: шапка + треки (videoId в строках, длительность в fixedColumns).
+/// Album: a header and tracks (videoId in rows, duration in fixedColumns).
 Future<YtmEntity> album(String browseId) async =>
     parseAlbumPage(await browse(browseId));
 
@@ -1059,9 +1042,9 @@ YtmEntity parseAlbumPage(Object? v) {
   for (final it in collectMrlir(v)) {
     var t = parseTrack(it);
     if (t == null) continue;
-    // У треков альбома часто нет своей обложки — подставляем обложку альбома.
-    // Артист в строках альбома не повторяется (он один на всю страницу и указан
-    // в шапке) — иначе в списке у каждого трека «Неизвестен».
+    // Album tracks often have no cover, so I use the album's. The artist isn't
+    // repeated in album rows (one for the page, in the header), or each track
+    // would be unknown.
     t = t.copyWith(
       cover: t.cover.isEmpty ? cover : null,
       artist: t.artist.isEmpty ? subtitle : null,
@@ -1078,7 +1061,7 @@ YtmEntity parseAlbumPage(Object? v) {
   );
 }
 
-/// Плейлист: шапка + треки. browseId плейлиста требует префикс `VL`.
+/// Playlist: a header and tracks. A playlist's browseId needs the `VL` prefix.
 Future<YtmEntity> playlist(String browseId) async {
   final id = browseId.startsWith('VL') ? browseId : 'VL$browseId';
   return parsePlaylistPage(await browse(id));
@@ -1101,11 +1084,10 @@ YtmEntity parsePlaylistPage(Object? v) {
   );
 }
 
-/// Артист: «Популярные» (top songs shelf) + релизы и похожие из каруселей.
-///
-/// Шапка отдаёт только 5–10 песен и 10 релизов. За полными списками идём по
-/// кнопкам «ещё»: у шелфа песен это плейлист `VL…` (≈100 треков), у карусели
-/// синглов — `MPAD…` с `params`. Оба запроса независимы → параллельно.
+/// Artist: popular (top songs shelf), with releases and similar from carousels.
+/// The header gives only 5–10 songs and 10 releases. Full lists come from the
+/// more buttons: a `VL…` playlist on the songs shelf (≈100 tracks), `MPAD…`
+/// with `params` on the singles carousel. Both are independent, so parallel.
 Future<YtmEntity> artist(String browseId) async {
   final v = await browse(browseId);
   final base = parseArtistPage(v);
@@ -1130,19 +1112,19 @@ Future<YtmEntity> artist(String browseId) async {
   );
 }
 
-/// Шапка артиста без походов за «ещё» — чистая часть [artist].
+/// Artist header with no trips for more, the pure part of [artist].
 YtmEntity parseArtistPage(Object? v) {
   final h = header(v);
-  // popular: строки (mrlir) на странице артиста — это шелф «Песни».
+  // popular: rows (mrlir) on an artist page are the Songs shelf.
   final popular = <YtmRawTrack>[];
   for (final it in collectMrlir(v)) {
     if (popular.length >= 10) break;
     final t = parseTrack(it);
     if (t != null) popular.add(t);
   }
-  // Карточки каруселей — это и релизы, и похожие исполнители сразу. Разбираем
-  // по ПРЕФИКСУ browseId, а не по заголовку секции: заголовки локализованы и
-  // YTM тасует состав каруселей от артиста к артисту.
+  // Carousel cards are both releases and similar artists. Parsed by browseId's
+  // PREFIX rather than the section title: titles are localized, and YTM
+  // shuffles carousels from artist to artist.
   final albums = <YtmRawAlbum>[];
   final similar = <YtmRawArtist>[];
   final seen = <String>{};
@@ -1165,13 +1147,12 @@ YtmEntity parseArtistPage(Object? v) {
   );
 }
 
-/// Ссылка кнопки «ещё» у секции: (browseId, params).
+/// A section's more button link: (browseId, params).
 typedef MoreLink = ({String id, String? params});
 
-/// Найти кнопку «ещё» у секции с одним из указанных заголовков.
-///
-/// Секции ищем рекурсивно, а не по фиксированному пути: YTM тасует их порядок и
-/// состав от артиста к артисту (у кого-то нет синглов, у кого-то нет видео).
+/// Finds the more button of a section with one of the given titles. Sections
+/// are searched recursively with no fixed path: YTM shuffles order and contents
+/// from artist to artist.
 MoreLink? shelfMore(Object? v, List<String> titles) {
   MoreLink? out;
   void walk(Object? node) {
@@ -1208,7 +1189,7 @@ MoreLink? shelfMore(Object? v, List<String> titles) {
   return out;
 }
 
-/// Есть ли среди текстов заголовка секции один из ожидаемых (без учёта регистра).
+/// Whether a section title's texts include one expected, ignoring case.
 bool shelfTitleMatches(Object? head, List<String> titles) {
   var found = false;
   collectText(head, (s) {
@@ -1221,7 +1202,7 @@ bool shelfTitleMatches(Object? head, List<String> titles) {
   return found;
 }
 
-/// Первый `browseEndpoint` внутри узла → (browseId, params).
+/// First `browseEndpoint` in a node, as (browseId, params).
 MoreLink? browseLink(Object? v) {
   final ep = findRenderer(v, 'browseEndpoint');
   final id = str(at(ep, ['browseId']));
@@ -1230,8 +1211,8 @@ MoreLink? browseLink(Object? v) {
   return (id: id, params: params is String ? params : null);
 }
 
-/// Полный список треков по ссылке «ещё». Ошибку глушим: страница артиста должна
-/// открыться даже без этого списка.
+/// Full track list by a more link. Errors are dampened: an artist page must
+/// open even without this list.
 Future<List<YtmRawTrack>> _moreTracks(MoreLink? link) async {
   if (link == null) return const [];
   final Object? v;
@@ -1249,7 +1230,8 @@ Future<List<YtmRawTrack>> _moreTracks(MoreLink? link) async {
   return out;
 }
 
-/// Полный список релизов по ссылке «ещё» (синглы/EP). Ошибку глушим, см. выше.
+/// Full release list by a more link (singles, EPs). Errors are dampened, as
+/// above.
 Future<List<YtmRawAlbum>> _moreAlbums(MoreLink? link) async {
   if (link == null) return const [];
   final Object? v;
@@ -1266,15 +1248,15 @@ Future<List<YtmRawAlbum>> _moreAlbums(MoreLink? link) async {
   return out;
 }
 
-/// musicTwoRowItemRenderer → альбом (только карточки с browseId `MPRE…`).
+/// musicTwoRowItemRenderer to an album (only cards with browseId `MPRE…`).
 YtmRawAlbum? parseTwoRowAlbum(Object? it) {
   final id = _twoRowBrowseId(it, 'MPRE');
-  if (id == null) return null; // не альбом (плейлист/видео карусель)
+  if (id == null) return null; // not an album (a playlist or video carousel)
   final title = str(at(it, ['title', 'runs', 0, 'text']));
   if (title.isEmpty) return null;
-  // Подпись карточки — «Single • Артист» или «Album • 2023»: метку типа
-  // отбрасываем (иначе она уезжает в имя исполнителя), год забираем в своё
-  // поле, остальное и есть артист.
+  // A card's caption is "Single • Artist" or "Album • 2023": the type label
+  // goes (or it lands in the artist's name), the year to its own field, and the
+  // rest is the artist.
   final parts = meaningfulRuns(at(it, ['subtitle']));
   final year = parts.lastWhere(_isYear, orElse: () => '');
   return YtmRawAlbum(
@@ -1287,7 +1269,7 @@ YtmRawAlbum? parseTwoRowAlbum(Object? it) {
   );
 }
 
-/// musicTwoRowItemRenderer → артист (карточки «Fans might also like»: `UC…`).
+/// musicTwoRowItemRenderer to an artist (Fans might also like cards: `UC…`).
 YtmRawArtist? parseTwoRowArtist(Object? it) {
   final id = _twoRowBrowseId(it, 'UC');
   if (id == null) return null;
@@ -1301,9 +1283,9 @@ String? _twoRowBrowseId(Object? it, String prefix) {
   return id is String && id.startsWith(prefix) ? id : null;
 }
 
-// ---- Шапка страницы ----
+// ---- Page header ----
 
-/// Первый известный header-рендерер страницы.
+/// A page's first known header renderer.
 Object? header(Object? v) {
   for (final key in const [
     'musicDetailHeaderRenderer',
@@ -1319,17 +1301,17 @@ Object? header(Object? v) {
 
 String headerTitle(Object? h) => str(at(h, ['title', 'runs', 0, 'text']));
 
-/// Обложка страницы. Сначала СВОЙ узел `thumbnail`, и только потом что найдётся
-/// в поддереве: у нового `musicResponsiveHeaderRenderer` рядом лежит
-/// `straplineThumbnail` (аватар артиста), и общий обход может подсунуть его
-/// вместо обложки альбома — на десктопе здесь просто `biggest_thumb(h)`.
+/// Page cover. Its OWN `thumbnail` node first, and only then whatever's in the
+/// subtree: new `musicResponsiveHeaderRenderer` has `straplineThumbnail` (the
+/// artist's avatar) beside it, and a general walk could pass that off as the
+/// album's cover.
 String headerCover(Object? h) {
   final own = at(h, ['thumbnail']);
   final url = own == null ? '' : biggestThumb(own);
   return url.isNotEmpty ? url : biggestThumb(h);
 }
 
-/// Год из шапки: 4-значный run в `subtitle` («Альбом • Артист • 2023»).
+/// Year from the header: a 4-digit run in `subtitle` ("Album • Artist • 2023").
 String headerYear(Object? h) {
   final runs = at(h, ['subtitle', 'runs']);
   if (runs is! List) return '';
@@ -1340,12 +1322,11 @@ String headerYear(Object? h) {
   return '';
 }
 
-/// Подзаголовок шапки (артист/владелец).
-///
-/// `straplineTextOne` — ровно имя артиста/владельца (рядом с ним лежит его
-/// аватар, см. [headerStraplineAvatar]), поэтому он в приоритете: `subtitle` у
-/// нового рендерера — метаданные вида «Альбом • 2023», а не имя. Фолбэк на
-/// `subtitle` нужен старому `musicDetailHeaderRenderer`, где strapline нет.
+/// Header subtitle (artist or owner). `straplineTextOne` is exactly the
+/// artist's or owner's name (with their avatar beside it, see
+/// [headerStraplineAvatar]), so it comes first: on the new renderer `subtitle`
+/// is metadata like "Album • 2023". The fallback to `subtitle` is for old
+/// `musicDetailHeaderRenderer`, with no strapline.
 String headerSubtitle(Object? h) {
   String join(Object? node) {
     final runs = at(node, ['runs']);
@@ -1357,14 +1338,14 @@ String headerSubtitle(Object? h) {
   return strapline.isNotEmpty ? strapline : join(at(h, ['subtitle']));
 }
 
-/// Аватар артиста/владельца из шапки: `straplineThumbnail` — единственное
-/// место, где он есть без отдельного browse-запроса на страницу артиста.
+/// Artist's or owner's avatar from the header: `straplineThumbnail` is the only
+/// place it exists with no browse request to the artist's page.
 String headerStraplineAvatar(Object? h) {
   final t = at(h, ['straplineThumbnail']);
   return t == null ? '' : biggestThumb(t);
 }
 
-/// Биография артиста из шапки (`musicImmersiveHeaderRenderer.description`).
+/// Artist's bio from the header (`musicImmersiveHeaderRenderer.description`).
 String headerDescription(Object? h) {
   final d = at(h, ['description']);
   final simple = at(d, ['simpleText']);
@@ -1374,32 +1355,31 @@ String headerDescription(Object? h) {
   return runs.map((r) => str(at(r, ['text']))).join();
 }
 
-// ============================ Разбор ссылок ============================
+// ── Parsing links ───────────────────────────────────────────────────────
 
-/// Ссылка YouTube/YouTube Music → сущность.
+/// A YouTube or YouTube Music link to an entity. Nearly all comes from the URL
+/// itself, but two cases need the network: `list=OLAK5uy_…` is an album's
+/// playlist version, while only `MPRE…` opens the album page, with the mapping
+/// in the playlist page's HTML; and `/@handle`, `/c/<name>`, `/user/<name>` are
+/// readable channel names, with browseId (`UC…`) also only in HTML.
 ///
-/// Почти всё выводится из самого URL, но два случая требуют сети:
-///   * `list=OLAK5uy_…` — «плейлист-версия» альбома, а страницу альбома
-///     открывает только `MPRE…`; соответствие лежит в HTML страницы плейлиста;
-///   * `/@handle`, `/c/<name>`, `/user/<name>` — человекочитаемое имя канала,
-///     browseId (`UC…`) тоже есть только в HTML.
-///
-/// Оба сетевых шага мягкие: не получилось — деградируем (альбом откроется как
-/// плейлист, хэндл не резолвится), а не роняем весь импорт.
+/// Both network steps are soft: a failure degrades (the album opens as a
+/// playlist, a handle doesn't resolve) rather than downing the import.
 Future<YtmResolved> resolve(String url) async {
   final u = url.trim();
   if (!u.contains('youtube.com') && !u.contains('youtu.be')) {
     throw const YtmException('ytm.err.notYoutubeUrl');
   }
 
-  // Трек: watch?v=…, youtu.be/<id>, /shorts/<id>. Приоритет выше плейлиста — у
-  // ссылки «трек из плейлиста» есть оба параметра, а открыть надо трек.
+  // Track: watch?v=…, youtu.be/<id>, /shorts/<id>. Above a playlist: a track
+  // from a playlist link has both parameters, and the track is what should
+  // open.
   final v = queryParam(u, 'v');
   if (v != null) return YtmResolved('track', v);
   final short = pathAfter(u, 'youtu.be/') ?? pathAfter(u, '/shorts/');
   if (short != null) return YtmResolved('track', short);
 
-  // Плейлист/альбом: ?list=…
+  // Playlist or album: ?list=…
   final list = queryParam(u, 'list');
   if (list != null) {
     if (list.startsWith('OLAK5uy_')) {
@@ -1409,7 +1389,7 @@ Future<YtmResolved> resolve(String url) async {
     return YtmResolved('playlist', list);
   }
 
-  // Прямые browse-ссылки: /browse/<MPRE…|VL…|UC…>.
+  // Direct browse links: /browse/<MPRE…|VL…|UC…>.
   final browseId = pathAfter(u, '/browse/');
   if (browseId != null) {
     if (browseId.startsWith('MPRE')) return YtmResolved('album', browseId);
@@ -1417,8 +1397,8 @@ Future<YtmResolved> resolve(String url) async {
     if (browseId.startsWith('UC')) return YtmResolved('artist', browseId);
   }
 
-  // Канал: /channel/UC… — browseId прямо в ссылке; остальные виды имени
-  // (/@handle, /c/…, /user/…) достаём из HTML страницы.
+  // Channel: /channel/UC… has browseId right in the link; other name kinds
+  // (/@handle, /c/…, /user/…) come from the page's HTML.
   final channel = pathAfter(u, '/channel/');
   if (channel != null) return YtmResolved('artist', channel);
   if (u.contains('/@') || u.contains('/c/') || u.contains('/user/')) {
@@ -1429,7 +1409,7 @@ Future<YtmResolved> resolve(String url) async {
   throw const YtmException('ytm.err.badUrl');
 }
 
-/// Значение query-параметра (`?v=…&list=…`) без разбора всего URL.
+/// A query parameter's value (`?v=…&list=…`) with no parsing of the whole URL.
 String? queryParam(String url, String key) {
   final i = url.indexOf('?');
   if (i < 0) return null;
@@ -1443,7 +1423,7 @@ String? queryParam(String url, String key) {
   return null;
 }
 
-/// Кусок пути сразу после маркера, до следующего `/`, `?`, `#` или `&`.
+/// The path piece right after a marker, up to the next `/`, `?`, `#` or `&`.
 String? pathAfter(String url, String marker) {
   final i = url.indexOf(marker);
   if (i < 0) return null;
@@ -1452,8 +1432,8 @@ String? pathAfter(String url, String marker) {
   return id.isEmpty ? null : id;
 }
 
-/// browseId альбома (`MPRE…`) по id его плейлиста (`OLAK5uy_…`). InnerTube
-/// такого перехода не даёт — соответствие есть только в HTML страницы.
+/// An album's browseId (`MPRE…`) by its playlist's id (`OLAK5uy_…`). InnerTube
+/// has no such move: the mapping is only in the page's HTML.
 Future<String?> _albumBrowseId(String listId) async {
   final html = await _getText(
     'https://music.youtube.com/playlist?list=$listId',
@@ -1461,12 +1441,12 @@ Future<String?> _albumBrowseId(String listId) async {
   return html == null ? null : findId(html, 'MPRE');
 }
 
-/// browseId канала (`UC…`) со страницы `/@handle` и подобных.
+/// A channel's browseId (`UC…`) from a `/@handle` page and the like.
 Future<String?> _channelBrowseId(String url) async {
   final html = await _getText(url);
   if (html == null) return null;
-  // Отдельный ключ, а не поиск «UC…» по всему тексту: две эти буквы слишком
-  // часто встречаются в разметке и дают ложные срабатывания.
+  // A specific key rather than searching for UC across the text: those two
+  // letters occur too often in markup and give false hits.
   for (final key in const ['"channelId":"', '"browseId":"', '"externalId":"']) {
     final i = html.indexOf(key);
     if (i < 0) continue;
@@ -1476,7 +1456,7 @@ Future<String?> _channelBrowseId(String url) async {
   return null;
 }
 
-/// Первый идентификатор с указанным префиксом в тексте.
+/// First id with the given prefix in a text.
 String? findId(String text, String prefix) {
   final i = text.indexOf(prefix);
   if (i < 0) return null;
@@ -1506,7 +1486,7 @@ Future<String?> _getText(String url, {String userAgent = kWebUa}) async {
   }
 }
 
-// ============================ Стрим ============================
+// ── Stream ──────────────────────────────────────────────────────────────
 
 Map<String, dynamic> _visionClient() => {
   'clientName': 'VISIONOS',
@@ -1517,7 +1497,7 @@ Map<String, dynamic> _visionClient() => {
   'osVersion': '26.5.23O471',
 };
 
-/// Один запрос к `player` конкретным клиентом.
+/// One `player` request by a given client.
 Future<Map<String, dynamic>> _playerWith(
   Map<String, dynamic> client,
   String ua,
@@ -1542,7 +1522,7 @@ Future<Map<String, dynamic>> _playerWith(
   errCode: 'ytm.err.player',
 );
 
-/// Аудио-форматы с готовым url (без signatureCipher).
+/// Audio formats with a ready url (no signatureCipher).
 List<Object?> audioFormats(Object? v) {
   final arr = at(v, ['streamingData', 'adaptiveFormats']);
   if (arr is! List) return const [];
@@ -1555,20 +1535,18 @@ List<Object?> audioFormats(Object? v) {
       .toList();
 }
 
-/// `true`, если ответ пригоден: статус OK и есть аудио с прямым url.
+/// `true` if an answer is fit: status OK and audio with a direct url.
 bool playable(Object? v) =>
     at(v, ['playabilityStatus', 'status']) == 'OK' &&
     audioFormats(v).isNotEmpty;
 
-/// Запрос к player-эндпоинту (даёт прямые url + videoDetails).
+/// A player endpoint request (giving direct urls and videoDetails). VISIONOS,
+/// then on refusal a fresh `visitorData` and a repeat. A stale `visitorData`
+/// looks like `LOGIN_REQUIRED`, so one retry with a session reset covers the
+/// most common failure.
 ///
-/// Порядок: VISIONOS → (при отказе) свежий `visitorData` и повтор. Протухший
-/// `visitorData` выглядит как `LOGIN_REQUIRED`, поэтому одна ретрай-попытка со
-/// сбросом сессии закрывает самый частый сбой.
-///
-/// Второго клиента в цепочке намеренно нет (почему — док библиотеки): ссылка
-/// от ANDROID_VR проходит проверку [playable], но затем отдаёт 403, то есть
-/// отказ выглядел бы как успех.
+/// No second client on purpose: `ANDROID_VR`'s link passes [playable] and then
+/// gives 403, so a refusal would look like success.
 Future<Map<String, dynamic>> player(String videoId) async {
   final first = await _playerWith(_visionClient(), kVisionUa, videoId);
   if (playable(first)) return first;
@@ -1577,12 +1555,12 @@ Future<Map<String, dynamic>> player(String videoId) async {
   final retry = await _playerWith(_visionClient(), kVisionUa, videoId);
   if (playable(retry)) return retry;
 
-  // Ничего не сыграло — возвращаем первый ответ ради его playabilityStatus:
-  // из него вызывающий соберёт человекочитаемую причину.
+  // Nothing played: I return the first answer for its playabilityStatus, from
+  // which the caller builds a readable reason.
   return first;
 }
 
-/// Метаданные одного трека по videoId (для ре-резолва из «недавних»).
+/// One track's metadata by videoId, for re-resolving from recents.
 Future<YtmRawTrack> track(String videoId) async {
   final v = await player(videoId);
   final d = at(v, ['videoDetails']);
@@ -1600,21 +1578,19 @@ Future<YtmRawTrack> track(String videoId) async {
   );
 }
 
-/// Аудио-URL для videoId.
+/// Audio URL for a videoId. m4a/aac preferred (itag 140, the most compatible
+/// container), then the rest by bitrate.
 ///
-/// Предпочтение: m4a/aac (itag 140 — самый совместимый контейнер), затем всё
-/// остальное по битрейту.
-///
-/// [hls] просит вместо прямой ссылки плейлист — он нужен AVPlayer'у на iOS,
-/// см. [_hlsAudioUrl]. Если плейлиста в ответе нет, молча отдаём прямую: это
-/// хуже, но играет.
+/// [hls] asks for a playlist rather than a direct link, for AVPlayer on iOS;
+/// see [_hlsAudioUrl]. With no playlist in the answer it silently gives the
+/// direct one: worse, but it plays.
 Future<String> streamUrl(String videoId, {bool hls = false}) async {
   final v = await player(videoId);
 
   final status = str(at(v, ['playabilityStatus', 'status']));
   if (status != 'OK') {
     final reason = str(at(v, ['playabilityStatus', 'reason']));
-    // Причина приходит текстом от самой площадки — отдаём как есть.
+    // The reason comes as the platform's text and goes as is.
     throw YtmException(reason.isEmpty ? 'ytm.err.unplayable' : reason);
   }
 
@@ -1641,21 +1617,19 @@ Future<String> streamUrl(String videoId, {bool hls = false}) async {
   return url;
 }
 
-/// Аудио-дорожка из HLS-манифеста — ссылка для iOS.
+/// Audio track from the HLS manifest, a link for iOS. The direct itag 140 link
+/// leads to FRAGMENTED mp4 (`moov` with `mvex`, then `sidx` and a chain of
+/// `moof` and `mdat`), a DASH container. ExoPlayer plays it as an ordinary
+/// file, while AVFoundation accepts fragmented mp4 only inside HLS: on a direct
+/// link AVPlayer reads double the real duration. The sound is right, but the
+/// track plays on in silence to a made-up end and doesn't advance.
 ///
-/// Зачем отдельный путь. Прямая ссылка itag 140 ведёт на ФРАГМЕНТИРОВАННЫЙ mp4
-/// (`moov` с `mvex`, дальше `sidx` и цепочка `moof`/`mdat`) — контейнер DASH.
-/// ExoPlayer и Chromium играют его как обычный файл, а AVFoundation признаёт
-/// фрагментированный mp4 только внутри HLS: по прямой ссылке AVPlayer читает
-/// длительность вдвое больше настоящей. Звук при этом верный, но трек
-/// «доигрывает» в тишину до выдуманного конца и не уходит на следующий.
+/// The manifest has ready audio-only tracks: group `234` is the same AAC 128k
+/// as itag 140, `233` a 48k reserve. The playlist comes as
+/// `#EXT-X-PLAYLIST-TYPE:VOD` with `#EXT-X-ENDLIST`, so with an honest
+/// duration, and segments are ADTS AAC, native to AVPlayer.
 ///
-/// В манифесте есть готовые дорожки только со звуком: группа `234` — тот же
-/// AAC 128k, что и itag 140, `233` — 48k про запас. Плейлист приходит как
-/// `#EXT-X-PLAYLIST-TYPE:VOD` с `#EXT-X-ENDLIST`, то есть с честной
-/// длительностью, а сегменты — ADTS AAC, родной для AVPlayer формат.
-///
-/// `null` значит «не вышло» — вызывающий возьмёт прямую ссылку.
+/// `null` means failed, and the caller takes the direct link.
 Future<String?> _hlsAudioUrl(Object? v) async {
   final master = str(at(v, ['streamingData', 'hlsManifestUrl']));
   if (master.isEmpty) return null;
@@ -1664,7 +1638,8 @@ Future<String?> _hlsAudioUrl(Object? v) async {
   return _mediaPlaylist(text, '234') ?? _mediaPlaylist(text, '233');
 }
 
-/// URI дорожки `#EXT-X-MEDIA` с нужным `GROUP-ID` из мастер-манифеста.
+/// URI of the `#EXT-X-MEDIA` track with the given `GROUP-ID` from the master
+/// manifest.
 String? _mediaPlaylist(String manifest, String group) {
   for (final line in const LineSplitter().convert(manifest)) {
     if (!line.startsWith('#EXT-X-MEDIA:')) continue;

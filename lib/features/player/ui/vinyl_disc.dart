@@ -1,20 +1,14 @@
-/// Пластинка — вращение и этикетка. Порт `.ps-cover.vinyl-mode` с ПК.
-///
-/// Один вход на всех: и полноэкранный плеер, и превью в настройках берут
-/// вращение и этикетку отсюда — иначе картинка в настройках со временем
-/// разошлась бы с настоящей (та же беда, что у слайдера).
+/// Vinyl: the spin and the label. One entry for all: the full player and
+/// settings preview take them from here, so the preview can't diverge.
 library;
 
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-/// Вращение пластинки — порт `.ps-cover.vinyl-spin img`: 10 с на оборот,
-/// линейно, без конца.
-///
-/// Пауза не отматывает диск в ноль: десктопное `animation-play-state:paused`
-/// замирает на месте, и `repeat()` после `stop()` идёт с ТЕКУЩЕГО значения
-/// контроллера — оборот продолжается с того же угла.
+/// Vinyl spin: 10 s per turn, linear, endless. A pause doesn't rewind the disc:
+/// `repeat()` after `stop()` continues from the controller's CURRENT value, so
+/// the turn resumes at the same angle.
 class VinylSpin extends StatefulWidget {
   const VinylSpin({
     super.key,
@@ -24,16 +18,17 @@ class VinylSpin extends StatefulWidget {
     this.playing,
   });
 
-  /// Пластинка на экране (выбран стиль «Пластинка»). Выключена — виджет пустая
-  /// обёртка: заводить тикер обычному плееру незачем.
+  /// The vinyl is on screen. Off, the widget is an empty wrapper: an ordinary
+  /// player needs no ticker.
   final bool enabled;
 
-  /// Крутится ли диск прямо сейчас. Для плеера это лишь ПЕРВЫЙ кадр — дальше
-  /// состояние приезжает потоком [playing], который отдаёт значение не сразу.
+  /// Whether the disc spins right now. For the player that's only the FIRST
+  /// frame: then the state arrives by the [playing] stream, which doesn't give
+  /// a value at once.
   final bool spinning;
 
-  /// Поток «идёт ли звук». `null` — крутить решает один [spinning] (превью в
-  /// настройках: там звука нет вовсе).
+  /// Stream of whether sound plays. `null` leaves it to [spinning] (the
+  /// settings preview has no sound).
   final Stream<bool>? playing;
 
   final Widget child;
@@ -74,8 +69,8 @@ class _VinylSpinState extends State<VinylSpin>
     super.dispose();
   }
 
-  /// Подписка на плеер. Диск выключили — гасим и её, и тикер: крутить кадры
-  /// вхолостую обычному плееру незачем.
+  /// Player subscription. With the disc off both it and the ticker stop: an
+  /// ordinary player needs no idle frames.
   void _listen() {
     _sub?.cancel();
     _sub = null;
@@ -103,19 +98,16 @@ class _VinylSpinState extends State<VinylSpin>
       : widget.child;
 }
 
-/// Этикетка в середине пластинки — порт `.ps-cover.vinyl-mode::after`: тёмный
-/// кружок с тонким светлым кольцом у своего края.
-///
-/// Кольцо белое, а не «плёнкой темы», как на ПК (`rgba(var(--ovl-rgb),.1)`): на
-/// светлой теме плёнка там чёрная, и на почти чёрной этикетке кольца просто не
-/// было бы видно.
+/// Label in the disc's middle: a dark circle with a thin light ring near its
+/// edge. The ring is white rather than a theme film: on the light theme that
+/// film is black, and wouldn't show on a nearly black label.
 class VinylLabel extends StatelessWidget {
   const VinylLabel({super.key, required this.size});
 
-  /// Диаметр этикетки. На ПК это 22% диаметра диска.
+  /// Label diameter.
   final double size;
 
-  /// Доля диаметра диска, которую занимает этикетка (`width:22%`).
+  /// Share of the disc's diameter the label takes.
   static const double share = 0.22;
 
   @override
@@ -126,9 +118,9 @@ class VinylLabel extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: RadialGradient(
-          // Доли те же, что в CSS, но там они меряются от центра до ДАЛЬНЕГО
-          // УГЛА коробки (умолчание `radial-gradient`), а у Flutter радиус —
-          // доля ширины. Отсюда 0.707: половина диагонали квадрата.
+          // The stops are measured from the centre to the box's FAR CORNER,
+          // while Flutter's radius is a share of the width. Hence 0.707, half a
+          // square's diagonal.
           radius: 0.707,
           colors: [
             Color(0xFF111111),

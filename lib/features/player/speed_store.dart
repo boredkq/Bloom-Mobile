@@ -1,36 +1,32 @@
-/// Скорость воспроизведения — порт десктопного `player/model/speedStore.ts`.
+/// Playback speed. With nightcore, pitch moves with tempo; off (the default),
+/// pitch holds. Presets, bounds, step and rounding match across devices, so one
+/// number means one thing.
 ///
-/// Пресеты, границы, шаг и округление те же, что на ПК: одна и та же цифра
-/// должна давать одно и то же и там, и здесь. Nightcore — десктопное
-/// `preservesPitch: false`: тон едет вместе с темпом; выключен (умолчание) —
-/// тон сохраняется.
-///
-/// Стор ЧИСТЫЙ: про плеер он не знает, его дело — значение и персист. На сам
-/// `AudioPlayer` настройку ставит `PlaybackController` (он один владеет
-/// плеером), подписавшись на этот провайдер, — как `bootstrapSpeed` +
-/// `audioEngine.setPlaybackRate` на десктопе.
+/// The store is CLEAN: it knows nothing of the player, only the value and
+/// saving it. `PlaybackController`, the player's sole owner, applies it by
+/// subscribing here.
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/store/json_store.dart' show jsonStoreProvider;
 
-/// Пресеты-карточки пикера: медленно / обычно / быстро.
+/// Picker preset cards: slow, normal, fast.
 const List<double> kSpeedPresets = [0.75, 1, 1.25];
 
-/// Границы и шаг слайдера произвольной скорости.
+/// Bounds and step of the custom speed slider.
 const double kSpeedMin = 0.5;
 const double kSpeedMax = 2;
 const double kSpeedStep = 0.05;
 
-/// Засечки под полосой — каждые 0.25×. Совпавшие с пресетами рисуем крупнее.
+/// Marks under the bar every 0.25×. Those matching presets are larger.
 const List<double> kSpeedTicks = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
-/// Число делений слайдера между [kSpeedMin] и [kSpeedMax].
+/// Slider divisions between [kSpeedMin] and [kSpeedMax].
 int get kSpeedDivisions => ((kSpeedMax - kSpeedMin) / kSpeedStep).round();
 
-/// Округление до шага слайдера + клемп: 0.05 в double даёт хвосты, и без
-/// округления до сотых на диск уезжало бы `1.3000000000000003`.
+/// Rounds to the slider's step and clamps: 0.05 in double leaves tails, and
+/// `1.3000000000000003` would reach the disk.
 double clampRate(double rate) {
   if (!rate.isFinite) return 1;
   final snapped = (rate / kSpeedStep).round() * kSpeedStep;
@@ -38,7 +34,7 @@ double clampRate(double rate) {
   return rounded.clamp(kSpeedMin, kSpeedMax);
 }
 
-/// `1×`, `1.35×` — без хвостовых нулей (десктопный `speedLabel`).
+/// `1×`, `1.35×`, with no trailing zeros.
 String speedLabel(double rate) {
   var text = rate.toStringAsFixed(2);
   if (text.contains('.')) {
@@ -51,14 +47,14 @@ String speedLabel(double rate) {
 class SpeedSettings {
   const SpeedSettings({this.rate = 1, this.nightcore = false});
 
-  /// Текущая скорость воспроизведения ([kSpeedMin]…[kSpeedMax]).
+  /// Current playback speed ([kSpeedMin]…[kSpeedMax]).
   final double rate;
 
-  /// Nightcore: питч едет за темпом. Выключен — тон сохраняется.
+  /// Nightcore: pitch follows tempo. Off, pitch holds.
   final bool nightcore;
 
-  /// Множитель питча для плеера. Выключенный nightcore — ровно 1: тон
-  /// сохраняется сам (ExoPlayer тянет темп через sonic).
+  /// Pitch multiplier for the player. With nightcore off it's exactly 1: pitch
+  /// holds by itself (ExoPlayer stretches tempo through sonic).
   double get pitch => nightcore ? rate : 1;
 
   SpeedSettings copyWith({double? rate, bool? nightcore}) => SpeedSettings(
@@ -79,8 +75,8 @@ class SpeedController extends Notifier<SpeedSettings> {
     final raw = ref.read(jsonStoreProvider).readMap(_key);
     final rate = raw['rate'];
     return SpeedSettings(
-      // Битую запись (правили файл руками) молча заменяем на 1×: скорость не
-      // повод ронять запуск.
+      // A broken entry silently becomes 1×: a speed is no reason to crash a
+      // launch.
       rate: rate is num ? clampRate(rate.toDouble()) : 1,
       nightcore: raw['nightcore'] == true,
     );
@@ -93,7 +89,7 @@ class SpeedController extends Notifier<SpeedSettings> {
     _save();
   }
 
-  /// Сброс на 1× — тап по пилюле текущего значения (десктопный `sp-cur`).
+  /// Resets to 1×, on a tap of the current value's pill.
   void reset() => setRate(1);
 
   void setNightcore(bool on) {

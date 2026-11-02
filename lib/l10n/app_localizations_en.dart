@@ -21,6 +21,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonDelete => 'Delete';
 
   @override
+  String get commonClose => 'Close';
+
+  @override
   String get commonDone => 'Done';
 
   @override
@@ -223,9 +226,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeSimilarTo => 'Similar to';
-
-  @override
-  String get homeSimilarArtist => 'Artist';
 
   @override
   String get playerQueue => 'Queue';
@@ -1585,11 +1585,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setMiniPlayer => 'Mini player';
 
   @override
-  String setStub(String title) {
-    return '“$title” isn’t built yet';
-  }
-
-  @override
   String get pvGroupTitle => 'Title';
 
   @override
@@ -1702,37 +1697,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pvSliderWave => 'Wave';
-
-  @override
-  String get pvGroupAnim => 'Track change';
-
-  @override
-  String get pvAnimPlayer => 'Player';
-
-  @override
-  String get pvAnimPlayerSub =>
-      'the full screen player — cover and title are configured separately';
-
-  @override
-  String get pvAnimMini => 'Mini player';
-
-  @override
-  String get pvAnimMiniSub => 'the card above the tab bar';
-
-  @override
-  String get pvAnimCover => 'Cover';
-
-  @override
-  String get pvAnimText => 'Title and artist';
-
-  @override
-  String get pvAnimNone => 'None';
-
-  @override
-  String get pvAnimSlide => 'Slide';
-
-  @override
-  String get pvAnimFade => 'Fade';
 
   @override
   String get pvGroupLyrics => 'Lyrics';
@@ -2331,6 +2295,22 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get stCovers => 'Covers';
+
+  @override
+  String get stClearCoversBody =>
+      'Downloaded covers will be deleted — they are fetched again the next time they show.';
+
+  @override
+  String get stCoversCleared => 'Cover cache cleared';
+
+  @override
+  String get stCoversKeep => 'Keep covers';
+
+  @override
+  String get lfmSessionLost => 'The sign-in no longer works — sign in again';
+
+  @override
   String get stLyricsCleared => 'Lyrics cache cleared';
 
   @override
@@ -2342,7 +2322,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get stKeepNever => 'Never';
+  String get stKeepNever => 'No limit';
 
   @override
   String get stKeepRestart => 'Until restart';
@@ -2726,6 +2706,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get lfmScrobbleSub => 'Count listened tracks on Last.fm';
+
+  @override
+  String lfmPending(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count scrobbles wait to be sent',
+      one: '$count scrobble waits to be sent',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get lfmNowPlayingSub => 'Update the “Now Playing” status';
@@ -3114,6 +3105,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutOpenRelease => 'Open the release page';
 
   @override
+  String get updInThis => 'In this version';
+
+  @override
   String get updWhatsNew => 'What’s new';
 
   @override
@@ -3145,9 +3139,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sysExported => 'File saved';
-
-  @override
-  String get sysNoPlaylists => 'There are no playlists yet';
 
   @override
   String get sysImportTitle => 'Import';
@@ -3445,4 +3436,52 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pcErrFailed => 'Couldn\'t connect';
+
+  @override
+  String get taPlayNextHint => 'Plays after the current one';
+
+  @override
+  String get waveFromTrackHint => 'A mix of similar tracks';
+
+  @override
+  String get waveFromArtistHint => 'A mix based on this artist';
+
+  @override
+  String get waveDislikeHint => 'Won\'t show up in mixes';
+
+  @override
+  String get waveUndislikeHint => 'Back in the mixes';
+
+  @override
+  String get tiHint => 'Album, year, length';
+
+  @override
+  String get tlOfflineHint => 'A copy inside the app';
+
+  @override
+  String get tlFilesHint => 'To the phone\'s files';
+
+  @override
+  String get tlRefreshHint => 'What\'s new in the sources';
+
+  @override
+  String get commonPinHint => 'First in the library';
+
+  @override
+  String get tlMergeHint => 'Into a new playlist';
+
+  @override
+  String get tlConvertHint => 'A copy on another platform';
+
+  @override
+  String get tlFindDupsHint => 'Repeats in this list';
+
+  @override
+  String get tlExportHint => 'To a transfer file';
+
+  @override
+  String get artistImportHint => 'Into your library';
+
+  @override
+  String get commonFollowHint => 'The artist joins your library';
 }

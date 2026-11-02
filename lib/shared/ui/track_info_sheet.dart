@@ -1,10 +1,7 @@
-/// «Инфо о треке» — то, что площадка знает о треке сверх названия и артиста.
-///
-/// Порт десктопной `TrackInfoModal`: тот же состав (альбом, год, длительность,
-/// паблишер, жанры, описание) и тот же принцип — пустые поля не показываются
-/// вовсе, а не стоят прочерками. На телефоне это не модалка по центру, а
-/// нижняя шторка: открывается она из шторки действий и обязана выглядеть её
-/// продолжением, поэтому шапка у них одна и та же.
+/// Track info: what the platform knows beyond title and artist. Album, year,
+/// duration, publisher, genres, description; empty fields don't show at all.
+/// Opens from the actions sheet and should look like its continuation, so the
+/// header is the same.
 library;
 
 import 'package:flutter/material.dart';
@@ -15,10 +12,10 @@ import '../../core/l10n/l10n.dart';
 import '../util/format.dart';
 import 'bloom_icon.dart';
 import 'bloom_sheet.dart';
+import '../../shared/ui/atoms.dart';
 
-/// [addedAt] — когда трек попал в библиотеку: шапка тут та же, что в шторке
-/// действий, и без этой строки при переходе она бы дёргалась. Читает её
-/// звонящий: до библиотеки отсюда не дотянуться, `ref` в шторку не приходит.
+/// [addedAt] is when the track came into the library: the header is the same as
+/// in the actions sheet. The caller reads it: no `ref` comes into the sheet.
 Future<void> showTrackInfoSheet(
   BuildContext context,
   Track track, {
@@ -26,8 +23,7 @@ Future<void> showTrackInfoSheet(
 }) {
   return showBloomSheetChild<void>(
     context: context,
-    backdrop: track.cover,
-    header: SheetLineHeader(
+    header: SheetHero(
       cover: track.cover,
       title: track.name,
       subtitle: track.artist,
@@ -45,20 +41,18 @@ class _TrackInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = context.l;
-    // Файл — только у своих треков: у площадочных пути нет и строка стояла бы
-    // пустой (на ПК ровно то же условие).
+    // A file path only for local tracks; platform ones have none.
     final file = switch (track.sourceData) {
       {'file': final String path} when path.trim().isNotEmpty => path,
       {'name': final String name} when name.trim().isNotEmpty => name,
       _ => null,
     };
-    // Длительность нулевая — значит площадка её не отдала, а не «трек длиной
-    // ноль»: показывать нечего.
+    // Zero means the platform didn't send it, not a zero-length track.
     final duration = track.duration > Duration.zero
         ? mmss(track.duration)
         : null;
-    // Полная дата релиза, когда площадка знает день и месяц (SoundCloud,
-    // Яндекс); знает только год — строка остаётся прежним «Годом».
+    // Full release date when the platform knows day and month (SoundCloud,
+    // Yandex); with only the year, the row stays Year.
     final released = releaseDateLabel(
       track.releaseDate,
       Localizations.localeOf(context).toString(),
@@ -77,7 +71,21 @@ class _TrackInfo extends StatelessWidget {
       if (duration != null) _InfoRow(label: l.tiDuration, value: duration),
       if (track.publisher case final publisher?)
         _InfoRow(label: l.tiPublisher, value: publisher),
-      if (track.genres.isNotEmpty) _GenresRow(genres: track.genres),
+      if (track.genres.isNotEmpty)
+        _InfoRow(
+          label: l.tiGenres,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final genre in track.genres)
+                  BloomTag(text: genre, active: false),
+              ],
+            ),
+          ),
+        ),
       if (file != null) _InfoRow(label: l.tiFile, value: file),
     ];
 
@@ -85,16 +93,7 @@ class _TrackInfo extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (track.explicit) const _ExplicitMark(),
-        if (rows.isNotEmpty)
-          SheetPanel(
-            children: [
-              for (var i = 0; i < rows.length; i++) ...[
-                // Иконок у строк нет — текст стоит на отступе 16.
-                if (i > 0) sheetDivider(indent: 16),
-                rows[i],
-              ],
-            ],
-          ),
+        if (rows.isNotEmpty) SheetPanel(children: rows),
         if (track.description case final description?)
           if (description.trim().isNotEmpty)
             SheetPanel(
@@ -102,11 +101,11 @@ class _TrackInfo extends StatelessWidget {
                 _InfoRow(label: l.tiDescription, value: description.trim()),
               ],
             ),
-        // Совсем пустой трек — тоже ответ: сказать это словами честнее, чем
-        // открыть шторку без единой строки.
+        // An empty track is an answer too: saying so in words beats an empty
+        // sheet.
         if (rows.isEmpty && (track.description ?? '').trim().isEmpty)
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
             child: Text(
               l.tiNothing,
               style: Theme.of(context).textTheme.bodyMedium,
@@ -117,84 +116,34 @@ class _TrackInfo extends StatelessWidget {
   }
 }
 
-/// Строка «подпись сверху, значение снизу» — как ячейка `.ti-cell` на ПК.
-/// Значение не режем: длинный путь к файлу и описание должны читаться целиком.
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value});
+  const _InfoRow({required this.label, this.value, this.child});
 
   final String label;
-  final String value;
+  final String? value;
+
+  /// Instead of [value].
+  final Widget? child;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context).textTheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      // `stretch`, а не `start`: колонка со `start` ужимается по своему тексту,
-      // а блок шторки ставит детей по центру — короткие строки («Год»)
-      // уезжали к середине, длинные оставались у края.
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(label, style: theme.bodySmall),
           const SizedBox(height: 3),
-          Text(value, style: theme.titleMedium),
+          child ?? Text(value!, style: theme.titleMedium),
         ],
       ),
     );
   }
 }
 
-/// Жанры — плашками, а не строкой через запятую: их бывает пять, и списком они
-/// читаются быстрее (десктопные `.ti-genre-tag`).
-class _GenresRow extends StatelessWidget {
-  const _GenresRow({required this.genres});
-
-  final List<String> genres;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Column(
-        // Ширину держит `Wrap`: он и так занимает всю строку блока, отдельная
-        // распорка тут не нужна.
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(context.l.tiGenres, style: theme.bodySmall),
-          const SizedBox(height: 7),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              for (final genre in genres)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: sheetLineColor(context),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    genre,
-                    style: theme.bodyMedium?.copyWith(color: t.text),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Пометка «E» — единственное поле трека, у которого нет значения, только
-/// факт: на ПК она стоит рядом с названием в шапке, здесь — первой строкой,
-/// потому что шапка у шторок общая.
+/// The E mark: the only track field with a fact rather than a value, so it's a
+/// first row; the header is shared by sheets.
 class _ExplicitMark extends StatelessWidget {
   const _ExplicitMark();
 
@@ -202,7 +151,7 @@ class _ExplicitMark extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
       child: Row(
         children: [
           BloomIcon(Bi.dangerCircle, size: 16, color: t.muted),

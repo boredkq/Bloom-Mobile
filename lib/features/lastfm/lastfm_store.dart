@@ -1,17 +1,10 @@
-/// Скробблер Last.fm — порт десктопного `features/lastfm/model/lastfmStore.ts`.
+/// The Last.fm scrobbler: app keys, session key, two switches, and when a track
+/// counts: at least [kLfmMinListen], and either [kLfmAbsolute] or half of its
+/// length.
 ///
-/// Хранит ключи приложения, ключ сессии и два флага; он же и считает, когда
-/// трек пора засчитывать. Правило зачёта десктопное (оно же — требование самого
-/// Last.fm): прослушано не меньше [kLfmMinListen] И при этом либо
-/// [kLfmAbsolute], либо половина длительности.
-///
-/// Про плеер стор не знает: события ему приносит `PlaybackController` вызовами
-/// [LastfmController.onTrackStart] и [LastfmController.onProgress] — тот же
-/// расклад, что у скорости и таймера сна. На десктопе эту роль играет
-/// `useLastfmBridge`, подписанный на два стора.
-///
-/// Текстов здесь нет: наружу уходит типизированная причина [LfmNote], фразу
-/// собирает экран настроек (как у авторизации Яндекса).
+/// It knows nothing of the player: `PlaybackController` brings the events. No
+/// texts here either: [LfmNote] is a typed reason, the settings screen words
+/// it.
 library;
 
 import 'dart:async';
@@ -19,40 +12,56 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/db/db.dart';
 import '../../core/entities/entities.dart';
 import '../../core/store/json_store.dart' show jsonStoreProvider;
 import 'lastfm_api.dart';
 
-/// Порог «слушали достаточно», чтобы засчитывать вообще.
+/// Below this nothing counts at all.
 const Duration kLfmMinListen = Duration(seconds: 30);
 
-/// Длинный трек засчитывается после этого времени, не дожидаясь половины.
+/// A long track counts after this, without waiting for its half.
 const Duration kLfmAbsolute = Duration(seconds: 240);
 
+const String _kPending = 'lastfm.pending';
+const int _kBatch = 50; // the most track.scrobble takes at once
+const int _kKeep = 1000; // waiting ones beyond that: the oldest go
+const int _kMaxAgeSec = 14 * 24 * 3600; // older ones the service turns down
+const Duration _kRetry = Duration(minutes: 5);
+const Duration _kFirstSend = Duration(seconds: 10);
+const int _kSessionGone = 9;
+
+/// The service's hiccups and its rate limit, or no answer: worth another go.
+bool _transient(int? error) =>
+    error == null || error == 8 || error == 11 || error == 16 || error == 29;
+
 enum LfmNoteKind {
-  /// Идёт `auth.getToken`.
+  /// `auth.getToken` is running.
   gettingToken,
 
-  /// Токен получен, браузер открыт — ждём подтверждения.
+  /// Token in hand, browser open, waiting for the confirmation.
   confirmAccess,
 
-  /// Идёт `auth.getSession`.
+  /// `auth.getSession` is running.
   checking,
 
-  /// Доступ ещё не подтверждён — можно нажать «Готово» ещё раз.
+  /// Not confirmed yet; "Done" can be pressed again.
   notConfirmed,
 
-  /// Вход не начинали, подтверждать нечего.
+  /// Sign-in never started, nothing to confirm.
   loginFirst,
 
-  /// Нет ключей приложения — сначала их надо сохранить.
+  /// No app keys: save them first.
   needKeys,
 
-  /// Сеть не ответила.
+  /// No answer from the network.
   networkError,
 
-  /// Отказ площадки; текст лежит в [LfmNote.message].
+  /// Refused by the service; the text is in [LfmNote.message].
   error,
+
+  /// The saved session stopped working.
+  sessionLost,
 }
 
 class LfmNote {
@@ -70,31 +79,35 @@ class LastfmState {
     this.scrobbleEnabled = false,
     this.nowPlayingEnabled = false,
     this.user = '',
+    this.pending = 0,
     this.note,
     this.oauthPending = false,
     this.busy = false,
   });
 
-  /// Ключ сессии. Есть — значит подключено.
+  /// Connected if present.
   final String? sk;
 
-  /// Ключи приложения: свои у каждого, вшитых нет.
+  /// Everyone's own, none built in.
   final String apiKey;
   final String apiSecret;
 
   final bool scrobbleEnabled;
   final bool nowPlayingEnabled;
 
-  /// Ник на Last.fm.
+  /// The nickname.
   final String user;
 
-  /// Что показать под кнопками входа.
+  /// Scrobbles not sent yet.
+  final int pending;
+
+  /// What shows under the sign-in buttons.
   final LfmNote? note;
 
-  /// Токен получен, браузер открыт — показываем «Готово».
+  /// Token in hand, browser open: "Done" shows.
   final bool oauthPending;
 
-  /// Идёт сетевой шаг входа.
+  /// A network step of the sign-in is running.
   final bool busy;
 
   bool get connected => (sk ?? '').isNotEmpty;
@@ -108,6 +121,7 @@ class LastfmState {
     bool? scrobbleEnabled,
     bool? nowPlayingEnabled,
     String? user,
+    int? pending,
     LfmNote? note,
     bool clearNote = false,
     bool? oauthPending,
@@ -119,6 +133,7 @@ class LastfmState {
     scrobbleEnabled: scrobbleEnabled ?? this.scrobbleEnabled,
     nowPlayingEnabled: nowPlayingEnabled ?? this.nowPlayingEnabled,
     user: user ?? this.user,
+    pending: pending ?? this.pending,
     note: clearNote ? null : (note ?? this.note),
     oauthPending: oauthPending ?? this.oauthPending,
     busy: busy ?? this.busy,
@@ -129,26 +144,100 @@ final lastfmProvider = NotifierProvider<LastfmController, LastfmState>(
   LastfmController.new,
 );
 
-/// Часы скробблера — вынесены ради тестов (тот же приём, что
-/// `sleepClockProvider`).
+/// The clock, swapped in tests.
 final lfmClockProvider = Provider<DateTime Function()>((_) => DateTime.now);
 
 class LastfmController extends Notifier<LastfmState> {
   static const _key = 'lastfm';
 
-  /// Разовый токен между `auth.getToken` и `auth.getSession`. На диск не идёт:
-  /// он живёт минуты и годен один раз.
+  /// Between `auth.getToken` and `auth.getSession`. Never on disk: it lives
+  /// minutes and works once.
   String? _pendingToken;
 
-  /// Что играет сейчас, когда началось и засчитали ли. Транзиентное состояние —
-  /// в состоянии провайдера ему делать нечего (меняется на каждом тике, а в
-  /// интерфейсе не показывается) — ровно как модульные переменные на ПК.
+  /// What plays, since when, whether it counted. Not provider state: it changes
+  /// every tick and never shows.
   ({String artist, String track, String album})? _nowTrack;
   int _startedAt = 0;
   bool _scrobbled = false;
 
+  bool _sending = false;
+  Timer? _timer;
+  bool _disposed = false;
+
+  List<LfmScrobble> _queue() {
+    final raw = ref.read(dbProvider).get(_kPending);
+    if (raw is! List) return [];
+    return [
+      for (final item in raw)
+        if (item is Map) LfmScrobble.fromJson(item.cast<String, dynamic>()),
+    ];
+  }
+
+  void _setQueue(List<LfmScrobble> list) {
+    ref.read(dbProvider).set(_kPending, [for (final s in list) s.toJson()]);
+    state = state.copyWith(pending: list.length);
+  }
+
+  void _sendIn(Duration delay) {
+    _timer?.cancel();
+    _timer = Timer(delay, () => unawaited(_send()));
+  }
+
+  /// The waiting scrobbles, oldest first, a batch at a time.
+  Future<void> _send() async {
+    final sk = state.sk;
+    if (_sending || sk == null) return;
+    final now = ref.read(lfmClockProvider)().millisecondsSinceEpoch ~/ 1000;
+    final all = _queue();
+    final list = [
+      for (final s in all)
+        if (s.ts >= now - _kMaxAgeSec) s,
+    ];
+    if (list.length != all.length) _setQueue(list);
+    if (list.isEmpty) return;
+
+    final n = list.length < _kBatch ? list.length : _kBatch;
+    _sending = true;
+    final answer = await lastfmScrobble(
+      apiKey: state.apiKey,
+      apiSecret: state.apiSecret,
+      sk: sk,
+      batch: list.sublist(0, n),
+    );
+    _sending = false;
+    if (_disposed) return;
+
+    final error = answer == null
+        ? null
+        : (answer['error'] as num?)?.toInt() ?? 0;
+    // They wait for the next sign-in.
+    if (error == _kSessionGone) return _sessionLost();
+    if (_transient(error)) return _sendIn(_kRetry);
+    // Sent, or turned down for good (a bad field): either way they're done.
+    // New ones may have come meanwhile, at the end.
+    final rest = _queue().sublist(n);
+    _setQueue(rest);
+    if (rest.isNotEmpty) unawaited(_send());
+  }
+
+  void _sessionLost() {
+    _timer?.cancel();
+    state = state.copyWith(
+      clearSk: true,
+      user: '',
+      note: const LfmNote(LfmNoteKind.sessionLost),
+    );
+    _save();
+  }
+
   @override
   LastfmState build() {
+    ref.onDispose(() {
+      _disposed = true;
+      _timer?.cancel();
+    });
+    final waiting = _queue().length;
+    if (waiting > 0) _sendIn(_kFirstSend);
     final raw = ref.read(jsonStoreProvider).readMap(_key);
     String str(Object? v) => v is String ? v : '';
     final sk = str(raw['sk']);
@@ -159,6 +248,7 @@ class LastfmController extends Notifier<LastfmState> {
       scrobbleEnabled: raw['scrobble'] == true,
       nowPlayingEnabled: raw['nowPlaying'] == true,
       user: str(raw['user']),
+      pending: waiting,
     );
   }
 
@@ -171,8 +261,7 @@ class LastfmController extends Notifier<LastfmState> {
     'user': state.user,
   });
 
-  /// Сохранить ключи приложения. Пустые не сохраняем — на ПК это тост
-  /// «введи оба ключа».
+  /// Empty keys aren't saved.
   bool saveKeys(String apiKey, String apiSecret) {
     final k = apiKey.trim();
     final s = apiSecret.trim();
@@ -185,7 +274,7 @@ class LastfmController extends Notifier<LastfmState> {
     return true;
   }
 
-  /// Шаг 1: разовый токен и переход в браузер.
+  /// Step 1: the token and off to the browser.
   Future<void> startOAuth() async {
     if (!state.hasKeys) {
       state = state.copyWith(note: const LfmNote(LfmNoteKind.needKeys));
@@ -214,16 +303,14 @@ class LastfmController extends Notifier<LastfmState> {
       oauthPending: true,
       note: const LfmNote(LfmNoteKind.confirmAccess),
     );
-    // Страница подтверждения открывается в браузере: пароль в приложение не
-    // вводится, в этом весь смысл входа через Last.fm.
+    // Confirmed in the browser: the password never enters the app.
     unawaited(openLastfmPage(lastfmAuthUrl(state.apiKey, token)));
   }
 
-  /// Шаг 2: обмен подтверждённого токена на ключ сессии.
+  /// Step 2: the confirmed token for a session key.
   ///
-  /// [silent] — проверка «на всякий случай» при возвращении в приложение из
-  /// браузера: она не должна ни ругаться на неподтверждённый доступ, ни
-  /// подменять уже показанную подсказку.
+  /// [silent] is the try on coming back from the browser: it neither complains
+  /// nor replaces the hint on screen.
   Future<bool> finishOAuth({bool silent = false}) async {
     final token = _pendingToken;
     if (token == null) {
@@ -233,9 +320,7 @@ class LastfmController extends Notifier<LastfmState> {
       return false;
     }
     if (state.busy) return false;
-    // Тихая проверка подсказку не трогает вовсе: на экране висит
-    // «подтверди доступ», и подменять её на «проверяю» ради фоновой попытки
-    // незачем.
+    // The silent try leaves "confirm access" on screen.
     state = silent
         ? state.copyWith(busy: true)
         : state.copyWith(busy: true, note: const LfmNote(LfmNoteKind.checking));
@@ -246,8 +331,8 @@ class LastfmController extends Notifier<LastfmState> {
     );
     final session = r.session;
     if (session == null) {
-      // «Не подтверждено» — нормальный ответ на тихую проверку: человек ушёл в
-      // браузер и вернулся, ничего там не нажав. Ругаемся только по кнопке.
+      // Normal for a silent try: they came back without pressing anything. Only
+      // the button complains.
       state = silent
           ? state.copyWith(busy: false)
           : state.copyWith(
@@ -259,8 +344,8 @@ class LastfmController extends Notifier<LastfmState> {
       return false;
     }
     _pendingToken = null;
-    // Вошли — оба тумблера включаются сами, как на ПК: подключать Last.fm и не
-    // скробблить незачем.
+    // Signed in: both switches go on, connecting and not scrobbling makes no
+    // sense.
     state = state.copyWith(
       sk: session.key,
       user: session.name,
@@ -271,12 +356,14 @@ class LastfmController extends Notifier<LastfmState> {
       clearNote: true,
     );
     _save();
+    unawaited(_send());
     return true;
   }
 
   void logout() {
     _pendingToken = null;
     _nowTrack = null;
+    _timer?.cancel();
     state = state.copyWith(
       clearSk: true,
       user: '',
@@ -297,15 +384,15 @@ class LastfmController extends Notifier<LastfmState> {
     _save();
   }
 
-  /// Убрать подсказку — например при уходе с экрана.
+  /// On leaving the screen, for one.
   void clearNote() {
     if (state.note == null) return;
     state = state.copyWith(clearNote: true);
   }
 
-  // ── Скробблинг ────────────────────────────────────────────────────────────
+  // ── Scrobbling ─────────────────────────────────────────────────────────────
 
-  /// Новый трек заиграл: запоминаем его и обновляем «сейчас играет».
+  /// A new track plays: I remember it and update "now playing".
   void onTrackStart(Track track) {
     _nowTrack = (
       artist: track.artist,
@@ -324,12 +411,14 @@ class LastfmController extends Notifier<LastfmState> {
         artist: _nowTrack!.artist,
         track: _nowTrack!.track,
         album: _nowTrack!.album,
-      ),
+      ).then((answer) {
+        if (!_disposed && answer?['error'] == _kSessionGone) _sessionLost();
+      }),
     );
   }
 
-  /// Тик позиции: дошли до порога — засчитываем. Один трек засчитывается один
-  /// раз, до следующего [onTrackStart].
+  /// A position tick: past the threshold it counts, once until the next
+  /// [onTrackStart].
   void onProgress(Duration position, Duration? duration) {
     final now = _nowTrack;
     if (_scrobbled || now == null) return;
@@ -340,24 +429,23 @@ class LastfmController extends Notifier<LastfmState> {
       return;
     }
     _scrobbled = true;
-    final sk = state.sk;
-    if (sk == null || !state.scrobbleEnabled) return;
-    unawaited(
-      lastfmScrobble(
-        apiKey: state.apiKey,
-        apiSecret: state.apiSecret,
-        sk: sk,
-        artist: now.artist,
-        track: now.track,
-        album: now.album,
-        timestamp: _startedAt,
-      ),
-    );
+    if (state.sk == null || !state.scrobbleEnabled) return;
+    final list = _queue()
+      ..add(
+        LfmScrobble(
+          artist: now.artist,
+          track: now.track,
+          album: now.album,
+          duration: duration.inSeconds,
+          ts: _startedAt,
+        ),
+      );
+    _setQueue(list.length > _kKeep ? list.sublist(list.length - _kKeep) : list);
+    unawaited(_send());
   }
 }
 
-/// Открыть страницу Last.fm в браузере. Отдельной переменной — тесты подменяют
-/// её, чтобы не поднимать браузер.
+/// A variable, so tests don't open a browser.
 Future<bool> Function(String url) openLastfmPage = defaultOpenLastfmPage;
 
 Future<bool> defaultOpenLastfmPage(String url) async {

@@ -1,9 +1,8 @@
-/// Lyrics from LRCLIB, as the PC's `Lyrics::fetch`: the exact match with the
+/// Lyrics from LRCLIB: the exact match with the
 /// length, then with a cleaned title, then a search scored against the query;
 /// an "Artist - Title" upload title is tried as such last.
 ///
-/// A file's own tags come first on the PC; my tag reading on the phone
-/// (MediaMetadataRetriever) has no lyrics, so I start at LRCLIB.
+/// My tag reading (MediaMetadataRetriever) has no lyrics, so I start at LRCLIB.
 library;
 
 import 'dart:async';
@@ -32,7 +31,7 @@ class LyricsResult {
 
 const String _base = 'https://lrclib.net/api/';
 // LRCLIB asks clients to say who they are.
-const String _ua = 'Bloom/1.0 (https://github.com/use-bloom/desktop)';
+const String _ua = 'Bloom/1.0 (https://github.com/use-bloom/mobile)';
 const Duration _timeout = Duration(seconds: 15);
 
 /// A search hit below this is some other song.

@@ -1,9 +1,7 @@
-/// «Настройки → Компьютер»: сопряжение с Bloom на ПК и синхронизация —
-/// телефонная пара раздела «Интеграции → Телефон» ПК.
-///
-/// Каркас — [PlatformPage], как у площадок и Last.fm: значок посреди экрана,
-/// статус под ним, действия внизу. Не сопряжён — под значком шаги, как
-/// подключить; сопряжён — «Синхронизировать сейчас» и «Отключить».
+/// Computer settings page: pairing with Bloom there and sync. The frame is
+/// [PlatformPage], like platforms and Last.fm: an icon mid-screen, a status
+/// below, actions at the bottom. Not paired shows steps for connecting; paired
+/// shows Sync now and Disconnect.
 library;
 
 import 'dart:async';
@@ -50,27 +48,18 @@ class PcSettingsScreen extends ConsumerWidget {
       body: link == null ? const _HowTo() : null,
       actions: [
         if (link == null || s.status == PcStatus.repair) ...[
-          BloomButton(
+          PlatformAction(
             label: link == null ? l.pcScan : l.pcReconnect,
-            tone: ButtonTone.plate,
-            pill: false,
-            height: 54,
             onTap: () => context.go('/settings/pc/scan'),
           ),
-          BloomButton(
+          PlatformAction(
             label: l.pcEnterCode,
-            tone: ButtonTone.plate,
-            pill: false,
-            height: 54,
             onTap: () => _enterCode(context),
           ),
         ],
         if (link != null && s.status != PcStatus.repair)
-          BloomButton(
+          PlatformAction(
             label: l.pcSyncNow,
-            tone: ButtonTone.plate,
-            pill: false,
-            height: 54,
             busy: s.status == PcStatus.syncing,
             onTap: () async {
               await pc.sync(force: true);
@@ -82,11 +71,8 @@ class PcSettingsScreen extends ConsumerWidget {
             },
           ),
         if (link != null)
-          BloomButton(
+          PlatformAction(
             label: l.pcUnpair,
-            tone: ButtonTone.plate,
-            pill: false,
-            height: 54,
             onTap: () async {
               final yes = await confirmDanger(
                 context,
@@ -120,7 +106,7 @@ class PcSettingsScreen extends ConsumerWidget {
     return tail == null ? head : '$head\n$tail';
   }
 
-  /// Сегодня — время, раньше — дата и время.
+  /// Today shows the time, earlier the date and time.
   static String _when(BuildContext context, int ms) {
     final at = DateTime.fromMillisecondsSinceEpoch(ms);
     final now = DateTime.now();
@@ -132,7 +118,7 @@ class PcSettingsScreen extends ConsumerWidget {
   }
 }
 
-/// Не сопряжён: как подключить — шаги прямо на странице.
+/// Not paired: how to connect, steps right on the page.
 class _HowTo extends StatelessWidget {
   const _HowTo();
 
@@ -142,7 +128,7 @@ class _HowTo extends StatelessWidget {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
     final steps = [l.pcStep1, l.pcStep2, l.pcStep3];
-    final base = theme.bodyMedium?.copyWith(color: t.text2, height: 1.5);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -151,45 +137,7 @@ class _HowTo extends StatelessWidget {
           child: Column(
             children: [
               for (final (i, step) in steps.indexed)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 24,
-                        height: 24,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: t.accent.withValues(alpha: 0.16),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          '${i + 1}',
-                          style: theme.labelSmall?.copyWith(
-                            color: t.accent,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Text.rich(
-                          TextSpan(
-                            children: markupSpans(
-                              step,
-                              base,
-                              base?.copyWith(
-                                color: t.text,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                GuideStep(index: i + 1, text: step),
             ],
           ),
         ),
@@ -216,9 +164,9 @@ String pairMessage(AppLocalizations l, PairResult r, String name) =>
       PairResult.failed => l.pcErrFailed,
     };
 
-// ── Сканер ─────────────────────────────────────────────────────────────────
+// ── Scanner ───────────────────────────────────────────────────────────────
 
-/// Камера во весь экран: первый QR Bloom — сопряжение, и назад.
+/// Full-screen camera: the first Bloom QR pairs, and back.
 class PcScanScreen extends ConsumerStatefulWidget {
   const PcScanScreen({super.key});
 
@@ -231,10 +179,10 @@ class _PcScanScreenState extends ConsumerState<PcScanScreen> {
     formats: const [BarcodeFormat.qrCode],
   );
 
-  /// Код уже взят и идёт сопряжение — остальные кадры не в счёт.
+  /// A code is taken and pairing is under way, so other frames don't count.
   bool _busy = false;
 
-  /// Последний не-Bloom код: про него уже сказали, второй раз не надо.
+  /// Last non-Bloom code: already told about it, no need twice.
   String? _rejected;
 
   @override
@@ -288,7 +236,7 @@ class _PcScanScreenState extends ConsumerState<PcScanScreen> {
               ),
             ),
           ),
-          // Рамка, куда навести код.
+          // Frame to aim a code into.
           Center(
             child: Container(
               width: 240,
@@ -302,13 +250,10 @@ class _PcScanScreenState extends ConsumerState<PcScanScreen> {
               ),
               child: _busy
                   ? const Center(
-                      child: SizedBox(
-                        width: 28,
-                        height: 28,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.4,
-                          color: Colors.white,
-                        ),
+                      child: BloomSpinner(
+                        size: 28,
+                        stroke: 2.4,
+                        color: Colors.white,
                       ),
                     )
                   : null,
@@ -346,9 +291,10 @@ class _PcScanScreenState extends ConsumerState<PcScanScreen> {
   }
 }
 
-// ── Код ────────────────────────────────────────────────────────────────────
+// ── Code ──────────────────────────────────────────────────────────────────
 
-/// Шторка «Ввести код»: найти ПК с открытым окном сопряжения, потом шесть цифр.
+/// Enter code sheet: finds a computer with the pairing window open, then six
+/// digits.
 Future<void> _enterCode(BuildContext context) =>
     showBloomSheetChild<void>(context: context, child: const _CodeSheet());
 
@@ -361,7 +307,7 @@ class _CodeSheet extends ConsumerStatefulWidget {
 
 class _CodeSheetState extends ConsumerState<_CodeSheet> {
   final TextEditingController _code = TextEditingController();
-  List<FoundPc>? _found; // null — ищем
+  List<FoundPc>? _found; // null while searching
   bool _busy = false;
   String? _error;
 
@@ -430,11 +376,7 @@ class _CodeSheetState extends ConsumerState<_CodeSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2.2, color: t.text),
-            ),
+            BloomSpinner(size: 22, stroke: 2.2, color: t.text),
             const SizedBox(height: 12),
             note(l.pcCodeSearching),
           ],
@@ -449,18 +391,13 @@ class _CodeSheetState extends ConsumerState<_CodeSheet> {
           children: [
             note(l.pcCodeNone),
             const SizedBox(height: 8),
-            BloomButton(
-              label: l.pcCodeRetry,
-              tone: ButtonTone.plate,
-              pill: false,
-              height: 48,
-              onTap: _search,
-            ),
+            PlatformAction(label: l.pcCodeRetry, height: 48, onTap: _search),
           ],
         ),
       );
     }
-    // Обычно ПК один; если окно открыто на двух — берём первый ответивший.
+    // Usually there's one computer; with the window open on two, the first to
+    // answer.
     final pc = found.first;
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -490,14 +427,14 @@ class _CodeSheetState extends ConsumerState<_CodeSheet> {
           const SizedBox(height: 14),
           GlassBox(
             borderRadius: BorderRadius.circular(t.radius),
-            child: TextField(
+            child: BloomField(
               controller: _code,
+              hint: '••• •••',
               autofocus: true,
               keyboardType: TextInputType.number,
               textAlign: TextAlign.center,
               maxLength: 7,
-              cursorColor: t.accent,
-              inputFormatters: [
+              formatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9 ]')),
               ],
               onChanged: (v) {
@@ -507,23 +444,12 @@ class _CodeSheetState extends ConsumerState<_CodeSheet> {
                 color: t.text,
                 letterSpacing: 6,
               ),
-              decoration: InputDecoration(
-                counterText: '',
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                hintText: '••• •••',
-                hintStyle: theme.headlineSmall?.copyWith(
-                  color: t.muted,
-                  letterSpacing: 6,
-                ),
-              ),
+              padding: const EdgeInsets.symmetric(vertical: 16),
             ),
           ),
           note(_error ?? l.pcCodeHint, color: _error != null ? t.danger : null),
-          BloomButton(
+          PlatformAction(
             label: l.pcConnect,
-            tone: ButtonTone.plate,
-            pill: false,
             height: 48,
             busy: _busy,
             onTap: () => _connect(pc),

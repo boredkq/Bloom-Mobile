@@ -1,14 +1,12 @@
-/// База данных слушателя — `bloom.db`, SQLite. Порт `src/db/Db.cpp` новой
-/// версии ПК: та же схема, те же таблицы и тот же `kv`, чтобы данные на двух
-/// устройствах были одной моделью, а не похожими.
+/// The listener's database, `bloom.db`, SQLite. The schema, tables and `kv` are
+/// shared across devices, so data on each is one model.
 ///
-/// Что здесь: треки, библиотека и плейлисты, лайки, подписки, журнал
-/// прослушиваний, дни, дизлайки, сеанс, офлайн, кеш текстов. Настройки
-/// (`settings.json`) и вход в площадки сюда не идут — они у каждого устройства
-/// свои.
+/// Holds tracks, library and playlists, likes, follows, the play log, days,
+/// dislikes, the session, offline and the lyrics cache. Settings and platform
+/// logins stay out: they belong to each device.
 ///
-/// API синхронный, как на ПК: запись — одна вставка в WAL, а сторы отвечают
-/// интерфейсу сразу, без состояний загрузки.
+/// The API is synchronous: a write is one WAL insert, and stores answer the UI
+/// right away with no loading states.
 library;
 
 import 'dart:convert';
@@ -20,16 +18,16 @@ import 'package:sqlite3/sqlite3.dart';
 import '../log/bloom_log.dart';
 import '../store/app_dirs.dart';
 
-/// Шаги схемы — `kMigrations` ПК один в один. Выпущенный шаг не правится,
-/// следующий дописывается в конец (и на ПК тоже: номера версий общие).
+/// Schema steps. A released step is never edited, the next goes at the end;
+/// version numbers are shared across devices.
 ///
-/// id — id треков (`sc:123`, `lf:…`). Всё, что ссылается на трек, ссылается
-/// через tracks(id) ON UPDATE CASCADE: смена id трека тянет за собой лайки,
-/// места в списках и прослушивания. Новая таблица с track_id идёт и в
-/// [TrackStore.rekey]/[TrackStore.prune].
+/// Ids are track ids (`sc:123`, `lf:…`). Whatever refers to a track does so
+/// through tracks(id) ON UPDATE CASCADE, so a new id carries likes, list places
+/// and plays along. A new table with track_id also goes in [TrackStore.rekey]
+/// and [TrackStore.prune].
 ///
-/// `folders`/`files` мобилке пока не нужны (папок у неё нет), но схема общая:
-/// так у обеих сторон один номер версии и одно устройство базы.
+/// This app has no folders, so `folders` and `files` go unused, but the schema
+/// is shared: one version number and one layout.
 const List<List<String>> kMigrations = [
   [
     '''CREATE TABLE tracks (
@@ -130,12 +128,11 @@ const List<List<String>> kMigrations = [
     'CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT NOT NULL) WITHOUT ROWID',
     "INSERT INTO lists (id, kind, created_at, updated_at) VALUES ('lib', 'lib', 0, 0), ('fav', 'fav', 0, 0)",
   ],
-  // Синхронизация с ПК (подробно — в шаге 2 `kMigrations` ПК). Что слушатель
-  // изменил, отмечается в `changes`, одна строка на вещь: на другой стороне
-  // побеждает позднее изменение, удалённое хранит строку, чтобы не воскреснуть.
-  // Отмечают триггеры ниже — на любую запись; то, что пришло с другого
-  // устройства, отмечает [SyncLog] (device = его id; '' — это). seq только
-  // растёт: «после N» — курсор.
+  // Sync. What the listener changes is marked in `changes`, one row per thing:
+  // on the other side the later change wins, and a deleted thing keeps its row
+  // so it doesn't come back. Triggers below mark any write; what came from
+  // another device is marked by [SyncLog] (device is its id, '' means this
+  // one). seq only grows: "after N" is a cursor.
   [
     r'''CREATE TABLE changes (
             seq INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -145,15 +142,15 @@ const List<List<String>> kMigrations = [
             device TEXT NOT NULL DEFAULT '',
             UNIQUE (kind, key)
         )''',
-    // В триггере нельзя INSERT OR REPLACE: запрос, который его вызвал,
-    // навязывает своё правило конфликта (каскад падает). Поэтому удалить + вставить.
+    // A trigger can't use INSERT OR REPLACE: the query that fired it imposes
+    // its conflict rule, and the cascade fails. So delete, then insert.
     'CREATE VIEW stamp (kind, key) AS SELECT kind, key FROM changes',
     r'''CREATE TRIGGER stamp_now INSTEAD OF INSERT ON stamp BEGIN
             DELETE FROM changes WHERE kind = NEW.kind AND key = NEW.key;
             INSERT INTO changes (kind, key, mod) VALUES (NEW.kind, NEW.key, CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER));
         END''',
 
-    // Что уже есть, уходит при первой синхронизации.
+    // What exists already goes out on the first sync.
     r"INSERT INTO changes (kind, key, mod) SELECT 'list', id, updated_at FROM lists WHERE kind NOT IN ('lib', 'fav')",
     r"INSERT INTO changes (kind, key, mod) SELECT 'item', list_id || char(9) || track_id, added_at FROM list_tracks",
     r"INSERT INTO changes (kind, key, mod) SELECT 'follow', id, at FROM follows",
@@ -161,8 +158,8 @@ const List<List<String>> kMigrations = [
     r"INSERT INTO stamp SELECT 'kv', key FROM kv WHERE key IN ('profile', 'profile.since')",
     r"INSERT INTO changes (kind, key, mod) SELECT 'track', id, updated_at FROM tracks WHERE extra ->> '$.edited'",
 
-    // Плейлисты (не «Все треки» и лайки: они есть на каждом устройстве).
-    // Один их updated_at сдвигается с каждым добавленным треком — не изменение.
+    // Playlists, not all tracks and likes: every device has those. Their
+    // updated_at alone moves with every added track and isn't a change.
     r'''CREATE TRIGGER lists_ins AFTER INSERT ON lists WHEN NEW.kind NOT IN ('lib', 'fav') BEGIN
             INSERT INTO stamp VALUES ('list', NEW.id);
         END''',
@@ -174,7 +171,7 @@ const List<List<String>> kMigrations = [
     r'''CREATE TRIGGER lists_del AFTER DELETE ON lists WHEN OLD.kind NOT IN ('lib', 'fav') BEGIN
             INSERT INTO stamp VALUES ('list', OLD.id);
         END''',
-    // Трек в списке: "list_id<TAB>track_id".
+    // Track in a list: "list_id<TAB>track_id".
     r'''CREATE TRIGGER list_tracks_ins AFTER INSERT ON list_tracks BEGIN
             INSERT INTO stamp VALUES ('item', NEW.list_id || char(9) || NEW.track_id);
         END''',
@@ -208,7 +205,7 @@ const List<List<String>> kMigrations = [
     r'''CREATE TRIGGER dislikes_del AFTER DELETE ON dislikes BEGIN
             INSERT INTO stamp VALUES ('dislike', OLD.track_id);
         END''',
-    // Карточка профиля, «с нами с» и последнее «Очистить статистику».
+    // Profile card, member since, and the last stats clear.
     r'''CREATE TRIGGER kv_ins AFTER INSERT ON kv WHEN NEW.key IN ('profile', 'profile.since', 'stats.cleared') BEGIN
             INSERT INTO stamp VALUES ('kv', NEW.key);
         END''',
@@ -218,16 +215,15 @@ const List<List<String>> kMigrations = [
     r'''CREATE TRIGGER kv_del AFTER DELETE ON kv WHEN OLD.key IN ('profile', 'profile.since', 'stats.cleared') BEGIN
             INSERT INTO stamp VALUES ('kv', OLD.key);
         END''',
-    // Теги, исправленные руками (данные площадки не уходят).
+    // Tags edited by hand; platform data doesn't travel.
     r'''CREATE TRIGGER tracks_edit AFTER UPDATE ON tracks WHEN NEW.id IS OLD.id AND (NEW.extra ->> '$.edited' OR OLD.extra ->> '$.edited')
             AND (NEW.title IS NOT OLD.title OR NEW.artist IS NOT OLD.artist OR NEW.album IS NOT OLD.album
                  OR NEW.cover IS NOT OLD.cover OR NEW.extra IS NOT OLD.extra) BEGIN
             INSERT INTO stamp VALUES ('track', NEW.id);
         END''',
 
-    // Прослушивания и дни принадлежат устройству, которое их сделало
-    // (device = его id, '' — это): сливать нечего, только копировать. id
-    // прослушивания — курсор.
+    // Plays and days belong to the device that made them (device is its id, ''
+    // means this one): nothing to merge, only copy. The play id is the cursor.
     r'''CREATE TABLE plays_v2 (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             ts INTEGER NOT NULL,
@@ -252,7 +248,7 @@ const List<List<String>> kMigrations = [
   ],
 ];
 
-/// База открыта на запуске и подменяется в `main()`; в тестах — [BloomDb.memory].
+/// Opened at launch and overridden in `main()`; in tests, [BloomDb.memory].
 final dbProvider = Provider<BloomDb>(
   (ref) => throw UnimplementedError('dbProvider должен быть переопределён'),
 );
@@ -262,18 +258,17 @@ class BloomDb {
 
   final Database _db;
 
-  /// Файл базы; `null` — база в памяти (тесты).
+  /// Database file; `null` means in memory (tests).
   final String? path;
 
-  int _depth = 0; // открытые tx
-  bool _failed = false; // вложенная tx ушла без commit
+  int _depth = 0; // open tx
+  bool _failed = false; // a nested tx left with no commit
 
-  /// Закоммитилась ли последняя внешняя [tx] (а не откатилась из-за ошибки
-  /// в одном из запросов) — `Tx::commit()` ПК.
+  /// Whether the last outer [tx] committed rather than rolled back on an error.
   bool get committed => _committed;
   bool _committed = true;
 
-  /// `bloom.db` в служебном каталоге приложения.
+  /// `bloom.db` in the app's private directory.
   static Future<BloomDb> open() async {
     final dir = await appPrivateDir();
     return BloomDb.at('${dir.path}/bloom.db');
@@ -291,8 +286,8 @@ class BloomDb {
   factory BloomDb.memory() => BloomDb._(sqlite3.openInMemory()).._prepare();
 
   void _prepare() {
-    // WAL: запись — одно дописывание, читатели не ждут. NORMAL с WAL надёжен
-    // (обрыв питания может потерять последний миг, но не испортить файл).
+    // WAL: a write is one append and readers don't wait. NORMAL with WAL is
+    // safe: a power cut can lose the last moment but not corrupt the file.
     for (final p in const [
       'PRAGMA journal_mode = WAL',
       'PRAGMA synchronous = NORMAL',
@@ -307,7 +302,8 @@ class BloomDb {
   void _migrate() {
     final have = _db.select('PRAGMA user_version').first.values.first as int;
     if (have > kMigrations.length) {
-      // Базу писала более новая версия; работа поверх неё могла бы испортить её данные.
+      // A newer version wrote this database; working on it could damage its
+      // data.
       throw StateError(
         'database version $have is newer than this build knows (${kMigrations.length})',
       );
@@ -329,8 +325,8 @@ class BloomDb {
     }
   }
 
-  /// Стереть все данные — «Сбросить всё». Схема остаётся, служебные списки
-  /// («Все треки», любимые) заводятся заново, как в первом шаге схемы.
+  /// Erases all data, for reset everything. The schema stays; system lists are
+  /// created again as in the first schema step.
   void wipe() {
     tx(() {
       final tables = [
@@ -344,13 +340,14 @@ class BloomDb {
         exec('DELETE FROM $t');
       }
       exec(kMigrations.first.last);
-      // Последним: стирание само себя отметило бы удалениями, и они ушли бы
-      // на ПК. Сброс — для этого устройства, с новым id оно возьмёт всё заново.
+      // Last: wiping marks itself with deletions, and they would go to other
+      // devices. A reset is for this device; with a new id it takes everything
+      // afresh.
       exec('DELETE FROM changes');
     });
   }
 
-  /// Сложить WAL обратно в файл — чтобы `bloom.db` был целым сам по себе.
+  /// Folds the WAL back so `bloom.db` is whole by itself.
   void close() {
     try {
       _db.execute('PRAGMA wal_checkpoint(TRUNCATE)');
@@ -358,7 +355,7 @@ class BloomDb {
     _db.close();
   }
 
-  // ── Запросы ─────────────────────────────────────────────────────────────
+  // ── Queries ─────────────────────────────────────────────────────────────
 
   void exec(String sql, [List<Object?> args = const []]) {
     try {
@@ -379,24 +376,24 @@ class BloomDb {
     }
   }
 
-  /// Первое значение первой строки; `null` — строк нет.
+  /// First value of the first row; `null` if no rows.
   Object? value(String sql, [List<Object?> args = const []]) {
     final rows = select(sql, args);
     return rows.isEmpty ? null : rows.first.values.first;
   }
 
-  /// Сколько строк задела последняя запись — `changes()` на ПК.
+  /// Rows touched by the last write.
   int get changes => _db.updatedRows;
 
-  /// Записи в таблицы с rowid (`changes`, `plays`…), на следующем витке
-  /// цикла событий. Таблицы WITHOUT ROWID сюда не попадают.
+  /// Writes to rowid tables (`changes`, `plays`…), on the next event loop turn.
+  /// WITHOUT ROWID tables don't show up.
   Stream<SqliteUpdate> get updates => _db.updates;
 
-  /// Подготовленный запрос — для пачек: один разбор SQL на тысячу строк.
+  /// A prepared query for batches: one SQL parse for a thousand rows.
   PreparedStatement prepare(String sql) => _db.prepare(sql);
 
-  /// Сделать всё внутри одной транзакцией. Вложенные сливаются с внешней:
-  /// откатывается вся, если что-то внутри не прошло или бросило.
+  /// Runs everything inside in one transaction. Nested ones merge with the
+  /// outer: all rolls back if anything inside failed or threw.
   T tx<T>(T Function() body) {
     if (_depth++ == 0) {
       _failed = false;
@@ -427,8 +424,8 @@ class BloomDb {
 
   // ── kv ──────────────────────────────────────────────────────────────────
 
-  /// Значение по ключу. Лежит обёрнутым в массив, как на ПК (`Db::get`), —
-  /// так голые числа и строки тоже валидный JSON.
+  /// Value by key. Wrapped in an array, so bare numbers and strings are valid
+  /// JSON too.
   Object? get(String key, [Object? fallback]) {
     final raw = value('SELECT value FROM kv WHERE key = ?', [key]);
     if (raw is! String) return fallback;
@@ -445,7 +442,7 @@ class BloomDb {
     return v is Map ? v.cast<String, dynamic>() : {};
   }
 
-  /// `null` стирает ключ.
+  /// `null` erases the key.
   void set(String key, Object? value) {
     if (value == null) {
       exec('DELETE FROM kv WHERE key = ?', [key]);

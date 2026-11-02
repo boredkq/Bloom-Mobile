@@ -1,14 +1,7 @@
-/// Плавающая пилюля «Сейчас играет» над трек-листом — порт десктопной
-/// `.lib-jump` из `LibTracklist.tsx`.
-///
-/// Всплывает, когда играющий трек уехал за пределы видимой части списка, и по
-/// тапу возвращает прокрутку к нему. Строки играющего трека в дереве может не
-/// быть вовсе (список ленивый), поэтому её место считается по модели — верх
-/// строки отдаёт `rowTopOf`, — а не ищется по ключу, как на ПК считает
-/// `win.offsetOf`, а не `querySelector`.
-///
-/// Вид пилюли не десктопный: там обложка с названием и артистом, здесь —
-/// эквалайзер и одна надпись. Так он попросил.
+/// Floating Now playing pill over a track list. It pops up when the playing
+/// track leaves the visible part, and a tap scrolls back to it. The row may not
+/// be in the tree (the list is lazy), so its place is computed from the model
+/// (`rowTopOf`) rather than looked up by key.
 library;
 
 import 'dart:math' as math;
@@ -26,26 +19,23 @@ import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/pressable.dart';
 
-/// На сколько строка должна уехать за край видимой части, чтобы пилюля
-/// появилась. Полторы строки запаса — чтобы она не мигала, когда трек стоит
-/// ровно на границе (десктопный `JUMP_SHOW_GAP`).
+/// How far a row must leave the visible part for the pill to show. A row and a
+/// half of margin, so it doesn't blink at the boundary.
 const double kJumpShowGap = kTrackRowHeight * 1.5;
 
-/// Просвет над строкой при возврате к ней: она встаёт не впритык под прилипшей
-/// шапкой, а с контекстом (десктопный `JUMP_SCROLL_MARGIN`).
+/// Gap above the row on return: it lands with context, not right under the
+/// stuck header.
 const double kJumpScrollMargin = kTrackRowHeight;
 
-/// Дальше этого расстояния плавная прокрутка длится неприлично долго — прыгаем
-/// сразу (десктопный `JUMP_SMOOTH_MAX`).
+/// Beyond this a smooth scroll takes indecently long, so I jump.
 const double kJumpSmoothMax = 4000;
 
-/// Куда уехала строка играющего трека: `0` — видна, пилюля не нужна, `-1` —
-/// выше видимой части, `1` — ниже.
+/// Where the playing row went: `0` visible with no pill needed, `-1` above the
+/// visible part, `1` below.
 ///
-/// [rowTop] — верх строки в координатах прокрутки; `null` значит, что этого
-/// трека в списке нет. Видимая часть срезана сверху прилипшей шапкой
-/// ([topInset]), снизу — нижними барами каркаса ([bottomInset]): строка под
-/// миниплеером не видна, и считать её видимой нельзя.
+/// [rowTop] is the row's top in scroll coordinates; `null` if the track isn't
+/// in the list. The visible part is cut by the stuck header ([topInset]) and
+/// the shell's bars ([bottomInset]): a row under the mini player isn't visible.
 int nowPlayingJumpDir({
   required double? rowTop,
   required double offset,
@@ -61,8 +51,8 @@ int nowPlayingJumpDir({
   return 0;
 }
 
-/// Прокрутка, при которой строка [rowTop] встаёт под прилипшей шапкой с
-/// просветом [kJumpScrollMargin] над собой.
+/// Scroll at which row [rowTop] lands under the stuck header, with
+/// [kJumpScrollMargin] above it.
 double nowPlayingJumpTarget({
   required double rowTop,
   required double topInset,
@@ -78,13 +68,13 @@ class NowPlayingJump extends ConsumerStatefulWidget {
     required this.topInset,
   });
 
-  /// Контроллер того самого списка, над которым висит пилюля.
+  /// Controller of the list the pill hangs over.
   final ScrollController controller;
 
-  /// Верх строки трека в координатах прокрутки; `null` — трека в списке нет.
+  /// A track row's top in scroll coordinates; `null` if it isn't in the list.
   final double? Function(String trackId) rowTopOf;
 
-  /// Высота сжатой шапки: она прилипла к верху и закрывает собой начало списка.
+  /// Collapsed header height: stuck on top, it covers the list's start.
   final double topInset;
 
   @override
@@ -92,11 +82,11 @@ class NowPlayingJump extends ConsumerStatefulWidget {
 }
 
 class _NowPlayingJumpState extends ConsumerState<NowPlayingJump> {
-  /// Последнее посчитанное направление — см. [nowPlayingJumpDir].
+  /// Last computed direction; see [nowPlayingJumpDir].
   int _dir = 0;
 
-  /// Высота нижних баров с последнего кадра: прокрутка случается между
-  /// кадрами, а `MediaQuery` там уже не спросить.
+  /// Bottom bars' height from the last frame: scrolling happens between frames,
+  /// where `MediaQuery` can't be asked.
   double _bottomInset = 0;
 
   @override
@@ -119,9 +109,8 @@ class _NowPlayingJumpState extends ConsumerState<NowPlayingJump> {
     super.dispose();
   }
 
-  /// На прокрутку виджет перестраивается ТОЛЬКО когда направление сменилось:
-  /// пилюля с живым эквалайзером внутри — не то, что стоит собирать заново на
-  /// каждый пиксель.
+  /// A scroll rebuilds the widget ONLY when the direction changes: a pill with
+  /// a live equalizer shouldn't rebuild per pixel.
   void _onScroll() {
     final next = _eval(ref.read(playbackProvider).track);
     if (next != _dir) setState(() => _dir = next);
@@ -131,9 +120,9 @@ class _NowPlayingJumpState extends ConsumerState<NowPlayingJump> {
     final c = widget.controller;
     if (cur == null || !c.hasClients) return 0;
     final pos = c.position;
-    // Первый кадр строится ДО раскладки списка: позиция у контроллера уже есть,
-    // а размеров в ней ещё нет, и спрашивать их — `Null check operator used on
-    // a null value`. Пересчитаем после кадра, см. [build].
+    // The first frame builds BEFORE the list's layout: the controller has a
+    // position with no dimensions, and asking for them throws. I recount after
+    // the frame; see [build].
     if (!pos.hasPixels || !pos.hasViewportDimension) return 0;
     return nowPlayingJumpDir(
       rowTop: widget.rowTopOf(cur.id),
@@ -177,11 +166,9 @@ class _NowPlayingJumpState extends ConsumerState<NowPlayingJump> {
     _bottomInset = bottomBarsInset(context);
     _dir = _eval(cur);
     final show = _dir != 0;
-    // Первый кадр строится до раскладки списка — там у контроллера ещё нет
-    // позиции, и [_eval] честно возвращает 0. Прокрутки, которая пересчитала бы
-    // направление, может и не случиться (список открыли уже прокрученным —
-    // например, ушли в трек-лист прямо из плеера), поэтому считаем ещё раз
-    // после кадра.
+    // The first frame builds before the list's layout, where [_eval] returns 0.
+    // A scroll that would recount may never come (the list opened already
+    // scrolled), so I count again after the frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _onScroll();
     });
@@ -195,8 +182,8 @@ class _NowPlayingJumpState extends ConsumerState<NowPlayingJump> {
         child: AnimatedOpacity(
           opacity: show ? 1 : 0,
           duration: const Duration(milliseconds: 200),
-          // Скругление полное, а не радиусом темы: это пилюля, как кнопки-
-          // пилюли шапки, — его правка по живому виду.
+          // Fully rounded rather than the theme radius: it's a pill, like the
+          // header's.
           child: Pressable(
             onTap: _jump,
             child: GlassBox(
@@ -208,8 +195,8 @@ class _NowPlayingJumpState extends ConsumerState<NowPlayingJump> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Эквалайзер замирает вместе с музыкой — он же говорит,
-                      // на паузе трек или играет.
+                      // The equalizer freezes with the music, showing pause or
+                      // play too.
                       EqualizerBars(playing: show && playing),
                       const SizedBox(width: 10),
                       Text(

@@ -23,7 +23,6 @@ import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/glass.dart';
-import '../../../shared/ui/pressable.dart';
 import '../../detail/detail_nav.dart';
 import '../../offline/offline_actions.dart';
 import '../../offline/offline_store.dart';
@@ -178,12 +177,18 @@ class _TopBar extends ConsumerWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _CapsuleButton(
+                CircleIconButton(
+                  size: kHeaderControl,
+                  iconSize: 22,
+                  background: Colors.transparent,
                   icon: order.grid ? Bi.list : Bi.widget2,
                   onTap: () =>
                       ref.read(libOrderProvider.notifier).setGrid(!order.grid),
                 ),
-                _CapsuleButton(
+                CircleIconButton(
+                  size: kHeaderControl,
+                  iconSize: 22,
+                  background: Colors.transparent,
                   icon: Bi.sort,
                   color: order.sort != LibSort.manual ? t.accent : null,
                   onTap: () => _showSortSheet(context, ref),
@@ -208,24 +213,6 @@ class _TopBar extends ConsumerWidget {
       ),
     );
   }
-}
-
-class _CapsuleButton extends StatelessWidget {
-  const _CapsuleButton({required this.icon, required this.onTap, this.color});
-
-  final BloomGlyph icon;
-  final VoidCallback onTap;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) => Pressable(
-    onTap: onTap,
-    child: SizedBox(
-      width: kHeaderControl - 4,
-      height: kHeaderControl,
-      child: BloomIcon(icon, size: 22, color: color ?? context.bloom.iconFg),
-    ),
-  );
 }
 
 /// One card of the library: a built-in list ("all" / "fav"), a playlist or a
@@ -621,29 +608,19 @@ class _LibCardState extends ConsumerState<_LibCard> {
         pinned: follow.pinned,
       );
     }
-    final theme = Theme.of(context).textTheme;
     final flight = _flightOf(e, _tag);
     final (:kept, :lines) = _lines(context, ref, e);
-    return LayoutBuilder(
-      builder: (context, box) => Pressable(
-        onTap: () => _open(context, e, flight),
-        scale: 0.97,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _art(context, ref.watch(libraryProvider), e, box.maxWidth, flight),
-            const SizedBox(height: 8),
-            _title(
-              context,
-              e,
-              theme.titleSmall?.copyWith(fontSize: 14),
-              kept: kept,
-            ),
-            const SizedBox(height: 2),
-            for (final line in lines) _line(line, theme.bodySmall),
-          ],
-        ),
+    return EntityCard(
+      head: _title(
+        context,
+        e,
+        Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: 14),
+        kept: kept,
       ),
+      lines: lines,
+      cover: (side) =>
+          _art(context, ref.watch(libraryProvider), e, side, flight),
+      onTap: () => _open(context, e, flight),
     );
   }
 }
@@ -835,18 +812,17 @@ Future<void> _showArtistMenu(
 
   return showBloomSheet(
     context: context,
-    backdrop: artist.avatar,
-    header: SheetLineHeader(
+    header: SheetHero(
       cover: artist.avatar,
       title: artist.name,
       subtitle: context.l.commonArtist,
-      circle: true,
     ),
     groups: [
       [
         SheetAction(
           icon: Bi.pin,
           label: pinned ? context.l.commonUnpin : context.l.commonPin,
+          subtitle: pinned ? null : context.l.commonPinHint,
           onTap: () => ref
               .read(libraryProvider.notifier)
               .setPinned(libKeyOfArtist(artist.id), !pinned),

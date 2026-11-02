@@ -1,9 +1,7 @@
-/// Шторка «Авто-обновление плейлистов» — порт десктопного `PlAutoDrawer`.
-///
-/// Состав тот же: расписание (тумблер, период, «проверять при запуске»), список
-/// плейлистов с источниками и «Обновить сейчас». Отличие одно — кнопка обхода
-/// закрывает шторку: прогресс на телефоне показывает живой тост, а он лежит
-/// ПОД шторкой и из-под неё не виден.
+/// Playlist auto-update sheet: the schedule (switch, period, check at launch),
+/// the list of playlists with sources, and Update now. That button closes the
+/// sheet: a live toast shows progress, lying UNDER the sheet where it can't be
+/// seen.
 library;
 
 import 'package:flutter/material.dart';
@@ -15,14 +13,14 @@ import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
-import '../../../shared/ui/pressable.dart';
 import '../pl_auto_store.dart';
+import '../../settings/ui/settings_rows.dart';
 
-/// «30 мин» / «3 ч» — подпись периода (десктопный `fmtEvery`).
+/// Period caption.
 String _fmtEvery(AppLocalizations l, int min) =>
     min < 60 ? l.paEveryMinutes(min) : l.paEveryHours((min / 60).round());
 
-/// «2 ч назад» — когда плейлист обновлялся в последний раз.
+/// When a playlist last updated, as time ago.
 String _ago(AppLocalizations l, int at) {
   final min = ((DateTime.now().millisecondsSinceEpoch - at) / 60000)
       .round()
@@ -36,9 +34,8 @@ String _ago(AppLocalizations l, int at) {
 
 Future<void> showPlAutoSheet(BuildContext context, WidgetRef ref) {
   final auto = ref.read(plAutoProvider.notifier);
-  // Первое открытие: отмечаем всё, что можно обновлять. Пустой список целей
-  // означал бы неактивную кнопку «Обновить сейчас» на ровном месте — на ПК
-  // цели набираются мышью в сайдбаре, здесь набирать их неоткуда.
+  // First opening: I mark all that can update. An empty target list would mean
+  // an inactive Update now out of nowhere, with nowhere else to pick targets.
   final candidates = auto.candidates();
   if (ref.read(plAutoProvider).lastRun == 0 &&
       !candidates.any((p) => p.autoRefresh)) {
@@ -58,7 +55,6 @@ class _PlAutoBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
     final state = ref.watch(plAutoProvider);
     final auto = ref.read(plAutoProvider.notifier);
     final lib = ref.watch(libraryProvider);
@@ -75,7 +71,7 @@ class _PlAutoBody extends ConsumerWidget {
         _Hero(selected: selected, candidates: candidates.length),
         SheetPanel(
           children: [
-            _ToggleRow(
+            SettingsToggleRow(
               title: context.l.paAutoTitle,
               subtitle: context.l.paAutoSubtitle,
               value: state.enabled,
@@ -88,52 +84,38 @@ class _PlAutoBody extends ConsumerWidget {
               onPick: auto.setEveryMin,
             ),
             sheetDivider(),
-            _ToggleRow(
+            SettingsToggleRow(
               title: context.l.paOnStartTitle,
               subtitle: context.l.paOnStartSubtitle,
               value: state.onStart,
-              // Без расписания проверять при запуске нечего — как и на ПК,
-              // строка гаснет вместе с тумблером выше.
-              onChanged: state.enabled ? auto.setOnStart : null,
+              // Nothing to check at launch without a schedule.
+              enabled: state.enabled,
+              onChanged: auto.setOnStart,
             ),
           ],
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 10, 24, 2),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  context.l.paPlaylistsWithSources,
-                  style: theme.bodySmall?.copyWith(color: t.muted),
-                ),
-              ),
-              if (candidates.isNotEmpty)
-                Pressable(
+        SheetCaption(
+          context.l.paPlaylistsWithSources,
+          color: t.muted,
+          trailing: candidates.isEmpty
+              ? null
+              : BloomButton(
+                  label: allSelected
+                      ? context.l.paDeselectAll
+                      : context.l.paSelectAll,
+                  height: 24,
                   onTap: state.running
                       ? null
                       : () => library.setAutoRefresh(
                           candidates.map((p) => p.id),
                           !allSelected,
                         ),
-                  child: Text(
-                    allSelected
-                        ? context.l.paDeselectAll
-                        : context.l.paSelectAll,
-                    style: theme.bodySmall?.copyWith(color: t.accent),
-                  ),
                 ),
-            ],
-          ),
         ),
         if (candidates.isEmpty)
-          Padding(
+          CenterNote(
+            context.l.paNothingToRefresh,
             padding: const EdgeInsets.fromLTRB(28, 12, 28, 8),
-            child: Text(
-              context.l.paNothingToRefresh,
-              textAlign: TextAlign.center,
-              style: theme.bodySmall?.copyWith(color: t.muted),
-            ),
           )
         else
           SheetPanel(
@@ -143,6 +125,9 @@ class _PlAutoBody extends ConsumerWidget {
                 _CandidateRow(
                   playlist: candidates[i],
                   tracks: lib.tracksOf(candidates[i]).length,
+                  covers: lib
+                      .tracksOf(candidates[i])
+                      .map((track) => track.cover),
                   selected: candidates[i].autoRefresh,
                   busy: state.busy == candidates[i].id,
                   run: state.runs[candidates[i].id],
@@ -172,7 +157,7 @@ class _PlAutoBody extends ConsumerWidget {
   }
 }
 
-/// Шапка: иконка обновления, заголовок и чипы состояния — как `mpl-hero` на ПК.
+/// Header: an update icon, title and state chips.
 class _Hero extends ConsumerWidget {
   const _Hero({required this.selected, required this.candidates});
 
@@ -182,10 +167,7 @@ class _Hero extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
     final state = ref.watch(plAutoProvider);
-
-    /// «через 40 мин» до следующего прохода.
     String? next() {
       if (!state.enabled || selected == 0) return null;
       final left =
@@ -202,113 +184,29 @@ class _Hero extends ConsumerWidget {
       if (state.enabled) _fmtEvery(context.l, state.everyMin),
       ?next(),
     ];
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-      child: Row(
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: t.sysAllTint,
-              borderRadius: BorderRadius.circular(t.radius),
-            ),
-            child: BloomIcon(
-              Bi.refresh,
-              size: 24,
-              color: state.running ? t.accent : t.sysAllIco,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(context.l.paTitle, style: theme.titleLarge),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    for (final chip in chips)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          // Чипы лежат прямо на фоне шторки, а он тут обычный
-                          // фон темы — плёнка блока, а не чёрный.
-                          color: t.pill,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          chip,
-                          style: theme.bodySmall?.copyWith(color: t.text2),
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
+    return SheetTitle(
+      context.l.paTitle,
+      bottom: 12,
+      leading: Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          color: t.sysAllTint,
+          borderRadius: BorderRadius.circular(t.radius),
+        ),
+        child: BloomIcon(
+          Bi.refresh,
+          size: 24,
+          color: state.running ? t.accent : t.sysAllIco,
+        ),
       ),
-    );
-  }
-}
-
-class _ToggleRow extends StatelessWidget {
-  const _ToggleRow({
-    required this.title,
-    required this.subtitle,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String title;
-  final String subtitle;
-  final bool value;
-  final ValueChanged<bool>? onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    final enabled = onChanged != null;
-
-    return InkWell(
-      onTap: enabled ? () => onChanged!(!value) : null,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Row(
+      line: Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Wrap(
+          spacing: 6,
+          runSpacing: 6,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: theme.titleMedium?.copyWith(
-                      color: enabled ? t.text : t.muted,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: theme.bodySmall?.copyWith(color: t.muted),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            IgnorePointer(
-              child: Opacity(
-                opacity: enabled ? 1 : 0.5,
-                child: BloomSwitch(value: value, onChanged: (_) {}),
-              ),
-            ),
+            for (final chip in chips) BloomTag(text: chip, active: false),
           ],
         ),
       ),
@@ -316,7 +214,6 @@ class _ToggleRow extends StatelessWidget {
   }
 }
 
-/// Период — тот же сегмент-переключатель, что `pau-seg` на ПК.
 class _IntervalRow extends StatelessWidget {
   const _IntervalRow({
     required this.value,
@@ -332,7 +229,6 @@ class _IntervalRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
       child: Column(
@@ -345,39 +241,29 @@ class _IntervalRow extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          Row(
-            children: [
-              for (final min in kPlAutoIntervals) ...[
-                Expanded(
-                  child: Pressable(
-                    onTap: enabled ? () => onPick(min) : null,
-                    child: Material(
-                      // Невыбранный сегмент — плёнка поверх блока, в который он
-                      // вложен: чёрный на плашке блока читался бы дырой.
-                      color: min == value
-                          ? (enabled ? t.accent : t.pill)
-                          : t.iconBg,
-                      borderRadius: BorderRadius.circular(999),
-                      clipBehavior: Clip.antiAlias,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 9),
-                        child: Center(
-                          child: Text(
-                            _fmtEvery(context.l, min),
-                            style: theme.bodySmall?.copyWith(
-                              color: min == value && enabled
-                                  ? t.accentText
-                                  : t.text2,
-                            ),
-                          ),
+          IgnorePointer(
+            ignoring: !enabled,
+            child: Opacity(
+              opacity: enabled ? 1 : 0.45,
+              child: Row(
+                children: [
+                  for (final min in kPlAutoIntervals) ...[
+                    Expanded(
+                      child: OptionTile(
+                        active: min == value,
+                        height: 36,
+                        onTap: () => onPick(min),
+                        builder: (ink) => Text(
+                          _fmtEvery(context.l, min),
+                          style: theme.bodySmall?.copyWith(color: ink),
                         ),
                       ),
                     ),
-                  ),
-                ),
-                if (min != kPlAutoIntervals.last) const SizedBox(width: 6),
-              ],
-            ],
+                    if (min != kPlAutoIntervals.last) const SizedBox(width: 6),
+                  ],
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -389,6 +275,7 @@ class _CandidateRow extends StatelessWidget {
   const _CandidateRow({
     required this.playlist,
     required this.tracks,
+    required this.covers,
     required this.selected,
     required this.busy,
     required this.run,
@@ -397,6 +284,7 @@ class _CandidateRow extends StatelessWidget {
 
   final UserPlaylist playlist;
   final int tracks;
+  final Iterable<String?> covers;
   final bool selected;
   final bool busy;
   final PlAutoRun? run;
@@ -404,9 +292,6 @@ class _CandidateRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-
     final last = busy
         ? context.l.paRunUpdating
         : run == null
@@ -417,66 +302,16 @@ class _CandidateRow extends StatelessWidget {
               ? '+${run!.added}'
               : context.l.paRunNoChanges} · ${_ago(context.l, run!.at)}';
 
-    return Pressable(
+    return SheetRow(
+      leading: Cover(url: playlist.cover, size: 44, covers: covers),
+      gap: 12,
+      label: playlist.name,
+      subtitle: last == null
+          ? context.l.tracksCount(tracks)
+          : '${context.l.tracksCount(tracks)} · $last',
+      color: context.bloom.text,
+      trailing: busy ? const BloomSpinner(size: 20) : BloomCheck(on: selected),
       onTap: onTap,
-      scale: 0.98,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Row(
-          children: [
-            Cover(url: playlist.cover, size: 44),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    playlist.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.titleMedium,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    last == null
-                        ? context.l.tracksCount(tracks)
-                        : '${context.l.tracksCount(tracks)} · $last',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.bodySmall?.copyWith(color: t.muted),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            if (busy)
-              SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: t.accent,
-                ),
-              )
-            else
-              Container(
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(
-                  color: selected ? t.accent : Colors.transparent,
-                  border: Border.all(
-                    color: selected ? t.accent : t.muted,
-                    width: 1.6,
-                  ),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: selected
-                    ? BloomIcon(Bi.check, size: 15, color: t.accentText)
-                    : null,
-              ),
-          ],
-        ),
-      ),
     );
   }
 }

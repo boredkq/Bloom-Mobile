@@ -1,19 +1,17 @@
-/// Кнопка воспроизведения — одна на обе поверхности: транспорт полноэкранного
-/// плеера и карточку над таб-баром.
+/// Play button, one for both surfaces: the full player's transport and the card
+/// above the tab bar. Shared because a setting sets the shape
+/// ([PlayButtonShape]), and two widgets would drift.
 ///
-/// Виджет общий, а не по кнопке на поверхность, ровно потому, что форму задаёт
-/// настройка ([PlayButtonShape]): развести их — значит однажды поправить круг в
-/// плеере и забыть про карточку.
-///
-/// Коробка [size] у всех форм ОДНА и та же, включая «без фона»: ряд транспорта
-/// стоит `spaceEvenly`, и кнопка, ужавшаяся до своего знака, растащила бы
-/// соседей по строке от одной галочки в настройках.
+/// The [size] box is the SAME for all shapes, with no fill too: the transport
+/// row is `spaceEvenly`, and a button shrunk to its glyph would spread its
+/// neighbours.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/tokens.dart';
+import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/pressable.dart';
 import '../play_button_store.dart';
@@ -31,26 +29,26 @@ class PlayButton extends ConsumerWidget {
     this.onTap,
   });
 
-  /// Сторона кнопки — она же диаметр круга.
+  /// Button side, also the circle's diameter.
   final double size;
 
-  /// Знак на заливке (круг и квадрат).
+  /// Glyph on a fill (circle and square).
   final double iconSize;
 
-  /// Знак без заливки. Крупнее [iconSize]: подложки, которой кнопка держала на
-  /// себе внимание, больше нет, и в прежнем размере она стала бы рядовой
-  /// иконкой ряда.
+  /// Glyph with no fill. Larger than [iconSize]: with no plate holding
+  /// attention it would become just another icon.
   final double plainIconSize;
 
-  /// Кружок ожидания внутри кнопки.
+  /// Spinner inside the button.
   final double spinnerSize;
 
-  /// Идёт переход на другой трек. Кнопка ОСТАЁТСЯ на месте, знак подменяется
-  /// кружком: иначе транспорт на каждом переходе визуально схлопывался бы.
+  /// A change to another track is under way. The button STAYS, with a spinner
+  /// for the glyph, or the transport would visually collapse on each change.
   final bool loading;
 
-  /// Живая кнопка. `false` — карточка соседа в карусели миниплеера: там кнопки
-  /// стоят только ради раскладки, делать им нечего, и знак всегда `play`.
+  /// A live button. `false` is a neighbour's card in the mini player's
+  /// carousel: buttons are there only for layout, and the glyph is always
+  /// `play`.
   final bool live;
 
   final VoidCallback? onTap;
@@ -60,8 +58,8 @@ class PlayButton extends ConsumerWidget {
     final t = context.bloom;
     final shape = ref.watch(playButtonShapeProvider);
     final plain = shape.isPlain;
-    // Без заливки знак берёт цвет соседних кнопок: `accentText` держался на
-    // фоне акцента, а на фоне плеера он бы просто исчез.
+    // With no fill the glyph takes the neighbours' colour: `accentText` relies
+    // on an accent background and would vanish here.
     final color = plain ? t.iconFg : t.accentText;
 
     Widget shell(Widget child, {VoidCallback? tap}) {
@@ -74,9 +72,9 @@ class PlayButton extends ConsumerWidget {
           child: Material(
             color: plain ? Colors.transparent : t.accent,
             shape: shape == PlayButtonShape.square
-                // Скругление долей стороны, а не радиусом темы: кнопка в карточке
-                // почти вдвое меньше плеерной, и общий радиус сделал бы из неё
-                // пилюлю.
+                // Rounding as a share of the side, not the theme radius: the
+                // card's button is nearly half the player's, and the shared
+                // radius would make it a pill.
                 ? RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(size * 0.3),
                   )
@@ -90,13 +88,10 @@ class PlayButton extends ConsumerWidget {
 
     if (loading) {
       return shell(
-        SizedBox(
-          width: spinnerSize,
-          height: spinnerSize,
-          child: CircularProgressIndicator(
-            strokeWidth: size >= 56 ? 2.4 : 2.2,
-            color: color,
-          ),
+        BloomSpinner(
+          size: spinnerSize,
+          stroke: size >= 56 ? 2.4 : 2.2,
+          color: color,
         ),
       );
     }
@@ -111,8 +106,8 @@ class PlayButton extends ConsumerWidget {
       );
     }
 
-    // Состояние берём у самого плеера, а не у `PlaybackState`: пауза из шторки
-    // и с гарнитуры до него не доходит.
+    // The state comes from the player itself, not `PlaybackState`: a pause from
+    // the shade or headset doesn't reach that.
     return shell(
       BloomIcon(
         ref.watch(playingNowProvider) ? Bi.pauseBold : Bi.playBold,

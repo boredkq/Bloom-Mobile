@@ -1,10 +1,7 @@
-/// Вкладка «Пресеты» страницы «Кастомизация» — снимки применённых картинок.
-///
-/// Порт десктопной вкладки пресетов из `CustomizationSection.tsx`: сетка
-/// карточек с превью-каруселью, создание по имени, экспорт и импорт файла
-/// `.bloompresets`. Контекстное меню правой кнопкой там — здесь наша шторка по
-/// тапу (`showBloomSheet`), как у всего остального в приложении. Создание и
-/// импорт — одна шторка под плюсиком (имя в поле, «Импорт» под ним).
+/// Presets tab of customization, snapshots of applied pictures: a grid of cards
+/// with a preview carousel, creating by name, exporting and importing
+/// `.bloompresets`. A sheet on tap for actions; creating and importing share
+/// one sheet under the plus.
 library;
 
 import 'package:flutter/material.dart';
@@ -13,7 +10,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
-import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
@@ -23,6 +19,7 @@ import '../presets_file.dart';
 import '../presets_store.dart';
 import 'custom_sheet.dart';
 import 'custom_widgets.dart';
+import '../../../shared/ui/subpage_header.dart';
 
 class PresetsPane extends ConsumerWidget {
   const PresetsPane({super.key});
@@ -30,24 +27,17 @@ class PresetsPane extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final presets = ref.watch(presetsProvider);
-    if (presets.isEmpty) return EmptyHint(text: context.l.custPresetsEmpty);
-    return GridView.builder(
-      padding: EdgeInsets.fromLTRB(16, 12, 16, 8 + bottomBarsInset(context)),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 4 / 3,
-      ),
+    return CustomPane(
+      empty: context.l.custPresetsEmpty,
       itemCount: presets.length,
       itemBuilder: (_, i) => _PresetCard(preset: presets[i]),
     );
   }
 }
 
-/// Плюсик вкладки: имя нового пресета в поле, под ним тумблеры «что ещё
-/// положить в пресет» (тема, прозрачность, шрифт), «Импорт» файла — пунктом в
-/// самом низу.
+/// The tab's plus: a new preset's name in the field, switches under it for what
+/// else goes in (theme, transparency, font), and file Import at the very
+/// bottom.
 Future<void> showAddPresetSheet(BuildContext context, WidgetRef ref) async {
   final l10n = context.l;
   final messenger = ScaffoldMessenger.of(context);
@@ -65,8 +55,8 @@ Future<void> showAddPresetSheet(BuildContext context, WidgetRef ref) async {
           transparency: picked.transparency,
           font: picked.font,
         );
-    // Два разных отказа: упёрлись в лимит или нечего снимать — ни один
-    // контекст не занят.
+    // Two different refusals: the limit was hit, or nothing to snapshot with no
+    // context taken.
     final failure = ref.read(presetsProvider).length >= kPresetsLimit
         ? l10n.custPresetsFull(kPresetsLimit)
         : l10n.custPresetNothing;
@@ -85,7 +75,7 @@ Future<void> showAddPresetSheet(BuildContext context, WidgetRef ref) async {
   );
 }
 
-/// Что выбрали в шторке создания.
+/// What was picked in the creation sheet.
 class _NewPreset {
   const _NewPreset({
     required this.name,
@@ -100,8 +90,8 @@ class _NewPreset {
   final bool font;
 }
 
-/// Шторка создания: поле имени, тумблеры «что ещё положить в пресет» и
-/// «Импорт». Закрывается [_NewPreset] или `true` (импорт).
+/// Creation sheet: a name field, switches for what else goes in, and Import.
+/// Closes with [_NewPreset] or `true` (import).
 class _PresetAddForm extends StatefulWidget {
   const _PresetAddForm();
 
@@ -136,24 +126,12 @@ class _PresetAddFormState extends State<_PresetAddForm> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
     Widget toggle(String label, bool value, ValueChanged<bool> onChanged) =>
-        InkWell(
-          onTap: () => onChanged(!value),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    label,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-                BloomSwitch(value: value, onChanged: onChanged),
-              ],
-            ),
-          ),
+        SheetSwitchRow(
+          label: label,
+          value: value,
+          onChanged: onChanged,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         );
 
     return Column(
@@ -168,17 +146,9 @@ class _PresetAddFormState extends State<_PresetAddForm> {
           onChanged: (_) => setState(() {}),
           onSubmit: _submit,
         ),
-        // Картинки с размытием, затемнением и режимом обложки ложатся в
-        // пресет всегда; это — по желанию.
-        Padding(
-          padding: const EdgeInsets.fromLTRB(kSheetEdge + 4, 10, kSheetEdge, 2),
-          child: Text(
-            context.l.custPresetAlsoSave,
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: t.text2),
-          ),
-        ),
+        // Pictures with blur, dim and cover mode always go in; this is
+        // optional.
+        SheetCaption(context.l.custPresetAlsoSave),
         SheetPanel(
           children: [
             toggle(
@@ -232,8 +202,8 @@ class _PresetCard extends ConsumerWidget {
             fit: StackFit.expand,
             children: [
               PresetThumb(srcs: srcs),
-              // Подпись — плашкой у нижнего края, как на макете: поверх
-              // картинки, а не под ней.
+              // A caption plate at the bottom edge, over the picture rather
+              // than under it.
               Align(
                 alignment: Alignment.bottomLeft,
                 child: Container(
@@ -268,7 +238,7 @@ class _PresetCard extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     final name = preset.name.isEmpty ? l10n.custPresetUntitled : preset.name;
 
-    /// Пункт закрывает шторку до действия — как пункты меню шторок.
+    /// An item closes the sheet before acting, like sheet menu items.
     VoidCallback close(BuildContext sheet, VoidCallback action) => () {
       Navigator.of(sheet).pop();
       action();
@@ -291,7 +261,7 @@ class _PresetCard extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Имя пресета — подписью над блоком, как «Применить к» у картинки.
+            // Preset name as a caption over the block.
             CustSheetLabel(name),
             CustSheetBlock(
               children: [
@@ -306,7 +276,7 @@ class _PresetCard extends ConsumerWidget {
                     );
                   }),
                 ),
-                const CustSheetDivider(),
+                const GroupDivider(indent: kCustRowText),
                 CustSheetRow(
                   icon: Bi.export,
                   label: l10n.custPresetExport,
@@ -318,8 +288,8 @@ class _PresetCard extends ConsumerWidget {
                       presetFileName(preset.name),
                       content,
                     );
-                    // Отмена диалога — не повод для тоста: человек сам закрыл
-                    // окно.
+                    // A cancelled dialog is no reason for a toast: the user
+                    // closed it.
                     if (ok) {
                       messenger.toast(
                         l10n.custPresetExported,
@@ -337,9 +307,8 @@ class _PresetCard extends ConsumerWidget {
   }
 }
 
-/// Превью пресета: все его картинки листаются сами, как на десктопе
-/// (`PresetThumb`, смена каждые 2.2 с). Одна картинка — просто картинка, ноль —
-/// значок коробки.
+/// Preset preview: its pictures flip by themselves every 2.2 s. One picture is
+/// just a picture, zero a box icon.
 class PresetThumb extends StatefulWidget {
   const PresetThumb({super.key, required this.srcs});
 

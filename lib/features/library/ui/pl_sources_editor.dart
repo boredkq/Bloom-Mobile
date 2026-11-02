@@ -1,17 +1,13 @@
-/// Секция «Источники обновления» в правке плейлиста — порт десктопного
-/// `PlSourcesEditor`.
+/// Refresh sources section of a playlist's edit: shows tied collections
+/// (playlists, albums, likes of any platform) and ties a new one by a pasted
+/// link. Tie resolves it the same way as import (`resolveCollectionUrl`),
+/// checking it's a collection and getting its id, title and owner.
 ///
-/// Показывает привязанные коллекции (плейлисты/альбомы/лайки любых площадок) и
-/// даёт привязать новую вставкой ссылки: по «Привязать» ссылка резолвится тем
-/// же путём, что и импорт (`resolveCollectionUrl`), — так проверяем, что это
-/// вообще коллекция, и заодно забираем её id, название и владельца.
+/// The parent's draft ([ListEditor]) writes only on ✓, like name and cover: the
+/// network is hit at once, the tie isn't.
 ///
-/// Черновик живёт у родителя ([ListEditor]) и записывается только по ✓, как имя
-/// и обложка: сеть здесь дёргается сразу, а вот сама привязка — нет.
-///
-/// На странице правки секции больше нет: она стоит за кнопкой в шапке и
-/// открывается шторкой ([showPlSourcesSheet]) — между обложкой и треками она
-/// разрывала список и читалась как довесок к первой строке.
+/// It lives behind a header button as a sheet ([showPlSourcesSheet]): between
+/// cover and tracks it split the list.
 library;
 
 import 'package:flutter/material.dart';
@@ -27,13 +23,12 @@ import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
-import '../../../shared/ui/pressable.dart';
 import '../import_url.dart';
 import 'create_playlist_sheet.dart' show detectLinkSource;
 
-/// Открыть источники шторкой. Правки уходят наверх [onChanged] по мере дела, а
-/// не по закрытию: шторку бросают и свайпом, и «назад», и терять привязки на
-/// этом нельзя. В сам плейлист они всё так же попадают только по ✓ страницы.
+/// Opens sources as a sheet. Edits go up through [onChanged] as they happen,
+/// not on closing: the sheet gets dismissed by swipe and Back, and ties can't
+/// be lost that way. They still reach the playlist only on the page's ✓.
 Future<void> showPlSourcesSheet(
   BuildContext context, {
   required List<PlSourceRef> sources,
@@ -45,8 +40,8 @@ Future<void> showPlSourcesSheet(
   );
 }
 
-/// Черновик источников на время жизни шторки: страница под ней уже не
-/// перестраивается, и обновлять список привязок некому.
+/// Source draft for the sheet's life: the page below doesn't rebuild, and
+/// nobody else would update the list of ties.
 class _PlSourcesSheet extends StatefulWidget {
   const _PlSourcesSheet({required this.sources, required this.onChanged});
 
@@ -87,7 +82,7 @@ class PlSourcesEditor extends ConsumerStatefulWidget {
 class _PlSourcesEditorState extends ConsumerState<PlSourcesEditor> {
   final _url = TextEditingController();
 
-  /// Идёт резолв вставленной ссылки.
+  /// Resolving a pasted link.
   bool _busy = false;
 
   @override
@@ -99,7 +94,7 @@ class _PlSourcesEditorState extends ConsumerState<PlSourcesEditor> {
   Future<void> _add() async {
     final url = _url.text.trim();
     if (url.isEmpty || _busy) return;
-    // Та же ссылка — дубль и без сети.
+    // The same link is a duplicate with no network.
     if (widget.sources.any((s) => s.url == url)) {
       showToast(context, context.l.psDuplicate, kind: ToastKind.warn);
       return;
@@ -109,7 +104,7 @@ class _PlSourcesEditorState extends ConsumerState<PlSourcesEditor> {
       final found = await resolveCollectionUrl(ref.read(registryProvider), url);
       if (!mounted) return;
       setState(() => _busy = false);
-      // Другая ссылка на ту же коллекцию — тоже дубль: сверяем по id.
+      // Another link to the same collection is a duplicate too, checked by id.
       if (widget.sources.any((s) => s.id == found.source.id)) {
         showToast(context, context.l.psDuplicate, kind: ToastKind.warn);
         return;
@@ -138,43 +133,33 @@ class _PlSourcesEditorState extends ConsumerState<PlSourcesEditor> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-
-    return Padding(
-      // По краю блоков шторки: секция живёт только в ней.
-      padding: const EdgeInsets.fromLTRB(kSheetEdge, 6, kSheetEdge, 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(context.l.psTitle, style: theme.titleMedium),
-          const SizedBox(height: 4),
-          Text(
-            context.l.psHint,
-            style: theme.bodySmall?.copyWith(color: t.muted, height: 1.35),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SheetTitle(context.l.psTitle, subtitle: context.l.psHint),
+        for (var i = 0; i < widget.sources.length; i++)
+          _SourceRow(
+            source: widget.sources[i],
+            onRemove: _busy ? null : () => _remove(i),
           ),
-          const SizedBox(height: 12),
-          for (var i = 0; i < widget.sources.length; i++) ...[
-            _SourceRow(
-              source: widget.sources[i],
-              onRemove: _busy ? null : () => _remove(i),
-            ),
-            const SizedBox(height: 8),
-          ],
-          _AddRow(
-            controller: _url,
-            busy: _busy,
-            onChanged: (_) => setState(() {}),
-            onSubmit: _add,
-          ),
-        ],
-      ),
+        SheetField(
+          controller: _url,
+          hint: context.l.psAddHint,
+          busy: _busy,
+          autocorrect: false,
+          keyboardType: TextInputType.url,
+          trailing: switch (detectLinkSource(_url.text)) {
+            final source? => PlatformLogo(source, size: 18),
+            null => null,
+          },
+          onChanged: (_) => setState(() {}),
+          onSubmit: _add,
+        ),
+      ],
     );
   }
 }
 
-/// Строка привязки: знак площадки, название коллекции, под ним владелец (или
-/// ссылка, если владельца площадка не сказала).
 class _SourceRow extends StatelessWidget {
   const _SourceRow({required this.source, required this.onRemove});
 
@@ -183,164 +168,28 @@ class _SourceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    final platform = MusicSource.fromCode(source.provider);
     final title = source.title.isEmpty ? source.url : source.title;
     final under = source.owner.isEmpty ? source.url : source.owner;
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
-      decoration: BoxDecoration(
-        // Плашка внутри шторки красится по её скину, а не токеном страницы:
-        // на стекле сплошной `pill` остался бы единственным глухим пятном.
-        color: sheetPanelColor(context),
-        borderRadius: BorderRadius.circular(t.radius),
-      ),
-      child: Row(
-        children: [
-          // Знак площадки — в фирменных цветах, как везде в приложении.
-          PlatformLogo(platform, size: 18),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.titleMedium,
-                ),
-                // Ссылку под названием повторять незачем, когда она и есть
-                // название.
-                if (under.isNotEmpty && under != title) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    under,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.bodySmall?.copyWith(color: t.muted),
-                  ),
-                ],
-              ],
-            ),
+    return SheetPanel(
+      gap: 4,
+      children: [
+        SheetRow(
+          leading: PlatformLogo(
+            MusicSource.fromCode(source.provider),
+            size: 18,
           ),
-          const SizedBox(width: 8),
-          CircleIconButton(
+          gap: 12,
+          label: title,
+          subtitle: under.isNotEmpty && under != title ? under : null,
+          color: context.bloom.text,
+          trailing: CircleIconButton(
             icon: Bi.close,
             size: 40,
             iconSize: 18,
             background: Colors.transparent,
-            color: t.muted,
+            color: context.bloom.muted,
             tooltip: context.l.psRemove,
             onTap: onRemove,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Поле для новой ссылки и кнопка «Привязать» — те же две части, что в шторке
-/// импорта, только кнопка со словом: рядом с ней стоит уже целый список, и одна
-/// галочка не сказала бы, что она делает.
-class _AddRow extends StatelessWidget {
-  const _AddRow({
-    required this.controller,
-    required this.busy,
-    required this.onChanged,
-    required this.onSubmit,
-  });
-
-  final TextEditingController controller;
-  final bool busy;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onSubmit;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    final filled = controller.text.trim().isNotEmpty;
-    final platform = detectLinkSource(controller.text);
-
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(
-              color: sheetPanelColor(context),
-              borderRadius: BorderRadius.circular(t.radius),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    enabled: !busy,
-                    cursorColor: t.accent,
-                    textInputAction: TextInputAction.done,
-                    keyboardType: TextInputType.url,
-                    autocorrect: false,
-                    style: theme.bodyMedium,
-                    decoration: InputDecoration(
-                      isDense: true,
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                      hintText: context.l.psAddHint,
-                      hintStyle: theme.bodyMedium?.copyWith(color: t.muted),
-                    ),
-                    onChanged: onChanged,
-                    onSubmitted: (_) => onSubmit(),
-                  ),
-                ),
-                // Значок площадки внутри поля — как только ссылка узнана.
-                if (platform != null) ...[
-                  const SizedBox(width: 8),
-                  PlatformLogo(platform, size: 18),
-                ],
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Pressable(
-          onTap: filled && !busy ? onSubmit : null,
-          child: Material(
-            color: filled ? t.accent : sheetPanelColor(context),
-            borderRadius: BorderRadius.circular(t.radius),
-            clipBehavior: Clip.antiAlias,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: busy
-                        ? CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: filled ? t.accentText : t.muted,
-                          )
-                        : BloomIcon(
-                            Bi.addCircle,
-                            size: 16,
-                            color: filled ? t.accentText : t.muted,
-                          ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    context.l.psAdd,
-                    style: theme.titleMedium?.copyWith(
-                      color: filled ? t.accentText : t.muted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ),
         ),
       ],

@@ -1,8 +1,6 @@
-/// Запуск волны из интерфейса: одна точка, где [WaveStartResult] превращается
-/// в тост.
-///
-/// Контроллер про тосты не знает намеренно (см. шапку `wave_controller`), а
-/// экранов, откуда волну заводят, четыре — и текст неудачи у них общий.
+/// Starting the wave from the UI: the one point where [WaveStartResult] becomes
+/// a toast. The controller knows nothing of toasts, and the failure text is
+/// shared by all screens starting a wave.
 library;
 
 import 'package:flutter/material.dart';
@@ -14,13 +12,13 @@ import '../../shared/ui/bloom_toast.dart';
 import 'wave_controller.dart';
 import 'wave_store.dart';
 
-/// Есть ли у площадки трека радио. Пункт «Волна по треку» есть только у
-/// таких: у остальных он открывал бы меню ради отказа.
+/// Whether a track's platform has a radio. Wave by track shows only for those:
+/// elsewhere it would open a menu to refuse.
 bool canStartWaveFrom(WidgetRef ref, Track track) =>
     ref.read(waveProvider.notifier).seedOf(track) != null;
 
-/// Можно ли строить волну по артисту: станция артиста у Яндекса, у остальных —
-/// радио хотя бы одного из его загруженных треков.
+/// Whether a wave can start from an artist: an artist station on Yandex,
+/// elsewhere the radio of at least one loaded track.
 bool canStartWaveFromArtist(
   WidgetRef ref,
   Artist artist,
@@ -31,11 +29,11 @@ bool canStartWaveFromArtist(
   return knownTracks.any((t) => wave.seedOf(t) != null);
 }
 
-/// «Моя волна».
+/// My wave.
 Future<void> startPersonalWave(BuildContext context, WidgetRef ref) =>
     _run(context, ref, (wave) => wave.startPersonal());
 
-/// Волна по треку. [seedFirst] — начать с него самого.
+/// Wave by track. [seedFirst] starts with the track itself.
 Future<void> startWaveFromTrack(
   BuildContext context,
   WidgetRef ref,
@@ -47,14 +45,14 @@ Future<void> startWaveFromTrack(
   (wave) => wave.startByTrack(track, seedFirst: seedFirst),
 );
 
-/// «Похожие на очередь». Без списка берётся то, что играет сейчас.
+/// Similar to queue. With no list it takes what's playing now.
 Future<void> startWaveFromQueue(
   BuildContext context,
   WidgetRef ref, [
   List<Track>? tracks,
 ]) => _run(context, ref, (wave) => wave.startByQueue(tracks));
 
-/// Волна по артисту. [seedTracks] — то, что уже загрузила его страница.
+/// Wave by artist. [seedTracks] is what their page already loaded.
 Future<void> startWaveFromArtist(
   BuildContext context,
   WidgetRef ref,
@@ -78,14 +76,14 @@ Future<void> startWaveFromArtistName(
 Future<void> shakeWave(BuildContext context, WidgetRef ref) =>
     _run(context, ref, (wave) => wave.shake());
 
-/// Остановить волну — очередь доигрывает, но больше не догружается.
+/// Stops the wave: the queue plays out, but loads no more.
 void stopWave(BuildContext context, WidgetRef ref) {
   ref.read(waveProvider.notifier).stop();
   showToast(context, context.l.waveToastStopped);
 }
 
-/// Поставить/снять дизлайк. Дизлайкнутый играющий трек волна тут же
-/// пролистывает — см. [WaveController.toggleDislike].
+/// Sets or clears a dislike. A disliked playing track gets skipped by the wave
+/// at once; see [WaveController.toggleDislike].
 void toggleWaveDislike(BuildContext context, WidgetRef ref, Track track) {
   final l10n = context.l;
   final messenger = ScaffoldMessenger.of(context);
@@ -96,9 +94,8 @@ void toggleWaveDislike(BuildContext context, WidgetRef ref, Track track) {
 bool isWaveDisliked(WidgetRef ref, String trackId) =>
     ref.watch(waveStoreProvider).isDisliked(trackId);
 
-/// Общий ход: подбор идёт сетью, поэтому мессенджер и переводы берём ДО
-/// ожидания — экран, с которого волну завели, к этому моменту уже закрыт
-/// (шторка действий, меню артиста).
+/// Shared path: picks hit the network, so messenger and translations come
+/// BEFORE waiting: the screen that started the wave has closed by then.
 Future<void> _run(
   BuildContext context,
   WidgetRef ref,
@@ -111,7 +108,7 @@ Future<void> _run(
   messenger.toast(waveResultMessage(l10n, result), kind: ToastKind.warn);
 }
 
-/// Текст неудачного запуска.
+/// Text of a failed start.
 String waveResultMessage(AppLocalizations l10n, WaveStartResult result) =>
     switch (result) {
       WaveStartResult.ok || WaveStartResult.busy => '',

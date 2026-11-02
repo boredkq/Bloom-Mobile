@@ -1,4 +1,4 @@
-/// The lyrics of the playing track, as the PC's `LyricsView`: the line being
+/// The lyrics of the playing track: the line being
 /// sung stands in the middle, lit as a whole; a tap on another line goes there.
 library;
 
@@ -12,10 +12,10 @@ import '../../../core/l10n/l10n.dart';
 import '../../player/player_controller.dart';
 import '../lyrics_store.dart';
 
-/// Sizes of one surface. Over the cover — the PC's panel numbers, centred; in
+/// Sizes of one surface. Over the cover they're centred; in
 /// the cover's place the box is the screen's width, so the lines are larger
 /// and go to the left edge, with the gap between lines rather than inside a
-/// wrapped one (the PC's side panel does the same).
+/// wrapped one.
 class LyricsLayout {
   const LyricsLayout({
     required this.fontSize,

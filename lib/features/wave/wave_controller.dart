@@ -1,16 +1,14 @@
-/// Волна — бесконечная очередь из треков, похожих на то, с чего она начата, из
-/// радио самих площадок; порт `Wave` ПК.
+/// The wave: an endless queue of tracks similar to its start, from platforms'
+/// own radio.
 ///
-/// «Моя волна» стартует с библиотеки (самое слушаемое и лайки), остальные — с
-/// трека, артиста или очереди. Радио SoundCloud и YouTube Music идут через наш
-/// отбор и порядок (`pickBatch`); станция Яндекса учится у слушателя сама,
-/// поэтому её порядок сохраняется, а ей сообщают, что дослушали и что
-/// пролистнули. Дизлайки — навсегда, в волне и вне её.
+/// My wave starts from the library (most played and likes), others from a
+/// track, artist or queue. SoundCloud and YouTube Music radio go through my
+/// selection and order (`pickBatch`); Yandex's station learns from the
+/// listener, so its order stays and it's told what was finished and skipped.
+/// Dislikes are forever, in the wave and out.
 ///
-/// Тосты отсюда не показываются: методы возвращают [WaveStartResult], а текст
-/// подбирает интерфейс. Контроллер живёт дольше любого экрана, и `BuildContext`
-/// ему взять негде — та же причина, по которой подписи источника берутся через
-/// `globalL10n`.
+/// No toasts here: methods return [WaveStartResult] and the UI picks the text.
+/// The controller outlives any screen, with no `BuildContext` to take.
 library;
 
 import 'dart:async';
@@ -37,43 +35,43 @@ import 'wave_seeds.dart';
 import 'wave_store.dart';
 import 'wave_types.dart';
 
-/// Чем кончилась попытка запустить волну. Всё, кроме [ok] и [busy],
-/// интерфейс показывает тостом.
+/// How an attempt to start the wave ended. All but [ok] and [busy] show as a
+/// toast.
 enum WaveStartResult {
   ok,
 
-  /// Волну уже запускают — второй тап по кнопке ничего не делает.
+  /// The wave is already starting: a second tap does nothing.
   busy,
 
-  /// Слушали ещё слишком мало, сидов не набралось.
+  /// Too little listened yet, with no seeds gathered.
   notEnoughData,
 
-  /// У трека нет радио, от которого оттолкнуться.
+  /// The track has no radio to start from.
   noSeed,
 
-  /// Очередь пуста — «похожие на очередь» строить не из чего.
+  /// The queue is empty: nothing to build similar from.
   queueEmpty,
 
-  /// В очереди нет треков с радио.
+  /// No tracks with radio in the queue.
   noSeedsInQueue,
 
-  /// У артиста не нашлось треков, годных в сиды.
+  /// The artist has no tracks fit to be seeds.
   artistNoSeeds,
 
-  /// Площадка не вернула похожих.
+  /// The platform returned no similar tracks.
   noSimilar,
 
-  /// Волна Яндекса, но в аккаунт не вошли.
+  /// A Yandex wave with no login.
   ymNoAuth,
 }
 
 class WaveRunState {
   const WaveRunState({this.starting = false, this.mode, this.about = ''});
 
-  /// Волна собирается прямо сейчас — кнопка запуска крутит вертушку.
+  /// The wave is being built right now: the start button spins.
   final bool starting;
 
-  /// Режим идущей волны; `null` — волна не играет.
+  /// Running wave's mode; `null` if not playing.
   final WaveMode? mode;
 
   /// What the wave on now was started from ([WaveRun.about]).
@@ -86,7 +84,7 @@ final waveProvider = NotifierProvider<WaveController, WaveRunState>(
   WaveController.new,
 );
 
-/// Станций, которые спрашивают разом.
+/// Stations asked at once.
 const int _kParallel = 3;
 
 class WaveController extends Notifier<WaveRunState> {
@@ -94,7 +92,7 @@ class WaveController extends Notifier<WaveRunState> {
 
   WaveRun? _run;
 
-  /// Новая волна или её конец делают старые ответы сети чужими.
+  /// A new wave or its end makes old network answers foreign.
   int _gen = 0;
   bool _refilling = false;
 
@@ -108,7 +106,7 @@ class WaveController extends Notifier<WaveRunState> {
   MusicProvider? _provider(String code) =>
       ref.read(registryProvider).byId(MusicSource.fromCode(code).id);
 
-  /// Радио трека у его площадки — `Wave::seedOf` ПК.
+  /// A track's radio on its platform.
   WaveSeed? seedOf(Track t) {
     final p = ref.read(registryProvider).byId(t.source.id);
     if (p == null || !p.isEnabled) return null;
@@ -124,12 +122,13 @@ class WaveController extends Notifier<WaveRunState> {
     seedOf: seedOf,
   );
 
-  /// В волне прямо сейчас: она идёт, и очередь — её.
+  /// In the wave right now: it's running and the queue is its.
   bool get _inWave => _run != null && _queue.source is WaveSource;
 
-  // ── Запуск ──────────────────────────────────────────────────────────────
+  // ── Starting ────────────────────────────────────────────────────────────
 
-  /// Телефон — пульт ПК: волну подбирает и догружает ПК, своей здесь нет.
+  /// The phone is a remote: the computer picks and loads the wave, with none of
+  /// its own here.
   PcRemoteController? get _remote => ref.read(pcRemoteProvider) == null
       ? null
       : ref.read(pcRemoteProvider.notifier);
@@ -137,8 +136,8 @@ class WaveController extends Notifier<WaveRunState> {
   Future<WaveStartResult> _onPc(Future<void> sent) =>
       sent.then((_) => WaveStartResult.ok);
 
-  /// «Моя волна» с площадки из настройки. Выбран Яндекс без входа — с
-  /// SoundCloud (см. [effectiveWaveSourceProvider]).
+  /// My wave from the set platform. Yandex with no login goes from SoundCloud
+  /// (see [effectiveWaveSourceProvider]).
   Future<WaveStartResult> startPersonal() async {
     if (_remote case final pc?) return _onPc(pc.wavePersonal());
     final src = ref.read(effectiveWaveSourceProvider);
@@ -152,11 +151,9 @@ class WaveController extends Notifier<WaveRunState> {
     return _begin(WaveMode.personal, seeds);
   }
 
-  /// Волна по треку. Радио трека Яндекса — его собственное и учится; остальные
-  /// идут через наш отбор.
-  ///
-  /// [seedFirst] — начать с самого трека, а дальше уйти в подобранное (тап по
-  /// обложке в кольце на главной).
+  /// Wave by track. A Yandex track's radio is its own and learns; others go
+  /// through my selection. [seedFirst] starts with the track itself, then moves
+  /// to picks.
   Future<WaveStartResult> startByTrack(Track track, {bool seedFirst = false}) {
     if (_remote case final pc?) return _onPc(pc.waveTrack(track));
     final s = seedOf(track);
@@ -170,7 +167,7 @@ class WaveController extends Notifier<WaveRunState> {
     );
   }
 
-  /// «Похожие на очередь»: очередь заменяется похожими на то, что в ней.
+  /// Similar to queue: the queue is replaced by tracks like what's in it.
   Future<WaveStartResult> startByQueue([List<Track>? tracks]) {
     if (_remote case final pc?) return _onPc(pc.waveQueue());
     final source = (tracks == null || tracks.isEmpty) ? _queue.queue : tracks;
@@ -180,8 +177,8 @@ class WaveController extends Notifier<WaveRunState> {
     return _begin(WaveMode.queue, seeds);
   }
 
-  /// Волна по артисту: станция артиста у Яндекса, у остальных — сиды из того,
-  /// что уже загрузила его страница ([seedTracks]: популярные и все).
+  /// Wave by artist: an artist station on Yandex, elsewhere seeds from what
+  /// their page loaded ([seedTracks]: popular and all).
   Future<WaveStartResult> startByArtist(
     Artist artist, {
     List<Track> seedTracks = const [],
@@ -206,8 +203,8 @@ class WaveController extends Notifier<WaveRunState> {
     return _begin(WaveMode.artist, seeds, about: about);
   }
 
-  /// A wave in the style of [name], one of [track]'s artists, as
-  /// `Wave::startByArtistName` on the PC: a Yandex track has its artist's own
+  /// A wave in the style of [name], one of [track]'s artists:
+  /// a Yandex track has its artist's own
   /// station, the rest are seeded with the artist's tracks the listener has
   /// (the top and the library).
   Future<WaveStartResult> startByArtistName(Track track, String name) async {
@@ -242,7 +239,7 @@ class WaveController extends Notifier<WaveRunState> {
   }
 
   /// Shakes up My Wave: what follows the playing track turns into a fresh
-  /// batch from new seeds. Outside My Wave it starts it. `Wave::shake`.
+  /// batch from new seeds. Outside My Wave it starts it.
   Future<WaveStartResult> shake() async {
     if (_remote case final pc?) return _onPc(pc.waveShake());
     final run = _run;
@@ -281,16 +278,16 @@ class WaveController extends Notifier<WaveRunState> {
   }
 
   /// Whether My Wave has something to start from: Yandex's own station, or a
-  /// track of the chosen platform with a radio. `Wave::canPersonal`.
+  /// track of the chosen platform with a radio.
   bool canPersonal() {
     final src = ref.read(effectiveWaveSourceProvider);
     if (src == MusicSource.yandex) return true;
     return _view().tracks.any((t) => t.source == src && seedOf(t) != null);
   }
 
-  /// [replace] — пачка становится очередью; иначе дописывается в её конец
-  /// («Авто похожие»), пока [isValid] — пока ждали сеть, могли поставить
-  /// другое.
+  /// [replace] makes the batch the queue; otherwise it goes on the end (auto
+  /// similar), while [isValid] holds: something else may have been started
+  /// during the wait.
   Future<WaveStartResult> _begin(
     WaveMode mode,
     List<WaveSeed> seeds, {
@@ -312,7 +309,7 @@ class WaveController extends Notifier<WaveRunState> {
         about: state.about,
       );
     }
-    // Новая волна не должна собраться из тех же ответов, что прошлая.
+    // A new wave mustn't be built from the same answers as the last.
     resetWaveSourceCache();
     try {
       final pages = await _gather(seeds);
@@ -358,8 +355,8 @@ class WaveController extends Notifier<WaveRunState> {
     }
   }
 
-  /// Станция каждого сида — оттуда, где она остановилась в прошлый раз (новая
-  /// волна на тех же сидах слышит, что дальше), по несколько разом.
+  /// Each seed's station, from where it stopped last time (a new wave on the
+  /// same seeds hears what's next), several at once.
   Future<List<List<Track>>> _gather(List<WaveSeed> seeds) async {
     final pages = List<List<Track>>.filled(seeds.length, const []);
     final cursors = <WaveSeed, String>{};
@@ -372,7 +369,7 @@ class WaveController extends Notifier<WaveRunState> {
         if (p == null) continue;
         final cursor = _store.cursorOf(s);
         var page = await p.station(s.station, cursor);
-        // Курсор протух — тогда с начала.
+        // A stale cursor starts over.
         if (page.tracks.isEmpty && cursor.isNotEmpty) {
           page = await p.station(s.station, '');
         }
@@ -406,8 +403,8 @@ class WaveController extends Notifier<WaveRunState> {
     );
   }
 
-  /// «Показано» ставим только чужим: своё из библиотеки ходит долей «Моей
-  /// волны», вычёркивать его на две недели незачем.
+  /// Shown goes only on foreign tracks: own ones come as My wave's share, with
+  /// no reason to strike them for two weeks.
   void _markShown(List<Track> batch) {
     final lib = ref.read(libraryProvider);
     _store.markShown([
@@ -418,10 +415,10 @@ class WaveController extends Notifier<WaveRunState> {
 
   void _save() => _store.saveRun(_run);
 
-  // ── Ход волны ───────────────────────────────────────────────────────────
+  // ── Running ─────────────────────────────────────────────────────────────
 
-  /// Впереди мало треков: следующая пачка — от последних услышанных (за чем
-  /// слушатель остаётся, туда волна и идёт) или от сидов, с которых начата.
+  /// Few tracks ahead: the next batch comes from the last heard (the wave
+  /// follows what the listener stays with) or the starting seeds.
   Future<void> _refill() async {
     final run = _run;
     if (run == null || !_inWave || state.starting || _refilling) return;
@@ -457,8 +454,8 @@ class WaveController extends Notifier<WaveRunState> {
     }
   }
 
-  /// Плеер начал трек. Ушли на другой список — волна тихо кончается, иначе её
-  /// догрузка писала бы в чужую очередь.
+  /// The player started a track. Moved to another list, the wave quietly ends,
+  /// or its loading would write to someone else's queue.
   void onTrackStart(Track track) {
     if (_queue.source is! WaveSource) {
       endSession();
@@ -475,7 +472,8 @@ class WaveController extends Notifier<WaveRunState> {
     unawaited(_refill());
   }
 
-  /// Трек засчитан прослушанным: в волне он услышан, и пора проверить запас.
+  /// A track counted as heard: it's heard in the wave, and the stock is due a
+  /// check.
   void onCounted(Track track) {
     final run = _run;
     if (run == null || !_inWave) return;
@@ -487,8 +485,8 @@ class WaveController extends Notifier<WaveRunState> {
     unawaited(_refill());
   }
 
-  /// Уходим с трека: дослушали (85 %) или пролистнули рано (до 20 с и 30 %) —
-  /// волна учит артиста; станции Яндекса — говорим ей.
+  /// Leaving a track: finished (85%) or skipped early (under 20 s and 30%). The
+  /// wave learns the artist, and a Yandex station gets told.
   void onTrackEnd(Track track, Duration played, Duration total) {
     final run = _run;
     if (run == null || !_inWave || total <= Duration.zero) return;
@@ -513,10 +511,10 @@ class WaveController extends Notifier<WaveRunState> {
     _save();
   }
 
-  // ── Дизлайк ─────────────────────────────────────────────────────────────
+  // ── Dislike ─────────────────────────────────────────────────────────────
 
-  /// Поставить/снять дизлайк; возвращает, стоит ли он теперь. Играющий
-  /// дизлайкнутый трек уходит — в очереди он остаётся зачёркнутым.
+  /// Sets or clears a dislike; returns whether it's set now. A disliked playing
+  /// track leaves, staying struck through in the queue.
   bool toggleDislike(Track track) {
     final on = _store.toggleDislike(track);
     if (!on) return false;
@@ -531,13 +529,12 @@ class WaveController extends Notifier<WaveRunState> {
     return true;
   }
 
-  // ── Конец ───────────────────────────────────────────────────────────────
+  // ── Ending ──────────────────────────────────────────────────────────────
 
-  /// Остановить волну явно (кнопка «Остановить»). Очередь доигрывает, но
-  /// больше не догружается.
+  /// Stops the wave explicitly. The queue plays out, but loads no more.
   void stop() => endSession();
 
-  /// Волна кончилась; ответ, ещё идущий по сети, отбрасывается.
+  /// The wave ended; an answer still on its way is dropped.
   void endSession() {
     if (_run == null && !state.active) return;
     _end();
@@ -551,12 +548,12 @@ class WaveController extends Notifier<WaveRunState> {
     state = const WaveRunState();
   }
 
-  // ── «Авто похожие» ──────────────────────────────────────────────────────
+  // ── Auto similar ────────────────────────────────────────────────────────
 
-  /// Очередь доиграла (или вот-вот) — дописать в её хвост похожие на то, что в
-  /// ней (кнопка «Похожие на очередь», наоборот, заменяет). Дальше хвост идёт
-  /// волной «похожие на очередь». Тихо, без тостов: это фон, а не нажатая
-  /// кнопка. [isValid] — пока ждали сеть, человек мог поставить другое.
+  /// The queue ended or nearly: adds tracks like what's in it to the tail (the
+  /// Similar to queue button replaces instead). The tail then runs as a similar
+  /// to queue wave. Quiet, with no toasts: this is background, not a pressed
+  /// button. [isValid]: something else may have been started during the wait.
   Future<bool> continueQueue({required bool Function() isValid}) async {
     if (state.starting) return false;
     final queue = _queue.queue;
@@ -571,9 +568,9 @@ class WaveController extends Notifier<WaveRunState> {
     return r == WaveStartResult.ok;
   }
 
-  /// Подхватить волну, которую вернула сессия: очередь вернул снимок, здесь
-  /// возвращается память подбора. Сессия была не волной — сохранённая
-  /// забывается.
+  /// Picks up a wave the session returned: the snapshot brought the queue, and
+  /// this brings picks' memory. If the session wasn't a wave, the saved one is
+  /// forgotten.
   void adoptRestored(PlaySource? source) {
     final saved = _store.savedRun;
     if (source is! WaveSource) {
@@ -586,9 +583,9 @@ class WaveController extends Notifier<WaveRunState> {
   }
 }
 
-/// Подпись источника для пилюли в плеере. Берётся один раз, при постановке
-/// очереди: снимок сессии живёт дольше выбранного языка, и переводить её потом
-/// уже некому.
+/// Source caption for the player's pill. Taken once, when the queue is set: a
+/// session snapshot outlives the chosen language, with nobody to translate it
+/// later.
 String waveLabel(WaveMode mode) {
   final l = globalL10n;
   return switch (mode) {

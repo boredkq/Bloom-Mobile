@@ -1,22 +1,16 @@
-/// Анимация смены трека: два слоя (уезжающий «прошлый» и приезжающий
-/// «текущий») в одной коробке. Порт десктопного `player/ui/TrackSwap.tsx`
-/// вместе с его стилями (`shared/styles/track-swap.css`).
+/// The track change: the old layer leaves on top while the new one arrives
+/// under it. Covers fade, captions slide; it isn't a setting.
 ///
-/// Снимок прошлого трека — это ВИДЖЕТ ПРОШЛОЙ ПЕРЕРИСОВКИ: он неизменяем и
-/// держит значения того момента, поэтому старая обложка и старое название
-/// рисуются сами, без ручного копирования полей в состояние.
-///
-/// Тип анимации приходит из настроек ([TrackAnimKind]), направление слайда — из
-/// `track_swap_dir.dart`: обе поверхности обязаны ехать в одну сторону.
+/// The old layer is the widget of the last build: it's immutable and keeps that
+/// moment's values, so nothing is copied by hand. Both surfaces slide the same
+/// way: the direction comes from one place.
 library;
 
 import 'package:flutter/material.dart';
 
-import '../track_anim_store.dart';
 import '../track_swap_dir.dart';
 
-/// Ручки одной поверхности — те же числа, что в CSS-переменных на ПК
-/// (`--tsw-dur`, `--tsw-fade-dur`, `--tsw-dist`).
+/// One surface's timing and reach.
 class TrackSwapTuning {
   const TrackSwapTuning({
     required this.dur,
@@ -24,25 +18,21 @@ class TrackSwapTuning {
     required this.dist,
   });
 
-  /// Длительность слайда.
   final Duration dur;
 
-  /// Длительность затухания. ДОЛЬШЕ слайда: там внимание держит движение, а
-  /// тут — одна прозрачность.
+  /// Longer than the slide: nothing but opacity holds the eye here.
   final Duration fadeDur;
 
-  /// Амплитуда слайда, доля ширины слоя.
+  /// How far a slide goes, of the layer's width.
   final double dist;
 
-  /// Полноэкранный плеер.
   static const player = TrackSwapTuning(
     dur: Duration(milliseconds: 420),
     fadeDur: Duration(milliseconds: 460),
     dist: 0.12,
   );
 
-  /// Миниплеер: коробка маленькая, длинный слайд в ней читается как рывок —
-  /// быстрее и с большей амплитудой, как `#miniPlayer .tsw` на ПК.
+  /// A small box: a long slide reads as a jerk, so quicker and further.
   static const mini = TrackSwapTuning(
     dur: Duration(milliseconds: 300),
     fadeDur: Duration(milliseconds: 340),
@@ -50,33 +40,34 @@ class TrackSwapTuning {
   );
 }
 
-/// Кривая движения (`--tsw-ease`).
 const Curve _slideEase = Cubic(0.22, 1, 0.36, 1);
 
-/// Кривая прозрачности (`--tsw-fade-ease`) — почти линейная. На кривой движения
-/// 90% затухания проходило за первые ~15% времени, и оно выглядело мгновенной
-/// подменой («как будто не работает»).
+/// Almost linear: on the slide curve 90% of a fade passed in the first 15% and
+/// it read as an instant cut.
 const Curve _fadeEase = Cubic(0.35, 0, 0.5, 1);
 
-/// Доля времени, за которую приезжающий слой добирает полную непрозрачность.
-/// Меньше единицы намеренно: иначе в середине сквозь два полупрозрачных слоя
-/// просвечивал бы фон и кадр заметно темнел.
+/// The arriving layer is opaque by this share of the time: otherwise the
+/// background shows through both halfway and the frame darkens.
 const double _fadeInShare = 0.55;
 
 class TrackSwap extends StatefulWidget {
   const TrackSwap({
     super.key,
     required this.id,
-    required this.kind,
     required this.child,
+    this.fade = false,
+    this.animated = true,
     this.tuning = TrackSwapTuning.player,
   });
 
-  /// id текущего трека: его смена и запускает анимацию.
+  /// A new id starts the swap.
   final String? id;
 
-  /// Тип анимации из настроек ([TrackAnimKind.none] — слоёв нет вовсе).
-  final TrackAnimKind kind;
+  /// A cover fades; a caption slides.
+  final bool fade;
+
+  /// Off for what only looks like a track, a neighbour under a swipe.
+  final bool animated;
 
   final TrackSwapTuning tuning;
 
@@ -90,21 +81,15 @@ class _TrackSwapState extends State<TrackSwap>
     with SingleTickerProviderStateMixin {
   late final AnimationController _anim = AnimationController(vsync: this)
     ..addStatusListener((status) {
-      // Уехавший слой снимаем по концу анимации, а не по таймеру: пока он
-      // висит, коробка тянет лишнее поддерево.
+      // Taken off at the end: while there, the box carries an extra subtree.
       if (status == AnimationStatus.completed && _prev != null) {
         setState(() => _prev = null);
       }
     });
 
-  /// Прошлая перерисовка: id и её содержимое. Содержимое обновляем и без смены
-  /// id (обложка могла поменяться сама — скачали копию, пришла картинка), иначе
-  /// уезжал бы протухший кадр.
-  ///
-  /// Заполняются в [initState], а не инициализатором поля: `late` считается при
-  /// ПЕРВОМ ОБРАЩЕНИИ, а первое обращение случается уже в `didUpdateWidget` —
-  /// там `widget` новый, и «прошлый» id оказался бы равен текущему. Анимация
-  /// при этом молча не играла бы никогда (поймал тест).
+  /// The last build's id and content, updated without a new id as well: a cover
+  /// can change by itself. Set in [initState]: a `late` initializer would first
+  /// run in `didUpdateWidget`, with the new `widget`, and nothing would ever swap.
   String? _lastId;
   late Widget _lastChild;
 
@@ -115,11 +100,11 @@ class _TrackSwapState extends State<TrackSwap>
     _lastChild = widget.child;
   }
 
-  /// Снимок, который сейчас уезжает, и его id (нужен ключом слоя).
+  /// What's leaving now, and its id for the layer's key.
   Widget? _prev;
   String? _prevId;
 
-  /// Направление этого перехода: назад — зеркально.
+  /// Backwards is mirrored.
   bool _back = false;
 
   @override
@@ -134,10 +119,8 @@ class _TrackSwapState extends State<TrackSwap>
     final hadTrack = _lastId != null;
     _lastId = widget.id;
     _lastChild = widget.child;
-    // Первый трек за сессию (нечему уезжать), выключенная анимация и смена «под
-    // пальцем» (её рисует сам жест) — без слоёв. setState тут не нужен:
-    // `didUpdateWidget` и так идёт перед перерисовкой.
-    if (widget.kind == TrackAnimKind.none || !hadTrack || swapSilent) {
+    // Nothing to leave yet, or the finger draws the change itself: no layers.
+    if (!widget.animated || !hadTrack || swapSilent) {
       _anim.stop();
       _prev = null;
       _prevId = null;
@@ -147,9 +130,7 @@ class _TrackSwapState extends State<TrackSwap>
     _prevId = fromId;
     _back = swapDir < 0;
     _anim
-      ..duration = widget.kind == TrackAnimKind.slide
-          ? widget.tuning.dur
-          : widget.tuning.fadeDur
+      ..duration = widget.fade ? widget.tuning.fadeDur : widget.tuning.dur
       ..forward(from: 0);
   }
 
@@ -159,15 +140,13 @@ class _TrackSwapState extends State<TrackSwap>
     super.dispose();
   }
 
-  /// Сдвиг (доля ширины) и непрозрачность слоя на текущем кадре.
-  /// [incoming] — приезжающий слой (иначе уезжающий).
+  /// This frame's shift (of the width) and opacity; [incoming] is the arriving one.
   (double, double) _frame({required bool incoming}) {
-    // В покое слой стоит на месте и виден целиком: обёртки при этом всё равно
-    // остаются на месте — их появление и исчезновение пересобирало бы
-    // поддерево, а с ним и картинку с бегущей строкой.
+    // At rest it stands whole; the wrappers stay, or coming and going they
+    // would rebuild the subtree with its picture and marquee.
     if (_prev == null) return (0, 1);
     final value = _anim.value;
-    if (widget.kind == TrackAnimKind.fade) {
+    if (widget.fade) {
       return (
         0,
         incoming
@@ -177,8 +156,8 @@ class _TrackSwapState extends State<TrackSwap>
     }
     final eased = _slideEase.transform(value);
     final dist = _back ? -widget.tuning.dist : widget.tuning.dist;
-    // Новый приезжает со своей стороны к нулю, старый уходит в
-    // противоположную — оба движутся в одну сторону, как на ПК.
+    // The new one comes from its side to zero, the old one leaves the other
+    // way: both move in one direction.
     return (
       incoming ? dist * (1 - eased) : -dist * eased,
       incoming ? eased : 1 - eased,
@@ -202,35 +181,23 @@ class _TrackSwapState extends State<TrackSwap>
   @override
   Widget build(BuildContext context) {
     final prev = _prev;
-    // Слои режем по своей коробке — десктопное `.tsw{overflow:hidden}`. Одного
-    // `Stack` для этого мало: он считает переполнением только позиционированных
-    // детей, а сдвиг слоя случается на покраске, уже после раскладки. Без
-    // обрезки подпись миниплеера на слайде наезжала на обложку и на кнопки.
-    //
-    // Обрезка стоит ВСЕГДА, а не только на время анимации: обёртка, которая
-    // появляется и пропадает, пересобирала бы поддерево под собой, а с ним —
-    // картинку и бегущую строку.
+    // Clipped to the box, since `Stack` sees only positioned children overflow
+    // and the shift happens at paint: unclipped, a caption runs over the cover.
+    // Always there: a wrapper that comes and goes rebuilds what's under it.
     return ClipRect(
       child: Stack(
-        // `passthrough`, а не `loose`: текущий слой обязан получить РОВНО те
-        // ограничения, что достались бы самому содержимому без обёртки — иначе
-        // подпись, которой в строке была задана ширина, схлопнулась бы по своему
-        // тексту и уехала бы к левому краю вместо центра.
-        //
-        // Прошлый слой при этом уходит в Positioned.fill: высоту коробки держит
-        // текущий, иначе на время анимации подпись раздваивалась бы по высоте и
-        // толкала всё под собой.
+        // `passthrough`: the current layer gets exactly the constraints the content
+        // would, or a caption given a width collapses to its text. The old layer
+        // goes in `Positioned.fill`: the current one holds the height.
         fit: StackFit.passthrough,
         children: [
           _layer(
-            // Ключ по id: новый трек — новый слой, иначе Flutter обновил бы
-            // старый на месте и анимации нечего было бы играть.
+            // A new track is a new layer, or Flutter updates the old one in place.
             KeyedSubtree(key: ValueKey(widget.id ?? '—'), child: widget.child),
             incoming: true,
           ),
-          // Уезжающий слой ПОВЕРХ приезжающего: он гаснет, и «просвет» под ним
-          // читается как проявление нового, а не как мигание фоном. Тапы он не
-          // ловит — под ним живой слой с живыми кнопками.
+          // The leaving one on top: fading, it reads as the new one appearing and
+          // not as a flash. It takes no taps, the live buttons are under it.
           if (prev != null)
             Positioned.fill(
               child: _layer(

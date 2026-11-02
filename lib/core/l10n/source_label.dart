@@ -1,8 +1,6 @@
-/// Название площадки на языке интерфейса.
-///
-/// Отдельным файлом, а не полем enum: `MusicSource` живёт в слое сущностей и
-/// про Flutter ничего не знает, а переводится там всего два значения —
-/// остальные площадки называются брендом одинаково на всех языках.
+/// Platform name in the UI language. Separate from the enum: `MusicSource`
+/// lives in the entities layer and knows nothing of Flutter, and only two
+/// values get translated.
 library;
 
 import '../entities/entities.dart';

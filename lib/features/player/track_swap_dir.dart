@@ -1,18 +1,14 @@
-/// Направление перехода для анимации смены трека (см. `TrackSwap`).
+/// Direction of the track change animation (see `TrackSwap`). +1 is forward
+/// (the new track arrives from the right), −1 back (from the left).
 ///
-/// Порт десктопного `features/player/lib/trackSwapDir.ts`.
+/// Computed ONCE on the real change ([commitSwapDir] is called by
+/// `PlaybackController._load`), not in widgets: the player and mini player must
+/// go one way, and by repaint the old index is lost.
 ///
-/// +1 — «вперёд» (новый трек приезжает справа), −1 — «назад» (слева).
-///
-/// Считается ОДИН раз на реальном переключении ([commitSwapDir] зовёт
-/// `PlaybackController._load`), а не в виджетах: две поверхности (плеер и
-/// миниплеер) обязаны ехать в одну сторону, а вычислять её каждой самой не из
-/// чего — к моменту перерисовки прошлый номер в очереди уже потерян.
-///
-/// Приоритет: явный [markSwapDir] из «назад»/«дальше» (он верен и при
-/// закольцовке очереди, где сравнение номеров дало бы обратное), иначе —
-/// сравнение с номером прошлого переключения. Новая очередь (другой список) =
-/// «вперёд»: номера разных очередей несравнимы.
+/// Priority: an explicit [markSwapDir] from previous or next (right even on a
+/// queue loop, where comparing indices says the reverse), else comparison with
+/// the last change's index. A new queue is forward: indices of different queues
+/// don't compare.
 library;
 
 int _dir = 1;
@@ -22,32 +18,30 @@ bool _silentPending = false;
 List<Object?>? _lastQueue;
 int _lastIndex = -1;
 
-/// Направление последнего переключения (читают слои анимации).
+/// Direction of the last change, read by animation layers.
 int get swapDir => _dir;
 
-/// Анимировать ли последнее переключение. `true` — не надо: содержимое уже
-/// увёл за край сам жест (см. [markSwapSilent]).
+/// Whether the last change needs no animation: the gesture already carried the
+/// content off (see [markSwapSilent]).
 bool get swapSilent => _silent;
 
-/// Явно задать направление следующего переключения («назад» / «дальше»).
+/// Sets the next change's direction explicitly (previous or next).
 void markSwapDir(int d) => _explicit = d;
 
-/// Следующую смену не анимировать: её тянут пальцем.
-///
-/// `TrackFlick` уводит содержимое за край, меняет трек и вводит новое с другой
-/// стороны сам — слои `TrackSwap` поверх этого дали бы вторую анимацию внутри
-/// первой. Флаг одноразовый: его снимает ближайший [commitSwapDir], поэтому
-/// ставить его можно только на жест, который трек ТОЧНО сменит.
+/// The next change isn't animated: a finger is pulling it. `TrackFlick` slides
+/// the content off, changes the track and brings the new one in itself, and
+/// `TrackSwap` layers on top would be a second animation inside the first. The
+/// flag is one-shot, cleared by the next [commitSwapDir], so set it only on a
+/// gesture that will SURELY change the track.
 void markSwapSilent() => _silentPending = true;
 
-/// Снять невыполненный [markSwapSilent]: жест был, а смены не вышло (в очереди
-/// нечего листать, «назад» в середине трека отматывает его в начало). Флаг
-/// одноразовый и ждёт ближайшего переключения — не сняв его, мы погасили бы
-/// анимацию следующей, настоящей смены.
+/// Clears an unused [markSwapSilent]: there was a gesture with no change
+/// (nothing to flick to, or previous mid-track seeks to the start). The flag
+/// waits for the next change, and left up it would silence the next real one.
 void cancelSwapSilent() => _silentPending = false;
 
-/// Зафиксировать направление на момент переключения. [queue] и [index] — уже
-/// новое состояние очереди.
+/// Fixes the direction at the moment of change. [queue] and [index] are the
+/// queue's new state.
 void commitSwapDir(List<Object?> queue, int index) {
   if (_explicit != null) {
     _dir = _explicit!;
@@ -63,8 +57,8 @@ void commitSwapDir(List<Object?> queue, int index) {
   _lastIndex = index;
 }
 
-/// Забыть накопленное — только для тестов: модуль глобальный, и остаток от
-/// прошлой проверки утёк бы в следующую.
+/// Forgets what built up, only for tests: the module is global and leftovers
+/// would leak into the next check.
 void resetSwapDirForTest() {
   _dir = 1;
   _explicit = null;

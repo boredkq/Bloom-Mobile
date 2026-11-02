@@ -1,12 +1,10 @@
-/// Шапка страницы, которая при прокрутке не уезжает целиком.
+/// Page header that doesn't scroll away whole. The cover, title and action row
+/// leave upward as ordinary content, but the row of round buttons sticks to the
+/// top: on a long track list there'd be nothing to press without scrolling all
+/// the way back.
 ///
-/// Обложка, название и ряд действий уходят вверх как обычное содержимое, а ряд
-/// круглых кнопок (назад, сортировка, поиск, «…») остаётся приклеенным к
-/// верхнему краю: на длинном трек-листе иначе некуда нажать, не пролистав всё
-/// обратно.
-///
-/// Сжатая шапка — это верхняя полоска той же обложки, поэтому кнопки всё так же
-/// стоят на картинке, а не на плоской панели.
+/// The collapsed header is a strip of the same cover, so the buttons stay on
+/// the picture, not a flat bar.
 library;
 
 import 'dart:math' as math;
@@ -29,34 +27,33 @@ class StickyHero extends StatelessWidget {
     this.flying = false,
   });
 
-  /// Полная высота шапки — та же, что была у нераскрытого hero.
   final double height;
 
-  /// Картинка на всю шапку: обложка, коллаж или тинт раздела.
+  /// Picture for the whole header: a cover, a collage or a section tint.
   final Widget background;
 
-  /// Ряд кнопок, который остаётся видимым при прокрутке.
+  /// The row of buttons that stays visible.
   final Widget bar;
 
-  /// Высота этого ряда — по ней считается сжатая шапка. Не берётся из вёрстки:
-  /// слайверу минимальный размер нужен до раскладки ребёнка.
+  /// Height of that row, for the collapsed header. Not from layout: a sliver
+  /// needs its min extent before the child is laid out.
   final double barHeight;
 
-  /// Название, подписи и ряд действий — низ шапки, который уезжает.
+  /// Title, captions and action row: the lower part that scrolls away.
   final Widget body;
 
-  /// Сюда летит обложка с карточки: содержимое ждёт конца перелёта.
+  /// A cover is flying in from a card: the content waits for the landing.
   final bool flying;
 
-  /// Отступы содержимого шапки — общие у всех страниц с hero.
+  /// Header content margins, the same on all hero pages.
   static const double _side = 16;
   static const double _barTop = 10;
   static const double _barBottom = 10;
   static const double _bodyBottom = 12;
 
-  /// Высота сжатой шапки: столько от верха списка закрыто прилипшим рядом
-  /// кнопок. Нужна тому, кто считает, видна ли строка списка (пилюля «Сейчас
-  /// играет») — своя копия этих чисел разъехалась бы с раскладкой.
+  /// Height of the collapsed header: how much of the list the stuck row covers.
+  /// For code that works out whether a row is visible (the now-playing pill); a
+  /// copy of these numbers would drift.
   static double collapsedHeight(BuildContext context, double barHeight) =>
       MediaQuery.paddingOf(context).top + _barTop + barHeight + _barBottom;
 
@@ -92,7 +89,7 @@ class _StickyHeroDelegate extends SliverPersistentHeaderDelegate {
 
   final double height;
 
-  /// Системная строка: кнопки стоят под ней и в сжатой шапке.
+  /// Status bar: the buttons sit below it, collapsed too.
   final double top;
 
   final double radius;
@@ -116,8 +113,8 @@ class _StickyHeroDelegate extends SliverPersistentHeaderDelegate {
       0.0,
       1.0,
     );
-    // Название и ряд действий гаснут только на последней трети пути: раньше
-    // они ещё стоят на своих местах, и гасить там нечего.
+    // The title and action row fade only over the last stretch: before that
+    // they're still in place.
     final fade = (1 - (collapse - 0.55) / 0.45).clamp(0.0, 1.0);
 
     return ClipRRect(
@@ -125,10 +122,10 @@ class _StickyHeroDelegate extends SliverPersistentHeaderDelegate {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // Обложка с подписями уезжает вверх целиком, как обычное содержимое:
-          // в сжатой шапке остаётся её нижняя, самая затемнённая полоска — на
-          // ней белые кнопки читаются с любой картинкой.
-          // Pulled past the top, the box is taller and the cover fills it all.
+          // The cover with its captions scrolls up as ordinary content, leaving
+          // its lower, darkest strip in the collapsed header, where white
+          // buttons read on any picture. Pulled past the top, the box is taller
+          // and the cover fills it all.
           Positioned(
             top: extent - maxExtent,
             left: 0,
@@ -142,9 +139,9 @@ class _StickyHeroDelegate extends SliverPersistentHeaderDelegate {
                   left: StickyHero._side,
                   right: StickyHero._side,
                   bottom: StickyHero._bodyBottom,
-                  // Погасшее содержимое стоит ровно под рядом кнопок и осталось
-                  // бы нажимаемым: невидимая «Воспроизвести» под «назад» — это
-                  // случайный запуск списка.
+                  // Faded content sits right under the button row and would
+                  // stay pressable: an invisible Play under Back starts the
+                  // list by accident.
                   child: IgnorePointer(
                     ignoring: fade == 0,
                     child: Opacity(
@@ -173,8 +170,8 @@ class _StickyHeroDelegate extends SliverPersistentHeaderDelegate {
   OverScrollHeaderStretchConfiguration get stretchConfiguration =>
       OverScrollHeaderStretchConfiguration();
 
-  /// Содержимое приходит уже собранным (у страниц свои кнопки и подписи), и
-  /// сравнивать его нечем — перестраиваем всегда.
+  /// The content arrives built and has nothing to compare by, so I always
+  /// rebuild.
   @override
   bool shouldRebuild(_StickyHeroDelegate old) => true;
 }

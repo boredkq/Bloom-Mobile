@@ -1,15 +1,12 @@
-/// Профиль пользователя приложения — порт `Profile` ПК.
+/// App user profile. It holds ONLY the card's data: nick, bio, status, pictures
+/// and their colours. No play counters: stats come from the log.
 ///
-/// Хранит ТОЛЬКО данные карточки: ник, био, статус, картинки и их цвета.
-/// Счётчиков прослушиваний тут нет и на ПК тоже нет — статистика считается из
-/// журнала.
-///
-/// Лежит в kv базы под ключом `profile` (вид ПК: цвета "#rrggbb", режим
-/// обложки строкой), время первого запуска — `profile.since`. Сброс настроек
-/// его не трогает, «Сбросить всё» уносит вместе с базой. Аватар и баннер лежат
-/// файлами в каталоге приложения, в профиле от них только `local:<имя>` (см.
-/// `cover_store`): контейнер iOS переезжает между запусками, и абсолютный путь
-/// завтра указывал бы в пустоту.
+/// It lies in database kv under `profile` (colours as "#rrggbb", cover mode as
+/// a string), the first launch time in `profile.since`. A settings reset leaves
+/// it alone, and reset everything takes it with the database. Avatar and banner
+/// are files in the app's directory, with only `local:<name>` here: the iOS
+/// container moves between launches, and an absolute path points nowhere
+/// tomorrow.
 library;
 
 import 'package:flutter/material.dart';
@@ -18,14 +15,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/db/db.dart';
 import '../../core/l10n/l10n.dart';
 
-/// Обложка профиля без своей картинки: тон обложки самого слушаемого трека
-/// (по умолчанию, как на ПК), сплошной цвет или градиент между двумя.
+/// Profile banner with no picture: the tone of the most played track's cover
+/// (default), a solid colour or a gradient between two.
 enum BannerColorMode { auto, solid, gradient }
 
-/// Углы градиента обложки — те же восемь, что в редакторе ПК.
+/// Gradient angles for the banner.
 const List<int> kBannerAngles = [0, 45, 90, 135, 180, 225, 270, 315];
 
-/// Длины полей — те же, что на ПК: ник, о себе, статус.
+/// Field lengths: nick, about, status.
 const int kNickMax = 32;
 const int kBioMax = 300;
 const int kStatusMax = 80;
@@ -38,9 +35,9 @@ const String _kSince = 'profile.since';
 
 @immutable
 class UserProfile {
-  /// Имя для показа. Пустое поле — имени никто не задавал: подставляется
-  /// локализованное «Пользователь». Именно при отрисовке, а не при сохранении:
-  /// иначе дефолт застыл бы на языке, который стоял в момент первого запуска.
+  /// Display name. An empty field means nobody set one, and the localized
+  /// default fills in. At paint rather than save time, or the default freezes
+  /// in the first launch's language.
   String displayName(AppLocalizations l) =>
       name.trim().isEmpty ? l.profileDefaultName : name;
 
@@ -65,13 +62,13 @@ class UserProfile {
   final BannerColorMode bannerMode;
   final int bannerAngle;
 
-  /// `local:<имя файла>` своей картинки; `null` — заглушка с человечком.
+  /// `local:<file name>` of an own picture; `null` is the stand-in figure.
   final String? avatar;
 
-  /// `local:<имя файла>` своей обложки; `null` — цвет/градиент/тон.
+  /// `local:<file name>` of an own banner; `null` is colour, gradient or tone.
   final String? banner;
 
-  /// Есть ли что показывать в боксе под ником.
+  /// Whether there's anything to show in the box under the nick.
 
   UserProfile copyWith({
     String? name,
@@ -97,7 +94,7 @@ class UserProfile {
     banner: clearBanner ? null : (banner ?? this.banner),
   );
 
-  /// Вид ПК: пустые картинки — пустой строкой, а не пропущенным полем.
+  /// Empty pictures as an empty string, not a missing field.
   Map<String, dynamic> toJson() => {
     'name': name,
     'bio': bio,
@@ -110,8 +107,8 @@ class UserProfile {
     'bannerAngle': bannerAngle,
   };
 
-  /// Из kv (или, потом, с другого устройства), целым: чего нет или что
-  /// кривое — по умолчанию, текст обрезан до длин ПК (`normalized` ПК).
+  /// From kv (or, later, another device), whole: what's missing or wrong takes
+  /// the default, and text is cut to field lengths.
   static UserProfile fromJson(Map<String, dynamic> json) {
     String text(String key, int max) {
       final s = (json[key] as String? ?? '').trim();
@@ -166,11 +163,11 @@ class UserProfile {
   );
 }
 
-/// "#rrggbb", как `QColor::name()` ПК.
+/// "#rrggbb".
 String hexOf(Color c) =>
     '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
 
-/// "#rgb" / "#rrggbb" → цвет; всё остальное — `null`.
+/// "#rgb" or "#rrggbb" to a colour; anything else is `null`.
 Color? colorOf(Object? raw) {
   if (raw is! String || !raw.startsWith('#')) return null;
   var hex = raw.substring(1);
@@ -189,18 +186,17 @@ class ProfileController extends Notifier<UserProfile> {
 
   @override
   UserProfile build() {
-    // Профиль читает шапка главной при запуске — тогда и ставится «С нами с»,
-    // а не при первом заходе на страницу профиля.
+    // The home header reads the profile at launch: that's when member since
+    // gets set, not on the first visit to the profile page.
     ref.read(profileSinceProvider);
     return UserProfile.fromJson(_db.getMap(_kCard));
   }
 
-  /// Перечитать из kv — пришёл профиль с ПК.
+  /// Re-reads from kv: a profile came from another device.
   void reload() => state = UserProfile.fromJson(_db.getMap(_kCard));
 
-  /// Записать профиль целиком: правка идёт черновиком в редакторе и приходит
-  /// сюда одним куском по «Сохранить». Пишется уже приведённым — тем, что
-  /// прочитается в следующий раз.
+  /// Writes the whole profile: edits go as a draft in the editor and arrive
+  /// here in one piece on Save. Written normalized, as it'll read next time.
   void save(UserProfile profile) {
     final card = UserProfile.fromJson(profile.toJson());
     if (card == state) return;
@@ -209,8 +205,8 @@ class ProfileController extends Notifier<UserProfile> {
   }
 }
 
-/// Когда Bloom впервые запустили на этом устройстве — «С нами с». Ставится
-/// при первом чтении, как на ПК; «Сбросить всё» стирает и его.
+/// When Bloom first ran on this device, for member since. Set at first read;
+/// reset everything erases it too.
 final profileSinceProvider = Provider<DateTime>((ref) {
   final db = ref.read(dbProvider);
   var ms = (db.get(_kSince, 0) as num?)?.toInt() ?? 0;

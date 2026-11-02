@@ -1,37 +1,31 @@
-/// Перелёт обложки: с карточки списка на своё место в шапке страницы.
+/// Cover flight: from a list card to its place in the page header. Both ends
+/// wrap the picture in [CoverHero] with one tag, and the navigator draws a copy
+/// in its overlay that travels between the two rectangles.
 ///
-/// Обе стороны заворачивают картинку в [CoverHero] с одной меткой, и навигатор
-/// на время перехода рисует в своём оверлее копию, которая едет из
-/// прямоугольника карточки в прямоугольник шапки.
-///
-/// Скругление у концов разное — кружок аватарки, мягкий квадрат карточки,
-/// скруглённый низ шапки, — поэтому форму летящей копии считаем сами: обрезка
-/// родителя на неё не действует, копия живёт вне дерева страницы.
+/// The ends differ in rounding, so I compute the flying copy's shape myself: a
+/// parent's clip doesn't reach it.
 library;
 
 import 'package:flutter/material.dart';
 
 import '../../app/theme/tokens.dart';
 
-/// Обложка карточки, с которой уходят на страницу.
-///
-/// [tag] карточка выдаёт себе сама — по одной на экземпляр. Считать метку из id
-/// нельзя: один и тот же альбом легко попадает сразу в две секции выдачи
-/// («Альбомы» и «Репосты»), а два `Hero` с одинаковой меткой в одном дереве —
-/// это исключение на старте перехода.
+/// The cover of the card being left. The card makes its own [tag], one per
+/// instance. An id won't do: one album can sit in two result sections, and two
+/// `Hero`s with one tag in a tree throw when the transition starts.
 class CoverFlight {
   const CoverFlight({required this.tag, this.image});
 
   final Object tag;
 
-  /// Картинка карточки — она уже в кеше. Шапка показывает её, пока грузится
-  /// своя: площадка ту же обложку отдаёт другой ссылкой (крупнее), и без
-  /// подмены конец перелёта моргнул бы заглушкой.
+  /// The card's picture, already cached. The header shows it until its own
+  /// loads: platforms serve the same cover under another, bigger link, and the
+  /// landing would blink a placeholder.
   final String? image;
 }
 
-/// Один конец перелёта. [tag] `null` — перелёта нет (открыли не с карточки, у
-/// карточки нет обложки), и виджет остаётся просто [child].
+/// One end of the flight. With a `null` [tag] there is no flight and this is
+/// just [child].
 class CoverHero extends StatelessWidget {
   const CoverHero({
     super.key,
@@ -42,8 +36,8 @@ class CoverHero extends StatelessWidget {
 
   final Object? tag;
 
-  /// Скругление картинки на ЭТОМ конце. Летящая копия берёт форму у обоих
-  /// концов и идёт между ними.
+  /// Picture rounding at THIS end. The flying copy moves between the two ends'
+  /// shapes.
   final BorderRadius shape;
 
   final Widget child;
@@ -64,10 +58,11 @@ class CoverHero extends StatelessWidget {
   ) {
     final from = _shapeOf(fromContext);
     final to = _shapeOf(toContext);
-    // Летит содержимое ЦЕЛИ — ровно то, что останется на месте после посадки.
+    // What flies is the destination's content: exactly what stays after
+    // landing.
     final child = (toContext.widget as Hero).child;
-    // Доля перелёта. На «назад» навигатор гонит кадры от 1 к 0, а копия всё
-    // равно едет от `from` к `to` — иначе скругление считалось бы задом наперёд.
+    // Flight progress. On pop the navigator runs from 1 to 0 but the copy still
+    // goes `from` to `to`, or the rounding would run backwards.
     final t = direction == HeroFlightDirection.pop
         ? ReverseAnimation(animation)
         : animation;
@@ -82,23 +77,19 @@ class CoverHero extends StatelessWidget {
     );
   }
 
-  /// Форма конца перелёта: у контекста `Hero` спрашиваем обёртку, которая его
-  /// поставила.
+  /// Shape of a flight end: I ask the `Hero`'s context for the wrapper that
+  /// placed it.
   static BorderRadius _shapeOf(BuildContext context) =>
       context.findAncestorWidgetOfExactType<CoverHero>()?.shape ??
       BorderRadius.zero;
 }
 
-/// Проявление содержимого шапки (кнопки, название, ряд действий) под конец
-/// перелёта.
+/// Fades in the header's content (buttons, title, action row) at the end of a
+/// flight. The flying copy draws over the page and by the end of the trip
+/// covers the whole header. Without this the text would fade in, hide under the
+/// cover and pop out on landing, so it appears just as the cover settles.
 ///
-/// Летящая копия рисуется в оверлее навигатора — ПОВЕРХ страницы, — и к концу
-/// пути она накрывает собой всю шапку вместе с текстом. Без этого текст успел
-/// бы проявиться, спрятаться под обложкой и вынырнуть рывком в момент посадки.
-/// Поэтому шапка ждёт своего перехода: содержимое появляется ровно тогда, когда
-/// обложка встаёт на место.
-///
-/// [flying] `false` — перелёта нет, и придерживать нечего.
+/// With [flying] `false` there's nothing to hold back.
 class HeroContent extends StatelessWidget {
   const HeroContent({super.key, required this.flying, required this.child});
 
@@ -110,9 +101,9 @@ class HeroContent extends StatelessWidget {
     final animation = ModalRoute.of(context)?.animation;
     if (!flying || animation == null) return child;
     return FadeTransition(
-      // Первая половина перехода (450 мс на всё) — обложка ещё в пути; текст
-      // входит во вторую. `drive`, а не `CurvedAnimation`: тот заводится в
-      // `build` и его некому закрыть.
+      // First half of the 450 ms transition: the cover is still travelling;
+      // text comes in during the second. `drive`, not `CurvedAnimation`: that
+      // one starts in `build` and nobody would dispose it.
       opacity: animation.drive(
         CurveTween(curve: const Interval(0.5, 1, curve: Curves.easeOut)),
       ),
@@ -121,44 +112,37 @@ class HeroContent extends StatelessWidget {
   }
 }
 
-// ─── Переход страницы под перелётом ─────────────────────────────────────────
+// ─── Page transition under a flight ─────────────────────────────────────
 
-/// Переход на страницу, в шапку которой летит обложка: то же растворение, что
-/// у всего приложения, но БЕЗ горизонтального сдвига.
+/// Transition to a page whose header receives a flying cover: the app-wide
+/// dissolve without the horizontal slide. The shared transition brings a page
+/// in sideways; under a flight that makes two movements in one frame, the cover
+/// diagonally and everything else across. Here the page stays put: only the
+/// cover moves, the rest just fades in.
 ///
-/// Общий переход (`FadeForwardsPageTransitionsBuilder`, Android U) вводит новую
-/// страницу сдвигом сбоку. Под перелётом это разваливается: обложка идёт своей
-/// диагональю из карточки в шапку, а название, кнопки и трек-лист в это же
-/// время едут по горизонтали — два разных движения в одном кадре, и кажется,
-/// что «всё, кроме обложки, заезжает сбоку». Здесь страница остаётся на месте:
-/// движется одна обложка, остальное только проявляется.
-///
-/// Кривые растворения взяты у общего перехода, чтобы страницы приложения не
-/// расходились по темпу.
+/// Dissolve curves come from the shared transition so pages keep one tempo.
 
-/// Новая страница проявляется за первые 3/4 перехода.
-///
-/// Публичные: этими же кривыми растворяются вкладки каркаса
-/// (см. `BranchCrossfade`), и расходиться по темпу им нельзя.
+/// The new page fades in over the first 3/4 of the transition. Public because
+/// shell tabs fade on the same curves.
 final Animatable<double> kPageFadeIn = Tween<double>(
   begin: 0,
   end: 1,
 ).chain(CurveTween(curve: const Interval(0, 0.75)));
 
-/// Уходящая — гаснет за первую четверть.
+/// The leaving one fades over the first quarter.
 final Animatable<double> kPageFadeOut = Tween<double>(
   begin: 1,
   end: 0,
 ).chain(CurveTween(curve: const Interval(0, 0.25)));
 
-/// Длительность = длительность общего перехода: по ней навигатор гонит и
-/// перелёт обложки, и переход страницы, и они обязаны кончиться вместе.
+/// Same length as the shared transition: the navigator runs the flight and the
+/// page with it, and they must end together.
 const Duration kDetailTransition = Duration(
   milliseconds: FadeForwardsPageTransitionsBuilder.kTransitionMilliseconds,
 );
 
-/// Растворение без сдвига — для обеих сторон: и когда страница входит
-/// ([animation]), и когда её саму накрывают следующей ([secondaryAnimation]).
+/// Fade with no slide, both entering ([animation]) and being covered by the
+/// next page ([secondaryAnimation]).
 Widget detailPageTransition(
   BuildContext context,
   Animation<double> animation,
@@ -176,8 +160,8 @@ Widget detailPageTransition(
         child: child,
       ),
     ),
-    // Заливка на время перехода — иначе в момент, когда страницу накрывают
-    // следующей, между ними просвечивает чёрное.
+    // A fill for the transition, or black shows between the pages as the next
+    // one covers this.
     child: ColoredBox(
       color: secondaryAnimation.isAnimating
           ? context.bloom.bg
@@ -198,7 +182,8 @@ Widget detailPageTransition(
   );
 }
 
-/// Маршрут страницы артиста и сета — их открывают обычным навигатором ветки.
+/// Route of an artist or set page; they open with the branch's ordinary
+/// navigator.
 PageRoute<T> detailPageRoute<T>(WidgetBuilder builder) => PageRouteBuilder<T>(
   pageBuilder: (context, _, _) => builder(context),
   transitionsBuilder: detailPageTransition,

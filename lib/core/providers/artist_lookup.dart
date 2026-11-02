@@ -1,17 +1,14 @@
-/// Артист площадки по одному лишь имени.
-///
-/// Нужен там, где точного id взять неоткуда: в истории от артиста остаётся имя
-/// (топ статистики), а у трека с несколькими артистами id есть только у того,
-/// кто трек залил.
+/// A platform's artist by name alone, where no exact id is available: history
+/// keeps only the name (stats top), and on a multi-artist track only the
+/// uploader has an id.
 library;
 
 import '../entities/entities.dart';
 import 'music_provider.dart';
 
-/// Найти артиста по имени. `null` — площадка ничего не вернула.
-///
-/// Точное совпадение имени лучше первого попавшегося: у SoundCloud по запросу
-/// «Onda» первым легко идёт чужой фан-аккаунт.
+/// Finds an artist by name; `null` if the platform returned nothing. An exact
+/// name beats the first hit: on SoundCloud, "Onda" easily brings someone's fan
+/// account first.
 Future<Artist?> findArtistByName(MusicProvider provider, String name) async {
   final key = name.trim().toLowerCase();
   if (key.isEmpty) return null;
@@ -22,20 +19,17 @@ Future<Artist?> findArtistByName(MusicProvider provider, String name) async {
   return found.isEmpty ? null : found.first;
 }
 
-/// Кого уже искали за этот запуск: «площадка|имя» → найденный артист (null —
-/// искали и не нашли).
+/// Who I've looked up this run: "platform|name" to the artist (null: looked,
+/// not found).
 final Map<String, Artist?> _memo = {};
 
-/// То же, что [findArtistByName], но один и тот же артист за запуск ищется
-/// однажды.
+/// [findArtistByName], but one artist is looked up once per run. The same names
+/// get asked a lot: the artists sheet reopens and the player fetches avatars on
+/// every track change.
 ///
-/// Спрашивают одни и те же имена помногу: шторка выбора артистов открывается
-/// по треку не раз, а плеер лезет за аватарками на каждой смене трека — без
-/// памяти это был бы запрос к площадке на каждое такое открытие.
-///
-/// Промахи по ошибке сети сюда НЕ попадают: исключение уходит наверх, и со
-/// связью попытка повторится удачнее. Запоминается только внятный ответ
-/// площадки, в том числе «такого нет».
+/// Network failures don't land here: the exception goes up and a later try can
+/// succeed. Only a clear platform answer is remembered, including "no such
+/// artist".
 Future<Artist?> findArtistCached(MusicProvider provider, String name) async {
   final key = '${provider.id}|${name.trim().toLowerCase()}';
   if (_memo.containsKey(key)) return _memo[key];

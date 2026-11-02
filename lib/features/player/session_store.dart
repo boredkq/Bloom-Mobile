@@ -1,12 +1,10 @@
-/// Сессия плеера — как `Session` ПК: очередь (`queue`) и её порядок до
-/// перемешки (`orig`) — строками `session_tracks`, снимки треков — в `tracks`;
-/// где стоим и режимы — kv `session` того же вида:
-/// `{index, id, pos (с), source, shuffle, repeat (0/1/2), ended, playing, at,
-/// cleared}`.
+/// Player session: the queue (`queue`) and its pre-shuffle order (`orig`) as
+/// `session_tracks` rows, track snapshots in `tracks`; where we stand and the
+/// modes in kv `session`: `{index, id, pos (s), source, shuffle, repeat
+/// (0/1/2), ended, playing, at, cleared}`.
 ///
-/// Из неё же «Продолжить» на главной и в меню. Мобильное сверх ПК: список
-/// `full` — очередь до очистки («очистить» оставляет один играющий трек, а
-/// «Продолжить» возвращает всё).
+/// The `full` list is the queue before clearing: clearing leaves the one
+/// playing track, and a resume brings all back.
 library;
 
 import 'package:flutter/foundation.dart';
@@ -39,13 +37,13 @@ class SessionData {
     this.cleared = false,
   });
 
-  /// Не пустая — иначе сессии нет вовсе.
+  /// Not empty, or there's no session at all.
   final List<Track> queue;
 
-  /// Порядок до перемешки; пуст, когда перемешки нет.
+  /// Pre-shuffle order; empty with no shuffle.
   final List<Track> orig;
 
-  /// Очередь до очистки; пуста, если не очищали.
+  /// Queue before clearing; empty if not cleared.
   final List<Track> full;
 
   final int index;
@@ -55,18 +53,20 @@ class SessionData {
   final bool shuffle;
   final PlayerRepeat repeat;
 
-  /// Очередь доиграла без повтора — стоим в начале последнего трека.
+  /// The queue played out with no repeat, standing at the start of the last
+  /// track.
   final bool ended;
   final bool playing;
 
-  /// Очередь убрали целиком: при запуске в плеер не поднимаем, «Продолжить»
-  /// остаётся.
+  /// The queue was removed entirely: at launch it doesn't come into the player,
+  /// but stays for a resume.
   final bool cleared;
 
   Track get track => queue[index];
 
-  /// Для «Продолжить»: очередь до очистки, если она была, на том же треке.
-  /// Трека в ней нет — с начала и без позиции: позиция была у другого.
+  /// For a resume: the queue before clearing, if any, on the same track. If
+  /// that track isn't in it, from the start with no position: the position
+  /// belonged to another.
   SessionData forContinue() {
     if (full.isEmpty) return this;
     final at = full.indexWhere((t) => t.id == track.id);
@@ -86,13 +86,12 @@ final sessionProvider = NotifierProvider<SessionStore, SessionData?>(
   SessionStore.new,
 );
 
-/// Запись и чтение сессии. Состояние — последняя записанная сессия; карточка
-/// «Продолжить» слушает его, только пока живого трека нет.
+/// Writes and reads the session. State is the last written session.
 class SessionStore extends Notifier<SessionData?> {
   BloomDb get _db => ref.read(dbProvider);
 
-  /// Id, чьи снимки уже лежат в `tracks` с этого запуска: очередь пишется
-  /// заново на каждую правку, а снимок — только новым трекам.
+  /// Ids whose snapshots are in `tracks` since this launch: the queue is
+  /// rewritten per edit, but snapshots only for new tracks.
   final Set<String> _stored = {};
 
   List<Track> _queue = const [], _orig = const [], _full = const [];
@@ -107,7 +106,7 @@ class SessionStore extends Notifier<SessionData?> {
       ids[r['list'] as String]?.add(r['track_id'] as String);
     }
     final store = TrackStore(_db);
-    // Два id, слитые в один (смена площадки), оставляют повтор.
+    // Two ids merged into one (a platform switch) leave a repeat.
     List<Track> load(String list) => store.get(ids[list]!.toSet().toList());
     _queue = load('queue');
     _orig = load('orig');
@@ -125,7 +124,7 @@ class SessionStore extends Notifier<SessionData?> {
     var index = saved >= 0 && saved < _queue.length && _queue[saved].id == id
         ? saved
         : _queue.indexWhere((t) => t.id == id);
-    // Трека больше нет: место в очереди остаётся, позиция — нет.
+    // The track is gone: the queue place stays, the position doesn't.
     final found = index >= 0;
     if (!found) index = saved.clamp(0, _queue.length - 1);
     return SessionData(
@@ -152,15 +151,15 @@ class SessionStore extends Notifier<SessionData?> {
     );
   }
 
-  /// Записать очередь. Пустая не пишется: строки остаются для «Продолжить».
+  /// Writes the queue. An empty one isn't written: the rows stay for a resume.
   void saveQueue(List<Track> queue, List<Track>? orig, List<Track>? full) {
     if (queue.isEmpty) return;
     _queue = queue;
     _orig = orig ?? const [];
     _full = full ?? const [];
     final lists = {'queue': _queue, 'orig': _orig, 'full': _full};
-    // Снимок мог пропасть с тех пор (трек удалили из библиотеки) — тогда
-    // запись откатывается, и второй заход пишет снимки всех.
+    // A snapshot may have vanished since (the track left the library): the
+    // write rolls back, and the second go writes all snapshots.
     if (_write(lists)) return;
     _stored.clear();
     _write(lists);
@@ -198,7 +197,7 @@ class SessionStore extends Notifier<SessionData?> {
         lists['queue']!.length;
   }
 
-  /// Записать, где стоим. Очередь должна быть уже записана [saveQueue].
+  /// Writes where we stand. The queue must already be written by [saveQueue].
   void saveState({
     required int index,
     required Duration position,
@@ -223,8 +222,8 @@ class SessionStore extends Notifier<SessionData?> {
     state = _read(_db.getMap(kSessionKey));
   }
 
-  /// Очередь убрали целиком (смахнули последний трек): при запуске её не
-  /// поднимаем, строки и «Продолжить» остаются.
+  /// The queue was removed entirely (the last track swiped): at launch it
+  /// doesn't come up, but the rows stay for a resume.
   void markCleared() {
     final s = _db.getMap(kSessionKey);
     if (s.isEmpty || s['cleared'] == true) return;
@@ -232,8 +231,8 @@ class SessionStore extends Notifier<SessionData?> {
     state = _read(_db.getMap(kSessionKey));
   }
 
-  /// Свой список называется в карте именем и картинкой с карточки, как
-  /// `ListCtx.sourceOf` ПК: другое устройство библиотеку не спросит.
+  /// An own list is named in the map with the card's name and picture: another
+  /// device won't ask the library.
   Map<String, dynamic> _sourceJson(PlaySource source) {
     final m = source.toJson();
     if (source is! LibSource) return m;

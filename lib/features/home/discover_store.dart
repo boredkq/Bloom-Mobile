@@ -1,14 +1,11 @@
-/// Витрина «Чарты и новинки» на главной — порт `DiscoverSections.tsx`.
+/// Charts and new releases on home. Platform-agnostic: a chart is always
+/// tracks, new releases are albums (Yandex, YTM) or tracks (SoundCloud New &
+/// Hot). The platform is the first that has the method, with no switch, just
+/// its logo by the title.
 ///
-/// Блок провайдеро-агностичен: чарт — всегда треки, новинки — альбомы (Яндекс,
-/// YTM) либо треки (SoundCloud «New & Hot»). Площадка берётся первая, которая
-/// умеет нужный метод; сейчас это Яндекс, поэтому переключателя нет — рядом с
-/// заголовком просто стоит её логотип.
-///
-/// Кеш и тихие повторы — как на ПК: пустой ответ у Яндекса почти всегда
-/// транзиентный сбой landing3, поэтому пустое НЕ кешируется, а запрос тихо
-/// повторяется. Пока данных нет, секции не видно вовсе: пустое место лучше
-/// мигающей заглушки.
+/// An empty answer from Yandex is nearly always a transient failure, so empty
+/// ISN'T cached and the request quietly retries. With no data the section
+/// doesn't show: an empty place beats a blinking stand-in.
 library;
 
 import 'dart:async';
@@ -22,7 +19,7 @@ import '../../core/providers/registry.dart';
 
 enum DiscoverMode { charts, newReleases }
 
-/// Содержимое блока: либо треки, либо альбомы.
+/// Block content: tracks or albums.
 sealed class DiscoverBlock {
   const DiscoverBlock();
 
@@ -45,8 +42,8 @@ class DiscoverAlbums extends DiscoverBlock {
   bool get isEmpty => albums.isEmpty;
 }
 
-/// Загруженный блок с площадкой, у которой он взят: логотип рядом с заголовком
-/// рисуется по ней, а не по первому попавшемуся треку.
+/// A loaded block with its platform: the logo by the title comes from this, not
+/// from whichever track is first.
 class DiscoverResult {
   const DiscoverResult(this.source, this.block);
 
@@ -54,12 +51,12 @@ class DiscoverResult {
   final DiscoverBlock block;
 }
 
-/// Сколько живёт кеш блока. Чарты и новинки меняются раз в сутки — получасовой
-/// TTL нужен лишь для того, чтобы не ходить в сеть на каждый заход на главную.
+/// Block cache lifetime. Charts and new releases change daily; half an hour
+/// just avoids the network on each visit to home.
 const Duration kDiscoverTtl = Duration(minutes: 30);
 
-/// Паузы перед тихими повторами, если ответ пустой или запрос упал (после
-/// последней сдаёмся и оставляем блок скрытым).
+/// Pauses before quiet retries if an answer is empty or a request failed; after
+/// the last the block stays hidden.
 const List<Duration> kDiscoverRetries = [
   Duration(milliseconds: 1500),
   Duration(seconds: 4),
@@ -71,14 +68,14 @@ class _CacheEntry {
   final DateTime at;
 }
 
-/// Кеш переживает пересоздание провайдера — уход с главной и возврат на неё не
-/// должен снова дёргать сеть.
+/// The cache outlives the provider: leaving home and returning shouldn't hit
+/// the network again.
 final Map<DiscoverMode, _CacheEntry> _cache = {};
 
-/// Сбросить кеш витрины (тесты и смена аккаунта площадки).
+/// Clears the shelf cache (tests and a platform account change).
 void resetDiscoverCache() => _cache.clear();
 
-/// Один заход в сеть, без повторов. Пустой результат не кешируется.
+/// One network trip with no retries. An empty result isn't cached.
 Future<DiscoverResult?> fetchDiscover(
   ProviderRegistry registry,
   DiscoverMode mode,
@@ -100,8 +97,8 @@ Future<DiscoverResult?> fetchDiscover(
         NewTracks(:final tracks) => DiscoverTracks(tracks),
       };
     }
-    // Метода у площадки нет — идём к следующей; пустой ответ считаем сбоем
-    // ЭТОЙ площадки и тоже пробуем следующую.
+    // The platform has no method, so on to the next; an empty answer counts as
+    // THIS platform's failure and also moves on.
     if (block == null || block.isEmpty) continue;
     final result = DiscoverResult(provider.source, block);
     _cache[mode] = _CacheEntry(result, DateTime.now());
@@ -110,7 +107,7 @@ Future<DiscoverResult?> fetchDiscover(
   return null;
 }
 
-/// Блок витрины с тихими повторами. `null` в данных — показывать нечего.
+/// Shelf block with quiet retries. `null` in data means nothing to show.
 final discoverProvider = FutureProvider.family<DiscoverResult?, DiscoverMode>((
   ref,
   mode,
@@ -121,7 +118,7 @@ final discoverProvider = FutureProvider.family<DiscoverResult?, DiscoverMode>((
       final result = await fetchDiscover(registry, mode);
       if (result != null) return result;
     } on Object {
-      // Сбой площадки секцию не ломает — она просто не появится.
+      // A platform failure doesn't break the section: it just won't appear.
     }
     if (attempt >= kDiscoverRetries.length) return null;
     await Future<void>.delayed(kDiscoverRetries[attempt]);

@@ -13,10 +13,8 @@ import '../../core/entities/entities.dart';
 import '../../core/providers/artist_lookup.dart';
 import '../../core/providers/music_provider.dart';
 import '../../shared/ui/atoms.dart';
-import '../../shared/ui/bloom_icon.dart';
 import '../../shared/ui/bloom_sheet.dart';
 import '../../shared/ui/bloom_toast.dart';
-import '../../shared/ui/pressable.dart';
 import '../../shared/util/artists.dart';
 import '../profile/tally.dart';
 import 'detail_nav.dart';
@@ -57,8 +55,7 @@ Future<void> openTrackArtist(
 
   final picked = await showBloomSheetChild<Artist>(
     context: context,
-    backdrop: track.cover,
-    header: SheetLineHeader(
+    header: SheetHero(
       cover: track.cover,
       title: track.name,
       subtitle: track.artist,
@@ -178,76 +175,28 @@ class _ArtistPickerState extends ConsumerState<_ArtistPicker> {
   @override
   Widget build(BuildContext context) {
     return SheetPanel(
-      children: [
-        for (final (i, link) in widget.links.indexed) ...[
-          // Row text: 14 + avatar 44 + 14.
-          if (i > 0) sheetDivider(indent: 72),
-          _row(link.name),
-        ],
-      ],
+      children: [for (final link in widget.links) _row(link.name)],
     );
   }
 
   Widget _row(String name) {
     final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
     final pending = !_found.containsKey(name);
     final artist = _found[name];
-
-    final String? note = pending || artist != null
-        ? null
-        : context.l.artistNotFoundOnSource;
-
-    return Pressable(
-      // Nowhere to go while looking and when not found.
+    return SheetRow(
+      leading: Cover(url: artist?.avatar, size: 44, circle: true),
+      gap: 14,
+      label: artist?.name ?? name,
+      subtitle: pending || artist != null
+          ? null
+          : context.l.artistNotFoundOnSource,
+      color: artist == null && !pending ? t.muted : t.text,
+      trailing: pending
+          ? BloomSpinner(size: 16, color: t.muted)
+          : artist == null
+          ? null
+          : const SheetChevron(),
       onTap: artist == null ? null : () => Navigator.of(context).pop(artist),
-      scale: 0.98,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Row(
-          children: [
-            Cover(url: artist?.avatar, size: 44, circle: true),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    // Found: the name of the account it leads to, which may
-                    // differ from the piece of the line.
-                    artist?.name ?? name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.titleMedium?.copyWith(
-                      color: artist == null && !pending ? t.muted : t.text,
-                    ),
-                  ),
-                  if (note != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      note,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.bodySmall,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            if (pending)
-              SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: t.muted,
-                ),
-              )
-            else if (artist != null)
-              BloomIcon(Bi.altArrowRight, size: 20, color: t.muted),
-          ],
-        ),
-      ),
     );
   }
 }

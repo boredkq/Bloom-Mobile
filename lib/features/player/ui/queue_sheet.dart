@@ -1,27 +1,18 @@
-/// Очередь воспроизведения — шторка поверх плеера.
+/// Playback queue, a sheet over the player. Its own shell: this is a long list,
+/// not a dozen items, so a solid theme background, rows just as in playlists
+/// (`TrackRow`), and the sheet reaches the top of the screen.
 ///
-/// Оболочка своя, не `bloom_sheet`: очередь — это длинный список, а не десяток
-/// пунктов. Поэтому ни обложки фоном, ни блока вокруг списка — сплошной фон
-/// темы, строки ровно те же, что в плейлистах (`TrackRow`), и шторка тянется
-/// до самого верха экрана, а не до доли высоты.
+/// A header with a count and clear, a flat list with drag by the cover, and a
+/// swipe that removes a track; settings choose what swipes do.
 ///
-/// Состав по десктопу (`QueueBlock.tsx`): шапка со счётчиком и очисткой,
-/// плоский список с drag-reorder за обложку, смахивание убирает трек. Что
-/// именно делает смахивание, задаётся в настройках («Свайпы» → «Очередь»);
-/// по умолчанию оба направления удаляют, как в референсе.
+/// Two views. Normal is flat; extended splits it into Played, Now playing and
+/// Next. In extended each section is ITS OWN `SliverReorderableList`, so a
+/// track can't physically move between them, and the playing one stands between
+/// as a pinned row. Headers are separate slivers and stay out of reordering.
 ///
-/// Видов два, как на ПК (`queueView`, «Настройки → Плеер → Очередь»):
-/// «Обычный» — плоский список, «Расширенный» — тот же список, разбитый на
-/// «Прослушано» / «Сейчас играет» / «Далее». В расширенном каждая секция —
-/// СВОЙ `SliverReorderableList` (на ПК — свой sortable-контейнер): перетащить
-/// трек из одной секции в другую физически нельзя, а играющий стоит между ними
-/// закреплённой строкой и с места не двигается. Заголовки живут отдельными
-/// сливерами, поэтому в перестановке не участвуют.
-///
-/// Номера строк внутри секции — СВОИ, а всё остальное (запуск, меню, свайпы,
-/// «Убрать из очереди») работает по номеру в ОЧЕРЕДИ: секция знает своё
-/// смещение и переводит одно в другое. Без этого перевода вторая секция била бы
-/// по чужим строкам.
+/// Row numbers within a section are its OWN, while everything else (start,
+/// menu, swipes, remove from queue) works by QUEUE index: a section knows its
+/// offset and converts. Without that the second section would hit others' rows.
 library;
 
 import 'package:flutter/material.dart';
@@ -40,17 +31,16 @@ import '../../../shared/ui/track_actions.dart';
 import '../../../shared/ui/track_swipes.dart';
 import '../player_controller.dart';
 import '../player_view_store.dart';
+import '../../../shared/ui/subpage_header.dart';
 
-/// Высота заголовка секции расширенного вида. Задана числом, а не собрана из
-/// отступов: по ней шторка считает, куда проматываться при открытии.
+/// Section header height in extended view. A number rather than built from
+/// margins: the sheet computes where to scroll on open from it.
 const double kQueueSectionLabel = 34;
 
-/// Куда промотать список при открытии шторки.
-///
-/// Обычный вид — играющий трек с запасом в две строки сверху. Расширенный —
-/// как на ПК: наверху стоит ЗАГОЛОВОК «Сейчас играет», то есть уводим за кромку
-/// всю секцию «Прослушано» вместе с её заголовком. Иначе заголовок играющего
-/// уезжает наверх, и непонятно, к какой секции относится первая видимая строка.
+/// Where to scroll on opening the sheet. Normal view: the playing track with
+/// two rows of room above. Extended: the Now playing HEADER on top, taking the
+/// whole Played section off the edge, or it's unclear which section the first
+/// visible row belongs to.
 double queueScrollOffset({required int index, required bool extended}) {
   if (index <= 0) return 0;
   if (!extended) return index > 2 ? (index - 2) * kTrackRowHeight : 0;
@@ -58,8 +48,8 @@ double queueScrollOffset({required int index, required bool extended}) {
 }
 
 void showQueueSheet(BuildContext context) {
-  // Корневой навигатор и стекло затемнения — общие у всех наших шторок
-  // (`showBloomModal`): иначе таб-бар и миниплеер остаются поверх затемнения.
+  // The root navigator and dimming glass, as for all my sheets, or the tab bar
+  // and mini player stay over the dimming.
   showBloomModal<void>(context: context, builder: (_) => const _QueueSheet());
 }
 
@@ -76,8 +66,8 @@ class _QueueSheetState extends ConsumerState<_QueueSheet> {
   @override
   void initState() {
     super.initState();
-    // Открываемся на играющем треке, а не в начале очереди: на сотне треков
-    // иначе непонятно, где ты находишься.
+    // Opens on the playing track rather than the queue's start: with a hundred
+    // tracks it's otherwise unclear where you are.
     final index = ref.read(playbackProvider).index;
     _scroll = ScrollController(
       initialScrollOffset: queueScrollOffset(
@@ -93,18 +83,8 @@ class _QueueSheetState extends ConsumerState<_QueueSheet> {
     super.dispose();
   }
 
-  /// Ключи строк. Один трек может стоять в очереди дважды (повтор в
-  /// плейлисте), а `ReorderableListView` падает на дублях — поэтому к id
-  /// дописываем номер вхождения.
-  List<Key> _keys(List<Track> queue) {
-    final seen = <String, int>{};
-    return [
-      for (final track in queue)
-        ValueKey('${track.id}#${seen[track.id] = (seen[track.id] ?? -1) + 1}'),
-    ];
-  }
-
-  /// Список секций. Обычный вид — одна на всю очередь, расширенный — до трёх.
+  /// Row keys. A track can be queued twice, and `ReorderableListView` crashes
+  /// on duplicates, so the id gets its occurrence number.
   List<Widget> _slivers({
     required List<Track> queue,
     required List<Key> keys,
@@ -112,8 +92,8 @@ class _QueueSheetState extends ConsumerState<_QueueSheet> {
     required bool extended,
     required PlaybackController ctrl,
   }) {
-    // Играющего в очереди нет (пустая очередь, сбитый номер) — делить нечего,
-    // показываем плоский список: пустая секция «Сейчас играет» врала бы.
+    // No playing track in the queue (empty, or a stray index), so nothing to
+    // split: a flat list, since an empty Now playing section would lie.
     final split = extended && current >= 0 && current < queue.length;
     if (!split) {
       return [
@@ -142,9 +122,9 @@ class _QueueSheetState extends ConsumerState<_QueueSheet> {
         ),
       ],
       _label(l.queueSecNow),
-      // Играющий — статичная строка: на ПК он тоже закреплён и в перестановке
-      // не участвует. `dragIndex` не задан, поэтому меню возвращается на долгий
-      // тап по всей строке (см. `TrackRowShell`).
+      // The playing track is a static row, pinned and out of reordering.
+      // `dragIndex` isn't set, so the menu returns to a long press across the
+      // row (see `TrackRowShell`).
       SliverToBoxAdapter(
         child: _swipeRow(
           queue: queue,
@@ -168,7 +148,7 @@ class _QueueSheetState extends ConsumerState<_QueueSheet> {
     ];
   }
 
-  /// Заголовок секции — порт десктопного `QueueSectionLabel`.
+  /// Section header.
   Widget _label(String text) => SliverToBoxAdapter(
     child: SizedBox(
       height: kQueueSectionLabel,
@@ -176,19 +156,14 @@ class _QueueSheetState extends ConsumerState<_QueueSheet> {
         padding: const EdgeInsets.fromLTRB(12, 14, 12, 6),
         child: Align(
           alignment: Alignment.centerLeft,
-          child: Text(
-            text.toUpperCase(),
-            style: Theme.of(
-              context,
-            ).textTheme.labelSmall?.copyWith(color: context.bloom.text2),
-          ),
+          child: SettingsCaption(text),
         ),
       ),
     ),
   );
 
-  /// Одна перетаскиваемая секция. [offset] — с какой строки очереди она
-  /// начинается: внутри секции номера свои, наружу уходят номера очереди.
+  /// One draggable section. [offset] is the queue row it starts from: numbers
+  /// inside are its own, and queue numbers go out.
   Widget _section({
     required List<Track> queue,
     required List<Key> keys,
@@ -198,9 +173,9 @@ class _QueueSheetState extends ConsumerState<_QueueSheet> {
     required int count,
   }) => SliverReorderableList(
     itemCount: count,
-    // Перестановка внутри секции не пересекает играющий трек, поэтому его
-    // номер после неё сохраняется сам — контроллеру уходит обычный реордер
-    // очереди, просто в номерах очереди.
+    // Reordering inside a section doesn't cross the playing track, so its index
+    // holds by itself: the controller gets an ordinary queue reorder in queue
+    // numbers.
     onReorder: (from, to) => ctrl.reorder(from + offset, to + offset),
     proxyDecorator: (child, _, _) =>
         Material(color: Colors.white.withValues(alpha: 0.06), child: child),
@@ -208,16 +183,16 @@ class _QueueSheetState extends ConsumerState<_QueueSheet> {
       queue: queue,
       keys: keys,
       global: offset + i,
-      // Тянучке нужен номер В СЕКЦИИ: `SliverReorderableList` считает свои
-      // строки от нуля, и с номером очереди вторая секция хваталась бы за
-      // чужую строку.
+      // The drag handle needs the number IN THE SECTION:
+      // `SliverReorderableList` counts its rows from zero, and with a queue
+      // number the second section would grab someone else's row.
       drag: i,
       current: offset + i == current,
     ),
   );
 
-  /// Строка очереди со свайпами. Ключ у неё общий на оба вида — по нему
-  /// `SliverReorderableList` узнаёт строку при перестановке.
+  /// Queue row with swipes. Its key is shared by both views: by it
+  /// `SliverReorderableList` knows the row while reordering.
   Widget _swipeRow({
     required List<Track> queue,
     required List<Key> keys,
@@ -239,16 +214,14 @@ class _QueueSheetState extends ConsumerState<_QueueSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
-    final media = MediaQuery.of(context);
     final state = ref.watch(playbackProvider);
     final ctrl = ref.read(playbackProvider.notifier);
     final queue = state.queue;
-    final keys = _keys(queue);
+    final keys = trackRowKeys(queue);
 
-    // Смахнули последний трек — очередь пуста, показывать в шторке нечего.
-    // Плеер под нами закроется сам (см. `FullPlayerPage`), но закрыться первой
-    // должна шторка: действие произошло в ней.
+    // The last track was swiped, so the queue is empty with nothing to show.
+    // The player below closes by itself, but the sheet should go first: the
+    // action happened in it.
     ref.listen(playbackProvider, (_, next) {
       if (next.queue.isNotEmpty) return;
       if (ModalRoute.of(context)?.isCurrent ?? false) {
@@ -256,112 +229,63 @@ class _QueueSheetState extends ConsumerState<_QueueSheet> {
       }
     });
 
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: media.size.height * 0.85),
-      child: ClipRRect(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(t.radius * 1.7),
-        ),
-        child: SheetSurface(
-          child: SafeArea(
-            top: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SheetHandle(),
-                _QueueHeader(
-                  count: queue.length,
-                  shuffle: state.shuffle,
-                  onClear: queue.length > 1 ? ctrl.clearExceptCurrent : null,
-                  // «Похожие на очередь» продолжают её подбором. Шторку
-                  // закрываем: очередь под ней сменится целиком, и стоять на
-                  // её старом списке уже незачем.
-                  onWave: queue.isEmpty
-                      ? null
-                      : () {
-                          Navigator.of(context).pop();
-                          startWaveFromQueue(context, ref, queue);
-                        },
-                ),
-                Flexible(
-                  child: CustomScrollView(
-                    controller: _scroll,
-                    shrinkWrap: true,
-                    slivers: [
-                      SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
-                        sliver: SliverMainAxisGroup(
-                          slivers: _slivers(
-                            queue: queue,
-                            keys: keys,
-                            current: state.index,
-                            extended: ref.watch(queueViewProvider).isExtended,
-                            ctrl: ctrl,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+    return SheetShell(
+      scrolls: false,
+      header: SheetTitle(
+        context.l.playerQueue,
+        right: 12,
+        bottom: 12,
+        line: Row(
+          children: [
+            Text(
+              context.l.tracksCount(queue.length),
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
-          ),
+            if (state.shuffle) ...[
+              const SizedBox(width: 8),
+              BloomIcon(Bi.shuffle, size: 14, color: context.bloom.accent),
+            ],
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // It carries the queue on with a pick. The sheet closes: the list
+            // under it is about to change whole.
+            CircleIconButton(
+              icon: Bi.soundwave,
+              iconSize: 20,
+              onTap: queue.isEmpty
+                  ? null
+                  : () {
+                      Navigator.of(context).pop();
+                      startWaveFromQueue(context, ref, queue);
+                    },
+            ),
+            const SizedBox(width: 8),
+            CircleIconButton(
+              icon: Bi.trashBinTrash,
+              iconSize: 20,
+              onTap: queue.length > 1 ? ctrl.clearExceptCurrent : null,
+            ),
+          ],
         ),
       ),
-    );
-  }
-}
-
-class _QueueHeader extends StatelessWidget {
-  const _QueueHeader({
-    required this.count,
-    required this.shuffle,
-    required this.onClear,
-    required this.onWave,
-  });
-
-  final int count;
-  final bool shuffle;
-  final VoidCallback? onClear;
-  final VoidCallback? onWave;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 6, 12, 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(context.l.playerQueue, style: theme.titleLarge),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    Text(context.l.tracksCount(count), style: theme.bodyMedium),
-                    // Перемешивание показываем здесь же: список ниже уже стоит
-                    // в перемешанном порядке, и надо понимать, почему.
-                    if (shuffle) ...[
-                      const SizedBox(width: 8),
-                      BloomIcon(Bi.shuffle, size: 14, color: t.accent),
-                    ],
-                  ],
-                ),
-              ],
+      child: CustomScrollView(
+        controller: _scroll,
+        shrinkWrap: true,
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
+            sliver: SliverMainAxisGroup(
+              slivers: _slivers(
+                queue: queue,
+                keys: keys,
+                current: state.index,
+                extended: ref.watch(queueViewProvider).isExtended,
+                ctrl: ctrl,
+              ),
             ),
-          ),
-          CircleIconButton(icon: Bi.soundwave, iconSize: 20, onTap: onWave),
-          const SizedBox(width: 8),
-          CircleIconButton(
-            icon: Bi.trashBinTrash,
-            iconSize: 20,
-            // Как на десктопе: чистим всё, КРОМЕ играющего — обрывать
-            // воспроизведение кнопка не должна.
-            onTap: onClear,
           ),
         ],
       ),
@@ -379,14 +303,14 @@ class _QueueRow extends ConsumerWidget {
 
   final Track track;
 
-  /// Номер строки В ОЧЕРЕДИ: по нему запускаем и по нему же шторка трека
-  /// убирает строку из очереди.
+  /// Row number IN THE QUEUE: it starts playback, and the track sheet removes
+  /// the row by it.
   final int index;
 
   final bool current;
 
-  /// Номер строки В СВОЕЙ СЕКЦИИ — тянучка обложки. `null` у играющего трека:
-  /// он закреплён и не двигается.
+  /// Row number IN ITS SECTION, for the cover's drag handle. `null` for the
+  /// playing track, which is pinned.
   final int? dragIndex;
 
   @override
@@ -395,12 +319,12 @@ class _QueueRow extends ConsumerWidget {
       color: Colors.transparent,
       child: TrackRowShell(
         track: track,
-        // Не по id: один трек может стоять в очереди дважды, играет — тот, что
-        // стоит на текущей позиции.
+        // Not by id: a track may be queued twice, and the one at the current
+        // position is what plays.
         active: current,
         onTap: () => ref.read(playbackProvider.notifier).jumpTo(index),
-        // Номер строки, а не поиск по id: один трек может стоять в очереди
-        // дважды, и «Убрать из очереди» обязано убрать именно эту строку.
+        // A row number rather than an id search: a track may be queued twice,
+        // and Remove from queue must remove this row.
         onMenu: () => showTrackActions(context, ref, track, queueIndex: index),
         dragIndex: dragIndex,
       ),

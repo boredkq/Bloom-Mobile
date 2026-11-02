@@ -1,12 +1,10 @@
-/// Таймер сна — шторка по кнопке-луне в ряду инструментов плеера.
+/// Sleep timer sheet, from the moon button in the player's tool row: presets,
+/// until the end of the track, a custom time bar, +5 minutes on a running timer
+/// and a fade switch. A solid background; it doesn't close on each tap, since
+/// time isn't picked on the first try.
 ///
-/// Своя вещь, десктопного оригинала нет: пресеты, «до конца трека», полоса
-/// своего времени, «+5 минут» у идущего таймера и тумблер плавного затухания.
-/// Подача — как у шторки скорости (`speed_sheet`): фон сплошной, шторка не
-/// закрывается на каждый тап, потому что время подбирают не с первого раза.
-///
-/// Всё, что она делает, — зовёт `sleep_timer_store`; паузу и громкость крутит
-/// `PlaybackController`.
+/// It only calls `sleep_timer_store`; `PlaybackController` handles pause and
+/// volume.
 library;
 
 import 'package:flutter/material.dart';
@@ -18,11 +16,6 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../sleep_timer_store.dart';
-
-/// Полоса своего времени: те же толщина дорожки и бегунок, что у скорости, —
-/// две шторки стоят рядом в одном ряду и обязаны выглядеть одинаково.
-const double _trackHeight = 5;
-const double _thumbRadius = 7;
 
 void showSleepSheet(BuildContext context) {
   showBloomModal<void>(context: context, builder: (_) => const _SleepSheet());
@@ -40,178 +33,155 @@ class _SleepSheet extends ConsumerWidget {
     final ctrl = ref.read(sleepTimerProvider.notifier);
     final running = sleep.mode == SleepMode.timer;
 
-    return ClipRRect(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(t.radius * 1.7)),
-      child: SheetSurface(
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SheetHandle(),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(l.playerSleep, style: theme.titleLarge),
+    return SheetShell(
+      header: SheetTitle(
+        l.playerSleep,
+        bottom: 14,
+        trailing: running
+            ? BloomTag(text: l.playerSleepLeft(sleepLabel(sleep.remaining)))
+            : sleep.mode == SleepMode.endOfTrack
+            ? BloomTag(text: l.playerSleepEndOfTrack)
+            : null,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                for (final preset in kSleepPresets) ...[
+                  if (preset != kSleepPresets.first) const SizedBox(width: 8),
+                  Expanded(
+                    child: _PresetCard(
+                      minutes: preset.inMinutes,
+                      active: running && sleep.choice == preset,
+                      // A tap on the selected preset clears the timer: no need
+                      // to look for a cancel button.
+                      onTap: () => running && sleep.choice == preset
+                          ? ctrl.cancel()
+                          : ctrl.start(preset),
                     ),
-                    if (running)
-                      BloomTag(
-                        text: l.playerSleepLeft(sleepLabel(sleep.remaining)),
-                      )
-                    else if (sleep.mode == SleepMode.endOfTrack)
-                      BloomTag(text: l.playerSleepEndOfTrack),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  children: [
-                    for (final preset in kSleepPresets) ...[
-                      if (preset != kSleepPresets.first)
-                        const SizedBox(width: 8),
-                      Expanded(
-                        child: _PresetCard(
-                          minutes: preset.inMinutes,
-                          active: running && sleep.choice == preset,
-                          // Тап по уже выбранному пресету снимает таймер: ради
-                          // отмены незачем искать отдельную кнопку.
-                          onTap: () => running && sleep.choice == preset
-                              ? ctrl.cancel()
-                              : ctrl.start(preset),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: _EndOfTrackCard(
-                  active: sleep.mode == SleepMode.endOfTrack,
-                  onTap: () => sleep.mode == SleepMode.endOfTrack
-                      ? ctrl.cancel()
-                      : ctrl.untilTrackEnd(),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(l.playerSleepCustom, style: theme.bodySmall),
-                    ),
-                    BloomTag(
-                      text: l.playerSleepMinutes(sleep.choice.inMinutes),
-                      active: running,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 4),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  children: [
-                    SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: _trackHeight,
-                        thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: _thumbRadius,
-                        ),
-                        tickMarkShape: SliderTickMarkShape.noTickMark,
-                      ),
-                      child: Slider(
-                        value: clampSleepMinutes(
-                          sleep.choice.inMinutes,
-                        ).toDouble(),
-                        min: kSleepMinMinutes.toDouble(),
-                        max: kSleepMaxMinutes.toDouble(),
-                        divisions: kSleepDivisions,
-                        label: l.playerSleepMinutes(sleep.choice.inMinutes),
-                        // Полоса не выбирает время «на будущее», а сразу
-                        // переставляет срок: отдельной кнопки «Пуск» в шторке
-                        // нет, и время под пальцем должно быть настоящим.
-                        onChanged: (v) =>
-                            ctrl.start(Duration(minutes: v.round())),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          l.playerSleepMinutes(kSleepMinMinutes),
-                          style: theme.bodySmall,
-                        ),
-                        Text(
-                          l.playerSleepMinutes(kSleepMaxMinutes),
-                          style: theme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              if (sleep.active) ...[
-                const SizedBox(height: 14),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    children: [
-                      // «+5 минут» осмысленно только у идущего времени: у «до
-                      // конца трека» продлевать нечего.
-                      if (running) ...[
-                        Expanded(
-                          child: BloomButton(
-                            label: l.playerSleepExtend,
-                            icon: Bi.alarmAdd,
-                            tone: ButtonTone.plate,
-                            overlay: true,
-                            height: 44,
-                            onTap: ctrl.extend,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                      ],
-                      Expanded(
-                        child: BloomButton(
-                          label: l.playerSleepCancel,
-                          icon: Bi.alarmTurnOff,
-                          tone: ButtonTone.plate,
-                          overlay: true,
-                          height: 44,
-                          onTap: ctrl.cancel,
-                        ),
-                      ),
-                    ],
                   ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: _EndOfTrackCard(
+              active: sleep.mode == SleepMode.endOfTrack,
+              onTap: () => sleep.mode == SleepMode.endOfTrack
+                  ? ctrl.cancel()
+                  : ctrl.untilTrackEnd(),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(l.playerSleepCustom, style: theme.bodySmall),
+                ),
+                BloomTag(
+                  text: l.playerSleepMinutes(sleep.choice.inMinutes),
+                  active: running,
                 ),
               ],
-              const SizedBox(height: 14),
-              Divider(
-                height: 1,
-                thickness: 1,
-                color: t.ovlLine2,
-                indent: 20,
-                endIndent: 20,
-              ),
-              _FadeRow(value: sleep.fade, onChanged: ctrl.setFade),
-              const SizedBox(height: 6),
-            ],
+            ),
           ),
-        ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              children: [
+                SheetSlider(
+                  value: clampSleepMinutes(sleep.choice.inMinutes).toDouble(),
+                  min: kSleepMinMinutes.toDouble(),
+                  max: kSleepMaxMinutes.toDouble(),
+                  divisions: kSleepDivisions,
+                  label: l.playerSleepMinutes(sleep.choice.inMinutes),
+                  // It moves the time right away: the sheet has no start
+                  // button, so what's under the finger must be real.
+                  onChanged: (v) => ctrl.start(Duration(minutes: v.round())),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      l.playerSleepMinutes(kSleepMinMinutes),
+                      style: theme.bodySmall,
+                    ),
+                    Text(
+                      l.playerSleepMinutes(kSleepMaxMinutes),
+                      style: theme.bodySmall,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          if (sleep.active) ...[
+            const SizedBox(height: 14),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  // +5 minutes makes sense only for running time: until the end
+                  // of the track has nothing to extend.
+                  if (running) ...[
+                    Expanded(
+                      child: BloomButton(
+                        label: l.playerSleepExtend,
+                        icon: Bi.alarmAdd,
+                        tone: ButtonTone.plate,
+                        overlay: true,
+                        height: 44,
+                        onTap: ctrl.extend,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                  ],
+                  Expanded(
+                    child: BloomButton(
+                      label: l.playerSleepCancel,
+                      icon: Bi.alarmTurnOff,
+                      tone: ButtonTone.plate,
+                      overlay: true,
+                      height: 44,
+                      onTap: ctrl.cancel,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 14),
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: t.ovlLine2,
+            indent: 20,
+            endIndent: 20,
+          ),
+          SheetSwitchRow(
+            label: l.playerSleepFade,
+            subtitle: l.playerSleepFadeSub,
+            value: sleep.fade,
+            onChanged: ctrl.setFade,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// Пресет: число крупно, «мин» под ним. Залит акцентом, когда таймер идёт
-/// именно на это время.
+/// Preset: a large number with min under it, accent-filled when the timer runs
+/// on this time.
 class _PresetCard extends StatelessWidget {
   const _PresetCard({
     required this.minutes,
@@ -256,7 +226,7 @@ class _PresetCard extends StatelessWidget {
   );
 }
 
-/// «До конца трека» — широкая плашка под рядом пресетов.
+/// Until the end of the track, a wide plate under the presets.
 class _EndOfTrackCard extends StatelessWidget {
   const _EndOfTrackCard({required this.active, required this.onTap});
 
@@ -289,41 +259,4 @@ class _EndOfTrackCard extends StatelessWidget {
       ],
     ),
   );
-}
-
-/// Тумблер «Плавное затухание» — строка целиком нажимается, как «Nightcore» в
-/// шторке скорости.
-class _FadeRow extends StatelessWidget {
-  const _FadeRow({required this.value, required this.onChanged});
-
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context).textTheme;
-    return GestureDetector(
-      onTap: () => onChanged(!value),
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(context.l.playerSleepFade, style: theme.titleMedium),
-                  const SizedBox(height: 3),
-                  Text(context.l.playerSleepFadeSub, style: theme.bodySmall),
-                ],
-              ),
-            ),
-            const SizedBox(width: 14),
-            BloomSwitch(value: value, onChanged: onChanged),
-          ],
-        ),
-      ),
-    );
-  }
 }

@@ -1,17 +1,16 @@
-/// Библиотека: «Все треки», любимые, плейлисты, подписки — поверх таблиц
-/// `lists`/`list_tracks`/`follows` базы (порт `Library` + `Lists` ПК).
+/// Library: all tracks, favourites, playlists and follows, over the `lists`,
+/// `list_tracks` and `follows` tables. All tracks (`lib`), favourites (`fav`)
+/// and playlists are one table of ordered lists. Each row has its own place
+/// (`pos`) and add time (`added_at`): a drag changes only the place, and recent
+/// likes still know when they were made.
 ///
-/// Раскладка та же, что на ПК: «Все треки» (`lib`), любимые (`fav`) и плейлисты
-/// — одна таблица упорядоченных списков. У каждой строки списка своё место
-/// (`pos`) и своё время добавления (`added_at`): перетаскивание меняет только
-/// место, «свежие лайки» по-прежнему знают, когда их поставили.
+/// Invariant: a track in a playlist or favourites is a track in the library
+/// ([_addTo] puts it there too), and one removed from the library goes
+/// everywhere.
 ///
-/// Инвариант ПК: трек в плейлисте или в любимых — трек в библиотеке
-/// ([_addTo] кладёт его и туда), а убранный из библиотеки убирается отовсюду.
-///
-/// [LibraryState] — снимок для экранов: читается синхронно, обновляется после
-/// каждой правки. Сами треки в нём — только те, что стоят в каком-то списке;
-/// снимок любого слышанного трека лежит в `tracks` базы (см. [TrackStore]).
+/// [LibraryState] is a snapshot for screens: read synchronously, refreshed
+/// after each edit. It holds only tracks in some list; a snapshot of any track
+/// heard lies in the database's `tracks` (see [TrackStore]).
 library;
 
 import 'dart:convert';
@@ -23,17 +22,16 @@ import '../db/track_store.dart';
 import '../entities/entities.dart';
 import '../l10n/l10n.dart';
 
-/// id служебных списков — те же, что на ПК (`Lists::kLibrary/kFavorites`).
+/// Ids of the system lists.
 const String kLibList = 'lib';
 const String kFavList = 'fav';
 
-/// Источник «Обновить треки»: привязанная к плейлисту внешняя коллекция —
-/// плейлист, альбом или лайки аккаунта любой площадки. Их может быть сколько
-/// угодно и с разных площадок, как на ПК.
+/// A source for Refresh tracks: an outside collection tied to a playlist, being
+/// a playlist, album or account's likes on any platform. Any number, from
+/// different platforms.
 ///
-/// Вид тот же, что у ПК (`lists.sources`): обновление идёт по [id] коллекции
-/// у площадки [provider], а не по ссылке, — ссылка только для показа. Две
-/// привязки одной коллекции — один и тот же [id].
+/// Refresh goes by the collection's [id] on [provider], not by link; the link
+/// is only for display. Two ties to one collection have one [id].
 class PlSourceRef {
   const PlSourceRef({
     required this.id,
@@ -45,7 +43,7 @@ class PlSourceRef {
     this.cover = '',
   });
 
-  /// Коллекция страницы площадки как источник.
+  /// A platform page's collection as a source.
   factory PlSourceRef.of(Playlist set) => PlSourceRef(
     id: set.id,
     provider: set.source.code,
@@ -56,18 +54,19 @@ class PlSourceRef {
     cover: set.cover ?? '',
   );
 
-  /// Сквозной id коллекции: `sc:set:1`, `sc:likes:1`, `ym:album:1`, `ytm:pl:x`.
+  /// Collection's global id: `sc:set:1`, `sc:likes:1`, `ym:album:1`,
+  /// `ytm:pl:x`.
   final String id;
 
-  /// Код площадки, как в базе: `sc` / `ym` / `ytm`.
+  /// Platform code as in the database: `sc`, `ym`, `ytm`.
   final String provider;
   final String url;
 
-  /// Название и владелец на момент привязки — только для строки в списке.
+  /// Title and owner at tie time, only for the list row.
   final String title;
   final String owner;
 
-  /// `album` или `playlist` (лайки — тоже `playlist`).
+  /// `album` or `playlist` (likes are `playlist` too).
   final String kind;
   final String cover;
 
@@ -118,23 +117,23 @@ class UserPlaylist {
   final String id;
   final String name;
 
-  /// Состав по местам, первый сверху.
+  /// Contents by place, first on top.
   final List<String> trackIds;
   final String? cover;
   final String? description;
 
-  /// Откуда «Обновить треки» тянет новые треки. Пусто — плейлист свой, и
-  /// обновлять его неоткуда.
+  /// Where Refresh tracks pulls new ones from. Empty: the playlist is the
+  /// user's own, with nothing to refresh from.
   final List<PlSourceRef> sources;
   final int createdAt;
 
-  /// Место карточки на экране библиотеки (`side_pos`); 0 — ещё не стояла.
+  /// Card's place on the library screen (`side_pos`); 0 if it hasn't had one.
   final int sidePos;
 
-  /// Закреплён — стоит в библиотеке первым при любой сортировке.
+  /// Pinned: first in the library under any sort.
   final bool pinned;
 
-  /// Участвует в автообновлении по расписанию (`auto_refresh`).
+  /// Takes part in scheduled auto-update (`auto_refresh`).
   final bool autoRefresh;
 
   const UserPlaylist({
@@ -168,7 +167,7 @@ class FollowedArtist {
   final Artist artist;
   final int followedAt;
 
-  /// Место и закрепление карточки — как у плейлиста, в одном ряду с ним.
+  /// Card place and pin, as for a playlist, in one row with it.
   final int sidePos;
   final bool pinned;
 
@@ -180,25 +179,25 @@ class FollowedArtist {
   });
 }
 
-/// Ключ карточки библиотеки: вид и id вместе — плейлист и артист с
-/// одинаковым id иначе стали бы одной карточкой.
+/// Library card key: kind and id together, or a playlist and artist with one id
+/// would be one card.
 String libKeyOfPlaylist(String id) => 'playlist:$id';
 String libKeyOfArtist(String id) => 'artist:$id';
 
 class LibraryState {
-  /// Треки, стоящие хоть в одном списке. id → трек.
+  /// Tracks in at least one list, id to track.
   final Map<String, Track> tracks;
 
-  /// «Все треки» по местам, первый сверху.
+  /// All tracks by place, first on top.
   final List<String> libIds;
 
-  /// id → когда трек попал в библиотеку.
+  /// Id to when the track entered the library.
   final Map<String, int> inLib;
 
-  /// Любимые по местам, первый сверху.
+  /// Favourites by place, first on top.
   final List<String> favIds;
 
-  /// id → когда поставлен лайк.
+  /// Id to when it was liked.
   final Map<String, int> favs;
 
   final List<UserPlaylist> playlists;
@@ -239,8 +238,8 @@ class LibraryController extends Notifier<LibraryState> {
   @override
   LibraryState build() => _read(const {});
 
-  /// Перечитать списки из базы. Треки, уже лежащие в [known], не читаются
-  /// заново — правка трогает пару строк, а не всю библиотеку.
+  /// Re-reads lists from the database. Tracks already in [known] aren't read
+  /// again: an edit touches a couple of rows, not the whole library.
   LibraryState _read(Map<String, Track> known) {
     final members = <String, List<String>>{};
     final added = <String, Map<String, int>>{};
@@ -306,7 +305,7 @@ class LibraryController extends Notifier<LibraryState> {
 
   void _refresh() => state = _read(state.tracks);
 
-  /// Перечитать всё, треки тоже: строки поменяла синхронизация с ПК.
+  /// Re-reads all, tracks too: sync changed the rows.
   void reload() => state = _read(const {});
 
   static String? _text(Object? v) => v is String && v.isNotEmpty ? v : null;
@@ -343,10 +342,9 @@ class LibraryController extends Notifier<LibraryState> {
     );
   }
 
-  // ── Списки (порт `Lists`) ──────────────────────────────────────────────
+  // ── Lists ───────────────────────────────────────────────────────────────
 
-  /// Следующее место карточки на экране библиотеки — общее у плейлистов,
-  /// папок и подписок, как на ПК.
+  /// Next card place on the library screen, shared by all cards.
   int _nextSidePos() =>
       (_db.value('''SELECT max(coalesce((SELECT max(side_pos) FROM lists), 0),
           coalesce((SELECT max(side_pos) FROM folders), 0),
@@ -357,10 +355,9 @@ class LibraryController extends Notifier<LibraryState> {
   bool _listExists(String list) =>
       _db.value('SELECT 1 FROM lists WHERE id = ?', [list]) != null;
 
-  /// Положить треки в список — те, которых там ещё нет; всегда наверх, в
-  /// порядке пачки (пустой список так и получает их как есть). Возвращает,
-  /// сколько прибавилось. Трек в списке — трек в библиотеке: новые встают в
-  /// начало «Всех треков».
+  /// Puts tracks not yet there into a list, always on top, in batch order.
+  /// Returns how many were added. A track in a list is a track in the library:
+  /// new ones go to the start of all tracks.
   int _addTo(String list, List<Track> tracks) {
     if (!_listExists(list)) return 0;
     return _db.tx(() {
@@ -401,7 +398,7 @@ class LibraryController extends Notifier<LibraryState> {
     });
   }
 
-  /// Убрать треки из списка; из библиотеки — значит отовсюду.
+  /// Removes tracks from a list; from the library means from everywhere.
   void _removeFrom(String list, Iterable<String> trackIds) {
     _db.tx(() {
       for (final id in trackIds) {
@@ -417,8 +414,8 @@ class LibraryController extends Notifier<LibraryState> {
     });
   }
 
-  /// Новый порядок списка: [ids] по местам 0…n-1; чего в [ids] нет — уходит
-  /// из списка ([_removeFrom]). Время добавления не трогается.
+  /// New list order: [ids] at places 0…n-1; what's not in [ids] leaves
+  /// ([_removeFrom]). Add times stay.
   void _setOrder(String list, List<String> ids) {
     _db.tx(() {
       final was = {
@@ -459,19 +456,19 @@ class LibraryController extends Notifier<LibraryState> {
     _refresh();
   }
 
-  // ── Библиотека («Все треки») ────────────────────────────────────────────
+  // ── Library (all tracks) ────────────────────────────────────────────────
 
-  /// Положить треки в библиотеку, новые наверх; уже лежащие остаются на своём
-  /// месте. Возвращает число реально добавленных.
+  /// Adds tracks to the library, new on top; those present keep their place.
+  /// Returns how many really got added.
   int addToLibrary(Iterable<Track> batch) {
     final n = _addTo(kLibList, batch.toList());
     _refresh();
     return n;
   }
 
-  /// Удалить трек отовсюду: из библиотеки, лайков и всех плейлистов. Журнал
-  /// прослушиваний не трогается — «этот трек тогда-то играл» остаётся правдой,
-  /// снимок трека для истории держит сама база.
+  /// Deletes a track everywhere: library, likes, all playlists. The play log
+  /// stays: that it played then remains true, and the database keeps the
+  /// snapshot for history.
   void deleteTrack(String trackId) {
     _db.tx(() {
       _removeFrom(kLibList, [trackId]);
@@ -480,9 +477,9 @@ class LibraryController extends Notifier<LibraryState> {
     _refresh();
   }
 
-  /// Заменить трек версией с другой площадки: у новой версии другой id, и все
-  /// ссылки — места в списках, лайк, прослушивания, дизлайк — едут за ним
-  /// ([TrackStore.rekey]), со своими местами и временем добавления.
+  /// Replaces a track with another platform's version. It has a new id, and all
+  /// references (list places, like, plays, dislike) follow it
+  /// ([TrackStore.rekey]), with their places and add times.
   void replaceTrack(String oldId, Track next) {
     if (oldId == next.id) return;
     _db.tx(() {
@@ -496,11 +493,11 @@ class LibraryController extends Notifier<LibraryState> {
     });
   }
 
-  /// Снимок библиотеки целиком — для «Отменить» после удаления смахиванием.
+  /// Snapshot of the whole library, for Undo after a swipe delete.
   LibraryState snapshot() => state;
 
-  /// Вернуть списки, как они были в [snap]: состав, места и время добавления.
-  /// Плейлисты, которых с тех пор не стало, возвращаются тоже.
+  /// Restores lists as in [snap]: contents, places and add times. Playlists
+  /// gone since come back too.
   void restoreSnapshot(LibraryState snap) {
     _db.tx(() {
       _store.put(snap.tracks.values);
@@ -526,8 +523,8 @@ class LibraryController extends Notifier<LibraryState> {
     _refresh();
   }
 
-  /// Правка «Всех треков» целиком: [ids] — новый состав И порядок, первый
-  /// сверху. Выпавшее удаляется насквозь, как [deleteTrack].
+  /// Edits all tracks as a whole: [ids] is the new contents AND order, first on
+  /// top. What dropped out is deleted throughout, like [deleteTrack].
   void setLibraryTracks(List<String> ids) {
     _db.tx(() {
       _setOrder(kLibList, ids);
@@ -536,9 +533,9 @@ class LibraryController extends Notifier<LibraryState> {
     _refresh();
   }
 
-  // ── Любимые ─────────────────────────────────────────────────────────────
+  // ── Favourites ──────────────────────────────────────────────────────────
 
-  /// Переключить лайк. Новый лайк — наверх любимых и в библиотеку.
+  /// Toggles a like. A new like goes on top of favourites and into the library.
   bool toggleFav(Track track) {
     final on = !state.isFav(track.id);
     if (on) {
@@ -550,22 +547,22 @@ class LibraryController extends Notifier<LibraryState> {
     return on;
   }
 
-  /// Лайкнуть пачку разом (импорт ссылки в любимые): наверх, в порядке пачки.
-  /// Возвращает, сколько лайков прибавилось.
+  /// Likes a batch at once (link import into favourites): on top, in batch
+  /// order. Returns how many likes were added.
   int addToFavorites(List<Track> batch) {
     final n = _addTo(kFavList, batch);
     _refresh();
     return n;
   }
 
-  /// Правка «Любимых» целиком: [ids] — новый состав И порядок. Снятый лайк из
-  /// библиотеки трек не выкидывает.
+  /// Edits favourites as a whole: [ids] is the new contents AND order. A
+  /// removed like doesn't drop the track from the library.
   void setFavTracks(List<String> ids) {
     _setOrder(kFavList, ids);
     _refresh();
   }
 
-  // ── Плейлисты ───────────────────────────────────────────────────────────
+  // ── Playlists ───────────────────────────────────────────────────────────
 
   UserPlaylist createPlaylist(
     String name, {
@@ -579,15 +576,14 @@ class LibraryController extends Notifier<LibraryState> {
           ? null
           : description!.trim(),
       id: _freeId(BloomDb.now()),
-      // Имя плейлиста — данные, а не интерфейс: как назвали при создании,
-      // так и останется. Поэтому дефолт берётся на языке, который стоял в
-      // этот момент, и потом уже не переводится.
+      // A playlist's name is data, not UI: it stays as created. So the default
+      // comes in the language of that moment and is never translated later.
       name: name.trim().isEmpty
           ? (globalL10n?.commonNewPlaylist ?? 'New playlist')
           : name.trim(),
       cover: cover ?? (tracks.isEmpty ? null : tracks.first.cover),
-      // Коллекция, из которой плейлист завели, сразу становится его первым
-      // источником обновления — остальные привязывают уже руками, в редакторе.
+      // The collection a playlist came from becomes its first refresh source;
+      // others are tied by hand in the editor.
       sources: [?source],
       createdAt: BloomDb.now(),
     );
@@ -612,16 +608,15 @@ class LibraryController extends Notifier<LibraryState> {
         pl.autoRefresh ? 1 : 0,
         pl.createdAt == 0 ? now : pl.createdAt,
         now,
-        // Возвращённый («Отменить») встаёт на своё прежнее место.
+        // A restored one (Undo) returns to its old place.
         pl.sidePos > 0 ? pl.sidePos : _nextSidePos(),
         pl.pinned ? 1 : 0,
       ],
     );
   }
 
-  /// Свободный id плейлиста — как на ПК: `pl` + время в base36, а если такой
-  /// уже занят (несколько плейлистов в одну миллисекунду — импорт файла) —
-  /// следующее число.
+  /// A free playlist id: `pl` plus the time in base36, or the next number if
+  /// taken (several in one millisecond, on file import).
   String _freeId(int at) {
     var n = at;
     while (_listExists('pl${n.toRadixString(36)}')) {
@@ -635,18 +630,18 @@ class LibraryController extends Notifier<LibraryState> {
     _updateList(id, {'name': name.trim()});
   }
 
-  /// Поставить/снять обложку (`null` — снять).
+  /// Sets or removes (`null`) the cover.
   void setPlaylistCover(String id, String? cover) =>
       _updateList(id, {'cover': cover ?? ''});
 
-  /// Привязки «Обновить треки» целиком — их правит редактор плейлиста.
+  /// Refresh ties as a whole, edited in the playlist editor.
   void setPlaylistSources(String id, List<PlSourceRef> sources) =>
       _updateList(id, {
         'sources': jsonEncode([for (final s in sources) s.toJson()]),
       });
 
-  /// Привязать коллекцию к плейлисту, если её там ещё нет; `false` — уже
-  /// была (или плейлиста нет).
+  /// Ties a collection to a playlist if it isn't there; `false` if it was (or
+  /// no playlist).
   bool linkSource(String id, PlSourceRef source) {
     final pl = state.playlists.where((p) => p.id == id).firstOrNull;
     if (pl == null || pl.sources.any((s) => s.id == source.id)) return false;
@@ -654,15 +649,15 @@ class LibraryController extends Notifier<LibraryState> {
     return true;
   }
 
-  /// Удалить плейлист; его треки остаются в библиотеке.
+  /// Deletes a playlist; its tracks stay in the library.
   void deletePlaylist(String id) {
     if (id == kLibList || id == kFavList) return;
     _db.exec("DELETE FROM lists WHERE id = ? AND kind = 'playlist'", [id]);
     _refresh();
   }
 
-  /// Вернуть удалённый плейлист — «Отменить» в тосте. Если его уже создали
-  /// заново с тем же id, возвращать нечего.
+  /// Restores a deleted playlist, for Undo in the toast. If one was created
+  /// with that id meanwhile, nothing to restore.
   void restorePlaylist(UserPlaylist playlist) {
     if (_listExists(playlist.id)) return;
     _db.tx(() {
@@ -674,9 +669,9 @@ class LibraryController extends Notifier<LibraryState> {
     _refresh();
   }
 
-  /// Положить треки в плейлист — наверх, в порядке пачки; уже лежащие
-  /// пропускаются. Возвращает, сколько прибавилось: «Обновить треки» считает
-  /// новинки именно так.
+  /// Puts tracks into a playlist on top, in batch order, skipping those
+  /// present. Returns how many were added: Refresh tracks counts new ones this
+  /// way.
   int addTracksToPlaylist(String id, List<Track> batch) {
     final n = _addTo(id, batch);
     _refresh();
@@ -691,13 +686,13 @@ class LibraryController extends Notifier<LibraryState> {
     _refresh();
   }
 
-  /// Правка плейлиста целиком: [trackIds] — новый состав И порядок.
+  /// Edits a playlist as a whole: [trackIds] is the new contents AND order.
   void setPlaylistTracks(String id, List<String> trackIds) {
     _setOrder(id, trackIds);
     _refresh();
   }
 
-  /// Отметить плейлисты для автообновления по расписанию — или снять отметку.
+  /// Marks playlists for scheduled auto-update, or unmarks them.
   void setAutoRefresh(Iterable<String> ids, bool on) {
     _db.tx(() {
       for (final id in ids) {
@@ -710,10 +705,10 @@ class LibraryController extends Notifier<LibraryState> {
     _refresh();
   }
 
-  // ── Карточки библиотеки (порт `Library::setPinned/reorder`) ─────────────
+  // ── Library cards ───────────────────────────────────────────────────────
 
-  /// Где карточка держит место и закрепление: плейлист — в `lists`, артист —
-  /// в `follows`. Ключ — [libKeyOfPlaylist] / [libKeyOfArtist].
+  /// Where a card keeps place and pin: a playlist in `lists`, an artist in
+  /// `follows`. The key is [libKeyOfPlaylist] or [libKeyOfArtist].
   ({String table, String id})? _card(String key) {
     final i = key.indexOf(':');
     if (i < 0) return null;
@@ -725,7 +720,7 @@ class LibraryController extends Notifier<LibraryState> {
     };
   }
 
-  /// Закрепить карточку (наверх при любой сортировке) или открепить.
+  /// Pins a card (on top under any sort) or unpins it.
   void setPinned(String key, bool pinned) {
     final card = _card(key);
     if (card == null) return;
@@ -736,8 +731,8 @@ class LibraryController extends Notifier<LibraryState> {
     _refresh();
   }
 
-  /// Новый порядок карточек — плейлистов и артистов вперемешку, как их
-  /// перетащили: места 1…n в общем ряду `side_pos`.
+  /// New order of cards, playlists and artists mixed as dragged: places 1…n in
+  /// one `side_pos` row.
   void reorderCards(List<String> keys) {
     _db.tx(() {
       for (var i = 0; i < keys.length; i++) {
@@ -752,7 +747,7 @@ class LibraryController extends Notifier<LibraryState> {
     _refresh();
   }
 
-  // ── Подписки ────────────────────────────────────────────────────────────
+  // ── Follows ─────────────────────────────────────────────────────────────
 
   bool toggleFollow(Artist artist) {
     final on = !state.isFollowing(artist.id);

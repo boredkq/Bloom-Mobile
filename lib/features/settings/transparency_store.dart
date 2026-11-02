@@ -1,30 +1,7 @@
-/// Прозрачность / стекло для блоков интерфейса — порт десктопного
-/// `settings/model/transparencyStore.ts` + `shared/styles/transparency.css`.
-///
-/// На ПК стор ставит на `:root` две переменные (`--glass-block-bg` — цвет блока
-/// с альфой `blockOpacity`, `--glass-filter` — `blur() brightness()`), а класс
-/// `glass-mode` раздаёт их внешним контейнерам. Здесь тех же двух величин
-/// хватает: [GlassSpec] отдаёт альфу заливки и готовый `ImageFilter`, а
-/// раздаёт их `shared/ui/glass.dart` (`GlassBox`).
-///
-/// Отличия от ПК, все вынужденные:
-/// * **Нативной прозрачности окна нет.** `nativeTransparent` делает прозрачным
-///   само окно Tauri (`transparent: true`), чтобы сквозь зазоры был виден
-///   рабочий стол. У телефона под приложением стола нет — настройку не
-///   переносили.
-/// * **Деления outer/inner нет.** На ПК стекло получают КОНТЕЙНЕРЫ
-///   (`.sidebar`/`.main`/панели), а блоки внутри становятся прозрачными и
-///   просвечивают родительское стекло. На телефоне таких контейнеров нет
-///   вовсе: карточки лежат прямо на фоне приложения, поэтому стекло — у каждой
-///   своё. Чтобы это не превратилось в десятки `saveLayer`, все `GlassBox`
-///   живут в одном `BackdropGroup` (`BackdropFilter.grouped`): движок считает
-///   размытие один раз на группу.
-/// * **Умолчание `blockOpacity` — 60, а не 100.** На ПК включённая
-///   прозрачность со стопроцентной заливкой не меняет вид вообще, и понять,
-///   что настройка сработала, нельзя.
-///
-/// Тумблер оверлеев — подрежим основного, ровно как на ПК: при выключенной
-/// прозрачности стекла нет нигде ([Transparency.overlaysOn]).
+/// Glass on the blocks of the interface: [GlassSpec] gives the fill's alpha and
+/// a ready `ImageFilter`, `GlassBox` hands them out. The window itself is never
+/// transparent here: glass is over the app's own background. The sliders open
+/// in sheets.
 library;
 
 import 'dart:ui' as ui;
@@ -34,10 +11,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/store/json_store.dart' show jsonStoreProvider;
 
-/// Границы ползунков. Те же, что на ПК: проценты 0–100, размытие 0–40 px.
+/// Percent 0–100, blur 0–40 px.
 const int kTrBlurMax = 40;
 
-/// Умолчания. `blockOpacity` — наш (см. шапку), остальные десктопные.
 const int kTrOpacityDefault = 60;
 const int kTrBrightnessDefault = 50;
 const int kTrBlurDefault = 12;
@@ -52,40 +28,34 @@ class Transparency {
     this.glassBlur = kTrBlurDefault,
   });
 
-  /// Режим: выключено — обычные непрозрачные блоки, включено — стекло.
+  /// Off is plain solid blocks, on is glass.
   final bool on;
 
-  /// Стекло на всплывающих поверхностях: шторки, меню, диалоги и затемнение
-  /// под ними. Подрежим основного — см. [overlaysOn].
+  /// Glass on what pops up: sheets, menus, dialogs and the dim under them. A
+  /// sub-mode, see [overlaysOn].
   final bool overlayGlass;
 
-  /// НЕПРОЗРАЧНОСТЬ блоков, 0–100 (доля заливки поверх фона).
-  ///
-  /// Внимание: в интерфейсе это «Уровень прозрачности» и показывается
-  /// перевёрнутым ([transparencyPercent]) — пользователь крутит «насколько
-  /// видно фон», а не «насколько плотна заливка». Хранение осталось
-  /// десктопным, чтобы формула заливки читалась так же, как в `transparency.css`.
+  /// OPACITY of the blocks, 0–100. Shown inverted as the transparency level
+  /// ([transparencyPercent]): the slider means how much of the background
+  /// shows.
   final int blockOpacity;
 
-  /// Яркость стекла, 0–100 (50 — нейтрально).
+  /// 50 is neutral.
   final int glassStr;
 
-  /// Размытие стекла, 0–[kTrBlurMax].
   final int glassBlur;
 
-  /// «Уровень прозрачности» — то, что видно в настройках.
+  /// What settings show.
   int get transparencyPercent => 100 - blockOpacity;
 
-  /// Множитель яркости: 0 → 0.4 (тёмное стекло), 50 → 1.0, 100 → 1.8.
-  /// Формула из `applyTransparency` слово в слово.
+  /// 0 → 0.4 (dark glass), 50 → 1.0, 100 → 1.8.
   double get brightness => glassStr < 50
       ? 0.4 + (glassStr / 50) * 0.6
       : 1 + ((glassStr - 50) / 50) * 0.8;
 
   double get opacity => blockOpacity / 100;
 
-  /// Стекло оверлеев включено. Оба тумблера разом — на ПК `overlayGlass`
-  /// действует только при `trMode === 'on'`.
+  /// Both switches at once.
   bool get overlaysOn => on && overlayGlass;
 
   Transparency copyWith({
@@ -102,8 +72,8 @@ class Transparency {
     glassBlur: glassBlur ?? this.glassBlur,
   );
 
-  /// Из хранилища или снимка пресета. Битые поля молча заменяем умолчаниями:
-  /// вид приложения не повод ронять запуск.
+  /// From the store or a preset's snapshot. Broken fields become defaults:
+  /// looks are no reason to fail a launch.
   static Transparency fromJson(Map<dynamic, dynamic> raw) {
     int number(String field, int fallback, int max) {
       final value = raw[field];
@@ -111,7 +81,7 @@ class Transparency {
     }
 
     return Transparency(
-      // `trMode` — так режим пишет ПК (пресет, пришедший файлом с десктопа).
+      // The other spelling a preset file may carry.
       on: raw['on'] == true || raw['trMode'] == 'on',
       overlayGlass: raw['overlayGlass'] == true,
       blockOpacity: number('blockOpacity', kTrOpacityDefault, 100),
@@ -156,13 +126,12 @@ class TransparencyController extends Notifier<Transparency> {
 
   void setOn(bool on) => _set(state.copyWith(on: on));
 
-  /// Вернуть всё разом — из снимка пресета кастомизации.
+  /// From a preset's snapshot.
   void restore(Transparency next) => _set(next);
 
   void setOverlayGlass(bool on) => _set(state.copyWith(overlayGlass: on));
 
-  /// Ползунок «Уровень прозрачности»: пришло «насколько видно фон», в стор
-  /// уходит десктопная непрозрачность.
+  /// Comes as how much background shows, goes to the store as opacity.
   void setTransparencyPercent(int percent) =>
       _set(state.copyWith(blockOpacity: 100 - percent.clamp(0, 100)));
 
@@ -179,22 +148,19 @@ class TransparencyController extends Notifier<Transparency> {
   }
 }
 
-/// Готовое стекло: чем красить и чем фильтровать подложку.
+/// What to paint with and what to filter the backdrop with.
 @immutable
 class GlassSpec {
   const GlassSpec({required this.opacity, required this.filter});
 
-  /// Доля непрозрачности заливки блока (десктопная `--glass-block-bg`).
   final double opacity;
 
-  /// Фильтр подложки (десктопный `--glass-filter`). `null` — фильтровать
-  /// нечего (размытие 0 и яркость 1): стекло сводится к полупрозрачной
-  /// заливке, и заводить ради него слой незачем.
+  /// `null` when there's nothing to filter (no blur, brightness 1): then it's
+  /// just a translucent fill, no layer needed.
   final ui.ImageFilter? filter;
 }
 
-/// Матрица умножения яркости — аналог CSS `brightness(k)`: множим RGB, альфу
-/// не трогаем.
+/// `brightness(k)`: multiplies RGB, leaves alpha.
 ui.ColorFilter _brightnessFilter(double k) => ui.ColorFilter.matrix(<double>[
   k, 0, 0, 0, 0, //
   0, k, 0, 0, 0, //
@@ -206,8 +172,8 @@ GlassSpec? _spec(Transparency tr, {required bool enabled}) {
   if (!enabled) return null;
   final blur = tr.glassBlur.toDouble();
   final bright = tr.brightness;
-  // `clamp`: без него размытие тянет прозрачность с краёв блока и по его
-  // периметру идёт светлая кайма (та же беда, что у фона шторки).
+  // `clamp`: without it the blur pulls transparency in from the edges and a
+  // light rim runs around the block.
   final blurFilter = blur > 0
       ? ui.ImageFilter.blur(
           sigmaX: blur,
@@ -227,13 +193,13 @@ GlassSpec? _spec(Transparency tr, {required bool enabled}) {
   );
 }
 
-/// Стекло блоков интерфейса. `null` — прозрачность выключена, блоки сплошные.
+/// `null` means off, solid blocks.
 final glassProvider = Provider<GlassSpec?>((ref) {
   final tr = ref.watch(transparencyProvider);
   return _spec(tr, enabled: tr.on);
 });
 
-/// Стекло всплывающих поверхностей — шторок, меню и затемнения под ними.
+/// For sheets, menus and the dim under them.
 final overlayGlassProvider = Provider<GlassSpec?>((ref) {
   final tr = ref.watch(transparencyProvider);
   return _spec(tr, enabled: tr.overlaysOn);

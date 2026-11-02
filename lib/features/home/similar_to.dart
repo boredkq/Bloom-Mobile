@@ -1,16 +1,14 @@
-/// Витрина «Похожие на X» на главной: один сид из топа прослушиваний и то, что
-/// на него похоже, — треки и артисты вперемешку; `Home::buildSimilar` ПК.
+/// Similar to X on home: one seed from the top plays and what's like it, tracks
+/// and artists mixed.
 ///
-/// Сид живёт сутки, как «Для вас», и чередует тип: чётный день — артист,
-/// нечётный — трек. Внутри типа сиды идут по кругу по верху топа, так что
-/// витрина успевает показать несколько разных «якорей».
+/// A seed lives a day, like For you, and alternates type: an even day is an
+/// artist, an odd day a track. Within a type seeds go round the top, so several
+/// anchors get shown.
 ///
-/// Откуда что берётся:
-///   трек-сид   → похожие треки: похожие на него самого, не его артистов;
-///                похожие артисты: первый артист трека → его страница.
-///   артист-сид → похожие артисты: его страница;
-///                похожие треки: похожие на его самые слушаемые треки, но без
-///                его собственных (иначе витрина стала бы его дискографией).
+/// A track seed gives tracks like it, not by its artists, and artists like its
+/// first artist, from that artist's page. An artist seed gives similar artists
+/// from its page, and tracks like its most played, without its own (or the
+/// shelf becomes its discography).
 library;
 
 import 'dart:math' as math;
@@ -25,22 +23,23 @@ import '../../shared/util/taste.dart';
 import 'daily_showcase.dart';
 import 'for_you.dart';
 
-/// Из скольких верхних позиций топа крутится сид.
+/// How many top positions the seed rotates through.
 const int _seedPool = 5;
 
-/// Сколько сидов пробуем подряд, если первый не дал похожих.
+/// Seeds tried in a row if the first gave nothing similar.
 const int _seedTries = 2;
 const int _tracksMax = 14;
 const int _artistsMax = 6;
 
-/// Меньше ТРЕКОВ — «похожие на» превращаются в список имён: другой сид или тип.
+/// Below this many TRACKS the shelf turns into a list of names: another seed or
+/// type.
 const int _minTracks = 4;
 
-/// Столько артистов с картинкой хватает, чтобы безликих не брать.
+/// This many artists with pictures is enough to skip faceless ones.
 const int _minFaced = 4;
 
-/// Карточки «Для вас», видные без прокрутки: от них «Похожие на» держатся
-/// всегда, от остальных — пока хватает своих.
+/// For you cards seen with no scrolling: Similar to always stays clear of them,
+/// and of the rest while it has enough of its own.
 const int _forYouNear = 6;
 
 sealed class SimilarSeed {
@@ -85,8 +84,8 @@ final class SimilarTrackSeed extends SimilarSeed {
   @override
   final String? cover;
 
-  /// Сам трек — плитка сида играет его. `null` — поднять нечем (свой файл,
-  /// которого нет в библиотеке), и плитка тогда не нажимается.
+  /// The track itself, played by the seed tile. `null` if it can't come up (a
+  /// local file not in the library), and the tile can't be pressed.
   final Track? track;
 
   @override
@@ -159,7 +158,7 @@ class SimilarTo {
   final List<SimilarItem> items;
 }
 
-/// Номер локального дня: от него чётность типа сида и позиция в круге.
+/// Local day number, for the seed type's parity and its place in the round.
 int recsDayNumber(DateTime now) =>
     DateTime.utc(now.year, now.month, now.day).millisecondsSinceEpoch ~/
     Duration.millisecondsPerDay;
@@ -169,8 +168,8 @@ MusicProvider? _providerOf(RecsInput input, MusicSource source) {
   return p != null && p.isEnabled ? p : null;
 }
 
-/// Артист [name] на площадке трека [via] — `Artists::find` ПК: известна его
-/// страница по треку — она, иначе поиск по имени.
+/// Artist [name] on the platform of track [via]: their page if known from the
+/// track, else a search by name.
 Future<Artist?> _resolveArtist(RecsInput input, String name, Track via) async {
   final link = firstArtistLink(via);
   if (link.name == name && link.id != null) {
@@ -202,13 +201,13 @@ Future<ArtistPageData?> _artistPage(RecsInput input, Artist artist) async {
   }
 }
 
-/// Отбор треков — `Home::pickTracks` ПК: только новое (не сохранённое, не
-/// слышанное, не из соседней «Для вас»), без копий, не больше двух на артиста
-/// (по каждому имени), без своих артистов сида ([own]).
+/// Selects tracks: only new (not saved, heard or in the neighbouring For you),
+/// no copies, at most two per artist (per each name), none by the seed's own
+/// artists ([own]).
 ///
-/// «Для вас» собрана из того же топа и лучшее уже забрала, поэтому строгий
-/// проход часто выходит коротким: тогда держимся только от её первых карточек —
-/// повтор в дальнем её конце лучше ряда из одних имён.
+/// For you is built from the same top and already took the best, so the strict
+/// pass often runs short: then I keep clear only of its first cards. A repeat
+/// at its far end beats a row of just names.
 List<Track> _pickTracks(
   RecsInput input,
   List<Track> batch,
@@ -244,9 +243,9 @@ List<Track> _pickTracks(
   return soft.length > strict.length ? soft : strict;
 }
 
-/// Похожие артисты без своих сида ([own]) и повторов. Серый круг-заглушка в
-/// ряду выглядит поломкой, поэтому безликих берём, только когда иначе
-/// артистов почти нет.
+/// Similar artists with none of the seed's ([own]) or repeats. A grey stand-in
+/// circle looks broken, so faceless ones come only when there'd be almost no
+/// artists otherwise.
 List<Artist> _pickArtists(List<Artist> list, Set<String> own) {
   final seen = {...own};
   final uniq = [
@@ -262,8 +261,9 @@ List<Artist> _pickArtists(List<Artist> list, Set<String> own) {
       .toList();
 }
 
-/// Смешать: артист на каждой третьей позиции (Т А Т Т А Т Т …), и артистов не
-/// больше половины треков — ряд лиц с треком-другим читается как список имён.
+/// Mixes: an artist on every third position (T A T T A T T …), and no more
+/// artists than half the tracks. A row of faces with a track or two reads as a
+/// list of names.
 List<SimilarItem> mixSimilar(List<Track> tracks, List<Artist> artists) {
   final few = artists.take((tracks.length + 1) ~/ 2).toList();
   final out = <SimilarItem>[];
@@ -280,8 +280,8 @@ List<SimilarItem> mixSimilar(List<Track> tracks, List<Artist> artists) {
   return out;
 }
 
-/// Похожие на [seedId], которых пропускает [_pickTracks]; жидкий ответ
-/// добирается похожими на трек, который назовёт [more] (`null` — как есть).
+/// Similar to [seedId] that pass [_pickTracks]; a thin answer fills up with
+/// those like the track [more] names (`null` as is).
 Future<List<Track>> _likeTracks(
   RecsInput input,
   String seedId,
@@ -298,10 +298,9 @@ Future<List<Track>> _likeTracks(
   return _pickTracks(input, [...b0, ...b1], skip, own, forYou);
 }
 
-/// Трек-сид: самые слушаемые треки, по кругу. Похожее на него от других и
-/// артисты, похожие на его первого. Свои артисты — ни там, ни там: у
-/// SoundCloud аккаунт (первая ссылка) и имена в строке бывают разными, поэтому
-/// считаются оба.
+/// Track seed: the most played tracks, round-robin. What's like it from others,
+/// and artists like its first. Own artists in neither: on SoundCloud the
+/// account (the first link) and names in the line can differ, so both count.
 Future<SimilarTo?> _fromTrack(
   RecsInput input,
   int turn,
@@ -315,11 +314,11 @@ Future<SimilarTo?> _fromTrack(
 
     final first = firstArtistLink(seed).name;
     final own = {...artistKeys(seed), if (first.isNotEmpty) artistKey(first)};
-    // Добор — от лучшего в ответе трека чужого артиста.
+    // Fills up from the best track in the answer by another artist.
     Track? more(List<Track> b0) =>
         b0.where((t) => !artistKeys(t).any(own.contains)).firstOrNull;
     final tracks = await _likeTracks(input, id, more, {id}, own, forYou);
-    // Показывать всё равно нечего — за артистами не ходим.
+    // Nothing to show anyway, so no trip for artists.
     if (tracks.length < _minTracks) continue;
 
     final artist = isRealArtist(first)
@@ -345,9 +344,9 @@ Future<SimilarTo?> _fromTrack(
   return null;
 }
 
-/// Артист-сид: самые слушаемые артисты, по кругу. Похожие артисты — с его
-/// страницы; треки — похожие на его самые слушаемые, но не его (иначе это
-/// его дискография).
+/// Artist seed: the most played artists, round-robin. Similar artists come from
+/// their page; tracks like their most played, but not theirs (or it's their
+/// discography).
 Future<SimilarTo?> _fromArtist(
   RecsInput input,
   int turn,
@@ -364,8 +363,8 @@ Future<SimilarTo?> _fromArtist(
     final name = found.name.isEmpty ? cand.name : found.name;
     final own = {cand.key, artistKey(name)};
     final artists = _pickArtists(page?.similarArtists ?? const [], own);
-    // Похожие на один трек без его же треков бывают жидкими — добираем от
-    // второго по прослушиваниям.
+    // What's like one track minus their own can be thin, so it fills up from
+    // the second by plays.
     final tracks = await _likeTracks(
       input,
       cand.theirs.first.id,
@@ -391,9 +390,9 @@ Future<SimilarTo?> _fromArtist(
   return null;
 }
 
-/// Собрать витрину. Тип сида — по чётности дня; не вышло — пробуем другой тип,
-/// чтобы витрина не пропадала через день. [forYou] — соседняя витрина: её
-/// треки и их перезаливы сюда не повторяются.
+/// Builds the shelf. Seed type by day parity; failing that it tries the other,
+/// so the shelf doesn't vanish every other day. [forYou] is the neighbouring
+/// shelf: its tracks and their reuploads don't repeat here.
 Future<SimilarTo?> buildSimilarTo(
   RecsInput input, {
   List<Track> forYou = const [],
@@ -418,15 +417,15 @@ class SimilarToController extends DailyShowcase<SimilarTo> {
   @override
   String get storeKey => 'similarTo';
 
-  /// 3 — правила ПК: от четырёх треков, артистов не больше половины треков,
-  /// без своих артистов трек-сида, добор с другого трека.
+  /// 3: from four tracks, artists at most half the tracks, none of a track
+  /// seed's own artists, filling up from another track.
   @override
   int get version => 3;
 
   @override
   Future<SimilarTo?> fetch() async {
-    // Утром обе витрины собираются разом — ждём соседнюю, иначе сверяться
-    // было бы не с чем.
+    // In the morning both shelves build at once, so I wait for the neighbour,
+    // or there'd be nothing to check against.
     await ref.read(forYouProvider.notifier).settled();
     return buildSimilarTo(
       recsInputOf(ref),

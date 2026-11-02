@@ -1,17 +1,12 @@
-/// «Сменить площадку» — заменить запись библиотеки версией того же трека с
-/// другой площадки.
+/// Change platform: replaces a library entry with the same track from another
+/// platform. It searches by title and artist, takes the matcher's best result
+/// and moves ALL references: library, likes, playlists, queue and plays in the
+/// log (with them history, stats and Wrapped). Playlists and order don't move,
+/// only what the track plays from.
 ///
-/// Порт десктопного `switchTrackPlatform` + `replaceLibTrack`: ищем на целевой
-/// площадке по «название + артист», берём лучшее совпадение общего матчера и
-/// переставляем на него ВСЕ ссылки — библиотеку, лайки, плейлисты, очередь и
-/// прослушивания в журнале (а с ними «Историю», статистику и «Итоги»).
-/// Плейлисты и порядок при этом не шевелятся: меняется только то, чем трек
-/// играется.
-///
-/// Отличие от ПК одно и оно про офлайн: там скачанная копия остаётся висеть под
-/// старым id — файл на диске есть, а трека с таким id уже нет, и убрать его
-/// нечем. Мы такую копию удаляем: новую площадку человек при желании скачает
-/// заново, а мусор, который не удалить, оставлять нельзя.
+/// A downloaded copy under the old id gets deleted: no track points at it any
+/// more, and junk that can't be removed shouldn't stay. The user can download
+/// again from the new platform.
 library;
 
 import 'package:flutter/material.dart';
@@ -29,25 +24,24 @@ import '../../shared/ui/bloom_toast.dart';
 import '../offline/offline_store.dart';
 import '../player/player_controller.dart';
 
-/// Куда трек можно переставить: все площадки, кроме локальной и его нынешней.
-///
-/// Выключённые (незалогиненный Яндекс) не прячем — их так же показывает
-/// переключатель поиска, а провайдер сам ответит, что не может.
+/// Where a track can move: all platforms but local and its current one.
+/// Disabled ones (Yandex with no login) aren't hidden, as in the search picker;
+/// the provider itself says it can't.
 List<MusicSource> switchTargets(WidgetRef ref, Track track) => [
   for (final provider in ref.read(registryProvider).all)
     if (provider.source != MusicSource.local && provider.source != track.source)
       provider.source,
 ];
 
-/// Можно ли вообще менять площадку у этого трека: у локального файла подмена
-/// площадки означала бы подмену самого файла, а у трека из поиска менять нечего
-/// — за ним нет записи библиотеки.
+/// Whether this track's platform can change at all: for a local file that would
+/// mean changing the file itself, and a search result has no library entry
+/// behind it.
 bool canSwitchPlatform(LibraryState lib, WidgetRef ref, Track track) =>
     track.source != MusicSource.local &&
     lib.tracks.containsKey(track.id) &&
     switchTargets(ref, track).isNotEmpty;
 
-/// Найти трек на [target] и заменить им запись библиотеки.
+/// Finds the track on [target] and replaces the library entry with it.
 Future<void> switchTrackPlatform(
   ScaffoldMessengerState messenger,
   AppLocalizations l10n,
@@ -62,8 +56,8 @@ Future<void> switchTrackPlatform(
     return;
   }
 
-  // Поиск идёт секунды — говорим об этом сразу, иначе нажатие выглядит как
-  // «ничего не произошло».
+  // Search takes seconds, so I say so at once, or a press looks like nothing
+  // happened.
   messenger.toast(l10n.spSearching(target.label10n(l10n)));
 
   List<Track> found;
@@ -78,7 +72,8 @@ Future<void> switchTrackPlatform(
     return;
   }
 
-  // Своя же выдача может вернуть треки других площадок — берём только целевые.
+  // A platform's results may include other platforms' tracks, so I take only
+  // the target's.
   final best = rankMatches(
     [
       for (final t in found)
@@ -96,14 +91,14 @@ Future<void> switchTrackPlatform(
     return;
   }
 
-  // Ссылки переезжают в самой базе: места в списках, лайк и прослушивания
-  // (а с ними «История», статистика и «Итоги») — трек тот же, и делить его
-  // счётчик между двумя id нельзя. Журнал после этого перечитываем.
+  // References move in the database itself: list places, the like and plays
+  // (with them history, stats and Wrapped). It's one track, and its count can't
+  // be split between two ids. The log gets re-read afterwards.
   ref.read(libraryProvider.notifier).replaceTrack(track.id, best.track);
   ref.read(playLogProvider.notifier).reload();
   ref.read(playbackProvider.notifier).replaceInQueue(track.id, best.track);
-  // Скачанная копия осталась от прежней площадки: она играет не тот файл, что
-  // теперь стоит за треком, и сослаться на неё уже некому.
+  // The downloaded copy is from the old platform: it plays a different file
+  // than the track now has, and nothing can refer to it.
   await ref.read(offlineProvider.notifier).remove(track.id);
 
   messenger.toast(l10n.spNow(target.label10n(l10n)), kind: ToastKind.success);

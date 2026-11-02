@@ -1,8 +1,7 @@
-/// С чего волна стартует — `personalSeeds` и `queueSeeds` ПК.
-///
-/// Чистые функции над снимком библиотеки ([WaveLibrary]): на чём волна
-/// строится, целиком решает то, что человек слушал и лайкал, — и проверять это
-/// удобнее списком. Прослушивания — свои, из журнала ([PlayStats]).
+/// What the wave starts from. Pure functions over a library snapshot
+/// ([WaveLibrary]): what the listener played and liked decides it all, and
+/// that's easier to check with lists. Plays are the listener's own, from the
+/// log ([PlayStats]).
 library;
 
 import '../../core/entities/entities.dart';
@@ -12,7 +11,7 @@ import '../../shared/util/taste.dart';
 import 'wave_engine.dart' show spreadSeeds;
 import 'wave_types.dart';
 
-/// Снимок библиотеки, каким его видит подбор.
+/// Library snapshot as picks see it.
 class WaveLibrary {
   WaveLibrary({
     required this.lib,
@@ -25,21 +24,21 @@ class WaveLibrary {
 
   final LibraryState lib;
 
-  /// Журнал прослушиваний целиком.
+  /// The whole play log.
   final PlayStats stats;
 
-  /// id дизлайкнутых треков — сидами они не бывают.
+  /// Disliked track ids, which never become seeds.
   final Set<String> disliked;
 
-  /// Радио трека у его площадки; `null` — радио нет (свой файл, Яндекс без
-  /// входа).
+  /// A track's radio on its platform; `null` if none (a local file, Yandex with
+  /// no login).
   final WaveSeed? Function(Track) seedOf;
 
-  /// Треки вне библиотеки, которые тоже бывают сидами: очередь, страница
-  /// артиста.
+  /// Tracks outside the library that can also be seeds: the queue, an artist
+  /// page.
   final Map<String, Track> _extras;
 
-  /// Треки библиотеки без дизлайкнутых. Порядок — как в «Все треки».
+  /// Library tracks minus disliked, in all tracks order.
   late final List<Track> tracks = [
     for (final t in lib.allTracks)
       if (!disliked.contains(t.id)) t,
@@ -50,8 +49,8 @@ class WaveLibrary {
   Track? byId(String trackId) => _extras[trackId] ?? lib.tracks[trackId];
 }
 
-/// Сиды из списка (очередь, треки артиста): по одному на радио, без
-/// дизлайкнутых, поровну по списку ([spreadSeeds]).
+/// Seeds from a list (queue, artist's tracks): one per radio, no disliked,
+/// evenly along the list ([spreadSeeds]).
 List<WaveSeed> queueSeeds(List<Track> tracks, WaveLibrary view) {
   final all = <WaveSeed>[];
   final seen = <WaveSeed>{};
@@ -63,9 +62,9 @@ List<WaveSeed> queueSeeds(List<Track> tracks, WaveLibrary view) {
   return spreadSeeds(all);
 }
 
-/// «Моя волна» с площадки [provider] (код базы): два самых слушаемых, два
-/// самых свежих лайка и ещё один из них же. [rotation] сдвигает выбор на
-/// каждой новой волне — иначе она вечно стояла бы на тех же двух из топа.
+/// My wave from [provider] (a database code): the two most played, the two
+/// freshest likes and one more of those. [rotation] shifts the pick with each
+/// new wave, or it would stand forever on the same two from the top.
 List<WaveSeed> personalSeeds(WaveLibrary view, String provider, int rotation) {
   bool usable(Track t) =>
       t.source.code == provider &&
@@ -97,12 +96,12 @@ List<WaveSeed> personalSeeds(WaveLibrary view, String provider, int rotation) {
   take(favs, rotation * 2);
   take(favs, rotation * 2 + 1);
   if (!take(byPlays, rotation * 2 + 2)) take(favs, rotation * 2 + 2);
-  // Ничего не слушали и не лайкали: самое свежее в библиотеке.
+  // Nothing played or liked: the freshest in the library.
   if (picked.isEmpty) picked.addAll(newestFirst(lib, view.lib.inLib).take(3));
   return [for (final t in picked) ?view.seedOf(t)];
 }
 
-/// Слушанные, самые слушаемые сверху (порядок при равенстве — как пришли).
+/// Played ones, most played on top (on ties, as they came).
 List<Track> _byPlays(WaveLibrary view, List<Track> lib) {
   final scored = [
     for (var i = 0; i < lib.length; i++)
@@ -141,7 +140,7 @@ class WaveOption {
   };
 }
 
-/// Waves to turn to, artist and track by turns, as `Wave::picks` on the PC:
+/// Waves to turn to, artist and track by turns:
 /// the top artists, and tracks of others (two fresh likes, then the top). An
 /// artist's own hit beside their name would say the same twice.
 List<WaveOption> wavePicks(RecsInput input, {int each = 4}) {

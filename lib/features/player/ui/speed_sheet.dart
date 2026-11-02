@@ -1,14 +1,9 @@
-/// Пикер скорости — шторка по кнопке-спидометру в ряду инструментов плеера.
+/// Speed picker sheet, from the speedometer button in the player's tool row:
+/// three preset cards (0.75×, 1×, 1.25×), a custom speed bar with marks every
+/// 0.25× and a Nightcore switch (pitch follows tempo). A solid background.
 ///
-/// Порт десктопного `SpeedPicker.tsx`: три карточки-пресета (0.75× / 1× /
-/// 1.25×), полоса произвольной скорости с засечками каждые 0.25× и тумблер
-/// «Nightcore» (питч едет за темпом). На ПК это всплывашка у кнопки; на телефоне
-/// — шторка снизу, по выбору пользователя, и фон у неё СПЛОШНОЙ (не размытая
-/// обложка, как у меню трека) — он попросил именно так.
-///
-/// Значения уходят в `speed_store`, на плеер их ставит `PlaybackController`.
-/// Шторка не закрывается ни по пресету, ни по тумблеру: скорость подбирают на
-/// слух, и каждый раз открывать её заново незачем.
+/// Values go to `speed_store`, and `PlaybackController` applies them. The sheet
+/// doesn't close on a preset or switch: speed gets picked by ear.
 library;
 
 import 'package:flutter/material.dart';
@@ -20,16 +15,9 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../speed_store.dart';
 
-/// Полоса: толщина дорожки и радиус бегунка. От них же считается отступ, на
-/// который Slider поджимает дорожку с краёв (`max(thumb, overlay) / 2`, ореола
-/// у нас нет), — по нему выставляются засечки, иначе крайние риски не сойдутся
-/// с центром бегунка.
-const double _trackHeight = 5;
-const double _thumbRadius = 7;
-
 void showSpeedSheet(BuildContext context) {
-  // Корневой навигатор и стекло затемнения — общие у всех наших шторок
-  // (`showBloomModal`): иначе таб-бар и миниплеер остаются поверх затемнения.
+  // The root navigator and dimming glass, as for all my sheets, or the tab bar
+  // and mini player stay over the dimming.
   showBloomModal<void>(context: context, builder: (_) => const _SpeedSheet());
 }
 
@@ -44,117 +32,95 @@ class _SpeedSheet extends ConsumerWidget {
     final speed = ref.watch(speedProvider);
     final ctrl = ref.read(speedProvider.notifier);
 
-    return ClipRRect(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(t.radius * 1.7)),
-      child: SheetSurface(
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SheetHandle(),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
-                child: Row(
-                  children: [Text(l.playerSpeed, style: theme.titleLarge)],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  children: [
-                    for (final preset in kSpeedPresets) ...[
-                      if (preset != kSpeedPresets.first)
-                        const SizedBox(width: 10),
-                      Expanded(
-                        child: _PresetCard(
-                          value: preset,
-                          active: speed.rate == preset,
-                          onTap: () => ctrl.setRate(preset),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(l.playerSpeedCustom, style: theme.bodySmall),
+    return SheetShell(
+      header: SheetTitle(l.playerSpeed, bottom: 14),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                for (final preset in kSpeedPresets) ...[
+                  if (preset != kSpeedPresets.first) const SizedBox(width: 10),
+                  Expanded(
+                    child: _PresetCard(
+                      value: preset,
+                      active: speed.rate == preset,
+                      onTap: () => ctrl.setRate(preset),
                     ),
-                    Semantics(
-                      button: true,
-                      label: context.l.playerSpeedReset,
-                      child: BloomTag(
-                        text: speedLabel(speed.rate),
-                        active: speed.rate != 1,
-                        onTap: ctrl.reset,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 4),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  children: [
-                    SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: _trackHeight,
-                        thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: _thumbRadius,
-                        ),
-                        // Делений тридцать — родные метки дали бы рябь;
-                        // засечки рисуем свои, каждые 0.25×, как на ПК.
-                        tickMarkShape: SliderTickMarkShape.noTickMark,
-                      ),
-                      child: Slider(
-                        value: speed.rate.clamp(kSpeedMin, kSpeedMax),
-                        min: kSpeedMin,
-                        max: kSpeedMax,
-                        divisions: kSpeedDivisions,
-                        label: speedLabel(speed.rate),
-                        onChanged: ctrl.setRate,
-                      ),
-                    ),
-                    const _Ticks(),
-                    const SizedBox(height: 6),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(speedLabel(kSpeedMin), style: theme.bodySmall),
-                        Text(speedLabel(kSpeedMax), style: theme.bodySmall),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-              Divider(
-                height: 1,
-                thickness: 1,
-                color: t.ovlLine2,
-                indent: 20,
-                endIndent: 20,
-              ),
-              _NightcoreRow(
-                value: speed.nightcore,
-                onChanged: ctrl.setNightcore,
-              ),
-              const SizedBox(height: 6),
-            ],
+                  ),
+                ],
+              ],
+            ),
           ),
-        ),
+          const SizedBox(height: 18),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(l.playerSpeedCustom, style: theme.bodySmall),
+                ),
+                Semantics(
+                  button: true,
+                  label: context.l.playerSpeedReset,
+                  child: BloomTag(
+                    text: speedLabel(speed.rate),
+                    active: speed.rate != 1,
+                    onTap: ctrl.reset,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              children: [
+                SheetSlider(
+                  value: speed.rate.clamp(kSpeedMin, kSpeedMax),
+                  min: kSpeedMin,
+                  max: kSpeedMax,
+                  divisions: kSpeedDivisions,
+                  label: speedLabel(speed.rate),
+                  onChanged: ctrl.setRate,
+                ),
+                const _Ticks(),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(speedLabel(kSpeedMin), style: theme.bodySmall),
+                    Text(speedLabel(kSpeedMax), style: theme.bodySmall),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: t.ovlLine2,
+            indent: 20,
+            endIndent: 20,
+          ),
+          SheetSwitchRow(
+            label: l.playerSpeedNightcore,
+            subtitle: l.playerSpeedNightcoreSub,
+            value: speed.nightcore,
+            onChanged: ctrl.setNightcore,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// Карточка-пресет: залита акцентом, когда стоит именно она.
+/// Preset card, accent-filled when it's the one set.
 class _PresetCard extends StatelessWidget {
   const _PresetCard({
     required this.value,
@@ -183,11 +149,9 @@ class _PresetCard extends StatelessWidget {
   );
 }
 
-/// Засечки под полосой — каждые 0.25×, совпавшие с пресетами крупнее.
-///
-/// Полоса поджата с краёв на пол-бегунка (так Slider считает дорожку), поэтому
-/// и засечки живут в тех же границах: иначе крайние риски не сойдутся с
-/// центром бегунка в упоре.
+/// Marks under the bar every 0.25×, those matching presets larger. The bar is
+/// inset by half a knob (how Slider computes its track), so the marks live in
+/// the same bounds, or the outer ones miss the knob's centre at the stops.
 class _Ticks extends StatelessWidget {
   const _Ticks();
 
@@ -197,7 +161,7 @@ class _Ticks extends StatelessWidget {
     return SizedBox(
       height: 8,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: _thumbRadius),
+        padding: const EdgeInsets.symmetric(horizontal: kSheetSliderThumb),
         child: LayoutBuilder(
           builder: (context, box) => Stack(
             children: [
@@ -219,49 +183,6 @@ class _Ticks extends StatelessWidget {
                 ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Тумблер «Nightcore»: питч едет вместе с темпом. Нажимается вся строка — на
-/// ПК это `<label>`, там кликается тоже всё целиком.
-class _NightcoreRow extends StatelessWidget {
-  const _NightcoreRow({required this.value, required this.onChanged});
-
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context).textTheme;
-    return GestureDetector(
-      onTap: () => onChanged(!value),
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    context.l.playerSpeedNightcore,
-                    style: theme.titleMedium,
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    context.l.playerSpeedNightcoreSub,
-                    style: theme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 14),
-            BloomSwitch(value: value, onChanged: onChanged),
-          ],
         ),
       ),
     );

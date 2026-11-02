@@ -1,9 +1,5 @@
-/// «Дизлайки в волне» — порт `DislikesModal.tsx`. На телефоне это шторка, а не
-/// отдельный экран: список короткий и живёт ровно одним действием — снять
-/// метку.
-///
-/// Дизлайк у нас один на все площадки (см. `wave_store`), поэтому и списка
-/// здесь один, без десктопного склеивания «библиотечные + гостевые».
+/// Wave dislikes, a sheet: the list is short and has one action, removing a
+/// mark. A dislike is one across all platforms, so there's one list.
 library;
 
 import 'package:flutter/material.dart';
@@ -27,96 +23,37 @@ class _DislikesSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
-    // Новые сверху, как на ПК.
+    // Newest on top.
     final tracks = ref.watch(waveStoreProvider).dislikes;
 
-    return ConstrainedBox(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.85,
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(t.radius * 1.7),
-        ),
-        child: SheetSurface(
-          child: SafeArea(
-            top: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SheetHandle(),
-                _Header(count: tracks.length),
-                if (tracks.isEmpty)
-                  const _Empty()
-                else
-                  Flexible(
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
-                      itemCount: tracks.length,
-                      itemBuilder: (context, i) => _Row(track: tracks[i]),
-                    ),
-                  ),
-              ],
-            ),
-          ),
+    return SheetShell(
+      scrolls: false,
+      header: SheetTitle(
+        context.l.waveDislikesTitle,
+        subtitle: context.l.tracksCount(tracks.length),
+        right: 12,
+        bottom: 12,
+        trailing: CircleIconButton(
+          icon: Bi.trashBinTrash,
+          iconSize: 20,
+          onTap: tracks.isEmpty
+              ? null
+              : () => ref.read(waveStoreProvider.notifier).clearDislikes(),
         ),
       ),
-    );
-  }
-}
-
-class _Header extends ConsumerWidget {
-  const _Header({required this.count});
-
-  final int count;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 6, 12, 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(context.l.waveDislikesTitle, style: theme.titleLarge),
-                const SizedBox(height: 2),
-                Text(context.l.tracksCount(count), style: theme.bodyMedium),
-              ],
+      child: tracks.isEmpty
+          ? CenterNote(
+              context.l.waveNoDislikes,
+              padding: const EdgeInsets.fromLTRB(24, 30, 24, 46),
+            )
+          : ListView.builder(
+              shrinkWrap: true,
+              padding: const EdgeInsets.only(bottom: 10),
+              itemCount: tracks.length,
+              itemBuilder: (context, i) => _Row(track: tracks[i]),
             ),
-          ),
-          // Снять все метки разом. Пустой список чистить нечего — кнопка гаснет.
-          CircleIconButton(
-            icon: Bi.trashBinTrash,
-            iconSize: 20,
-            onTap: count == 0
-                ? null
-                : () => ref.read(waveStoreProvider.notifier).clearDislikes(),
-          ),
-        ],
-      ),
     );
   }
-}
-
-class _Empty extends StatelessWidget {
-  const _Empty();
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(24, 30, 24, 46),
-    child: Text(
-      context.l.waveNoDislikes,
-      textAlign: TextAlign.center,
-      style: Theme.of(
-        context,
-      ).textTheme.bodyMedium?.copyWith(color: context.bloom.muted),
-    ),
-  );
 }
 
 class _Row extends ConsumerWidget {
@@ -125,45 +62,17 @@ class _Row extends ConsumerWidget {
   final Track track;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context).textTheme;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      child: Row(
-        children: [
-          Cover(url: track.cover, size: 44),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  track.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.titleMedium,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  track.artist,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.bodySmall,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Снять метку — трек снова может попасть в подбор.
-          CircleIconButton(
-            icon: Bi.close,
-            iconSize: 18,
-            onTap: () =>
-                ref.read(waveStoreProvider.notifier).undislike(track.id),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context, WidgetRef ref) => SheetRow(
+    leading: Cover(url: track.cover, size: 44),
+    gap: 12,
+    label: track.name,
+    subtitle: track.artist,
+    color: context.bloom.text,
+    // Off the list, the track can be picked again.
+    trailing: CircleIconButton(
+      icon: Bi.close,
+      iconSize: 18,
+      onTap: () => ref.read(waveStoreProvider.notifier).undislike(track.id),
+    ),
+  );
 }

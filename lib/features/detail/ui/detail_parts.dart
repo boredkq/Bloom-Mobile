@@ -81,14 +81,7 @@ class DetailLoadMore extends StatelessWidget {
           ? SizedBox(
               height: 44,
               child: Center(
-                child: SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: context.bloom.accent,
-                  ),
-                ),
+                child: BloomSpinner(size: 22, color: context.bloom.accent),
               ),
             )
           : BloomButton(
@@ -97,46 +90,6 @@ class DetailLoadMore extends StatelessWidget {
               height: 44,
               onTap: onTap,
             ),
-    );
-  }
-}
-
-class DetailEmpty extends StatelessWidget {
-  const DetailEmpty(this.text, {super.key});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(color: context.bloom.muted),
-      ),
-    );
-  }
-}
-
-class DetailError extends StatelessWidget {
-  const DetailError(this.text, {super.key});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(color: context.bloom.danger),
-      ),
     );
   }
 }
@@ -150,12 +103,10 @@ class DetailSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget title(double width) => Padding(
+    Widget title(double width) => SectionLabelSkeleton(
+      width: width,
+      height: 18,
       padding: const EdgeInsets.fromLTRB(16, 22, 16, 14),
-      child: Align(
-        alignment: AlignmentDirectional.centerStart,
-        child: SkeletonBox(width: width, height: 18, radius: 9),
-      ),
     );
     return SkeletonPulse(
       child: Column(

@@ -1,17 +1,9 @@
-/// Шторка одной картинки библиотеки: превью, куда она применена, режим
-/// обложки, размытие и затемнение фона, удаление.
+/// Sheet for one library picture: preview, where it's applied, cover mode,
+/// background blur and dim, delete. Blur and dim are a property of the picture
+/// itself, not a shared background setting (see [MediaItem.blur]).
 ///
-/// На десктопе это разнесено по трём местам — карточки контекстов, настройки
-/// под сеткой и крестик на плитке галереи. Пользователь собрал их вместе на
-/// картинке, и размытие с затемнением стали свойством самой картинки, а не
-/// общей настройкой фона (см. [MediaItem.blur]).
-///
-/// Настройки под списком появляются, только когда им есть к чему относиться,
-/// — как на ПК под сеткой (`CustomizationSection.tsx`): режим — когда
-/// картинка стоит обложкой, эффекты — когда фоном.
-///
-/// Вид — с макета пользователя, детали общие со шторкой пресета
-/// (`custom_sheet.dart`).
+/// Settings under the list show only when they have something to apply to: the
+/// mode when it's a cover, effects when it's the background.
 library;
 
 import 'package:flutter/material.dart';
@@ -21,11 +13,11 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
-import '../../../shared/ui/pressable.dart';
 import '../custom_store.dart';
 import '../media_store.dart';
 import 'custom_sheet.dart';
 import 'custom_widgets.dart';
+import '../../../shared/ui/subpage_header.dart';
 
 Future<void> showMediaItemSheet(BuildContext context, MediaItem item) =>
     showBloomSheetChild<void>(
@@ -35,7 +27,7 @@ Future<void> showMediaItemSheet(BuildContext context, MediaItem item) =>
       child: _MediaItemBody(id: item.id),
     );
 
-/// Сколько раскрывается секция, появившаяся под списком.
+/// How long a section under the list takes to open.
 const Duration _kReveal = Duration(milliseconds: 220);
 
 class _MediaItemBody extends ConsumerWidget {
@@ -49,8 +41,8 @@ class _MediaItemBody extends ConsumerWidget {
     for (final it in ref.watch(mediaLibProvider)) {
       if (it.id == id) item = it;
     }
-    // Картинку удаляет только кнопка ниже, и шторка закрывается раньше, —
-    // пустое тело здесь лишь страховка на кадр.
+    // Only the button below deletes a picture and the sheet closes first, so an
+    // empty body is just insurance for a frame.
     if (item == null) return const SizedBox.shrink();
 
     final targets = ref.watch(customProvider);
@@ -65,8 +57,10 @@ class _MediaItemBody extends ConsumerWidget {
         CustSheetBlock(
           children: [
             for (final ctx in CustomCtx.values) ...[
-              if (ctx != CustomCtx.values.first) const CustSheetDivider(),
-              // Тап ставит картинку сюда или снимает; галочка — она стоит.
+              if (ctx != CustomCtx.values.first)
+                const GroupDivider(indent: kCustRowText),
+              // A tap places or clears the picture here; the tick means it's
+              // there.
               CustSheetRow(
                 icon: customCtxIcon(ctx),
                 label: _ctxLabel(context, ctx),
@@ -86,9 +80,8 @@ class _MediaItemBody extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               CustSheetLabel(context.l.custCoverMode),
-              for (final m in CoverMode.values) ...[
-                if (m != CoverMode.values.first) const SizedBox(height: 8),
-                _ModeRow(
+              for (final m in CoverMode.values)
+                SheetOptionTile(
                   icon: switch (m) {
                     CoverMode.always => Bi.infinite,
                     CoverMode.fallback => Bi.shieldCheck,
@@ -97,10 +90,9 @@ class _MediaItemBody extends ConsumerWidget {
                     CoverMode.always => context.l.custCoverModeAlways,
                     CoverMode.fallback => context.l.custCoverModeFallback,
                   },
-                  on: m == mode,
+                  active: m == mode,
                   onTap: () => ref.read(coverModeProvider.notifier).set(m),
                 ),
-              ],
             ],
           ),
         ),
@@ -142,8 +134,8 @@ class _MediaItemBody extends ConsumerWidget {
   };
 }
 
-/// Секция, которая выезжает под списком и прячется обратно. Схлопывается по
-/// высоте, а не пропадает скачком: иначе шторка дёргалась бы на весь блок.
+/// A section that slides out under the list and back. It collapses by height
+/// rather than jumping, or the sheet would jerk by a whole block.
 class _Reveal extends StatelessWidget {
   const _Reveal({required this.show, required this.child});
 
@@ -160,63 +152,6 @@ class _Reveal extends StatelessWidget {
       child: show ? child : const SizedBox(width: double.infinity),
     ),
   );
-}
-
-/// Вариант режима — отдельной плашкой, как на макете: выбранный светлее
-/// (плёнка `iconBg` поверх блока — ровно #282828) и с галочкой, без рамки.
-class _ModeRow extends StatelessWidget {
-  const _ModeRow({
-    required this.icon,
-    required this.label,
-    required this.on,
-    required this.onTap,
-  });
-
-  final BloomGlyph icon;
-  final String label;
-  final bool on;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final color = on ? t.text : t.iconFg;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: kCustSheetEdge),
-      child: Pressable(
-        onTap: onTap,
-        scale: 0.98,
-        child: Material(
-          color: on ? Color.alphaBlend(t.iconBg, t.pill) : t.pill,
-          borderRadius: BorderRadius.circular(t.radius),
-          clipBehavior: Clip.antiAlias,
-          child: SizedBox(
-            height: 46,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Row(
-                children: [
-                  BloomIcon(icon, size: 22, color: color),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.titleMedium?.copyWith(color: color),
-                    ),
-                  ),
-                  if (on) BloomIcon(Bi.check, size: 20, color: t.text),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _SliderRow extends StatelessWidget {
@@ -239,7 +174,7 @@ class _SliderRow extends StatelessWidget {
     final t = context.bloom;
     final theme = Theme.of(context).textTheme;
     return Padding(
-      // Шаг строк — 56, как на макете: подпись сверху, дорожка под ней.
+      // Rows step by 56: the caption on top, the track below.
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,8 +200,8 @@ class _SliderRow extends StatelessWidget {
               child: Slider(
                 value: value.clamp(0, max),
                 max: max,
-                // Шаг в единицу: ползунок настройки, а не полоса плеера —
-                // целые проценты и пиксели читаются, дробные ничего не дают.
+                // A step of one: this is a setting's slider, not the player's
+                // bar, and whole percent and pixels read fine.
                 divisions: max.round(),
                 onChanged: onChanged,
               ),

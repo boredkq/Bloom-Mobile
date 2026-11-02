@@ -1,9 +1,7 @@
-/// Nightcore на iOS.
-///
-/// just_audio на iOS `setPitch` не умеет и сам держит тон при смене скорости.
-/// Тон за темпом включает наш канал `bloom/nightcore` в `AppDelegate.swift`:
-/// там подменяется алгоритм растяжки у AVPlayer. На Android то же самое
-/// делает обычный `setPitch` через ExoPlayer, и канал там не заведён.
+/// Nightcore on iOS. just_audio has no `setPitch` there and holds pitch when
+/// speed changes. A native channel switches AVPlayer's time-stretch algorithm
+/// so pitch follows tempo. On Android plain `setPitch` does it, and the channel
+/// doesn't exist.
 library;
 
 import 'package:flutter/foundation.dart';
@@ -11,14 +9,14 @@ import 'package:flutter/services.dart';
 
 const _channel = MethodChannel('bloom/nightcore');
 
-/// Сообщить iOS, включён ли nightcore. На остальных площадках — ничего.
+/// Tells iOS whether nightcore is on; does nothing elsewhere.
 Future<void> setIosNightcore(bool on) async {
   if (defaultTargetPlatform != TargetPlatform.iOS) return;
   try {
     await _channel.invokeMethod<void>('set', on);
   } on PlatformException {
-    // Канал не ответил — темп всё равно работает, просто без тона.
+    // The channel didn't answer: tempo still works, only with no pitch.
   } on MissingPluginException {
-    // Тесты.
+    // Tests.
   }
 }

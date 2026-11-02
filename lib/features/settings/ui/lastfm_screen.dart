@@ -1,15 +1,8 @@
-/// Настройки Last.fm — порт десктопной секции `LastfmSection.tsx`.
+/// Last.fm settings on the [PlatformPage] layout. The guide is in a sheet, the
+/// key fields under a button: they're typed once.
 ///
-/// Раскладка — [PlatformPage], как у площадок: знак посреди экрана, статус под
-/// ним, действия внизу. Инструкция с ПК (попап «?») живёт в шторке, поля
-/// ключей приложения прячутся под кнопку «Ключи API» — на телефоне их вводят
-/// один раз, а на виду они только мешают.
-///
-/// Вход двухшаговый, как на ПК: `auth.getToken` → браузер → `auth.getSession`.
-/// Отличие мобилки: возврат из браузера ловится сам
-/// ([WidgetsBindingObserver.didChangeAppLifecycleState]) и молча пробует
-/// добрать сессию — кнопка «Готово» остаётся запасной для случая, когда тихая
-/// проверка не прошла.
+/// Sign-in in two steps through the browser; coming back tries for the session
+/// silently, "Done" is the fallback.
 library;
 
 import 'package:flutter/material.dart';
@@ -18,14 +11,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
-import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_toast.dart';
-import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/platform_logo.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../../lastfm/lastfm_store.dart';
 import 'platform_page.dart';
+import 'settings_rows.dart';
 
 const BrandMark _mark = BrandMark.service(Service.lastfm);
 
@@ -46,8 +38,7 @@ class _LastfmSettingsScreenState extends ConsumerState<LastfmSettingsScreen>
     text: ref.read(lastfmProvider).apiSecret,
   );
 
-  /// Раскрыты ли поля ключей. Без сохранённых ключей войти всё равно нельзя —
-  /// тогда открываем сразу.
+  /// Without saved keys there's no signing in: open at once then.
   late bool _keysOpen = !ref.read(lastfmProvider).hasKeys;
 
   bool _keyVisible = false;
@@ -67,8 +58,8 @@ class _LastfmSettingsScreenState extends ConsumerState<LastfmSettingsScreen>
     super.dispose();
   }
 
-  /// Вернулись из браузера — тихо пробуем добрать сессию. Токен живёт в
-  /// контроллере, поэтому нажимать «Готово» руками обычно не приходится.
+  /// Back from the browser: the controller holds the token, so "Done" is rarely
+  /// needed.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
@@ -130,38 +121,22 @@ class _LastfmSettingsScreenState extends ConsumerState<LastfmSettingsScreen>
       body: s.connected ? _connectedBody(s) : _loginBody(s),
       actions: [
         if (s.connected)
-          BloomButton(
-            label: l.lfmLogout,
-            tone: ButtonTone.plate,
-            pill: false,
-            height: 54,
-            onTap: _logout,
-          )
+          PlatformAction(label: l.lfmLogout, onTap: _logout)
         else ...[
-          // Пока доступ подтверждают в браузере, главной кнопкой становится
-          // «Готово»: вход уже начат, повторно открывать браузер незачем.
+          // The sign-in has started: no need to open the browser again.
           if (s.oauthPending)
-            BloomButton(
+            PlatformAction(
               label: l.lfmDone,
-              tone: ButtonTone.plate,
-              pill: false,
-              height: 54,
               busy: s.busy,
               onTap: () => _finish(),
             ),
-          BloomButton(
+          PlatformAction(
             label: l.lfmLogin,
-            tone: ButtonTone.plate,
-            pill: false,
-            height: 54,
             busy: s.busy && !s.oauthPending,
             onTap: () => ref.read(lastfmProvider.notifier).startOAuth(),
           ),
-          BloomButton(
+          PlatformAction(
             label: _keysOpen ? l.commonHide : l.lfmKeys,
-            tone: ButtonTone.plate,
-            pill: false,
-            height: 54,
             onTap: () => setState(() => _keysOpen = !_keysOpen),
           ),
         ],
@@ -169,22 +144,20 @@ class _LastfmSettingsScreenState extends ConsumerState<LastfmSettingsScreen>
     );
   }
 
-  /// Подключено: два тумблера, как в десктопной карточке.
   Widget _connectedBody(LastfmState s) {
     final l = context.l;
     final controller = ref.read(lastfmProvider.notifier);
-    return SettingsGroupCard(
+    final card = SettingsGroupCard(
       dividerInset: 16,
       rows: [
-        _ToggleRow(
+        SettingsToggleRow(
           title: l.lfmScrobble,
           subtitle: l.lfmScrobbleSub,
           value: s.scrobbleEnabled,
           onChanged: controller.setScrobble,
         ),
-        // Название статуса Last.fm не переводим — это его собственный термин,
-        // на ПК он тоже английский.
-        _ToggleRow(
+        // Last.fm's own term, not translated.
+        SettingsToggleRow(
           title: 'Now Playing',
           subtitle: l.lfmNowPlayingSub,
           value: s.nowPlayingEnabled,
@@ -192,9 +165,21 @@ class _LastfmSettingsScreenState extends ConsumerState<LastfmSettingsScreen>
         ),
       ],
     );
+    if (s.pending == 0) return card;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        card,
+        const SizedBox(height: 10),
+        Text(
+          l.lfmPending(s.pending),
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
+    );
   }
 
-  /// Не подключено: инструкция, поля ключей и подсказка о ходе входа.
   Widget _loginBody(LastfmState s) {
     final l = context.l;
     return Column(
@@ -208,27 +193,25 @@ class _LastfmSettingsScreenState extends ConsumerState<LastfmSettingsScreen>
         ),
         if (_keysOpen) ...[
           const SizedBox(height: 10),
-          _KeyField(
+          PlatformField(
             controller: _key,
             hint: 'API Key',
+            mono: true,
             obscure: !_keyVisible,
-            onToggle: () => setState(() => _keyVisible = !_keyVisible),
+            icon: _keyVisible ? Bi.eye : Bi.eyeClosed,
+            onIcon: () => setState(() => _keyVisible = !_keyVisible),
           ),
           const SizedBox(height: 8),
-          _KeyField(
+          PlatformField(
             controller: _secret,
             hint: 'API Secret',
+            mono: true,
             obscure: !_secretVisible,
-            onToggle: () => setState(() => _secretVisible = !_secretVisible),
+            icon: _secretVisible ? Bi.eye : Bi.eyeClosed,
+            onIcon: () => setState(() => _secretVisible = !_secretVisible),
           ),
           const SizedBox(height: 10),
-          BloomButton(
-            label: l.lfmSaveKeys,
-            tone: ButtonTone.plate,
-            pill: false,
-            height: 48,
-            onTap: _saveKeys,
-          ),
+          PlatformAction(label: l.lfmSaveKeys, height: 48, onTap: _saveKeys),
         ],
         if (s.note case final note?) ...[
           const SizedBox(height: 14),
@@ -237,7 +220,9 @@ class _LastfmSettingsScreenState extends ConsumerState<LastfmSettingsScreen>
               _noteText(l, note),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: note.kind == LfmNoteKind.error
+                color:
+                    note.kind == LfmNoteKind.error ||
+                        note.kind == LfmNoteKind.sessionLost
                     ? context.bloom.danger
                     : context.bloom.text2,
               ),
@@ -249,8 +234,7 @@ class _LastfmSettingsScreenState extends ConsumerState<LastfmSettingsScreen>
   }
 }
 
-/// Типизированная причина → фраза. Тексты площадки (`message`) показываем как
-/// есть — перевести их всё равно нечем.
+/// The service's own texts show as they are.
 String _noteText(AppLocalizations l, LfmNote note) => switch (note.kind) {
   LfmNoteKind.gettingToken => l.lfmGettingToken,
   LfmNoteKind.confirmAccess => l.lfmConfirmAccess,
@@ -260,103 +244,5 @@ String _noteText(AppLocalizations l, LfmNote note) => switch (note.kind) {
   LfmNoteKind.needKeys => l.lfmNeedKeys,
   LfmNoteKind.networkError => l.lfmNetworkError,
   LfmNoteKind.error => l.lfmError(note.message ?? ''),
+  LfmNoteKind.sessionLost => l.lfmSessionLost,
 };
-
-/// Строка с тумблером внутри общей карточки настроек.
-class _ToggleRow extends StatelessWidget {
-  const _ToggleRow({
-    required this.title,
-    required this.subtitle,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String title;
-  final String subtitle;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: theme.titleMedium),
-                const SizedBox(height: 3),
-                Text(subtitle, style: theme.bodySmall),
-              ],
-            ),
-          ),
-          const SizedBox(width: 14),
-          BloomSwitch(value: value, onChanged: onChanged),
-        ],
-      ),
-    );
-  }
-}
-
-/// Поле ключа: моноширинный текст (ключи сверяют посимвольно) и «глаз».
-class _KeyField extends StatelessWidget {
-  const _KeyField({
-    required this.controller,
-    required this.hint,
-    required this.obscure,
-    required this.onToggle,
-  });
-
-  final TextEditingController controller;
-  final String hint;
-  final bool obscure;
-  final VoidCallback onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    return GlassBox(
-      borderRadius: BorderRadius.circular(t.radius),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                obscureText: obscure,
-                autocorrect: false,
-                enableSuggestions: false,
-                cursorColor: t.accent,
-                style: theme.bodyMedium?.copyWith(
-                  color: t.text,
-                  fontFamily: 'monospace',
-                  fontFamilyFallback: const ['Courier'],
-                ),
-                decoration: InputDecoration(
-                  isDense: true,
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 18),
-                  hintText: hint,
-                  hintStyle: theme.bodyMedium?.copyWith(color: t.muted),
-                ),
-              ),
-            ),
-            CircleIconButton(
-              icon: obscure ? Bi.eyeClosed : Bi.eye,
-              size: 48,
-              iconSize: 20,
-              background: Colors.transparent,
-              color: t.muted,
-              onTap: onToggle,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

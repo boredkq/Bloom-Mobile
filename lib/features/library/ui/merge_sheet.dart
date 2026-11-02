@@ -1,13 +1,9 @@
-/// Шторка «Объединить с…»: выбрать плейлисты, из которых собрать новый.
+/// Merge with sheet: picks playlists to build a new one from. A name (filled in
+/// until touched), multi-select of other playlists, Remove duplicates (on by
+/// default), Delete sources (off by default), and a line counting the result.
 ///
-/// Порт десктопной `MergeModal` — тот же состав: имя (подставляется само, пока
-/// его не тронули), мультивыбор остальных плейлистов, «Убрать дубликаты» (по
-/// умолчанию включено) и «Удалить исходные» (по умолчанию нет), плюс строка со
-/// счётом того, что получится.
-///
-/// Сама шторка ничего не создаёт: она возвращает решение, а плейлист собирает
-/// вызывающий — как и «+» библиотеки (`showCreatePlaylistSheet`). Иначе после
-/// создания было бы некуда уйти: навигация живёт снаружи шторки.
+/// The sheet creates nothing: it returns a decision and the caller builds the
+/// playlist, since navigation lives outside the sheet.
 library;
 
 import 'package:flutter/material.dart';
@@ -21,10 +17,9 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
-import '../../../shared/ui/pressable.dart';
 import '../merge.dart';
 
-/// Что человек выбрал в шторке.
+/// What the user picked in the sheet.
 class _MergePlan {
   const _MergePlan({
     required this.name,
@@ -35,14 +30,14 @@ class _MergePlan {
 
   final String name;
 
-  /// Плейлисты, которые подмешиваем к исходному, в порядке выбора.
+  /// Playlists mixed into the source, in pick order.
   final List<String> ids;
 
   final bool dedup;
   final bool deleteSources;
 }
 
-/// Открыть шторку и собрать плейлист по её итогу.
+/// Opens the sheet and builds the playlist from its result.
 Future<void> showMergeSheet(
   BuildContext context,
   WidgetRef ref,
@@ -50,7 +45,7 @@ Future<void> showMergeSheet(
 ) async {
   final messenger = ScaffoldMessenger.of(context);
   final l10n = context.l;
-  // Объединять не с чем — говорим об этом сразу, а не пустой шторкой.
+  // Nothing to merge with: I say so at once rather than an empty sheet.
   final others = _mergeable(ref.read(libraryProvider), source);
   if (others.isEmpty) {
     messenger.toast(l10n.mgNothingToMerge, kind: ToastKind.info);
@@ -59,8 +54,7 @@ Future<void> showMergeSheet(
 
   final plan = await showBloomSheetChild<_MergePlan>(
     context: context,
-    backdrop: source.cover,
-    header: SheetLineHeader(
+    header: SheetHero(
       cover: source.cover,
       title: source.name,
       subtitle: l10n.mgTitle,
@@ -94,9 +88,8 @@ Future<void> showMergeSheet(
   );
 }
 
-/// С чем вообще можно объединять: все плейлисты, кроме самого исходного.
-/// Импортированные альбомы не исключаем — в отличие от «добавить трек», здесь
-/// альбом не правится, а читается.
+/// What can be merged: all playlists but the source itself. Imported albums
+/// stay: unlike adding a track, an album here is read, not edited.
 List<UserPlaylist> _mergeable(LibraryState lib, UserPlaylist source) => [
   for (final pl in lib.playlists)
     if (pl.id != source.id) pl,
@@ -113,12 +106,12 @@ class _MergeBody extends ConsumerStatefulWidget {
 
 class _MergeBodyState extends ConsumerState<_MergeBody> {
   late final TextEditingController _name = TextEditingController(
-    // Имя по умолчанию — как на ПК: «Вечер +». Пока его не тронули, оно
-    // остаётся подсказкой, а не выбором человека.
+    // Default name, the source's plus a sign. Until touched it stays a hint
+    // rather than the user's choice.
     text: '${widget.source.name} +',
   );
 
-  /// Выбранные плейлисты в порядке нажатия: он же и порядок склейки.
+  /// Picked playlists in press order, which is also the merge order.
   final List<String> _picked = [];
 
   bool _dedup = true;
@@ -132,8 +125,8 @@ class _MergeBodyState extends ConsumerState<_MergeBody> {
 
   void _submit() {
     final name = _name.text.trim();
-    // Молча ничего не делать нельзя: галочка нажата, значит человек ждёт
-    // результата — говорим, чего для него не хватает.
+    // Silently doing nothing won't do: the tick was pressed, so the user
+    // expects a result, and I say what's missing.
     if (_picked.isEmpty) {
       ScaffoldMessenger.of(
         context,
@@ -173,64 +166,54 @@ class _MergeBodyState extends ConsumerState<_MergeBody> {
           onChanged: (_) => setState(() {}),
           onSubmit: _submit,
         ),
-        // Счёт того, что получится, — сразу под именем: он меняется от каждой
-        // отметки, и видеть его надо там же, где отмечаешь.
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 2, 20, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  _picked.isEmpty
-                      ? context.l.mgPickHint
-                      : context.l.mgResult(context.l.tracksCount(total)),
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ),
-              if (_dedup && dups > 0)
-                Text(
+        // The result's count right under the name: it changes with each mark,
+        // and should show where you mark.
+        SheetCaption(
+          _picked.isEmpty
+              ? context.l.mgPickHint
+              : context.l.mgResult(context.l.tracksCount(total)),
+          padding: const EdgeInsets.fromLTRB(kSheetEdge, 2, kSheetEdge, 8),
+          trailing: _dedup && dups > 0
+              ? Text(
                   context.l.mgDupsDropped(dups),
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: t.accent),
-                ),
-            ],
-          ),
+                )
+              : null,
         ),
         SheetPanel(
           children: [
-            for (var i = 0; i < others.length; i++) ...[
-              // Текст строки: 12 + обложка 40 + 12.
-              if (i > 0) sheetDivider(indent: 64),
+            for (final other in others)
               _PlaylistRow(
-                playlist: others[i],
-                tracks: lib.tracksOf(others[i]).length,
-                // Номер в порядке склейки полезнее галочки: он объясняет, в
-                // каком порядке треки лягут в новый плейлист.
-                order: _picked.indexOf(others[i].id),
+                playlist: other,
+                tracks: lib.tracksOf(other).length,
+                covers: lib.tracksOf(other).map((track) => track.cover),
+                // The number says in what order the tracks land in the new
+                // playlist, which a tick wouldn't.
+                order: _picked.indexOf(other.id),
                 onTap: () => setState(() {
-                  final id = others[i].id;
-                  if (!_picked.remove(id)) _picked.add(id);
+                  if (!_picked.remove(other.id)) _picked.add(other.id);
                 }),
               ),
-            ],
           ],
         ),
         SheetPanel(
           children: [
-            _SwitchRow(
+            SheetSwitchRow(
               icon: Bi.copy,
               label: context.l.mgDedup,
               value: _dedup,
               onChanged: (v) => setState(() => _dedup = v),
+              padding: const EdgeInsets.all(16),
             ),
-            sheetDivider(),
-            _SwitchRow(
+            SheetSwitchRow(
               icon: Bi.trashBinTrash,
               label: context.l.mgDeleteSources,
               value: _deleteSources,
               danger: true,
               onChanged: (v) => setState(() => _deleteSources = v),
+              padding: const EdgeInsets.all(16),
             ),
           ],
         ),
@@ -243,14 +226,16 @@ class _PlaylistRow extends StatelessWidget {
   const _PlaylistRow({
     required this.playlist,
     required this.tracks,
+    required this.covers,
     required this.order,
     required this.onTap,
   });
 
   final UserPlaylist playlist;
   final int tracks;
+  final Iterable<String?> covers;
 
-  /// Номер в порядке склейки; `-1` — не выбран.
+  /// Number in merge order; `-1` if not picked.
   final int order;
 
   final VoidCallback onTap;
@@ -258,105 +243,16 @@ class _PlaylistRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
     final picked = order >= 0;
 
-    return Pressable(
+    return SheetRow(
+      leading: Cover(url: playlist.cover, size: 40, covers: covers),
+      gap: 12,
+      label: playlist.name,
+      subtitle: context.l.tracksCount(tracks),
+      color: picked ? t.accent : t.text,
+      trailing: picked ? CountBadge(order + 2, height: 24, size: 12) : null,
       onTap: onTap,
-      scale: 0.98,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          children: [
-            Cover(url: playlist.cover, size: 40),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    playlist.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: picked
-                        ? theme.titleMedium?.copyWith(color: t.accent)
-                        : theme.titleMedium,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(context.l.tracksCount(tracks), style: theme.bodySmall),
-                ],
-              ),
-            ),
-            if (picked)
-              Container(
-                width: 24,
-                height: 24,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: t.accent,
-                  shape: BoxShape.circle,
-                ),
-                child: Text(
-                  '${order + 2}',
-                  style: theme.bodySmall?.copyWith(color: t.accentText),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Строка-тумблер шторки. Своя, а не `SwitchListTile`: тот тянет материальные
-/// отступы и палитру, а строка обязана выглядеть как остальные строки блока.
-class _SwitchRow extends StatelessWidget {
-  const _SwitchRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.onChanged,
-    this.danger = false,
-  });
-
-  final BloomGlyph icon;
-  final String label;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  /// Красный, когда включён: «Удалить исходные» — необратимое согласие.
-  final bool danger;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final color = danger && value ? t.danger : t.text;
-
-    return GestureDetector(
-      onTap: () => onChanged(!value),
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        child: Row(
-          children: [
-            BloomIcon(icon, size: 22, color: color),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                label,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(color: color),
-              ),
-            ),
-            BloomSwitch(
-              value: value,
-              onChanged: onChanged,
-              color: danger ? t.danger : null,
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

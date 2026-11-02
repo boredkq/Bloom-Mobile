@@ -1,13 +1,10 @@
-/// Импорт по вставленной ссылке — порт десктопного `importFromUrl.ts`.
+/// Import by a pasted link. Only COLLECTIONS are allowed: a playlist, an album
+/// or a profile's likes. A link to one track or an artist is refused: the track
+/// menu is for that.
 ///
-/// Разрешены только КОЛЛЕКЦИИ: плейлист, альбом и лайки профиля. Ссылка на
-/// одиночный трек или артиста отклоняется — на ПК так же: импортировать «в
-/// плейлист» одну песню незачем, для этого есть меню трека.
-///
-/// Импортированная коллекция становится источником «Обновить треки» — и у
-/// созданного плейлиста, и у того, в который импортировали (привязок может быть
-/// сколько угодно, с разных площадок). Затереть этим ничего нельзя: обновление
-/// только подмешивает новые треки наверх (`refreshPlaylistFromSource`).
+/// An imported collection becomes a Refresh tracks source, both for a created
+/// playlist and one imported into. Nothing can be overwritten: refreshing only
+/// adds new tracks on top.
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,7 +17,7 @@ import '../../core/providers/registry.dart';
 import '../../core/store/library_store.dart';
 import '../../providers/soundcloud/sc_provider.dart' show scLikesOf;
 
-/// Куда импортировать.
+/// Where to import.
 enum ImportTargetKind { create, library, favorites, playlist }
 
 class ImportTarget {
@@ -30,11 +27,11 @@ class ImportTarget {
 
   final ImportTargetKind kind;
 
-  /// id плейлиста для [ImportTargetKind.playlist].
+  /// Playlist id for [ImportTargetKind.playlist].
   final String? playlistId;
 }
 
-/// Что нашлось по ссылке: коллекция как источник и её треки.
+/// What the link resolved to: a collection as a source, and its tracks.
 class ResolvedCollection {
   const ResolvedCollection({required this.source, required this.tracks});
 
@@ -55,21 +52,21 @@ class ImportResult {
 
   final String title;
 
-  /// Сколько треков реально прибавилось (без дублей).
+  /// Tracks really added, with no duplicates.
   final int added;
 
-  /// Сколько треков было в источнике.
+  /// Tracks in the source.
   final int total;
 
-  /// id созданного плейлиста — только для [ImportTargetKind.create].
+  /// Created playlist's id, only for [ImportTargetKind.create].
   final String? createdId;
 }
 
-/// Почему ссылка не импортировалась. Причина, а не готовая фраза: текст знает
-/// только UI, где есть язык интерфейса (`describeImportFailure`).
+/// Why a link didn't import. A reason rather than a phrase: only the UI knows
+/// the language (`describeImportFailure`).
 enum ImportFailure { unrecognized, unsupported, noTracks, playlistGone }
 
-/// Отдельный тип, чтобы не показывать в тосте сырой текст сетевой ошибки.
+/// A separate type, so a toast doesn't show raw network error text.
 class ImportException implements Exception {
   const ImportException(this.reason);
   final ImportFailure reason;
@@ -78,7 +75,7 @@ class ImportException implements Exception {
   String toString() => 'ImportException(${reason.name})';
 }
 
-/// Причина отказа импорта — фразой.
+/// An import failure's reason as a phrase.
 String describeImportFailure(AppLocalizations l, ImportFailure reason) =>
     switch (reason) {
       ImportFailure.unrecognized => l.iuUnrecognized,
@@ -95,7 +92,7 @@ String importResultText(AppLocalizations l, ImportResult r) =>
     ? l.cpAllAlreadyIn
     : l.cpAdded(r.added);
 
-/// Резолв ссылки в набор треков. Общая точка для импорта и «обновить треки».
+/// Resolves a link to a set of tracks, for import and Refresh tracks.
 Future<ResolvedCollection> resolveCollectionUrl(
   ProviderRegistry registry,
   String url,
@@ -120,7 +117,7 @@ Future<ResolvedCollection> resolveCollectionUrl(
   if (content == null) {
     throw const ImportException(ImportFailure.unrecognized);
   }
-  // Название и обложку страница знает лучше, чем ссылка.
+  // The page knows title and cover better than the link.
   final page = content.playlist;
   return ResolvedCollection(
     source: PlSourceRef.of(set).copyWith(
@@ -133,9 +130,8 @@ Future<ResolvedCollection> resolveCollectionUrl(
   );
 }
 
-/// Треки привязанной коллекции — по её id у её площадки, как на ПК
-/// (`Provider::collection`). `null` — площадки нет, она выключена или
-/// коллекция не нашлась.
+/// A tied collection's tracks, by its id on its platform. `null` if the
+/// platform is missing or off, or the collection wasn't found.
 Future<List<Track>?> fetchSource(
   ProviderRegistry registry,
   PlSourceRef source,
@@ -148,7 +144,7 @@ Future<List<Track>?> fetchSource(
   return content?.tracks;
 }
 
-/// Импортировать ссылку в выбранную цель. Обёртка для UI.
+/// Imports a link into the chosen target; a wrapper for the UI.
 Future<ImportResult> importFromUrl(
   WidgetRef ref,
   String url,
@@ -161,8 +157,8 @@ Future<ImportResult> importFromUrl(
   target,
 );
 
-/// То же самое без Riverpod-обвязки: реестр, контроллер и чтение состояния
-/// приходят снаружи. Так импорт зовётся и из тестов.
+/// The same with no Riverpod: registry, controller and state reads come from
+/// outside, so tests can call it too.
 Future<ImportResult> importUrlInto(
   ProviderRegistry registry,
   LibraryController library,

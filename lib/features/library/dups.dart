@@ -1,33 +1,30 @@
-/// «Найти дубли» — один и тот же трек, попавший в список дважды.
+/// Find duplicates: one track in a list twice. Grouped by normalized title and
+/// artist, with one-track groups dropped. Within a group the one worth keeping
+/// comes first: has a cover, then played more, then added earlier. The rest are
+/// extra copies.
 ///
-/// Порт десктопных `computeDupGroups`/`sortGroup` из `LibTracklist`: группируем
-/// по нормализованным названию и артисту, группы из одного трека выбрасываем.
-/// Внутри группы первым идёт тот, кого стоит оставить: с обложкой → чаще
-/// слушали (свои прослушивания из журнала, как `Library::dupGroups` ПК) →
-/// раньше добавлен. Всё остальное в группе — лишние копии.
-///
-/// Режим включается из меню плейлиста и живёт в сторе, а не в состоянии экрана:
-/// зовут его из шторки, а показывает список, и общаться им больше не через что.
+/// The mode lives in a store, not screen state: a sheet turns it on and the
+/// list shows it.
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/entities/entities.dart';
 
-/// Ключ, по которому треки считаются одним и тем же: регистр и лишние пробелы
-/// не в счёт. Умышленно грубо — это поиск дублей внутри одного списка, а не
-/// сопоставление площадок (для того есть матчер).
+/// The key by which tracks count as one: case and extra spaces don't matter.
+/// Rough on purpose: this searches within one list, not across platforms, which
+/// is the matcher's job.
 String dupKey(Track track) => '${_norm(track.name)}|||${_norm(track.artist)}';
 
 String _norm(String s) =>
     s.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
 
-/// Группы дублей в [pool], каждая — от «оставить» к лишним. Порядок групп — как
-/// первое появление трека в списке: так они стоят там же, где человек их видел.
+/// Duplicate groups in [pool], each from keep to extras. Groups go in order of
+/// a track's first appearance, standing where the user saw them.
 ///
-/// [plays] — сколько раз слушали трек (`PlayStats.playCount`). [addedAt] —
-/// когда трек попал в библиотеку (`LibraryState.inLib`): при прочих равных
-/// оставляем ту копию, что появилась раньше.
+/// [plays] is the play count (`PlayStats.playCount`). [addedAt] is when a track
+/// entered the library (`LibraryState.inLib`): all else equal, the earlier copy
+/// stays.
 List<List<Track>> dupGroups(
   List<Track> pool, {
   int Function(String id)? plays,
@@ -43,8 +40,7 @@ List<List<Track>> dupGroups(
   ];
 }
 
-/// Порядок внутри группы: с обложкой → больше прослушиваний → добавлен раньше.
-/// Первый — тот, кого оставляем.
+/// Order in a group: has a cover, more plays, added earlier. The first stays.
 List<Track> sortDupGroup(
   List<Track> group, {
   int Function(String id)? plays,
@@ -63,12 +59,12 @@ List<Track> sortDupGroup(
   return sorted;
 }
 
-/// Лишние копии — всё, кроме первого в каждой группе.
+/// Extra copies: all but the first in each group.
 List<Track> extraDups(List<List<Track>> groups) => [
   for (final group in groups) ...group.skip(1),
 ];
 
-/// В каком списке сейчас включён режим дублей. `null` — ни в каком.
+/// Which list has duplicates mode on; `null` for none.
 final dupsProvider = NotifierProvider<DupsController, String?>(
   DupsController.new,
 );

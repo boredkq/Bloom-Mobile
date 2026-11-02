@@ -1,14 +1,9 @@
-/// Tuning the wave (a long press on its stage), as `WaveMenu` on the PC: the
-/// platform and the way into the dislikes.
+/// Tuning the wave (a long press on its stage): the platform and the way into
+/// the dislikes.
 ///
-/// Заголовка строкой нет: шторку открывают жестом с самой волны, и подписывать
-/// её нечем — плитки и «Дизлайки» говорят за себя.
-///
-/// Отличие от ПК: переключатель площадки показывается ВСЕГДА, а не только
-/// после входа в Яндекс. Спрятанный целиком, он выглядит так, будто выбора
-/// нет вовсе — на десктопе рядом стоят настройки интеграций и это заметно, а
-/// здесь единственная строка «Дизлайки» ничего не объясняет. Поэтому плитка
-/// Яндекса без входа просто гаснет и по тапу говорит, куда идти.
+/// The platform switch ALWAYS shows, not only after Yandex login: hidden whole,
+/// it looks as if there's no choice. So with no login the Yandex tile dims and
+/// says on tap where to go.
 library;
 
 import 'package:flutter/material.dart';
@@ -27,9 +22,7 @@ import '../../../shared/ui/pressable.dart';
 import '../wave_store.dart';
 import 'wave_dislikes_sheet.dart';
 
-/// Шторка без обложки — как пикер скорости: сплошной фон, ручка и заголовок
-/// строкой. Меню трека с размытой обложкой здесь не подходит, картинки у волны
-/// нет.
+/// A sheet with no cover and a solid background: the wave has no picture.
 void showWaveTuneSheet(BuildContext context) =>
     showBloomModal<void>(context: context, builder: (_) => const _TuneSheet());
 
@@ -41,72 +34,72 @@ class _TuneSheet extends ConsumerWidget {
     final t = context.bloom;
     final source = ref.watch(waveStoreProvider).source;
     final dislikes = ref.watch(waveStoreProvider).dislikes.length;
-    // Именно через провайдер, а не `ym.activeToken()`: модульное состояние не
-    // реактивно, и после входа шторка осталась бы с погашенной плиткой.
+    // Through the provider, not `ym.activeToken()`: module state isn't
+    // reactive, and after login the sheet would keep a dimmed tile.
     final ymAuthed = ref.watch(ymAuthProvider).authed;
 
-    return ClipRRect(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(t.radius * 1.7)),
-      child: SheetSurface(
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SheetHandle(),
-              // Плитки лежат прямо на шторке, без подложки и подписи: что это
-              // выбор площадки, видно по самим логотипам.
-              Padding(
-                // Боковой край — как у блока «Дизлайки» ниже, иначе плитки
-                // вылезают за его границы.
-                padding: const EdgeInsets.fromLTRB(
-                  kSheetEdge,
-                  12,
-                  kSheetEdge,
-                  10,
-                ),
-                child: Row(
-                  children: [
-                    for (final s in kWaveSources) ...[
-                      if (s != kWaveSources.first) const SizedBox(width: 10),
-                      Expanded(
-                        child: _SourceTile(
-                          source: s,
-                          label: s.label10n(context.l),
-                          selected:
-                              source == s &&
-                              (s != MusicSource.yandex || ymAuthed),
-                          enabled: s != MusicSource.yandex || ymAuthed,
-                          // Без аккаунта Яндекса выбирать нечего, но и молчать
-                          // нельзя — говорим, куда идти за входом.
-                          onTap: s == MusicSource.yandex && !ymAuthed
-                              ? () => showToast(
-                                  context,
-                                  context.l.waveToastYmNoAuth,
-                                  kind: ToastKind.warn,
-                                )
-                              : () => _pick(ref, s),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              SheetPanel(
-                children: [
-                  _DislikesRow(
-                    count: dislikes,
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      showWaveDislikesSheet(context);
-                    },
+    return SheetShell(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Tiles lie right on the sheet with no plate or caption: the logos
+          // say it's a platform choice.
+          Padding(
+            // Side margin as on the dislikes block below, or tiles pass its
+            // edges.
+            padding: const EdgeInsets.fromLTRB(kSheetEdge, 12, kSheetEdge, 10),
+            child: Row(
+              children: [
+                for (final s in kWaveSources) ...[
+                  if (s != kWaveSources.first) const SizedBox(width: 10),
+                  Expanded(
+                    child: _SourceTile(
+                      source: s,
+                      label: s.label10n(context.l),
+                      selected:
+                          source == s && (s != MusicSource.yandex || ymAuthed),
+                      enabled: s != MusicSource.yandex || ymAuthed,
+                      // With no Yandex account there's nothing to choose, but
+                      // silence won't do: I say where to log in.
+                      onTap: s == MusicSource.yandex && !ymAuthed
+                          ? () => showToast(
+                              context,
+                              context.l.waveToastYmNoAuth,
+                              kind: ToastKind.warn,
+                            )
+                          : () => _pick(ref, s),
+                    ),
                   ),
                 ],
+              ],
+            ),
+          ),
+          SheetPanel(
+            children: [
+              SheetRow(
+                icon: Bi.dislike,
+                label: context.l.waveDislikes,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '$dislikes',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(color: t.muted),
+                    ),
+                    const SizedBox(width: 6),
+                    BloomIcon(Bi.altArrowRight, size: 18, color: t.muted),
+                  ],
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  showWaveDislikesSheet(context);
+                },
               ),
-              const SizedBox(height: 8),
             ],
           ),
-        ),
+        ],
       ),
     );
   }
@@ -115,9 +108,9 @@ class _TuneSheet extends ConsumerWidget {
       ref.read(waveStoreProvider.notifier).setSource(source);
 }
 
-/// Плитка площадки: логотип и ОБВОДКА в её фирменном цвете, а не в акценте
-/// темы. Заливки нет — выбранная отличается тем, что рамка горит в полную силу,
-/// а у остальных тот же цвет еле виден.
+/// Platform tile: a logo and OUTLINE in its brand colour, not the theme's
+/// accent. No fill: the selected one's frame burns at full strength, others
+/// barely show the same colour.
 class _SourceTile extends StatelessWidget {
   const _SourceTile({
     required this.source,
@@ -132,8 +125,8 @@ class _SourceTile extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  /// Площадка доступна. Выключенная гаснет, но тап ловит — чтобы объяснить,
-  /// почему она недоступна.
+  /// The platform is available. A disabled one dims but catches taps, to
+  /// explain why.
   final bool enabled;
 
   @override
@@ -143,8 +136,8 @@ class _SourceTile extends StatelessWidget {
     final tile = Pressable(
       onTap: onTap,
       child: Material(
-        // Заливки нет ни у выбранной, ни у остальных: фирменный цвет здесь
-        // только в обводке и логотипе.
+        // No fill for selected or others: brand colour is only in the outline
+        // and logo.
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(t.radius * 0.8),
         clipBehavior: Clip.antiAlias,
@@ -176,44 +169,5 @@ class _SourceTile extends StatelessWidget {
       ),
     );
     return enabled ? tile : Opacity(opacity: 0.45, child: tile);
-  }
-}
-
-class _DislikesRow extends StatelessWidget {
-  const _DislikesRow({required this.count, required this.onTap});
-
-  final int count;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Pressable(
-      onTap: onTap,
-      scale: 0.98,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-        child: Row(
-          children: [
-            BloomIcon(Bi.dislike, size: 22, color: t.text),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                context.l.waveDislikes,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-            Text(
-              '$count',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: t.muted),
-            ),
-            const SizedBox(width: 6),
-            BloomIcon(Bi.altArrowRight, size: 18, color: t.muted),
-          ],
-        ),
-      ),
-    );
   }
 }

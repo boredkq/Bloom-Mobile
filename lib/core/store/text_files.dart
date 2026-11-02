@@ -1,26 +1,23 @@
-/// Системные диалоги «сохранить текст файлом» и «открыть текстовый файл».
+/// System dialogs for saving text as a file and opening a text file. My own
+/// `MethodChannel`, as with notifications and downloads: no package for one
+/// system screen per side.
 ///
-/// На десктопе это команды Rust с нативным диалогом; здесь — свой
-/// `MethodChannel`, как у уведомлений и скачивания. Пакета ради этого не тянем:
-/// обе стороны — по одному системному экрану.
+/// Android uses SAF (`ACTION_CREATE_DOCUMENT`, `ACTION_OPEN_DOCUMENT`): the
+/// user picks the place, with no storage permission needed. iOS uses
+/// `UIDocumentPicker`.
 ///
-/// Android — SAF (`ACTION_CREATE_DOCUMENT` / `ACTION_OPEN_DOCUMENT`): человек
-/// сам выбирает, куда положить и откуда взять, и разрешений на память для
-/// этого не нужно. iOS — `UIDocumentPicker`, тот же смысл.
+/// `null` or `false` means the dialog was closed, not an error.
 ///
-/// `null`/`false` в ответе означают «диалог закрыли», а не ошибку: на десктопе
-/// отмена точно так же тихая.
-///
-/// Пользователей у этой пары трое: пресеты кастомизации (`.bloompresets`),
-/// перенос плейлистов (`.bloomplaylist`) и выгрузка журнала работы.
+/// Three users: customization presets (`.bloompresets`), playlist transfer
+/// (`.bloomplaylist`) and log export.
 library;
 
 import 'package:flutter/services.dart';
 
 const MethodChannel _channel = MethodChannel('bloom/files');
 
-/// Предложить сохранить текст файлом. `true` — файл записан, `false` —
-/// отменили или не вышло.
+/// Offers to save text as a file. `true` if written, `false` if cancelled or
+/// failed.
 Future<bool> saveTextFile(
   String filename,
   String content, {
@@ -30,21 +27,20 @@ Future<bool> saveTextFile(
     final ok = await _channel.invokeMethod<bool>('saveText', {
       'filename': filename,
       'content': content,
-      // Своих типов у `.bloompresets`/`.bloomplaylist` нет; `application/json`
-      // заставляет системный выбор папки предлагать разумное место, а не
-      // «двоичное».
+      // `.bloompresets` and `.bloomplaylist` have no types of their own;
+      // `application/json` makes the system's folder picker offer a sensible
+      // place.
       'mime': mime,
     });
     return ok ?? false;
   } on PlatformException {
     return false;
   } on MissingPluginException {
-    return false; // платформа без нативной стороны (тесты, десктоп)
+    return false; // a platform with no native side (tests)
   }
 }
 
-/// Дать выбрать файл и прочитать его. `null` — отменили или прочитать не
-/// вышло.
+/// Lets the user pick a file and reads it. `null` if cancelled or unreadable.
 Future<String?> openTextFile() async {
   try {
     return await _channel.invokeMethod<String>('openText');
@@ -55,13 +51,10 @@ Future<String?> openTextFile() async {
   }
 }
 
-/// Имя и версия сборки — строка «Версия v1.0.0 (сборка 12)» в «О приложении».
+/// App name and build, for the version row in About. Native rather than a
+/// package: one manifest read per side, not worth a dependency.
 ///
-/// Нативно, а не пакетом `package_info_plus`: обе стороны — одно чтение
-/// манифеста, и ради него тянуть зависимость незачем (так же сделаны
-/// уведомления, скачивание и чтение тегов).
-///
-/// `null` — платформа не ответила (тесты, десктоп).
+/// `null`: the platform didn't answer (tests).
 Future<({String version, String build})?> appVersion() async {
   final info = await _appInfo();
   final version = info?['version'];
@@ -69,8 +62,8 @@ Future<({String version, String build})?> appVersion() async {
   return (version: version, build: '${info?['build'] ?? ''}');
 }
 
-/// Как зовут телефон — для списка подключённых устройств на ПК. Тот же ответ
-/// платформы, что [appVersion]; `null` — она не ответила.
+/// The phone's name, for the computer's list of connected devices. The same
+/// platform answer as [appVersion]; `null` if it didn't answer.
 Future<String?> deviceName() async {
   final name = (await _appInfo())?['device'];
   return name is String && name.trim().isNotEmpty ? name.trim() : null;

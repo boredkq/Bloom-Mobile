@@ -1,30 +1,23 @@
-/// Тип слайдера прогресса — порт `sliderType` из десктопного
-/// `settings/model/playerViewStore.ts`. Рисовку там задаёт
-/// `shared/styles/sliders-telemetry.css` (`body.slider-thin/-ios/-wave`), узор
-/// волны считает `features/player/lib/waveSlider.ts`.
-///
-/// Пятого десктопного типа — `cover` — здесь нет: на ПК он только красит
-/// заливку акцентом, а само фото пуговки на телефоне живёт отдельной настройкой
-/// в «Кастомизации» (`CustomCtx.slider`) и показывается при любом типе, кроме
-/// волны, — ровно как на ПК.
+/// Progress slider type. A custom knob picture is a separate customization
+/// setting, shown with any type except wave.
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/store/json_store.dart' show jsonStoreProvider;
 
-/// Вид полосы прогресса в полноэкранном плеере.
+/// Progress bar look in the full player.
 enum SliderStyle {
-  /// Дорожка 5 px без пуговки — то, что было до настройки.
+  /// A 5 px track with no knob.
   standard,
 
-  /// Волосяная дорожка с круглой пуговкой.
+  /// A hairline track with a round knob.
   thin,
 
-  /// Два капсульных сегмента с прозрачным зазором и вертикальной каплей.
+  /// Two capsule segments with a clear gap and a vertical drop.
   ios,
 
-  /// Столбики-волна вместо дорожки.
+  /// Wave bars instead of a track.
   wave,
 }
 
@@ -40,8 +33,8 @@ class SliderStyleController extends Notifier<SliderStyle> {
     for (final style in SliderStyle.values) {
       if (style.name == raw) return style;
     }
-    // Незнакомую запись (правили файл руками, откат на старую сборку) молча
-    // заменяем умолчанием: вид слайдера не повод ронять запуск.
+    // An unknown entry silently becomes the default: a slider's look is no
+    // reason to crash a launch.
     return SliderStyle.standard;
   }
 

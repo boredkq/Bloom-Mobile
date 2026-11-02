@@ -8,8 +8,9 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/store/cover_store.dart';
 import '../../../shared/ui/bloom_icon.dart';
-import '../../../shared/ui/bloom_mark.dart';
+
 import '../../../shared/ui/cover_collage.dart';
+import '../../../shared/ui/atoms.dart';
 
 /// The icon of a built-in list ("all", "fav", "history"); null for a playlist.
 BloomGlyph? systemListGlyph(String id) => switch (id) {
@@ -89,17 +90,12 @@ class ListHeroBackground extends StatelessWidget {
       return Image(
         image: image,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _empty(t),
+        errorBuilder: (_, _, _) => const BannerEmpty(),
       );
     }
     return CoverCollage(
       covers: tracks.map((track) => track.cover),
-      fallback: _empty(t),
+      fallback: const BannerEmpty(),
     );
   }
-
-  Widget _empty(BloomTokens t) => ColoredBox(
-    color: t.coverEmpty,
-    child: Center(child: BloomMark(size: 96, color: t.text, opacity: 0.16)),
-  );
 }

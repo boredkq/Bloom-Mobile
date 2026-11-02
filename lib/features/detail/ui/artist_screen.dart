@@ -17,7 +17,6 @@ import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/providers/music_provider.dart';
 import '../../../core/store/library_store.dart';
-import '../../../features/customization/ui/app_background.dart';
 import '../../../features/library/import_url.dart';
 import '../../../features/player/play_source.dart';
 import '../../../features/player/player_controller.dart';
@@ -255,7 +254,6 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
     final artist = _artist;
     final canPlay = _main.isNotEmpty;
 
@@ -269,11 +267,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
       const SliverBottomBarsInset(extra: 16),
     ];
 
-    return Scaffold(
-      // A background picture may lie under the page: then no fill of its own.
-      backgroundColor: ref.watch(backgroundOnProvider)
-          ? Colors.transparent
-          : t.bg,
+    return BloomPage(
       body: _tracksView
           ? _allTracks(rows)
           : CustomScrollView(
@@ -304,7 +298,13 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
                 if (_loading)
                   const SliverToBoxAdapter(child: DetailSkeleton(artist: true))
                 else if (_error case final message?)
-                  SliverToBoxAdapter(child: DetailError(message))
+                  SliverToBoxAdapter(
+                    child: CenterNote(
+                      message,
+                      color: context.bloom.danger,
+                      padding: const EdgeInsets.all(24),
+                    ),
+                  )
                 else ...[
                   SliverList.list(children: _sections()),
                   if (_profile) ...rows,
@@ -318,23 +318,10 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
 
   /// All of the artist's tracks: no header, only "back" and the title over
   /// the rows.
-  Widget _allTracks(List<Widget> rows) => SafeArea(
-    bottom: false,
-    child: Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-          child: SubPageHeader(
-            title: context.l.commonTracks,
-            onBack: () => Navigator.of(context).maybePop(),
-          ),
-        ),
-        const SizedBox(height: 10),
-        Expanded(
-          child: CustomScrollView(controller: _scroll, slivers: rows),
-        ),
-      ],
-    ),
+  Widget _allTracks(List<Widget> rows) => SubPage(
+    title: context.l.commonTracks,
+    onBack: () => Navigator.of(context).maybePop(),
+    child: CustomScrollView(controller: _scroll, slivers: rows),
   );
 
   List<Widget> _sections() {
@@ -385,7 +372,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
       ],
       if (_profile && _tracks.isNotEmpty) SectionTitle(l.artistLikes, side: 8),
       if (!_profile && _top.isEmpty && _tracks.isEmpty && data.albums.isEmpty)
-        DetailEmpty(l.artistNoTracks),
+        CenterNote(l.artistNoTracks),
     ];
   }
 
@@ -395,7 +382,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
     }
     final bare = _tracksView || (_profile && _data!.playlists.isEmpty);
     return bare && _tracks.isEmpty
-        ? DetailEmpty(context.l.setNoTracks)
+        ? CenterNote(context.l.setNoTracks)
         : const SizedBox.shrink();
   }
 
@@ -406,48 +393,49 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
 
     await showBloomSheet(
       context: context,
-      backdrop: artist.avatar,
-      header: SheetLineHeader(
+      header: SheetHero(
         cover: artist.avatar,
         title: artist.name,
         subtitle: _stats(),
-        circle: true,
       ),
+      bar: [
+        SheetAction(
+          icon: Bi.playBold,
+          label: context.l.commonPlay,
+          onTap: canPlay ? _play : null,
+        ),
+        SheetAction(
+          icon: Bi.shuffle,
+          label: context.l.commonShuffle,
+          onTap: canPlay ? _shuffle : null,
+        ),
+        ...queueSheetActions(context, ref, _main, source: _source),
+      ],
       groups: [
         [
-          SheetAction(
-            icon: Bi.playBold,
-            label: context.l.commonPlay,
-            onTap: canPlay ? _play : null,
-          ),
-          SheetAction(
-            icon: Bi.shuffle,
-            label: context.l.commonShuffle,
-            onTap: canPlay ? _shuffle : null,
-          ),
-          ...queueSheetActions(context, ref, _main, source: _source),
           // Yandex has the artist's own station; elsewhere I pick from the
           // tracks the page has loaded.
           if (!_profile && canStartWaveFromArtist(ref, artist, seeds))
             SheetAction(
               icon: Bi.soundwave,
               label: context.l.waveFromArtist,
+              subtitle: context.l.waveFromArtistHint,
               onTap: () =>
                   startWaveFromArtist(context, ref, artist, seedTracks: seeds),
             ),
-        ],
-        [
           if (!_profile)
             SheetAction(
               icon: following ? Bi.check : Bi.user,
               label: following
                   ? context.l.commonUnfollow
                   : context.l.commonFollow,
+              subtitle: following ? null : context.l.commonFollowHint,
               onTap: () => toggleFollow(context, ref, artist),
             ),
           SheetAction(
             icon: Bi.import,
             label: context.l.artistImport,
+            subtitle: context.l.artistImportHint,
             onTap: canPlay ? () => _import(artist) : null,
           ),
         ],
@@ -463,7 +451,6 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
       context,
       title: likes?.title ?? artist.name,
       cover: artist.avatar,
-      circle: true,
     );
     if (target == null || !mounted) return;
     final messenger = ScaffoldMessenger.of(context);

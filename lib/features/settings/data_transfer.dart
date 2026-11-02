@@ -1,15 +1,11 @@
-/// Перенос плейлистов файлом `.bloomplaylist` — «Настройки → Система →
-/// Импорт/экспорт» и меню плейлиста.
+/// Playlists to a `.bloomplaylist` file and back: `{bloom: "playlist", version:
+/// 2, exportedAt, playlists, tracks}`, a playlist is `{name, description,
+/// sources, cover | coverData, tracks: [id…]}`, a track is its database row
+/// ([Track.toJson]). One's own cover goes inside as base64: its file exists
+/// only on this device.
 ///
-/// Формат — новой версии ПК (`PlaylistFile`), один на обе стороны:
-///   `{bloom: "playlist", version: 2, exportedAt, playlists, tracks}`,
-/// плейлист — `{name, description, sources, cover | coverData, tracks: [id…]}`,
-/// трек — ровно строка базы ([Track.toJson]). Своя обложка едет внутри
-/// (`coverData`, base64 файла): её файл есть только на этом устройстве.
-///
-/// Импорт заводит плейлисты заново, с новыми id, и не сливает с одноимёнными:
-/// у файла и у библиотеки свои истории правок. Свои файлы (`lf:`) на другой
-/// стороне не заиграют — их трек приходит одними сведениями, как и на ПК.
+/// Import makes new playlists with new ids and doesn't merge with ones of the
+/// same name: the file and the library have their own histories.
 library;
 
 import 'dart:convert';
@@ -20,23 +16,20 @@ import '../../core/entities/entities.dart';
 import '../../core/store/cover_store.dart';
 import '../../core/store/library_store.dart';
 
-/// Расширение файла переноса — то же, что на ПК.
 const String kPlaylistExt = 'bloomplaylist';
 
-/// Метка «это файл Bloom» и версия формата — как `kMark`/`kVersion` ПК. У
-/// файлов старого Bloom метки не было.
+/// "This is Bloom's file" and the format's version.
 const String _mark = 'playlist';
 const int kBundleVersion = 2;
 
-/// Чем кончился импорт файла.
 enum ImportFailure {
-  /// Не файл плейлиста Bloom.
+  /// Not a Bloom playlist file.
   bad,
 
-  /// Файл старого Bloom — его формат не читается.
+  /// An older Bloom's file: that format isn't read.
   oldFormat,
 
-  /// Файл более новой версии — обновить приложение.
+  /// From a newer version: update the app.
   newer,
 }
 
@@ -48,17 +41,16 @@ class ImportResult {
 
   final int playlists;
 
-  /// Сколько треков пришло в библиотеку впервые.
+  /// How many came into the library for the first time.
   final int tracks;
   final ImportFailure? failure;
 }
 
-/// Все плейлисты — текст файла для выгрузки.
+/// All playlists, as the file's text.
 Future<String> buildExportAllBundle(LibraryState lib, {DateTime? at}) =>
     _bundle(lib.playlists, lib, at);
 
-/// Один плейлист — «Экспорт плейлиста» из его меню. Формат тот же: файл на
-/// один плейлист читается тем же импортом.
+/// One playlist; the same import reads it.
 Future<String> buildExportBundle(
   UserPlaylist playlist,
   LibraryState lib, {
@@ -79,7 +71,7 @@ Future<String> _bundle(
       ids.add(t.id);
       if (!seen.add(t.id)) continue;
       final m = t.toJson();
-      // Своя обложка трека — файл этого устройства: там она ничего не значит.
+      // A track's own cover is a file of this device: means nothing elsewhere.
       if (isLocalCover(t.cover)) m['cover'] = '';
       tracks.add(m);
     }
@@ -100,7 +92,7 @@ Future<String> _bundle(
   });
 }
 
-/// Обложка плейлиста для файла: своя — внутрь (`coverData`), ссылка — как есть.
+/// One's own goes inside (`coverData`), a link as it is.
 Future<Map<String, dynamic>> _coverOut(String? cover) async {
   if (cover == null || cover.isEmpty) return const {};
   if (!isLocalCover(cover)) return {'cover': cover};
@@ -109,19 +101,18 @@ Future<Map<String, dynamic>> _coverOut(String? cover) async {
   try {
     return {'coverData': base64Encode(await File(path).readAsBytes())};
   } catch (_) {
-    // Файла уже нет — уезжаем без обложки.
+    // The file is gone: without a cover then.
     return const {};
   }
 }
 
-/// Имя файла для выгрузки одного плейлиста — как `PlaylistFile::fileName`.
 String playlistFileName(String name) {
   var safe = name.trim().replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1f]'), '_');
   if (safe.length > 80) safe = safe.substring(0, 80);
   return '${safe.isEmpty ? 'playlist' : safe}.$kPlaylistExt';
 }
 
-/// Разобрать файл и завести из него плейлисты.
+/// Parses a file and makes its playlists.
 Future<ImportResult> importPlaylistBundle(
   String content,
   LibraryState lib,
@@ -179,8 +170,8 @@ Future<ImportResult> importPlaylistBundle(
   return ImportResult(playlists: made, tracks: fresh.length);
 }
 
-/// Обложка из файла: картинка внутри ложится своим файлом, ссылка — как есть.
-/// `null` — не беда: плейлист нарисуется коллажем своих треков.
+/// A picture inside becomes a file of its own, a link stays. `null` is fine: a
+/// collage of its tracks shows.
 Future<String?> _coverIn(Map raw) async {
   final data = raw['coverData'];
   if (data is String && data.isNotEmpty) {
@@ -195,7 +186,7 @@ Future<String?> _coverIn(Map raw) async {
   return cover is String && cover.isNotEmpty ? cover : null;
 }
 
-/// Расширение по первым байтам: имя файла — только ради честности.
+/// By the first bytes: the name is just for honesty.
 String _extOf(Uint8List b) {
   if (b.length > 3 && b[0] == 0x89 && b[1] == 0x50) return 'png';
   if (b.length > 3 && b[0] == 0x47 && b[1] == 0x49) return 'gif';

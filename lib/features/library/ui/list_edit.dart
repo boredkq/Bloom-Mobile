@@ -1,16 +1,14 @@
-/// Режим правки списка библиотеки: чекбоксы у строк, перетаскивание, нижняя
-/// панель действий над выделением, правка имени и обложки плейлиста.
+/// A library list's edit mode: checkboxes on rows, dragging, a bottom action
+/// bar over the selection, editing a playlist's name and cover.
 ///
-/// Всё, что меняет САМ список — состав, порядок, имя, обложку, источники
-/// обновления, — копится в черновике и записывается разом по ✓; ✕ выбрасывает
-/// черновик целиком. А вот «в плейлист» и «в любимые» пишут в ДРУГИЕ списки, и
-/// откатывать их этим ✕ было бы нечем — они применяются сразу.
+/// What changes the list ITSELF (contents, order, name, cover, refresh sources)
+/// gathers in a draft and writes at once on ✓; ✕ throws out the whole draft. To
+/// playlist and to favourites write to OTHER lists, which ✕ couldn't undo, so
+/// they apply at once.
 ///
-/// Что значит «убрать» — зависит от списка: из плейлиста трек просто уходит, из
-/// «Любимых» снимается лайк, из «Истории» строка прячется (прослушивания в
-/// журнале остаются), а из «Всех треков»
-/// он удаляется НАСКВОЗЬ (как пункт «Удалить трек»), поэтому там перед записью
-/// ещё и переспрашиваем.
+/// Remove depends on the list: from a playlist the track just leaves, from
+/// favourites the like goes, and from all tracks it's deleted THROUGHOUT, so
+/// that asks again before writing.
 library;
 
 import 'dart:async';
@@ -46,19 +44,19 @@ class ListEditor extends ConsumerStatefulWidget {
     required this.onClose,
   });
 
-  /// `all` / `fav` либо id пользовательского плейлиста.
+  /// `all`, `fav` or a user playlist's id.
   final String listId;
 
   final String title;
 
-  /// `null` — встроенный раздел: имя и обложка у него не правятся.
+  /// `null` for a built-in section: its name and cover can't be edited.
   final UserPlaylist? playlist;
 
-  /// Исходный состав в его собственном порядке — БЕЗ поиска и сортировки:
-  /// править половину списка, да ещё и не в том порядке, нельзя.
+  /// Source contents in its own order, with NO search or sort: editing half a
+  /// list, and in the wrong order, makes no sense.
   final List<Track> tracks;
 
-  /// Выйти из режима правки — и по ✓, и по ✕.
+  /// Leaves edit mode, by ✓ and by ✕.
   final VoidCallback onClose;
 
   @override
@@ -75,18 +73,17 @@ class _ListEditorState extends ConsumerState<ListEditor> {
 
   final Set<String> _selected = {};
 
-  /// Идёт правка названия — нижняя панель на это время становится полем ввода.
+  /// The title is being edited: the bottom bar becomes an input for now.
   bool _renaming = false;
 
-  /// ✕ по черновику спрашивает вторым нажатием — как очистка статистики в
-  /// профиле: модалок в приложении нет.
+  /// ✕ on a draft asks with a second press: the app has no modals for this.
   bool _armedCancel = false;
 
-  /// ✓ спрашивает так же, но только во «Всех треках» и только если из списка
-  /// что-то убрали: там это удаление насквозь.
+  /// ✓ asks the same way, only in all tracks and only if something was removed:
+  /// there it's a delete throughout.
   bool _armedPurge = false;
 
-  /// Трек, который тянут прямо сейчас. `null` — не тянут.
+  /// The track being dragged right now; `null` if none.
   String? _dragId;
 
   UserPlaylist? get _playlist => widget.playlist;
@@ -101,21 +98,21 @@ class _ListEditorState extends ConsumerState<ListEditor> {
   bool get _allSelected =>
       _tracks.isNotEmpty && _selected.length == _tracks.length;
 
-  /// Сколько строк уедет текущим перетаскиванием: тянут выделенную — весь
-  /// блок, любую другую — её одну.
+  /// How many rows this drag moves: a selected row carries the whole block, any
+  /// other just itself.
   int get _dragGroup {
     final id = _dragId;
     return id != null && _selected.contains(id) ? _selected.length : 1;
   }
 
-  /// Строка едет вместе с блоком, но прокси у списка ровно один, и под пальцем
-  /// её нет.
+  /// The row moves with the block, but the list has one proxy, and this row
+  /// isn't under the finger.
   bool _movingWithDrag(String id) =>
       _dragGroup > 1 && id != _dragId && _selected.contains(id);
 
-  /// Лайк стоит у ВСЕХ выделенных — тогда сердечко в панели залито и следующее
-  /// нажатие лайк снимет. Ради этого и слушаем библиотеку: лайк идёт мимо
-  /// черновика, сразу в «Любимые».
+  /// ALL selected are liked: the bar's heart is filled and the next press
+  /// removes the like. That's why I listen to the library: a like bypasses the
+  /// draft and goes straight to favourites.
   bool get _selectedAllFav {
     final lib = ref.watch(libraryProvider);
     return _selected.isNotEmpty &&
@@ -128,14 +125,14 @@ class _ListEditorState extends ConsumerState<ListEditor> {
       !listEquals(_ids, _idsWas) ||
       _sourcesChanged;
 
-  /// Источники сравниваем по id коллекций: название площадка могла отдать
-  /// другое, а привязка от этого не изменилась.
+  /// Sources compare by collection id: a platform may give another title, with
+  /// the tie unchanged.
   bool get _sourcesChanged => !listEquals(
     [for (final s in _sources) s.id],
     [for (final s in _playlist?.sources ?? const <PlSourceRef>[]) s.id],
   );
 
-  // ── Правка ────────────────────────────────────────────────────────────────
+  // ── Editing ───────────────────────────────────────────────────────────────
 
   void _toggle(String id) => setState(() {
     if (!_selected.remove(id)) _selected.add(id);
@@ -147,12 +144,12 @@ class _ListEditorState extends ConsumerState<ListEditor> {
     if (!all) _selected.addAll(_ids);
   });
 
-  /// Тащат выделенную строку — едет всё выделение разом, одним блоком: иначе
-  /// собранные по всему списку треки пришлось бы носить по одному.
+  /// Dragging a selected row moves the whole selection as one block: otherwise
+  /// tracks gathered across the list go one by one.
   ///
-  /// Считаем не по индексам, а по «якорю» — первой строке ниже точки сброса,
-  /// которая сама никуда не едет: у блока изъятие сдвигает индексы вокруг, и
-  /// поправка `to--` тут уже не спасает.
+  /// Counted by an anchor rather than indices, the first row below the drop
+  /// point, which doesn't move: removing a block shifts indices around it, and
+  /// a `to--` correction can't help.
   void _reorder(int from, int to) => setState(() {
     final dragged = _tracks[from];
     final group = _selected.contains(dragged.id) && _selected.length > 1
@@ -170,7 +167,8 @@ class _ListEditorState extends ConsumerState<ListEditor> {
         if (group.contains(t.id)) t,
     ];
     _tracks.removeWhere((t) => group.contains(t.id));
-    // Якоря нет — сбросили ниже всех оставшихся строк, блок уходит в конец.
+    // No anchor: dropped below all remaining rows, and the block goes to the
+    // end.
     _tracks.insertAll(
       anchor == null
           ? _tracks.length
@@ -184,11 +182,10 @@ class _ListEditorState extends ConsumerState<ListEditor> {
     _selected.clear();
   });
 
-  /// Лайк выделенному — сразу, не в черновик: «Любимые» это другой список.
-  ///
-  /// Переключатель: пока хоть один выделенный трек без лайка — дожимаем
-  /// остальных, а когда лайк уже у всех, то же нажатие его снимает. Выделение
-  /// при этом НЕ сбрасывается: снимать было бы нечем.
+  /// Likes the selection at once, not in the draft: favourites is another list.
+  /// A toggle: while any selected track has no like the rest catch up, and once
+  /// all have it the same press removes it. The selection stays, or there'd be
+  /// nothing to undo with.
   void _favSelected() {
     final lib = ref.read(libraryProvider.notifier);
     final was = ref.read(libraryProvider);
@@ -211,8 +208,8 @@ class _ListEditorState extends ConsumerState<ListEditor> {
     );
   }
 
-  /// Источники — шторкой из шапки: на самой странице секция стояла между
-  /// обложкой и треками и читалась как часть первой строки списка.
+  /// Sources open as a sheet from the header: on the page the section stood
+  /// between cover and tracks and read as part of the list's first row.
   void _openSources() {
     unawaited(
       showPlSourcesSheet(
@@ -230,8 +227,8 @@ class _ListEditorState extends ConsumerState<ListEditor> {
     setState(_selected.clear);
   }
 
-  /// Новая обложка сохраняется файлом сразу, поэтому предыдущий ВЫБОР (не
-  /// исходную обложку плейлиста) чистим тут же: он уже никому не нужен.
+  /// A new cover saves to a file at once, so the previous PICK (not the
+  /// playlist's original cover) gets cleaned up here: nobody needs it.
   Future<void> _pickCover() async {
     final picked = await pickCover();
     if (picked == null || !mounted) return;
@@ -240,17 +237,17 @@ class _ListEditorState extends ConsumerState<ListEditor> {
     unawaited(deleteCover(stale));
   }
 
-  /// Снять обложку: плейлист вернётся к мозаике из обложек треков. Своя
-  /// картинка ПЛЕЙЛИСТА при этом ещё жива — её файл удалит только ✓ (иначе
-  /// ✕ возвращал бы обложку, которой уже нет на диске); а вот только что
-  /// выбранный, но не записанный файл чистим тут же, как и в [_pickCover].
+  /// Removes the cover: the playlist returns to a mosaic of track covers. Its
+  /// own picture still lives: only ✓ deletes the file, or ✕ would return a
+  /// cover no longer on disk. A file just picked and unwritten goes right away,
+  /// as in [_pickCover].
   void _removeCover() {
     final stale = _cover != _playlist?.cover ? _cover : null;
     setState(() => _cover = null);
     unawaited(deleteCover(stale));
   }
 
-  // ── Выход ─────────────────────────────────────────────────────────────────
+  // ── Leaving ───────────────────────────────────────────────────────────────
 
   void _commit() {
     final lib = ref.read(libraryProvider.notifier);
@@ -262,8 +259,7 @@ class _ListEditorState extends ConsumerState<ListEditor> {
 
     switch (widget.listId) {
       case 'all':
-        // Тут удаление НАСКВОЗЬ (десктопный `deleteUploadedTrack` на это место
-        // ставит `confirm()`), поэтому ✓ спрашивает вторым нажатием.
+        // This deletes THROUGHOUT, so ✓ asks with a second press.
         if (gone.isNotEmpty && !_armedPurge) {
           setState(() => _armedPurge = true);
           showToast(
@@ -276,14 +272,13 @@ class _ListEditorState extends ConsumerState<ListEditor> {
           });
           return;
         }
-        // Офлайн-копии удалённых треков — мусор, на который никто не сошлётся.
+        // Offline copies of deleted tracks are junk nothing will refer to.
         final offline = ref.read(offlineProvider.notifier);
         for (final id in gone) {
           unawaited(offline.remove(id));
         }
-        // То же со своими файлами — и обязательно ДО правки списка: после неё
-        // треков в хранилище уже нет, и узнать, за какими из них стояла копия,
-        // будет нечем.
+        // The same for local files, and BEFORE editing the list: afterwards the
+        // tracks are gone from the store, with no way to know which had a copy.
         unawaited(
           forgetLocalTracks(localTracksOf(ref.read(libraryProvider), gone)),
         );
@@ -298,7 +293,7 @@ class _ListEditorState extends ConsumerState<ListEditor> {
           if (_sourcesChanged) lib.setPlaylistSources(pl.id, _sources);
           if (_cover != pl.cover) {
             lib.setPlaylistCover(pl.id, _cover);
-            // Старая своя картинка живёт файлом в каталоге приложения.
+            // The old own picture is a file in the app's directory.
             unawaited(deleteCover(pl.cover));
           }
         }
@@ -307,35 +302,32 @@ class _ListEditorState extends ConsumerState<ListEditor> {
   }
 
   void _cancel() {
-    // Пустой черновик выбрасывать нечего — такой ✕ выходит сразу.
+    // An empty draft has nothing to discard, so ✕ leaves at once.
     if (_dirty && !_armedCancel) {
       setState(() => _armedCancel = true);
       showToast(context, context.l.leDiscardArm, kind: ToastKind.warn);
-      // Само остывает, как взведённый крестик у своей темы: иначе он так и
-      // ждёт случайного второго тапа.
+      // Cools down by itself, or it waits for a stray second tap.
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted) setState(() => _armedCancel = false);
       });
       return;
     }
-    // Выбранная, но не записанная обложка — файл, на который теперь никто не
-    // ссылается.
+    // A picked but unwritten cover is a file nothing refers to now.
     if (_cover != _playlist?.cover) unawaited(deleteCover(_cover));
     widget.onClose();
   }
 
-  // ── Раскладка ─────────────────────────────────────────────────────────────
+  // ── Layout ────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
     final width = MediaQuery.sizeOf(context).width;
-    // Панель правки плавает над списком, а под ней — миниплеер и таб-бар
-    // каркаса: их высоту она обходит сверху, а список — снизу.
+    // The edit bar floats over the list, with the mini player and tab bar under
+    // it: it clears their height from above, the list from below.
     final inset = bottomBarsInset(context);
 
     return PopScope(
-      // Системное «назад» в режиме правки — это ✕, а не выход со страницы.
+      // System Back in edit mode is ✕, not leaving the page.
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _cancel();
@@ -349,7 +341,7 @@ class _ListEditorState extends ConsumerState<ListEditor> {
                 name: _name,
                 cover: _cover,
                 tracks: _tracks,
-                // Своя обложка и своё имя есть только у плейлиста.
+                // Only a playlist has its own cover and name.
                 editable: _playlist != null,
                 height: width * 0.62,
                 cancelArmed: _armedCancel,
@@ -357,34 +349,29 @@ class _ListEditorState extends ConsumerState<ListEditor> {
                 onCancel: _cancel,
                 onDone: _commit,
                 onCover: _pickCover,
-                // Убирать нечего, пока обложки нет: у списка без своей
-                // картинки в шапке и так мозаика из треков.
+                // Nothing to remove with no cover: a list with no picture has a
+                // track mosaic in the header anyway.
                 onCoverRemove: (_cover?.isEmpty ?? true) ? null : _removeCover,
                 onRename: () => setState(() => _renaming = true),
-                // Источники есть только у плейлиста: встроенным разделам тянуть
-                // треки неоткуда.
+                // Only a playlist has sources: built-in sections have nowhere
+                // to pull from.
                 sources: _playlist == null ? null : _sources.length,
                 onSources: _openSources,
               ),
               SliverPadding(
-                // Снизу — место под плавающую панель и бары каркаса: последняя
-                // строка не должна оставаться под ними.
+                // Room below for the floating bar and shell bars: the last row
+                // shouldn't stay under them.
                 padding: EdgeInsets.fromLTRB(8, 10, 8, 92 + inset),
                 sliver: SliverReorderableList(
                   itemCount: _tracks.length,
                   onReorder: _reorder,
-                  // Кто именно едет — знаем только мы: список тащит одну
-                  // строку и про выделение ничего не слышал.
+                  // Only I know what's moving: the list drags one row and knows
+                  // nothing of selection.
                   onReorderStart: (i) =>
                       setState(() => _dragId = _tracks[i].id),
                   onReorderEnd: (_) => setState(() => _dragId = null),
                   proxyDecorator: (child, _, _) {
-                    final card = Material(
-                      color: t.pill,
-                      elevation: 6,
-                      borderRadius: BorderRadius.circular(t.radius * 0.85),
-                      child: child,
-                    );
+                    final card = trackRowDragged(context, child);
                     final n = _dragGroup;
                     return n < 2 ? card : _DragDeck(count: n, child: card);
                   },
@@ -395,8 +382,8 @@ class _ListEditorState extends ConsumerState<ListEditor> {
                       index: i,
                       track: track,
                       selected: _selected.contains(track.id),
-                      // Уедет с блоком, но под пальцем её нет — гасим, чтобы
-                      // было видно, что строка уже «в руке».
+                      // It moves with the block but isn't under the finger, so
+                      // it dims to show it's in hand.
                       ghost: _movingWithDrag(track.id),
                       onTap: () => _toggle(track.id),
                     );
@@ -423,8 +410,8 @@ class _ListEditorState extends ConsumerState<ListEditor> {
                     count: _selected.length,
                     total: _tracks.length,
                     allSelected: _allSelected,
-                    // В «Любимых» лайк уже стоит у каждой строки — там его
-                    // место занимает корзина, она же «снять лайк».
+                    // In favourites every row is liked already, so a bin takes
+                    // its place, which also removes the like.
                     canFav: widget.listId != 'fav',
                     favOn: _selectedAllFav,
                     onToggleAll: _tracks.isEmpty ? null : _toggleAll,
@@ -439,13 +426,12 @@ class _ListEditorState extends ConsumerState<ListEditor> {
   }
 }
 
-/// Шапка режима правки: та же обложка, но вместо «назад/сортировка/поиск» —
-/// ✕ и ✓, по центру кнопка выбора картинки, у названия карандаш. Ряда
-/// «Воспроизвести» здесь нет, но высота шапки та же, что и на обычном экране:
-/// вход в правку не должен её дёргать. Название с подписью просто опускаются
-/// на освободившееся место — к нижнему краю обложки.
+/// Edit mode's header: the same cover, with ✕ and ✓ instead of back, sort and
+/// search, a picture button in the centre and a pencil by the title. No Play
+/// row, but the same height as usual, so entering edit doesn't jolt it. Title
+/// and caption just drop to the cover's bottom edge.
 ///
-/// Как и обычная шапка списка — слайвер: ряд ✕/✓ остаётся у верхнего края.
+/// A sliver, like the usual list header: the ✕/✓ row stays at the top.
 class _EditHero extends StatelessWidget {
   const _EditHero({
     required this.listId,
@@ -470,28 +456,27 @@ class _EditHero extends StatelessWidget {
   final String? cover;
   final List<Track> tracks;
 
-  /// Можно ли править имя и обложку (только у плейлиста).
+  /// Whether name and cover can be edited (a playlist only).
   final bool editable;
 
   final double height;
 
-  /// ✕ взведён — следующий тап выбросит черновик.
+  /// ✕ is armed: the next tap discards the draft.
   final bool cancelArmed;
 
-  /// ✓ взведён — следующий тап удалит убранные треки насквозь.
+  /// ✓ is armed: the next tap deletes removed tracks throughout.
   final bool doneArmed;
 
   final VoidCallback onCancel;
   final VoidCallback onDone;
   final VoidCallback onCover;
 
-  /// Снять обложку. `null` — снимать нечего: своей картинки у списка нет.
+  /// Removes the cover; `null` if the list has no own picture.
   final VoidCallback? onCoverRemove;
 
   final VoidCallback onRename;
 
-  /// Сколько источников привязано. `null` — это встроенный раздел, и кнопки
-  /// источников у него нет вовсе.
+  /// Sources tied. `null` for a built-in section, which has no sources button.
   final int? sources;
 
   final VoidCallback onSources;
@@ -501,8 +486,8 @@ class _EditHero extends StatelessWidget {
     final theme = Theme.of(context).textTheme;
 
     return StickyHero(
-      // Те же `+ 76`, что и у обычной шапки списка (ряд «Воспроизвести»): её
-      // высота считается от одной и той же [height].
+      // The same `+ 76` as the usual list header's Play row: both heights come
+      // from one [height].
       height: height + 76,
       background: Stack(
         fit: StackFit.expand,
@@ -516,8 +501,8 @@ class _EditHero extends StatelessWidget {
           ),
           if (editable)
             Center(
-              // Корзина рядом, а не крестиком на самой кнопке: цель размером
-              // с ноготь на обложке промахивается чаще, чем попадает.
+              // A bin beside it rather than a cross on the button: a nail-sized
+              // target on a cover gets missed more than hit.
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -541,11 +526,11 @@ class _EditHero extends StatelessWidget {
             ),
         ],
       ),
-      // ✕ и ✓ остаются наверху: закончить правку длинного списка иначе можно
-      // только пролистав его обратно.
+      // ✕ and ✓ stay on top: otherwise finishing a long list's edit means
+      // scrolling back.
       barHeight: kHeaderControl,
-      // Взведённая кнопка — красная, как корзина в панели правки: без модалки
-      // это единственное, что показывает, чем кончится второй тап.
+      // An armed button is red, like the bin in the edit bar: with no modal
+      // it's all that shows what a second tap does.
       bar: Row(
         children: [
           _BarButton(icon: Bi.close, armed: cancelArmed, onTap: onCancel),
@@ -569,8 +554,8 @@ class _EditHero extends StatelessWidget {
               ),
               if (editable) ...[
                 const SizedBox(width: 8),
-                // Карандаш прямо у названия, без подложки: это часть
-                // заголовка, а не ещё одна кнопка шапки.
+                // A pencil right by the title with no plate: part of the
+                // heading, not another header button.
                 Pressable(
                   onTap: onRename,
                   child: const Padding(
@@ -593,8 +578,9 @@ class _EditHero extends StatelessWidget {
   }
 }
 
-/// Кнопка источников в шапке правки: стеклянная пилюля со счётчиком привязок.
-/// Стекло, а не плашка темы, — она стоит на обложке, как и кнопки шапки.
+/// Sources button in the edit header: a glass pill with a tie count. Glass
+/// rather than a theme plate: it stands on the cover, like the header's
+/// buttons.
 class _SourcesButton extends StatelessWidget {
   const _SourcesButton({required this.count, required this.onTap});
 
@@ -623,8 +609,8 @@ class _SourcesButton extends StatelessWidget {
                   color: Colors.white,
                 ),
               ),
-              // Ноль не показываем: пустой счётчик у кнопки, которая как раз и
-              // заводит первую привязку, только сбивает.
+              // Zero isn't shown: an empty count on the very button that makes
+              // the first tie just confuses.
               if (count > 0) ...[
                 const SizedBox(width: 8),
                 Container(
@@ -658,7 +644,7 @@ class _SourcesButton extends StatelessWidget {
   }
 }
 
-/// Кнопка шапки правки. Взведённая — красная: следующий тап уже что-то теряет.
+/// Edit header button. Armed it's red: the next tap loses something.
 class _BarButton extends StatelessWidget {
   const _BarButton({
     required this.icon,
@@ -682,10 +668,9 @@ class _BarButton extends StatelessWidget {
   }
 }
 
-/// Строка списка в режиме правки: чекбокс, обложка, название и длительность.
-/// Тап по строке выделяет её, а не заводит трек, — играть из режима правки
-/// нечего. Тянучка — обложка, как в обычном списке и в очереди: отдельной ручке
-/// в строке уже нечего делать.
+/// List row in edit mode: checkbox, cover, title and duration. A tap selects it
+/// rather than starting a track. The cover is the drag handle, as in the usual
+/// list and queue.
 class _EditRow extends StatelessWidget {
   const _EditRow({
     super.key,
@@ -696,14 +681,14 @@ class _EditRow extends StatelessWidget {
     required this.onTap,
   });
 
-  /// Номер строки для перетаскивания. `null` — порядок этого списка не свой
-  /// («История» стоит по времени прослушивания), и тащить строку некуда.
+  /// Row number for dragging. `null` where the order isn't mine, leaving
+  /// nowhere to drag.
   final int? index;
   final Track track;
   final bool selected;
 
-  /// Строка «в руке» вместе с блоком выделенных: пока её тащат, она гаснет на
-  /// своём старом месте.
+  /// A row in hand with the selected block: while dragged it dims in its old
+  /// place.
   final bool ghost;
 
   final VoidCallback onTap;
@@ -711,7 +696,6 @@ class _EditRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
     final drag = index;
     final Widget cover = Cover(url: track.cover, size: 52);
 
@@ -725,7 +709,7 @@ class _EditRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           child: Row(
             children: [
-              _Check(on: selected),
+              BloomCheck(on: selected),
               const SizedBox(width: 12),
               if (drag == null)
                 cover
@@ -733,23 +717,12 @@ class _EditRow extends StatelessWidget {
                 ReorderableDelayedDragStartListener(index: drag, child: cover),
               const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      track.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.titleMedium,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      track.artist,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.bodySmall?.copyWith(color: t.text2),
-                    ),
-                  ],
+                child: TwoLines(
+                  track.name,
+                  track.artist,
+                  subStyle: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: t.text2),
                 ),
               ),
               const SizedBox(width: 10),
@@ -762,12 +735,10 @@ class _EditRow extends StatelessWidget {
   }
 }
 
-/// Карточка перетаскивания, когда едет целый блок выделенных строк: под ней
-/// выглядывают ещё плашки, в углу — сколько строк уедет.
-///
-/// Нужна потому, что прокси у `SliverReorderableList` ровно один: под пальцем
-/// в любом случае будет одна строка, и без колоды перенос блока выглядит как
-/// перенос единственного трека.
+/// Drag card when a whole selected block moves: more plates peek out under it,
+/// with a count in the corner. `SliverReorderableList` has one proxy, so one
+/// row is always under the finger, and with no deck a block's move looks like
+/// one track's.
 class _DragDeck extends StatelessWidget {
   const _DragDeck({required this.count, required this.child});
 
@@ -779,9 +750,9 @@ class _DragDeck extends StatelessWidget {
     final t = context.bloom;
     final shape = BorderRadius.circular(t.radius * 0.85);
 
-    // Плашка ростом с саму карточку, сдвинутая вниз на [inset]: наружу торчит
-    // ровно этот сдвиг. Прокси размером со строку её не обрежет — оверлей
-    // режет только по краю экрана.
+    // A plate the card's height, shifted down by [inset], so exactly that shift
+    // shows. A row-sized proxy won't clip it: the overlay clips only at the
+    // screen's edge.
     Widget sheet(double inset, Color color) => Positioned(
       left: inset,
       right: inset,
@@ -795,7 +766,7 @@ class _DragDeck extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        // Дальняя плашка — только если в блоке правда больше двух строк.
+        // The far plate only if the block really has more than two rows.
         if (count > 2) sheet(13, Color.lerp(t.pill, t.bg, 0.55)!),
         sheet(6.5, Color.lerp(t.pill, t.bg, 0.28)!),
         child,
@@ -803,20 +774,11 @@ class _DragDeck extends StatelessWidget {
           top: -9,
           right: -4,
           child: Material(
-            color: t.accent,
+            type: MaterialType.transparency,
             elevation: 6,
             shadowColor: Colors.black,
             borderRadius: BorderRadius.circular(999),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
-              child: Text(
-                '$count',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: t.accentText,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
+            child: CountBadge(count, height: 24, size: 13, side: 9),
           ),
         ),
       ],
@@ -824,33 +786,9 @@ class _DragDeck extends StatelessWidget {
   }
 }
 
-/// Квадратик выбора. Свой, а не material `Checkbox`: тому не отключить
-/// служебные отступы и он тянет за собой свою палитру.
-class _Check extends StatelessWidget {
-  const _Check({required this.on});
-
-  final bool on;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
-      width: 22,
-      height: 22,
-      decoration: BoxDecoration(
-        color: on ? t.accent : Colors.transparent,
-        border: Border.all(color: on ? t.accent : t.muted, width: 1.6),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: on ? BloomIcon(Bi.check, size: 15, color: t.accentText) : null,
-    );
-  }
-}
-
-/// Плавающая панель режима правки: слева «выбрать все» со счётчиком выделения,
-/// справа действия над ним. Пока никого не выбрали, действий нет — им не над
-/// чем работать, — и панель показывает один счёт строк.
+/// Edit mode's floating bar: select all with a selection count on the left,
+/// actions on the right. With nothing selected there are no actions, and it
+/// just shows the row count.
 class _EditBar extends StatelessWidget {
   const _EditBar({
     required this.count,
@@ -869,7 +807,7 @@ class _EditBar extends StatelessWidget {
   final bool allSelected;
   final bool canFav;
 
-  /// Лайк стоит у всех выделенных — сердечко залито, и оно снимает лайк.
+  /// All selected are liked: the heart is filled and removes the like.
   final bool favOn;
 
   final VoidCallback? onToggleAll;
@@ -886,7 +824,9 @@ class _EditBar extends StatelessWidget {
     return _BarShell(
       child: Row(
         children: [
-          _BarIcon(
+          CircleIconButton(
+            size: 44,
+            background: Colors.transparent,
             icon: allSelected
                 ? Bi.checklistMinimalisticBold
                 : Bi.checklistMinimalistic,
@@ -894,8 +834,8 @@ class _EditBar extends StatelessWidget {
             onTap: onToggleAll,
           ),
           const SizedBox(width: 4),
-          // Знаменатель приглушён: считают тут выделенные, а всего строк — это
-          // только мерка, насколько выделение близко к полному.
+          // The denominator is muted: selected is what's counted, and the total
+          // only measures how near that is to all.
           Text.rich(
             TextSpan(
               children: [
@@ -913,18 +853,27 @@ class _EditBar extends StatelessWidget {
           ),
           const Spacer(),
           if (some) ...[
-            _BarIcon(icon: Bi.add, onTap: onAdd),
+            CircleIconButton(
+              icon: Bi.add,
+              size: 44,
+              background: Colors.transparent,
+              color: t.text,
+              onTap: onAdd,
+            ),
             if (canFav)
-              _BarIcon(
+              CircleIconButton(
+                size: 44,
+                background: Colors.transparent,
                 icon: favOn ? Bi.heartBold : Bi.heart,
-                color: favOn ? t.sysFavIco : null,
+                color: favOn ? t.sysFavIco : t.text,
                 onTap: onFav,
               ),
             const SizedBox(width: 4),
-            _BarIcon(
+            CircleIconButton(
+              size: 44,
+              background: t.danger.withValues(alpha: 0.16),
               icon: Bi.trashBinTrash,
               color: t.danger,
-              background: t.danger.withValues(alpha: 0.16),
               onTap: onRemove,
             ),
           ],
@@ -934,7 +883,7 @@ class _EditBar extends StatelessWidget {
   }
 }
 
-/// Та же панель, ставшая полем ввода: ✕ бросает правку названия, ✓ принимает.
+/// The same bar as an input: ✕ drops the title edit, ✓ accepts it.
 class _RenameBar extends StatefulWidget {
   const _RenameBar({
     required this.initial,
@@ -961,29 +910,31 @@ class _RenameBarState extends State<_RenameBar> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
     return _BarShell(
       child: Row(
         children: [
-          _BarIcon(icon: Bi.close, onTap: widget.onCancel),
+          CircleIconButton(
+            icon: Bi.close,
+            size: 44,
+            background: Colors.transparent,
+            color: context.bloom.text,
+            onTap: widget.onCancel,
+          ),
           const SizedBox(width: 8),
           Expanded(
-            child: TextField(
+            child: BloomField(
               controller: _controller,
               autofocus: true,
-              cursorColor: t.accent,
-              style: Theme.of(context).textTheme.titleMedium,
-              textInputAction: TextInputAction.done,
+              action: TextInputAction.done,
               onSubmitted: widget.onDone,
-              decoration: const InputDecoration(
-                isDense: true,
-                border: InputBorder.none,
-              ),
             ),
           ),
           const SizedBox(width: 8),
-          _BarIcon(
+          CircleIconButton(
+            size: 44,
+            background: Colors.transparent,
             icon: Bi.check,
+            color: context.bloom.text,
             onTap: () => widget.onDone(_controller.text),
           ),
         ],
@@ -992,7 +943,7 @@ class _RenameBarState extends State<_RenameBar> {
   }
 }
 
-/// Пилюля, в которой живут обе нижние панели.
+/// The pill both bottom bars live in.
 class _BarShell extends StatelessWidget {
   const _BarShell({required this.child});
 
@@ -1002,8 +953,8 @@ class _BarShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     return Material(
-      // Сплошная подложка «хрома», как у кнопок шапки: панель висит над
-      // списком, и просвечивающие сквозь неё строки читались бы кашей.
+      // The chrome's solid base, like the header's buttons: the bar hangs over
+      // the list, and rows showing through would be mush.
       color: t.pill,
       elevation: 8,
       shadowColor: Colors.black,
@@ -1013,44 +964,6 @@ class _BarShell extends StatelessWidget {
         height: 62,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: child,
-      ),
-    );
-  }
-}
-
-class _BarIcon extends StatelessWidget {
-  const _BarIcon({
-    required this.icon,
-    required this.onTap,
-    this.color,
-    this.background,
-  });
-
-  final BloomGlyph icon;
-  final VoidCallback? onTap;
-  final Color? color;
-
-  /// Своя заливка — у корзины: удаление в этой панели единственное опасное.
-  final Color? background;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Pressable(
-      onTap: onTap,
-      child: Material(
-        color: background ?? Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        clipBehavior: Clip.antiAlias,
-        child: SizedBox(
-          width: 44,
-          height: 44,
-          child: BloomIcon(
-            icon,
-            size: 23,
-            color: onTap == null ? t.muted : (color ?? t.text),
-          ),
-        ),
       ),
     );
   }

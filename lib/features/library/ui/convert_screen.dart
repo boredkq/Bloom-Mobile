@@ -1,14 +1,11 @@
-/// Экран «Перенести на площадку»: ищет треки плейлиста на выбранной площадке и
-/// собирает из найденного новый плейлист.
+/// Transfer to platform screen: searches a playlist's tracks on the picked
+/// platform and builds a new playlist from what's found. The platform is picked
+/// in the menu sheet and the scan starts at once: an extra pick-then-press step
+/// adds only a press.
 ///
-/// Порт десктопной `ConvertModal`, но фазы поделены иначе: площадку выбирают
-/// ещё в шторке меню (`showConvertSheet`), а экран сразу начинает скан — на
-/// телефоне лишний шаг «выберите площадку → нажмите Перенести» ничего не
-/// добавляет, кроме нажатия.
-///
-/// Обложку исходного плейлиста копии НЕ отдаём (на ПК отдают): у нас это файл в
-/// каталоге приложения, и два плейлиста на одну картинку означали бы, что
-/// удаление любого из них оставляет второй без обложки.
+/// The source's cover isn't given to the copy: it's a file in the app's
+/// directory, and with two playlists on one picture, deleting either would
+/// leave the other with none.
 library;
 
 import 'package:flutter/material.dart';
@@ -31,8 +28,9 @@ import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../../../shared/ui/track_actions.dart';
 import '../convert_playlist.dart';
+import '../../../shared/ui/glass.dart';
 
-/// Шторка выбора площадки, за которой открывается сам перенос.
+/// Platform picker sheet, followed by the transfer itself.
 Future<void> showConvertSheet(
   BuildContext context,
   WidgetRef ref,
@@ -47,22 +45,20 @@ Future<void> showConvertSheet(
 
   await showBloomSheetChild<void>(
     context: context,
-    backdrop: playlist.cover,
-    header: SheetLineHeader(
+    header: SheetHero(
       cover: playlist.cover,
       title: context.l.cvTitle,
       subtitle: playlist.name,
     ),
-    // Закрываем шторку её же навигатором (снаружи `Navigator.of` найдёт
-    // навигатор вкладки), а экран переноса открываем корневым — он должен
-    // накрыть и таб-бар с миниплеером.
+    // The sheet closes through its own navigator (from outside `Navigator.of`
+    // finds the tab's), and the transfer screen opens with the root one, to
+    // cover the tab bar and mini player.
     child: Builder(
       builder: (sheetContext) => SheetPanel(
         children: [
-          for (var i = 0; i < targets.length; i++) ...[
-            if (i > 0) sheetDivider(),
+          for (final target in targets)
             PlatformRow(
-              source: targets[i],
+              source: target,
               onTap: () {
                 final root = Navigator.of(sheetContext, rootNavigator: true);
                 Navigator.of(sheetContext).pop();
@@ -71,13 +67,12 @@ Future<void> showConvertSheet(
                     builder: (_) => ConvertScreen(
                       playlist: playlist,
                       tracks: tracks,
-                      target: targets[i],
+                      target: target,
                     ),
                   ),
                 );
               },
             ),
-          ],
         ],
       ),
     ),
@@ -94,7 +89,7 @@ class ConvertScreen extends ConsumerStatefulWidget {
 
   final UserPlaylist playlist;
 
-  /// Состав исходного плейлиста в его собственном порядке.
+  /// Source playlist's contents in its own order.
   final List<Track> tracks;
 
   final MusicSource target;
@@ -111,8 +106,8 @@ class _ConvertScreenState extends ConsumerState<ConvertScreen> {
   int _done = 0;
   bool _scanning = true;
 
-  /// Экран закрыли — скан обязан остановиться: он ходит в сеть по треку за
-  /// треком, и доедать сотню запросов в никуда незачем.
+  /// Once the screen closes the scan must stop: it hits the network track by
+  /// track, and a hundred requests to nowhere aren't needed.
   bool _closed = false;
 
   @override
@@ -154,7 +149,7 @@ class _ConvertScreenState extends ConsumerState<ConvertScreen> {
   void _decide(String srcId, ConvertDecision decision) =>
       setState(() => _decisions = {..._decisions, srcId: decision});
 
-  /// Массово принять лучшего кандидата везде, где он есть, — включая спорные.
+  /// Takes the best candidate everywhere there is one, doubtful ones included.
   void _takeBest() => setState(() {
     _decisions = {
       for (final item in _items)
@@ -169,8 +164,8 @@ class _ConvertScreenState extends ConsumerState<ConvertScreen> {
     if (tracks.isEmpty) return;
     final l10n = context.l;
     final messenger = ScaffoldMessenger.of(context);
-    // Роутер берём ДО закрытия экрана: после `pop` этот context уже отвязан от
-    // дерева, и уйти по нему в созданный плейлист не выйдет.
+    // I take the router BEFORE closing the screen: after `pop` this context has
+    // left the tree and can't navigate to the new playlist.
     final router = GoRouter.of(context);
     final name = _name.text.trim().isEmpty ? _autoName : _name.text.trim();
     final created = ref
@@ -190,33 +185,18 @@ class _ConvertScreenState extends ConsumerState<ConvertScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
     final l = context.l;
-
-    return Scaffold(
-      backgroundColor: t.bg,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-              child: SubPageHeader(
-                title: l.cvTitle,
-                onBack: () => Navigator.of(context).pop(),
-              ),
-            ),
-            Expanded(
-              child: _scanning
-                  ? _Scanning(
-                      source: widget.target,
-                      done: _done,
-                      total: widget.tracks.length,
-                    )
-                  : _review(),
-            ),
-          ],
-        ),
+    return BloomPage(
+      body: SubPage(
+        title: l.cvTitle,
+        onBack: () => Navigator.of(context).pop(),
+        child: _scanning
+            ? _Scanning(
+                source: widget.target,
+                done: _done,
+                total: widget.tracks.length,
+              )
+            : _review(),
       ),
     );
   }
@@ -314,13 +294,18 @@ class _Scanning extends StatelessWidget {
             Text('$done / $total', style: theme.bodyMedium),
             const SizedBox(height: 16),
             ClipRRect(
-              borderRadius: BorderRadius.circular(999),
-              child: LinearProgressIndicator(
-                value: total == 0 ? null : done / total,
-                minHeight: 4,
-                backgroundColor: t.pill,
-                color: t.accent,
-              ),
+              borderRadius: BorderRadius.circular(2),
+              child: total == 0
+                  ? LinearProgressIndicator(
+                      minHeight: 4,
+                      backgroundColor: t.pill,
+                      color: t.accent,
+                    )
+                  : BloomBar(
+                      value: done / total,
+                      color: t.accent,
+                      track: t.pill,
+                    ),
             ),
             const SizedBox(height: 14),
             Text(
@@ -335,7 +320,7 @@ class _Scanning extends StatelessWidget {
   }
 }
 
-/// Строка итога по одному треку: что нашли и что с ним будет.
+/// Result row for one track: what was found and what happens to it.
 class _ItemRow extends StatelessWidget {
   const _ItemRow({
     required this.item,
@@ -369,8 +354,8 @@ class _ItemRow extends StatelessWidget {
       },
     };
 
-    // Выбирать не из чего у тех, кто уже на площадке или не нашёлся вовсе:
-    // строка тогда просто рассказывает, что с треком будет.
+    // Nothing to pick from for those already on the platform or not found: the
+    // row just tells what happens.
     final canChoose = item.cands.isNotEmpty;
 
     return Padding(
@@ -380,10 +365,7 @@ class _ItemRow extends StatelessWidget {
             ? () => _choose(context)
             : null,
         scale: 0.98,
-        child: Material(
-          color: t.pill,
-          borderRadius: BorderRadius.circular(t.radius),
-          clipBehavior: Clip.antiAlias,
+        child: GlassBox(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
             child: Opacity(
@@ -393,27 +375,16 @@ class _ItemRow extends StatelessWidget {
                   Cover(url: item.src.cover, size: 40),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.src.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.titleSmall,
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          tag,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.bodySmall?.copyWith(color: color),
-                        ),
-                      ],
+                    child: TwoLines(
+                      item.src.name,
+                      tag,
+                      gap: 3,
+                      titleStyle: theme.titleSmall,
+                      subStyle: theme.bodySmall?.copyWith(color: color),
                     ),
                   ),
                   if (canChoose || item.status != ConvertStatus.same)
-                    BloomIcon(Bi.altArrowRight, size: 20, color: t.muted),
+                    const SheetChevron(),
                 ],
               ),
             ),
@@ -423,19 +394,18 @@ class _ItemRow extends StatelessWidget {
     );
   }
 
-  /// Шторка решения по треку: кандидаты, «оставить оригинал», «пропустить».
+  /// Decision sheet for a track: candidates, keep original, skip.
   Future<void> _choose(BuildContext context) async {
     final l = context.l;
     await showBloomSheetChild<void>(
       context: context,
-      backdrop: item.src.cover,
-      header: SheetLineHeader(
+      header: SheetHero(
         cover: item.src.cover,
         title: item.src.name,
         subtitle: item.src.artist,
       ),
-      // Закрывать шторку — её же навигатором: снаружи `Navigator.of` нашёл бы
-      // навигатор страницы и закрыл сам перенос.
+      // The sheet closes through its own navigator: from outside `Navigator.of`
+      // would find the page's and close the transfer itself.
       child: Builder(
         builder: (sheetContext) => Column(
           mainAxisSize: MainAxisSize.min,
@@ -443,40 +413,36 @@ class _ItemRow extends StatelessWidget {
             if (item.cands.isNotEmpty)
               SheetPanel(
                 children: [
-                  for (var i = 0; i < item.cands.length; i++) ...[
-                    // Текст строки: 12 + обложка 40 + 12.
-                    if (i > 0) sheetDivider(indent: 64),
-                    _CandidateRow(
-                      match: item.cands[i],
+                  for (final cand in item.cands)
+                    _candidateRow(
+                      context,
+                      cand,
                       picked: switch (decision) {
-                        TakeMatch(:final track) =>
-                          track.id == item.cands[i].track.id,
+                        TakeMatch(:final track) => track.id == cand.track.id,
                         _ => false,
                       },
                       onTap: () {
                         Navigator.of(sheetContext).pop();
-                        onDecide(TakeMatch(item.cands[i].track));
+                        onDecide(TakeMatch(cand.track));
                       },
                     ),
-                  ],
                 ],
               ),
             SheetPanel(
               children: [
-                _DecisionRow(
+                SheetRow(
                   icon: Bi.undoLeftRound,
                   label: l.cvKeepOriginal,
-                  picked: decision is KeepOriginal,
+                  trailing: decision is KeepOriginal ? const SheetTick() : null,
                   onTap: () {
                     Navigator.of(sheetContext).pop();
                     onDecide(const KeepOriginal());
                   },
                 ),
-                sheetDivider(),
-                _DecisionRow(
+                SheetRow(
                   icon: Bi.close,
                   label: l.cvSkip,
-                  picked: decision is SkipTrack,
+                  trailing: decision is SkipTrack ? const SheetTick() : null,
                   danger: true,
                   onTap: () {
                     Navigator.of(sheetContext).pop();
@@ -492,111 +458,26 @@ class _ItemRow extends StatelessWidget {
   }
 }
 
-class _CandidateRow extends StatelessWidget {
-  const _CandidateRow({
-    required this.match,
-    required this.picked,
-    required this.onTap,
-  });
-
-  final ScoredMatch match;
-  final bool picked;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    final track = match.track;
-
-    return Pressable(
-      onTap: onTap,
-      scale: 0.98,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          children: [
-            Cover(url: track.cover, size: 40),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    track.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: picked
-                        ? theme.titleMedium?.copyWith(color: t.accent)
-                        : theme.titleMedium,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    track.artist,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            // Счёт совпадения — не украшение: по нему видно, почему трек попал
-            // в спорные, и стоит ли ему верить.
-            Text(
-              '${(match.score * 100).round()}%',
-              style: theme.bodySmall?.copyWith(
-                color: match.score >= kAutoMatchScore ? t.accent : t.text2,
-              ),
-            ),
-          ],
-        ),
+/// A track the platform offered: the score is how sure the match is.
+Widget _candidateRow(
+  BuildContext context,
+  ScoredMatch match, {
+  required bool picked,
+  required VoidCallback onTap,
+}) {
+  final t = context.bloom;
+  return SheetRow(
+    leading: Cover(url: match.track.cover, size: 40),
+    gap: 12,
+    label: match.track.name,
+    subtitle: match.track.artist,
+    color: picked ? t.accent : null,
+    trailing: Text(
+      '${(match.score * 100).round()}%',
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+        color: match.score >= kAutoMatchScore ? t.accent : t.text2,
       ),
-    );
-  }
-}
-
-class _DecisionRow extends StatelessWidget {
-  const _DecisionRow({
-    required this.icon,
-    required this.label,
-    required this.picked,
-    required this.onTap,
-    this.danger = false,
-  });
-
-  final BloomGlyph icon;
-  final String label;
-  final bool picked;
-  final VoidCallback onTap;
-  final bool danger;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final color = danger ? t.danger : t.text;
-
-    return Pressable(
-      onTap: onTap,
-      scale: 0.98,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-        child: Row(
-          children: [
-            BloomIcon(icon, size: 22, color: color),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                label,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(color: color),
-              ),
-            ),
-            if (picked) BloomIcon(Bi.check, size: 18, color: t.accent),
-          ],
-        ),
-      ),
-    );
-  }
+    ),
+    onTap: onTap,
+  );
 }

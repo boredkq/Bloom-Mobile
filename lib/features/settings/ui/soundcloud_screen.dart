@@ -1,12 +1,9 @@
-/// Настройки SoundCloud: ручной `client_id` и проверка соединения.
+/// SoundCloud: a typed `client_id` and a connection check, on the
+/// [PlatformPage] layout. Collapsed at rest: the key is found on its own, and
+/// "Set up" opens the guide, the field and the check.
 ///
-/// Раскладка — [PlatformPage]: знак площадки посреди экрана, действия внизу.
-/// В покое страница свёрнута (настраивать обычно нечего — ключ подбирается
-/// сам), «Настроить» раскрывает карточку с инструкцией, поле ключа и проверку.
-///
-/// Обе операции портированы вместе с провайдером: `setManualClientId` сбрасывает
-/// авто-кеш, `checkConnection` сначала сбрасывает его же и потом делает тестовый
-/// поиск — то есть показывает, каким ключом всё реально работает сейчас.
+/// Saving by hand drops the found key; the check drops it too and searches, so
+/// it shows which key really works now.
 library;
 
 import 'package:flutter/material.dart';
@@ -19,9 +16,7 @@ import '../../../core/l10n/l10n.dart';
 import '../../../core/store/settings_store.dart';
 import '../../../providers/soundcloud/models.dart';
 import '../../../providers/soundcloud/soundcloud.dart' as sc;
-import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
-import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/platform_logo.dart';
 import 'platform_page.dart';
 
@@ -39,8 +34,7 @@ class _SoundCloudSettingsScreenState
     text: ref.read(settingsProvider).scClientId ?? '',
   );
 
-  /// Раскрыт ли блок настройки. В покое страница показывает только знак: свой
-  /// ключ нужен редко.
+  /// One's own key is rarely needed.
   bool _open = false;
   bool _checking = false;
   ScCheckResult? _result;
@@ -69,8 +63,7 @@ class _SoundCloudSettingsScreenState
     });
     final result = await sc.checkConnection();
     if (!mounted) return;
-    // Авто-подбор сработал, а поле пустое — подставим ключ, чтобы его можно
-    // было сохранить (то же, что на ПК).
+    // Found one on its own and the field is empty: I put it there to save.
     if (result.ok && _controller.text.trim().isEmpty) {
       final id = result.clientId;
       if (id != null) _controller.text = id;
@@ -106,15 +99,12 @@ class _SoundCloudSettingsScreenState
       status: saved == null ? l.scStatusAuto : l.scStatusManual,
       body: _open ? _buildForm(saved) : null,
       actions: [
-        BloomButton(
+        PlatformAction(
           label: _open
               ? l.commonHide
               : saved == null
               ? l.scSetup
               : l.scReconfigure,
-          tone: ButtonTone.plate,
-          pill: false,
-          height: 54,
           onTap: () => setState(() => _open = !_open),
         ),
       ],
@@ -125,8 +115,8 @@ class _SoundCloudSettingsScreenState
     final t = context.bloom;
     final l = context.l;
     final theme = Theme.of(context).textTheme;
-    // Правка в поле ещё не сохранена — левая кнопка предлагает сохранить;
-    // иначе она чистит уже сохранённый ключ.
+    // An unsaved edit: the left button offers to save, otherwise it clears the
+    // saved key.
     final changed = _controller.text.trim() != (saved ?? '');
 
     return Column(
@@ -139,50 +129,21 @@ class _SoundCloudSettingsScreenState
           onTap: _guide,
         ),
         const Center(child: OrLabel()),
-        GlassBox(
-          borderRadius: BorderRadius.circular(t.radius),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    cursorColor: t.accent,
-                    style: theme.bodyMedium?.copyWith(color: t.text),
-                    onChanged: (_) => setState(() {}),
-                    onSubmitted: (_) => _save(),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 18),
-                      hintText: l.scHint,
-                      hintStyle: theme.bodyMedium?.copyWith(color: t.muted),
-                    ),
-                  ),
-                ),
-                // «?» внутри поля — как на референсе: инструкция нужна ровно
-                // тогда, когда смотришь на пустое поле.
-                CircleIconButton(
-                  icon: Bi.questionCircle,
-                  size: 48,
-                  iconSize: 20,
-                  background: Colors.transparent,
-                  color: t.muted,
-                  onTap: _guide,
-                ),
-              ],
-            ),
-          ),
+        // The guide is needed exactly when looking at an empty field.
+        PlatformField(
+          controller: _controller,
+          hint: l.scHint,
+          icon: Bi.questionCircle,
+          onIcon: _guide,
+          onChanged: (_) => setState(() {}),
+          onSubmitted: (_) => _save(),
         ),
         const SizedBox(height: 10),
         Row(
           children: [
             Expanded(
-              child: BloomButton(
+              child: PlatformAction(
                 label: changed ? l.commonSave : l.commonClear,
-                tone: ButtonTone.plate,
-                pill: false,
                 height: 48,
                 onTap: changed
                     ? _save
@@ -193,10 +154,8 @@ class _SoundCloudSettingsScreenState
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: BloomButton(
+              child: PlatformAction(
                 label: l.scCheckConnection,
-                tone: ButtonTone.plate,
-                pill: false,
                 height: 48,
                 busy: _checking,
                 onTap: _check,

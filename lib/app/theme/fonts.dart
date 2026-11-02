@@ -1,23 +1,15 @@
-/// Каталог шрифтов интерфейса — порт десктопного
-/// `features/settings/lib/fonts.ts`.
+/// UI font catalogue. Two built in: Inter (default) and Minecraft Rus. User
+/// files come on top.
 ///
-/// Встроенных два, оба файлами в `assets/fonts`: Inter (по умолчанию) и
-/// Minecraft Rus. Третьего десктопного, Comic Sans MS, нет: на ПК он системный
-/// из Windows, на телефоне его нет, а встроить нельзя — шрифт платный.
-///
-/// Сверх каталога человек грузит свои файлы (`features/settings/user_fonts.dart`).
-///
-/// В настройках хранится само семейство (`Inter`, `bloomfont-…`), а не
-/// CSS-стек, как на ПК, — стек не нужен, запасной шрифт задаёт тема.
+/// Settings store the family itself (`Inter`, `bloomfont-…`); the fallback
+/// comes from the theme.
 library;
 
 class BloomFont {
   const BloomFont(this.name, this.family);
 
-  /// Подпись плитки.
   final String name;
 
-  /// Семейство из pubspec.
   final String family;
 }
 
@@ -28,18 +20,17 @@ const List<BloomFont> kBuiltinFonts = [
   BloomFont('Minecraft', 'Minecraft Rus'),
 ];
 
-/// Шрифты, заменённые другими: сохранённый выбор переезжает, а не
-/// сбрасывается (как `REPLACED` на ПК).
+/// Replaced fonts: a saved choice moves over instead of resetting.
 const Map<String, String> _replaced = {'Monocraft': 'Minecraft Rus'};
 
-/// Первое семейство из CSS-значения font-family, без кавычек: так узнаётся и
-/// десктопное `'Inter',system-ui,sans-serif`.
+/// First family of a CSS font-family value, unquoted, so
+/// `'Inter',system-ui,sans-serif` is recognised too.
 String firstFontFamily(String value) =>
     value.split(',').first.trim().replaceAll(RegExp(r'''^['"]|['"]$'''), '');
 
-/// Сохранённое значение → семейство, которым можно рисовать. Шрифты, которых
-/// нет ни в каталоге, ни среди своих ([userFamilies]), и мусор → Inter: иначе
-/// интерфейс молча уехал бы на системный запасной шрифт.
+/// Saved value to a drawable family. Anything not in the catalogue or
+/// [userFamilies], and junk, becomes Inter, or the UI would silently fall to
+/// the system font.
 String normalizeFont(Object? raw, Iterable<String> userFamilies) {
   if (raw is! String) return kDefaultFont;
   final first = firstFontFamily(raw);

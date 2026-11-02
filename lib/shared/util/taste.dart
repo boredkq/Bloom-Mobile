@@ -1,4 +1,4 @@
-/// Shared rules of taste, as `Taste` on the PC: how the wave, the home shelves
+/// Shared rules of taste: how the wave, the home shelves
 /// and the wave's picks tell a track's artists, keep them in measure and read
 /// what the listener plays most.
 library;
@@ -98,7 +98,7 @@ RecsInput recsInputOf(Ref ref) => RecsInput(
 );
 
 /// Whether similar ones can be asked for: the track's platform is on and has
-/// a radio for it, `Taste::askable` on the PC. One's own files have no one to ask.
+/// a radio for it. One's own files have no one to ask.
 bool recsAskable(RecsInput input, Track t) {
   final p = input.registry.byId(t.source.id);
   return p != null && p.isEnabled && p.trackStation(t).isNotEmpty;
@@ -109,8 +109,8 @@ bool _askableId(RecsInput input, String id) {
   return t != null && recsAskable(input, t);
 }
 
-/// The most played that can be asked about, no dislikes: `Taste::topTracks`
-/// on the PC. Over the window, and over all time while the window has too few.
+/// The most played that can be asked about, no dislikes.
+/// Over the window, and over all time while the window has too few.
 List<TopPlayed> recsTopPlayed(
   RecsInput input, {
   required int limit,
@@ -129,7 +129,7 @@ List<TopPlayed> recsTopPlayed(
   return top.length >= _windowMinSeeds ? top : pick(minPlays: 1);
 }
 
-/// The list newest first by when each was added ([at]): `Taste::newestIn`.
+/// The list newest first by when each was added ([at]).
 List<Track> newestFirst(List<Track> list, Map<String, int> at) {
   final rows = [for (var i = 0; i < list.length; i++) (list[i], i)]
     ..sort((a, b) {
@@ -144,7 +144,7 @@ bool isRealArtist(String name) {
   return n.isNotEmpty && n != '—' && n != 'unknown artist';
 }
 
-/// An artist of the top: `Taste::Artist` on the PC.
+/// An artist of the top.
 class TopArtist {
   TopArtist(this.name, this.key);
 

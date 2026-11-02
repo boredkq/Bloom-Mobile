@@ -1,4 +1,4 @@
-/// Анимация смены трека: направление перехода, настройка и сами слои.
+/// Анимация смены трека: направление перехода и сами слои.
 ///
 /// Проверяем то, на чём анимация ломается незаметно: что обе поверхности едут
 /// в одну сторону (направление считается один раз, в плеере), что смену «под
@@ -7,43 +7,36 @@ library;
 
 import 'package:bloom/app/theme/bloom_theme.dart';
 import 'package:bloom/app/theme/tokens.dart';
-import 'package:bloom/core/store/json_store.dart';
-import 'package:bloom/features/player/track_anim_store.dart';
 import 'package:bloom/features/player/track_swap_dir.dart';
 import 'package:bloom/features/player/ui/track_swap.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderClipRect;
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:bloom/core/db/db.dart';
-import 'support/test_db.dart';
-
-ProviderContainer _container(JsonStore store) {
-  final c = ProviderContainer(
-    overrides: [
-      jsonStoreProvider.overrideWithValue(store),
-      dbProvider.overrideWithValue(testDb(store)),
-    ],
-  );
-  addTearDown(c.dispose);
-  return c;
-}
 
 /// Слои узнаём по тексту: у каждого трека свой.
-Future<void> _pumpSwap(WidgetTester tester, String id, TrackAnimKind kind) =>
-    tester.pumpWidget(
-      MaterialApp(
-        theme: buildBloomTheme(BloomThemes.dark),
-        home: Scaffold(
-          body: Center(
-            child: SizedBox(
-              width: 300,
-              child: TrackSwap(id: id, kind: kind, child: Text(id)),
-            ),
+Future<void> _pumpSwap(
+  WidgetTester tester,
+  String id, {
+  bool fade = false,
+  bool animated = true,
+}) => tester.pumpWidget(
+  MaterialApp(
+    theme: buildBloomTheme(BloomThemes.dark),
+    home: Scaffold(
+      body: Center(
+        child: SizedBox(
+          width: 300,
+          child: TrackSwap(
+            id: id,
+            fade: fade,
+            animated: animated,
+            child: Text(id),
           ),
         ),
       ),
-    );
+    ),
+  ),
+);
 
 /// Сдвиг слоя с этим текстом, доля ширины.
 double _shiftOf(WidgetTester tester, String text) {
@@ -118,51 +111,11 @@ void main() {
     });
   });
 
-  group('настройка', () {
-    test('по умолчанию — слайд у всего, как на ПК', () {
-      final settings = _container(JsonStore.memory()).read(trackAnimProvider);
-      for (final surface in TrackAnimSurface.values) {
-        expect(settings.of(surface).cover, TrackAnimKind.slide);
-        expect(settings.of(surface).text, TrackAnimKind.slide);
-      }
-    });
-
-    test('поверхности и цели независимы и переживают перезапуск', () {
-      final store = JsonStore.memory();
-      _container(store)
-          .read(trackAnimProvider.notifier)
-          .setKind(
-            TrackAnimSurface.mini,
-            TrackAnimTarget.text,
-            TrackAnimKind.fade,
-          );
-
-      final again = _container(store).read(trackAnimProvider);
-      expect(again.of(TrackAnimSurface.mini).text, TrackAnimKind.fade);
-      // Соседи не поехали.
-      expect(again.of(TrackAnimSurface.mini).cover, TrackAnimKind.slide);
-      expect(again.of(TrackAnimSurface.player).text, TrackAnimKind.slide);
-    });
-
-    test('незнакомая запись заменяется умолчанием, а не роняет запуск', () {
-      final store = JsonStore.memory({
-        'trackAnim': {
-          'mini': {'cover': 'вертушка', 'text': 'none'},
-          'player': 'мусор',
-        },
-      });
-      final settings = _container(store).read(trackAnimProvider);
-      expect(settings.of(TrackAnimSurface.mini).cover, TrackAnimKind.slide);
-      expect(settings.of(TrackAnimSurface.mini).text, TrackAnimKind.none);
-      expect(settings.of(TrackAnimSurface.player).cover, TrackAnimKind.slide);
-    });
-  });
-
   group('слои', () {
     testWidgets('первый трек за сессию не анимируется — уезжать нечему', (
       tester,
     ) async {
-      await _pumpSwap(tester, 'первый', TrackAnimKind.slide);
+      await _pumpSwap(tester, 'первый');
       expect(find.text('первый'), findsOneWidget);
       expect(_shiftOf(tester, 'первый'), 0);
     });
@@ -170,8 +123,8 @@ void main() {
     testWidgets('слайд: старый уезжает, новый приезжает и слой снимается', (
       tester,
     ) async {
-      await _pumpSwap(tester, 'первый', TrackAnimKind.slide);
-      await _pumpSwap(tester, 'второй', TrackAnimKind.slide);
+      await _pumpSwap(tester, 'первый');
+      await _pumpSwap(tester, 'второй');
       await tester.pump();
 
       // Оба слоя в дереве, и разъезжаются они в одну сторону: новый идёт
@@ -187,10 +140,10 @@ void main() {
     });
 
     testWidgets('назад — зеркально', (tester) async {
-      await _pumpSwap(tester, 'первый', TrackAnimKind.slide);
+      await _pumpSwap(tester, 'первый');
       markSwapDir(-1);
       commitSwapDir(['первый', 'второй'], 0);
-      await _pumpSwap(tester, 'второй', TrackAnimKind.slide);
+      await _pumpSwap(tester, 'второй');
       await tester.pump(const Duration(milliseconds: 60));
 
       expect(_shiftOf(tester, 'второй'), lessThan(0));
@@ -199,8 +152,8 @@ void main() {
     });
 
     testWidgets('уезжающий слой режется по своей коробке', (tester) async {
-      await _pumpSwap(tester, 'первый', TrackAnimKind.slide);
-      await _pumpSwap(tester, 'второй', TrackAnimKind.slide);
+      await _pumpSwap(tester, 'первый');
+      await _pumpSwap(tester, 'второй');
       await tester.pump(const Duration(milliseconds: 60));
 
       // Слои разъехались — и обрезка обязана быть на месте: `Stack` считает
@@ -220,8 +173,8 @@ void main() {
     });
 
     testWidgets('затухание не двигает слои', (tester) async {
-      await _pumpSwap(tester, 'первый', TrackAnimKind.fade);
-      await _pumpSwap(tester, 'второй', TrackAnimKind.fade);
+      await _pumpSwap(tester, 'первый', fade: true);
+      await _pumpSwap(tester, 'второй', fade: true);
       await tester.pump(const Duration(milliseconds: 60));
 
       expect(find.text('первый'), findsOneWidget);
@@ -230,9 +183,9 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    testWidgets('«нет» — подмена без второго слоя', (tester) async {
-      await _pumpSwap(tester, 'первый', TrackAnimKind.none);
-      await _pumpSwap(tester, 'второй', TrackAnimKind.none);
+    testWidgets('сосед под пальцем меняется без второго слоя', (tester) async {
+      await _pumpSwap(tester, 'первый', animated: false);
+      await _pumpSwap(tester, 'второй', animated: false);
       await tester.pump(const Duration(milliseconds: 60));
 
       expect(find.text('первый'), findsNothing);
@@ -240,10 +193,10 @@ void main() {
     });
 
     testWidgets('смену под пальцем слои не рисуют', (tester) async {
-      await _pumpSwap(tester, 'первый', TrackAnimKind.slide);
+      await _pumpSwap(tester, 'первый');
       markSwapSilent();
       commitSwapDir(['первый', 'второй'], 1);
-      await _pumpSwap(tester, 'второй', TrackAnimKind.slide);
+      await _pumpSwap(tester, 'второй');
       await tester.pump(const Duration(milliseconds: 60));
 
       expect(find.text('первый'), findsNothing);

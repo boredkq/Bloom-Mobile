@@ -1,15 +1,12 @@
-/// Похожие треки SoundCloud с очередью и кэшем — порт `src/wave/sources.ts`
-/// (и его переезда в `soundcloud.rs` на ПК в 3.0).
+/// SoundCloud similar tracks with a queue and cache. Over [sc.stationTracks]
+/// and [sc.relatedTracks] there are three things without which frequent
+/// requests hit 429: a sequential queue with a pause between requests, a
+/// session answer cache and one retry after a refusal. In the platform layer
+/// rather than the wave: home shelves use the same sources, and their queue
+/// must be shared.
 ///
-/// Поверх [sc.stationTracks] / [sc.relatedTracks] здесь три вещи, без которых
-/// частые запросы упираются в 429: последовательная очередь с паузой между
-/// запросами, кэш ответов на время сеанса и одна повторная попытка после
-/// отлупа. Живёт в слое площадки, а не в волне: теми же источниками пользуются
-/// и витрины главной («Для вас», «Похожие на»), а очередь у них обязана быть
-/// общей — иначе волна и витрина вместе снова получат 429.
-///
-/// Пустой список вместо исключения — сознательно: и волна, и витрины опрашивают
-/// сиды пачкой, и один упавший запрос не должен рушить весь подбор.
+/// An empty list instead of an exception on purpose: the wave and shelves poll
+/// seeds in batches, and one failed request mustn't bring down the picks.
 library;
 
 import 'dart:async';
@@ -20,14 +17,13 @@ import 'soundcloud.dart' as sc;
 const Duration _stationTtl = Duration(minutes: 5);
 const Duration _relatedTtl = Duration(minutes: 10);
 
-/// Пауза между исходящими запросами к api-v2.
+/// Pause between outgoing api-v2 requests.
 const Duration _minGap = Duration(milliseconds: 150);
 
-/// Отступ перед повтором, когда SoundCloud ответил «слишком часто».
+/// Backoff before a retry after a too often answer.
 const Duration _retryDelay = Duration(seconds: 2);
 
-/// Сколько похожих считаем достаточным, чтобы не добирать станцией
-/// (десктопный `SIMILAR_ENOUGH`).
+/// Similar tracks counted as enough, with no filling up from a station.
 const int _similarEnough = 12;
 
 class _CacheEntry {
@@ -39,11 +35,11 @@ class _CacheEntry {
 final Map<String, _CacheEntry> _stationCache = {};
 final Map<String, _CacheEntry> _relatedCache = {};
 
-/// Хвост очереди запросов: каждый следующий ждёт предыдущего.
+/// Tail of the request queue: each next waits for the previous.
 Future<void> _queue = Future.value();
 DateTime _lastRequestAt = DateTime.fromMillisecondsSinceEpoch(0);
 
-/// Провести запрос через общую очередь, выдержав паузу с прошлым.
+/// Runs a request through the shared queue, keeping the pause from the last.
 Future<List<ScRawTrack>> _enqueue(Future<List<ScRawTrack>> Function() fn) {
   final completer = Completer<List<ScRawTrack>>();
   _queue = _queue.then((_) async {
@@ -56,7 +52,7 @@ Future<List<ScRawTrack>> _enqueue(Future<List<ScRawTrack>> Function() fn) {
       completer.completeError(e, st);
     }
   });
-  // Ошибка одного запроса не должна оборвать очередь для следующих.
+  // One request's error mustn't break the queue for the next.
   _queue = _queue.catchError((_) {});
   return completer.future;
 }
@@ -73,9 +69,9 @@ Future<List<ScRawTrack>> _cached(
   try {
     return _store(cache, key, await _enqueue(fetch));
   } catch (_) {
-    // Одна повторная попытка с отступом: чаще всего это отлуп за частоту.
-    // Именно на ОШИБКЕ, а не на пустоте: пустой ответ — это «станция
-    // кончилась», и ждать две секунды ради того же ответа незачем.
+    // One retry with backoff: it's usually a rate refusal. On an ERROR, not
+    // emptiness: an empty answer means the station ended, and two seconds for
+    // the same answer is pointless.
     try {
       await Future<void>.delayed(_retryDelay);
       return _store(cache, key, await _enqueue(fetch));
@@ -85,8 +81,8 @@ Future<List<ScRawTrack>> _cached(
   }
 }
 
-/// Запомнить ответ. Кэшируем только непустой: пустоту иначе пришлось бы ждать
-/// весь срок, хотя станция могла просто моргнуть.
+/// Remembers an answer. Only non-empty ones cache: emptiness would wait out the
+/// whole term, though the station may have just blinked.
 List<ScRawTrack> _store(
   Map<String, _CacheEntry> cache,
   String key,
@@ -96,7 +92,7 @@ List<ScRawTrack> _store(
   return data;
 }
 
-/// Треки станции сида со смещением [offset].
+/// A seed station's tracks at offset [offset].
 Future<List<ScRawTrack>> waveStation(String scTrackId, {int offset = 0}) =>
     _cached(
       _stationCache,
@@ -105,7 +101,7 @@ Future<List<ScRawTrack>> waveStation(String scTrackId, {int offset = 0}) =>
       () => sc.stationTracks(scTrackId, offset: offset),
     );
 
-/// Похожие на сид.
+/// Similar to a seed.
 Future<List<ScRawTrack>> waveRelated(String scTrackId) => _cached(
   _relatedCache,
   scTrackId,
@@ -113,12 +109,11 @@ Future<List<ScRawTrack>> waveRelated(String scTrackId) => _cached(
   () => sc.relatedTracks(scTrackId),
 );
 
-/// Похожие на трек для витрин главной — порт `similar_tracks` из
-/// `soundcloud.rs`. Сеть та же, что у волны, со всеми её кэшами и паузами.
-///
-/// Станция подмешивается, только когда одних related мало: related — это
-/// именно «похожие», а станция ближе к радио и разбавляет подборку. Сид и
-/// повторы из выдачи убраны: сид и так стоит в топе того, для кого подборка.
+/// Similar to a track for home shelves, on the wave's network with its caches
+/// and pauses. The station mixes in only when related are few: related are
+/// truly similar, while a station is closer to radio and dilutes the selection.
+/// The seed and repeats are removed: the seed already tops its listener's
+/// chart.
 Future<List<ScRawTrack>> similarTracks(String scTrackId) async {
   final seed = int.tryParse(scTrackId) ?? 0;
   final seen = <int>{};
@@ -135,8 +130,8 @@ Future<List<ScRawTrack>> similarTracks(String scTrackId) async {
   return out;
 }
 
-/// Сбросить кэш — перед стартом новой волны, чтобы она не собралась из тех же
-/// ответов, что предыдущая.
+/// Clears the cache before a new wave, so it isn't built from the same answers
+/// as the last.
 void resetWaveSourceCache() {
   _stationCache.clear();
   _relatedCache.clear();

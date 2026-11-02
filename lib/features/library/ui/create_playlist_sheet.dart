@@ -1,15 +1,11 @@
-/// Шторка «+» библиотеки — порт десктопного меню `LibAddMenu`.
+/// The library's plus sheet. Two views: main (a name field and an Import row)
+/// and import (a link field, a target choice, From file, Back). The tick on the
+/// right shows only when the field has something.
 ///
-/// Два вида, как на ПК: главный (поле имени + строка «Импорт») и импорт (поле
-/// ссылки, выбор цели, «Из файла», «Назад»). Галочка справа появляется только
-/// когда в поле что-то есть — там это `plName.trim() && <button>`.
+/// No cover at creation: it's set in the playlist itself.
 ///
-/// Чего с ПК нет: «Связать папку» — следить на телефоне не за чем, одиночные
-/// файлы добавляются плюсом в шапке «Всех треков» (`local_tracks.dart`).
-/// Обложки при создании нет и на ПК — её ставят уже в самом плейлисте.
-///
-/// «Из файла» цель НЕ учитывает, как и на ПК: файл переноса сам состоит из
-/// плейлистов, вкладывать их в выбранный некуда.
+/// From file ignores the target: a transfer file is itself made of playlists,
+/// with no way to nest them in the chosen one.
 library;
 
 import 'package:flutter/material.dart';
@@ -25,37 +21,34 @@ import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/platform_logo.dart';
-import '../../../shared/ui/pressable.dart';
 import '../import_file.dart';
 import '../import_url.dart';
 
-/// Чем кончилась шторка.
+/// How the sheet ended.
 sealed class _Outcome {
   const _Outcome();
 }
 
-/// Ввели имя — плейлист создаёт вызывающий, ему же потом в него уходить.
+/// A name was entered: the caller creates the playlist, and then goes to it.
 class _NameEntered extends _Outcome {
   const _NameEntered(this.name);
   final String name;
 }
 
-/// Импорт по ссылке уже случился внутри шторки: он асинхронный и со своим
-/// спиннером.
+/// A link import already happened inside the sheet: it's asynchronous, with its
+/// own spinner.
 class _Imported extends _Outcome {
   const _Imported(this.result);
   final ImportResult result;
 }
 
-/// Выбрали «Из файла». Сам импорт делает вызывающий: системный диалог на ПК
-/// открывается уже ПОСЛЕ закрытия меню, и висящая над ним шторка выглядела бы
-/// зависшей.
+/// From file was picked. The caller does the import: the system dialog opens
+/// after the menu closes, and a sheet hanging over it would look stuck.
 class _FileRequested extends _Outcome {
   const _FileRequested();
 }
 
-/// Площадка по виду ссылки — только для значка в поле (порт
-/// `detectLinkProvider`, без сети).
+/// Platform by a link's look, only for the icon in the field; no network.
 MusicSource? detectLinkSource(String url) {
   final u = url.trim();
   if (u.isEmpty) return null;
@@ -74,8 +67,7 @@ MusicSource? detectLinkSource(String url) {
   return null;
 }
 
-/// Открыть шторку «+». Созданный плейлист сразу открывается — как на ПК, где
-/// `createNamedPlaylist` выбирает его в библиотеке.
+/// Opens the plus sheet. A created playlist opens right away.
 Future<void> showCreatePlaylistSheet(
   BuildContext context,
   WidgetRef ref,
@@ -97,14 +89,14 @@ Future<void> showCreatePlaylistSheet(
         importResultText(l10n, result),
         kind: result.added == 0 ? ToastKind.info : ToastKind.success,
       );
-      // В созданный плейлист уходим, как и при обычном создании; при импорте
-      // «во все треки» / «в любимые» уходить некуда.
+      // I go to the created playlist, as with ordinary creation; importing into
+      // all tracks or favourites has nowhere to go.
       if (result.createdId != null && context.mounted) {
         context.go('/library/list/${result.createdId}');
       }
     case _FileRequested():
-      // Никуда не уходим: в файле плейлистов может быть сколько угодно, и
-      // открывать наугад один из них незачем. Тост показывает сам поток.
+      // Going nowhere: a file may hold any number of playlists, and opening one
+      // at random makes no sense. The flow shows the toast.
       await importPlaylistFile(ref, messenger, l10n);
   }
 }
@@ -185,6 +177,26 @@ class _AddBodyState extends ConsumerState<_AddBody> {
     );
   }
 
+  /// An import target. A playlist stands with its cover: among many it's found
+  /// by the picture sooner than by the name.
+  Widget _targetRow((ImportTarget, String, BloomGlyph, String?) option) {
+    final (target, label, icon, cover) = option;
+    final selected =
+        target.kind == _target.kind && target.playlistId == _target.playlistId;
+    return SheetRow(
+      icon: icon,
+      leading: cover == null ? null : Cover(url: cover, size: 40),
+      gap: cover == null ? 22 : 12,
+      label: label,
+      color: selected ? context.bloom.accent : null,
+      trailing: selected ? const SheetTick() : null,
+      onTap: () => setState(() {
+        _target = target;
+        _targetOpen = false;
+      }),
+    );
+  }
+
   Widget _mainBody() => Column(
     key: const ValueKey('main'),
     mainAxisSize: MainAxisSize.min,
@@ -198,10 +210,10 @@ class _AddBodyState extends ConsumerState<_AddBody> {
       ),
       SheetPanel(
         children: [
-          _Row(
+          SheetRow(
             icon: Bi.import,
             label: context.l.cpImport,
-            chevron: true,
+            trailing: const SheetChevron(),
             onTap: () => setState(() => _importView = true),
           ),
         ],
@@ -218,7 +230,7 @@ class _AddBodyState extends ConsumerState<_AddBody> {
         hint: context.l.cpLinkHint,
         autofocus: true,
         busy: _busy,
-        // Значок площадки внутри поля — как только ссылка узнана.
+        // Platform icon in the field, once the link is recognised.
         trailing: switch (detectLinkSource(_url.text)) {
           final source? => PlatformLogo(source, size: 18),
           null => null,
@@ -228,10 +240,10 @@ class _AddBodyState extends ConsumerState<_AddBody> {
       ),
       SheetPanel(
         children: [
-          _Row(
+          SheetRow(
             icon: Bi.folderPathConnect,
             label: context.l.cpDestination(_targetLabel(playlists)),
-            chevron: true,
+            trailing: const SheetChevron(),
             onTap: () => setState(() => _targetOpen = !_targetOpen),
           ),
           if (_targetOpen) ...[
@@ -255,9 +267,8 @@ class _AddBodyState extends ConsumerState<_AddBody> {
                 Bi.heartBold,
                 null,
               ),
-              // Плейлисты стоят с обложками — как в шторке «Добавить в
-              // плейлист»: свой список узнаётся по картинке быстрее, чем по
-              // названию, а одинаковый значок у всех не различает ничего.
+              // Playlists show with covers: an own list is known by its picture
+              // faster than by name, and one icon for all tells nothing apart.
               for (final p in playlists)
                 (
                   ImportTarget(ImportTargetKind.playlist, playlistId: p.id),
@@ -266,30 +277,19 @@ class _AddBodyState extends ConsumerState<_AddBody> {
                   p.cover ?? '',
                 ),
             ])
-              _Row(
-                icon: option.$3,
-                cover: option.$4,
-                label: option.$2,
-                selected:
-                    option.$1.kind == _target.kind &&
-                    option.$1.playlistId == _target.playlistId,
-                onTap: () => setState(() {
-                  _target = option.$1;
-                  _targetOpen = false;
-                }),
-              ),
+              _targetRow(option),
           ],
         ],
       ),
       SheetPanel(
         children: [
-          _Row(
+          SheetRow(
             icon: Bi.file,
             label: context.l.cpFromFile,
             onTap: () => Navigator.of(context).pop(const _FileRequested()),
           ),
           sheetDivider(),
-          _Row(
+          SheetRow(
             icon: Bi.arrowLeft,
             label: context.l.commonBack,
             onTap: () => setState(() {
@@ -301,68 +301,4 @@ class _AddBodyState extends ConsumerState<_AddBody> {
       ),
     ],
   );
-}
-
-/// Строка шторки. Своя, а не `SheetAction`: те закрывают шторку по нажатию, а
-/// здесь пункты переключают вид внутри неё.
-class _Row extends StatelessWidget {
-  const _Row({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.cover,
-    this.chevron = false,
-    this.selected = false,
-  });
-
-  final BloomGlyph icon;
-  final String label;
-  final VoidCallback onTap;
-
-  /// Обложка вместо значка — у строк плейлистов. Пустая строка значит «это
-  /// плейлист, но своей обложки нет»: там встаёт та же заглушка, что и на
-  /// плитке в библиотеке, а не общий значок списка.
-  final String? cover;
-
-  final bool chevron;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final art = cover;
-    return Pressable(
-      onTap: onTap,
-      scale: 0.98,
-      child: Padding(
-        // Обложка выше значка — поля по вертикали ужимаются, чтобы строка с
-        // ней не выбивалась из списка (та же мера в «Добавить в плейлист»).
-        padding: EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: art == null ? 15 : 8,
-        ),
-        child: Row(
-          children: [
-            if (art == null)
-              BloomIcon(icon, size: 22, color: selected ? t.accent : t.text)
-            else
-              Cover(url: art, size: 40),
-            SizedBox(width: art == null ? 16 : 12),
-            Expanded(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: selected ? t.accent : t.text,
-                ),
-              ),
-            ),
-            if (selected) BloomIcon(Bi.check, size: 18, color: t.accent),
-            if (chevron) BloomIcon(Bi.altArrowRight, size: 20, color: t.muted),
-          ],
-        ),
-      ),
-    );
-  }
 }

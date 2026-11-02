@@ -21,18 +21,18 @@ import '../../../core/store/cover_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/util/artists.dart';
 
-/// Диаметр кружка. Подпись в плеере 16 px — аватарка чуть выше строчных букв,
-/// чтобы читаться картинкой, но не спорить с именем.
+/// Circle diameter. The player's caption is 16 px: the avatar stands a little
+/// over lowercase letters, to read as a picture but not compete with the name.
 const double _size = 22;
 
-/// На сколько следующий кружок заезжает под предыдущий.
+/// How far the next circle tucks under the previous.
 const double _overlap = 9;
 
-/// Просвет между соседними кружками. Не обводка, а ВЫРЕЗ: под плеером стоит
-/// размытая обложка, и любая сплошная рамка была бы на ней пятном.
+/// Gap between circles. A CUTOUT rather than an outline: there's a blurred
+/// cover under the player, and any solid frame would be a blot.
 const double _gap = 2;
 
-/// Отступ от стопки до имени.
+/// Gap from the stack to the name.
 const double _lead = 8;
 
 class TrackArtistAvatars extends ConsumerStatefulWidget {
@@ -85,9 +85,9 @@ class _TrackArtistAvatarsState extends ConsumerState<TrackArtistAvatars> {
     unawaited(_resolve(links));
   }
 
-  /// Ставит картинку в стопку, только когда она ДОГРУЗИЛАСЬ. Битая ссылка
-  /// выпадает из стопки целиком, как на десктопе: заглушка [Cover] на её месте
-  /// читалась бы чужой аватаркой, и пока грузится — тоже.
+  /// Puts a picture in the stack only once it has LOADED. A broken link drops
+  /// out of the stack entirely: a [Cover] placeholder would read as someone
+  /// else's avatar, and likewise while loading.
   Future<void> _accept(
     List<ArtistLink> forLinks,
     String name,
@@ -148,14 +148,14 @@ class _TrackArtistAvatarsState extends ConsumerState<TrackArtistAvatars> {
         height: _size,
         child: Stack(
           children: [
-            // Рисуем с хвоста: первый артист остаётся ПОВЕРХ остальных — он же
-            // первым стоит и в имени.
+            // Drawn from the tail: the first artist stays ON TOP, as first in
+            // the name too.
             for (final i in List.generate(urls.length, (i) => i).reversed)
               Positioned(
                 left: step * i,
                 child: ClipPath(
-                  // Кружок под соседом слева выгрызает у себя его край с
-                  // просветом — так стопка читается на любом фоне.
+                  // A circle under its left neighbour cuts out the neighbour's
+                  // edge with a gap, so the stack reads on any background.
                   clipper: i == 0
                       ? null
                       : _NeighbourBite(step: step, gap: _gap),
@@ -169,8 +169,8 @@ class _TrackArtistAvatarsState extends ConsumerState<TrackArtistAvatars> {
   }
 }
 
-/// `true` — картинка декодировалась (и лежит в кеше, так что [Cover] покажет её
-/// сразу), `false` — ссылка битая или сети нет.
+/// `true`: the picture decoded and is cached, so [Cover] shows it at once.
+/// `false`: a broken link or no network.
 Future<bool> _loads(String url) {
   final image = coverImage(url);
   if (image == null) return Future.value(false);
@@ -190,11 +190,11 @@ Future<bool> _loads(String url) {
   return done.future;
 }
 
-/// Круг за вычетом соседа слева, раздутого на [gap].
+/// A circle minus the left neighbour, swollen by [gap].
 class _NeighbourBite extends CustomClipper<Path> {
   const _NeighbourBite({required this.step, required this.gap});
 
-  /// Насколько левее стоит центр соседа.
+  /// How far to the left the neighbour's centre stands.
   final double step;
   final double gap;
 

@@ -1,13 +1,7 @@
-/// Сколько места занимают кеши приложения — данные для раздела «Хранилище».
-///
-/// Порт `TelemetrySection.tsx`: кольцо «Занято» там считает СУММУ перечисленных
-/// в разделе кешей, а не весь каталог приложения, — иначе очистка строки не
-/// уменьшала бы круг. Знаменатель кольца на ПК даёт `navigator.storage.estimate`,
-/// здесь — память телефона (нативный `diskSpace`).
-///
-/// Категории те же, что на десктопе: офлайн-копии, тексты и картинки
-/// кастомизации. Библиотеки и своих обложек тут нет намеренно — это не кеш, а
-/// то, что человек собрал руками, и стирать его пунктом «Очистить всё» нельзя.
+/// What the caches take, for the Storage page. The sum of what the page lists,
+/// not the whole folder, or clearing a row wouldn't shrink the ring. The
+/// library and one's own covers aren't here: they were put together by hand,
+/// "Clear all" must not touch them.
 library;
 
 import 'dart:io';
@@ -15,18 +9,18 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/store/cover_cache.dart';
 import '../../core/store/cover_store.dart';
 import '../customization/custom_store.dart';
 import '../customization/media_store.dart';
 import '../lyrics/lyrics_store.dart';
 import '../offline/offline_store.dart';
 
-/// Тот же канал, что у системных диалогов файлов: обе стороны — про файловую
-/// систему телефона, второй канал ради одного метода заводить незачем.
+/// The file dialogs' channel: both are about the phone's file system.
 const MethodChannel _channel = MethodChannel('bloom/files');
 
-/// Что за кеш — по нему же берутся иконка, название и текст очистки на экране.
-enum CacheKind { offline, lyrics, custom }
+/// Also picks the icon, the name and the text on the page.
+enum CacheKind { offline, lyrics, covers, custom }
 
 class CacheStat {
   const CacheStat({
@@ -47,8 +41,7 @@ class StorageStats {
 
   final List<CacheStat> caches;
 
-  /// Вся память телефона; `null` — платформа не ответила (нет нативной
-  /// стороны, тесты). Тогда доли занятого не показываем.
+  /// `null` if the platform didn't answer: then no share is shown.
   final int? deviceTotal;
 
   CacheStat of(CacheKind kind) =>
@@ -57,7 +50,7 @@ class StorageStats {
   int get bytes => caches.fold(0, (sum, c) => sum + c.bytes);
   int get count => caches.fold(0, (sum, c) => sum + c.count);
 
-  /// Доля занятого от памяти телефона, 0..1; `null` — знаменатель неизвестен.
+  /// 0..1; `null` while the total is unknown.
   double? get fraction {
     final total = deviceTotal;
     if (total == null || total <= 0) return null;
@@ -68,10 +61,7 @@ class StorageStats {
       CacheStat(kind: kind, count: 0, bytes: 0);
 }
 
-/// Замеры для экрана «Хранилище».
-///
-/// `autoDispose`: цифры нужны, только пока экран открыт, а за его пределами
-/// каждая проверка — это обход каталогов.
+/// `autoDispose`: only while the page is open, each check walks folders.
 final storageStatsProvider = FutureProvider.autoDispose<StorageStats>((
   ref,
 ) async {
@@ -83,6 +73,7 @@ final storageStatsProvider = FutureProvider.autoDispose<StorageStats>((
 
   final offline = await ref.read(offlineProvider.notifier).stats();
   final lyrics = ref.read(lyricsCacheProvider).stats();
+  final covers = await coverCacheStats();
   final custom = await _mediaStats(media);
 
   return StorageStats(
@@ -98,6 +89,11 @@ final storageStatsProvider = FutureProvider.autoDispose<StorageStats>((
         bytes: lyrics.bytes,
       ),
       CacheStat(
+        kind: CacheKind.covers,
+        count: covers.count,
+        bytes: covers.bytes,
+      ),
+      CacheStat(
         kind: CacheKind.custom,
         count: custom.count,
         bytes: custom.bytes,
@@ -107,14 +103,14 @@ final storageStatsProvider = FutureProvider.autoDispose<StorageStats>((
   );
 });
 
-/// Стереть кеш. Возвращает число удалённых записей — его показывает тост.
+/// Returns how many went; the toast shows it.
 Future<int> clearCache(WidgetRef ref, CacheKind kind) async {
   final deleted = switch (kind) {
     CacheKind.offline => await ref.read(offlineProvider.notifier).clearAll(),
     CacheKind.lyrics => ref.read(lyricsCacheProvider).clear(),
-    // Картинку убираем каскадом: она может стоять фоном или обложкой, и
-    // ссылка на удалённый файл оставила бы пустой контекст (десктопный
-    // `mediaLibStore.clearAll` делает ровно это).
+    CacheKind.covers => await clearCoverCache(),
+    // One by one: a picture may be a background or a cover, and a link to a
+    // gone file would leave its place empty.
     CacheKind.custom => _clearMedia(ref),
   };
   ref.invalidate(storageStatsProvider);
@@ -129,8 +125,7 @@ int _clearMedia(WidgetRef ref) {
   return ids.length;
 }
 
-/// Картинки библиотеки кастомизации: считаем только свои файлы — картинка «по
-/// ссылке» места на телефоне не занимает.
+/// Only one's own files: a linked picture takes no room here.
 Future<({int count, int bytes})> _mediaStats(List<MediaItem> items) async {
   var count = 0;
   var bytes = 0;
@@ -143,13 +138,13 @@ Future<({int count, int bytes})> _mediaStats(List<MediaItem> items) async {
     try {
       bytes += await file.length();
     } catch (_) {
-      // Файл исчез между проверкой и чтением — просто не считаем его.
+      // Gone between the check and the read: it just doesn't count.
     }
   }
   return (count: count, bytes: bytes);
 }
 
-/// Вся память телефона в байтах; `null` — платформа не ответила.
+/// `null` if the platform didn't answer.
 Future<int?> _deviceTotal() async {
   try {
     final space = await _channel.invokeMapMethod<String, Object?>('diskSpace');
@@ -158,8 +153,7 @@ Future<int?> _deviceTotal() async {
   } on PlatformException {
     return null;
   } on MissingPluginException {
-    // Платформа без нативной стороны (тесты, десктоп) — кольцо покажет только
-    // объём, без доли.
+    // No native side (tests): the ring shows just the size.
     return null;
   }
 }

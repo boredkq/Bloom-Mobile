@@ -1,8 +1,5 @@
-/// Выбор цвета — порт десктопного `ColorPicker.tsx`.
-///
-/// Там это попап у сватча: квадрат насыщенности/яркости, полоса тона и поле
-/// hex. На телефоне попапу негде висеть, поэтому те же три части лежат в
-/// шторке; набор ручек и порядок — десктопные.
+/// Colour picker: a saturation and brightness square, a hue bar and a hex
+/// field, in a sheet.
 library;
 
 import 'package:flutter/material.dart';
@@ -12,22 +9,23 @@ import '../../app/theme/tokens.dart';
 import '../../core/l10n/l10n.dart';
 import 'atoms.dart';
 import 'bloom_sheet.dart';
+import 'pressable.dart';
 
-/// Открыть пикер. Возвращает выбранный цвет или `null`, если закрыли.
+/// Opens the picker; returns the colour, or `null` if dismissed.
 Future<Color?> showBloomColorPicker(BuildContext context, Color initial) {
-  // Корневой навигатор и стекло затемнения — общие у всех наших шторок
-  // (`showBloomModal`): иначе шторка остаётся под таб-баром и миниплеером.
+  // The root navigator and dimming glass, as for all my sheets, or it stays
+  // under the tab bar and mini player.
   return showBloomModal<Color>(
     context: context,
     builder: (_) => _ColorPickerSheet(initial: initial),
   );
 }
 
-/// `#rrggbb` без альфы — в этом виде цвет живёт в десктопном профиле.
+/// `#rrggbb` with no alpha: the form colours are stored in.
 String colorToHex(Color color) =>
     '#${(color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
 
-/// Разбор hex (`#rgb`, `#rrggbb`); `null` — не цвет.
+/// Parses `#rgb` or `#rrggbb`; `null` if it isn't a colour.
 Color? colorFromHex(String input) {
   var hex = input.trim().replaceAll(RegExp('[^0-9a-fA-F]'), '');
   if (hex.length == 3) {
@@ -70,8 +68,8 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
   void _onHex(String value) {
     final parsed = colorFromHex(value);
     if (parsed == null) return;
-    // Тон у чёрного и белого не определён — берём прежний, иначе ползунок
-    // тона прыгал бы в красный на каждом «000000».
+    // Black and white have no hue, so I keep the previous one or the slider
+    // would jump to red on every 000000.
     final next = HSVColor.fromColor(parsed);
     _set(
       next.saturation == 0 || next.value == 0 ? next.withHue(_hsv.hue) : next,
@@ -82,108 +80,78 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
 
-    return Padding(
-      // Поле hex поднимает клавиатуру — шторка должна встать над ней.
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: ClipRRect(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(t.radius * 1.7),
-        ),
-        child: SheetSurface(
-          child: SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+    return SheetSurface(
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                height: 190,
+                child: _SatBox(
+                  hsv: _hsv,
+                  onChanged: (s, v) =>
+                      _set(_hsv.withSaturation(s).withValue(v)),
+                ),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                height: 26,
+                child: _HueBar(
+                  hue: _hsv.hue,
+                  onChanged: (h) => _set(_hsv.withHue(h)),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
                 children: [
-                  SizedBox(
-                    height: 190,
-                    child: _SatBox(
-                      hsv: _hsv,
-                      onChanged: (s, v) =>
-                          _set(_hsv.withSaturation(s).withValue(v)),
+                  ColorChip(color: _color, width: 42, height: 42),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: BloomField(
+                      controller: _hex,
+                      onChanged: _onHex,
+                      maxLength: 7,
+                      formatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp('[#0-9a-fA-F]'),
+                        ),
+                      ],
+                      fill: t.pill,
+                      radius: t.radius * 0.6,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    height: 26,
-                    child: _HueBar(
-                      hue: _hsv.hue,
-                      onChanged: (h) => _set(_hsv.withHue(h)),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: _color,
-                          borderRadius: BorderRadius.circular(t.radius * 0.6),
-                          border: Border.all(color: t.ovlLine2),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: _hex,
-                          onChanged: _onHex,
-                          cursorColor: t.accent,
-                          maxLength: 7,
-                          style: theme.titleMedium,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                              RegExp('[#0-9a-fA-F]'),
-                            ),
-                          ],
-                          decoration: InputDecoration(
-                            counterText: '',
-                            isDense: true,
-                            filled: true,
-                            fillColor: t.pill,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 12,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(
-                                t.radius * 0.6,
-                              ),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: BloomButton(
-                          label: context.l.commonCancel,
-                          color: t.text2,
-                          onTap: () => Navigator.of(context).pop(),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: BloomButton(
-                          label: context.l.commonDone,
-                          tone: ButtonTone.accent,
-                          onTap: () => Navigator.of(context).pop(_color),
-                        ),
-                      ),
-                    ],
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: BloomButton(
+                      label: context.l.commonCancel,
+                      color: t.text2,
+                      onTap: () => Navigator.of(context).pop(),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: BloomButton(
+                      label: context.l.commonDone,
+                      tone: ButtonTone.accent,
+                      onTap: () => Navigator.of(context).pop(_color),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -191,7 +159,7 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
   }
 }
 
-/// Квадрат насыщенности и яркости: по горизонтали — s, по вертикали — v.
+/// Saturation and brightness square: s across, v down.
 class _SatBox extends StatelessWidget {
   const _SatBox({required this.hsv, required this.onChanged});
 
@@ -259,7 +227,6 @@ class _SatPainter extends CustomPainter {
   bool shouldRepaint(_SatPainter old) => old.hsv != hsv;
 }
 
-/// Полоса тона.
 class _HueBar extends StatelessWidget {
   const _HueBar({required this.hue, required this.onChanged});
 
@@ -323,7 +290,7 @@ class _HuePainter extends CustomPainter {
   bool shouldRepaint(_HuePainter old) => old.hue != hue;
 }
 
-/// Кружок-указатель: белое кольцо с тёмной подложкой — читается на любом цвете.
+/// Knob: a white ring on a dark base, readable on any colour.
 void _drawKnob(Canvas canvas, Offset at, {double radius = 8}) {
   canvas.drawCircle(
     at,
@@ -341,4 +308,38 @@ void _drawKnob(Canvas canvas, Offset at, {double radius = 8}) {
       ..strokeWidth = 2
       ..color = Colors.white,
   );
+}
+
+/// A rounded sample of a colour; with [onTap] it opens a choice.
+class ColorChip extends StatelessWidget {
+  const ColorChip({
+    super.key,
+    required this.color,
+    this.width,
+    this.height = 44,
+    this.onTap,
+  });
+
+  final Color color;
+  final double? width;
+  final double height;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return Pressable(
+      onTap: onTap,
+      scale: 0.97,
+      child: Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(t.radius * 0.6),
+          border: Border.all(color: t.ovlLine2),
+        ),
+      ),
+    );
+  }
 }

@@ -11,7 +11,6 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/store/library_store.dart';
-import '../../../features/customization/ui/app_background.dart';
 import '../../../features/library/import_url.dart';
 import '../../../features/player/play_source.dart';
 import '../../../features/player/player_controller.dart';
@@ -26,6 +25,7 @@ import '../../../shared/util/artists.dart';
 import '../../../shared/util/format.dart';
 import '../detail_nav.dart';
 import 'detail_parts.dart';
+import '../../../shared/ui/subpage_header.dart';
 
 class SetScreen extends ConsumerStatefulWidget {
   const SetScreen({super.key, required this.set, this.flight});
@@ -170,11 +170,7 @@ class _SetScreenState extends ConsumerState<SetScreen> {
     final queue = _tracks;
     final saved = _savedIn(ref.watch(libraryProvider), _set);
 
-    return Scaffold(
-      // A background picture may lie under the page: then no fill of its own.
-      backgroundColor: ref.watch(backgroundOnProvider)
-          ? Colors.transparent
-          : t.bg,
+    return BloomPage(
       body: CustomScrollView(
         slivers: [
           DetailHero(
@@ -208,9 +204,15 @@ class _SetScreenState extends ConsumerState<SetScreen> {
           if (_loading)
             const SliverToBoxAdapter(child: DetailSkeleton(artist: false))
           else if (_error case final message?)
-            SliverToBoxAdapter(child: DetailError(message))
+            SliverToBoxAdapter(
+              child: CenterNote(
+                message,
+                color: context.bloom.danger,
+                padding: const EdgeInsets.all(24),
+              ),
+            )
           else if (_tracks.isEmpty)
-            SliverToBoxAdapter(child: DetailEmpty(context.l.setNoTracks))
+            SliverToBoxAdapter(child: CenterNote(context.l.setNoTracks))
           else ...[
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(8, 4, 8, 16),
@@ -300,30 +302,30 @@ class _SetScreenState extends ConsumerState<SetScreen> {
     final canPlay = _tracks.isNotEmpty;
     await showBloomSheet(
       context: context,
-      backdrop: _set.cover,
-      header: SheetCoverHeader(
+      header: SheetHero(
         cover: _set.cover,
         title: _set.title,
         subtitle: _subtitle(),
       ),
+      bar: [
+        SheetAction(
+          icon: Bi.playBold,
+          label: context.l.commonPlay,
+          onTap: canPlay ? _play : null,
+        ),
+        SheetAction(
+          icon: Bi.shuffle,
+          label: context.l.commonShuffle,
+          onTap: canPlay ? _shuffle : null,
+        ),
+        ...queueSheetActions(context, ref, _tracks, source: SetSource(_set)),
+      ],
       groups: [
-        [
-          SheetAction(
-            icon: Bi.playBold,
-            label: context.l.commonPlay,
-            onTap: canPlay ? _play : null,
-          ),
-          SheetAction(
-            icon: Bi.shuffle,
-            label: context.l.commonShuffle,
-            onTap: canPlay ? _shuffle : null,
-          ),
-          ...queueSheetActions(context, ref, _tracks, source: SetSource(_set)),
-        ],
         [
           SheetAction(
             icon: Bi.import,
             label: context.l.artistImport,
+            subtitle: context.l.artistImportHint,
             onTap: canPlay ? _import : null,
           ),
         ],

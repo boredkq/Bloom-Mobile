@@ -1,32 +1,15 @@
-/// Kept lyrics: the `lyrics` table of the database, as on the PC. Written only
-/// while "keep lyrics" is on, read always; 30 days at most whatever the
-/// policy. Nothing found is remembered in memory for 5 minutes: someone may
-/// upload them tomorrow.
+/// Kept lyrics: the `lyrics` table of the database. Written only while "keep
+/// lyrics" is on, read always; 30 days at most whatever the policy. Nothing
+/// found is remembered in memory for 5 minutes: someone may upload them tomorrow.
 library;
 
 import '../../core/db/db.dart';
+import '../../core/store/cache_keep.dart';
 import 'lyrics_api.dart';
 
 const int _missedMs = 5 * 60 * 1000;
-const int _keptMs = 30 * 24 * 3600 * 1000;
-
-/// How long kept lyrics live: the PC's `lyricsKeep`.
-enum LyricsKeep {
-  never('never', _keptMs),
-  restart('restart', _keptMs),
-  day('24h', 24 * 3600 * 1000),
-  days3('3d', 3 * 24 * 3600 * 1000),
-  week('1w', 7 * 24 * 3600 * 1000),
-  month('1m', _keptMs);
-
-  const LyricsKeep(this.id, this.ms);
-
-  final String id;
-  final int ms;
-
-  static LyricsKeep of(Object? id) =>
-      values.firstWhere((k) => k.id == id, orElse: () => never);
-}
+const int _dayMs = 24 * 3600 * 1000;
+const int _keptMs = 30 * _dayMs;
 
 class LyricsCache {
   LyricsCache(this._db);
@@ -75,8 +58,8 @@ class LyricsCache {
   }
 
   /// At launch: "until restart" empties the table, a time limit trims it.
-  void start(LyricsKeep keep) {
-    keep == LyricsKeep.restart ? clear() : purge(keep);
+  void start(CacheKeep keep) {
+    keep == CacheKeep.restart ? clear() : purge(keep);
   }
 
   ({int count, int bytes}) stats() {
@@ -97,8 +80,9 @@ class LyricsCache {
   }
 
   /// Drops the ones older than [keep] allows; returns how many.
-  int purge(LyricsKeep keep) {
-    _db.exec('DELETE FROM lyrics WHERE at < ?', [BloomDb.now() - keep.ms]);
+  int purge(CacheKeep keep) {
+    final limit = keep.days == null ? _keptMs : keep.days! * _dayMs;
+    _db.exec('DELETE FROM lyrics WHERE at < ?', [BloomDb.now() - limit]);
     return _db.changes;
   }
 }

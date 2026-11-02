@@ -1,11 +1,7 @@
-/// Импорт плейлистов файлом `.bloomplaylist` — общий поток для двух точек
-/// входа: «+» библиотеки (десктопное «Из файла» в меню импорта) и «Настройки →
-/// Система → Импорт».
-///
-/// Сам разбор файла живёт в `settings/data_transfer.dart`; здесь — системный
-/// диалог, обращение к библиотеке и тост. Тост показывается прямо тут, а не в
-/// вызывающем: исходов четыре, и раскладывать их по видам тоста в каждой точке
-/// входа заново значило бы разойтись в формулировках.
+/// Importing playlists from a `.bloomplaylist` file, a shared flow for the
+/// library's plus and settings. Parsing lives elsewhere; here it's the system
+/// dialog, the library and a toast. The toast shows right here: there are four
+/// outcomes, and each entry point handling them would drift in wording.
 library;
 
 import 'package:flutter/material.dart';
@@ -18,16 +14,16 @@ import '../../core/store/text_files.dart';
 import '../../shared/ui/bloom_toast.dart';
 import '../settings/data_transfer.dart';
 
-/// Выбрать файл и завести из него плейлисты. Возвращает счётчики или `null`,
-/// если импорта не случилось (диалог закрыли, файл не наш, плейлистов внутри
-/// нет) — обо всём, кроме отмены, вызывающему уже сказал тост.
+/// Picks a file and creates playlists from it. Returns counts, or `null` if no
+/// import happened (dialog closed, foreign file, no playlists); for all but a
+/// cancel, a toast already told the caller.
 Future<ImportResult?> importPlaylistFile(
   WidgetRef ref,
   ScaffoldMessengerState messenger,
   AppLocalizations l,
 ) async {
   final content = await openTextFile();
-  if (content == null) return null; // диалог закрыли — молча, как на ПК
+  if (content == null) return null; // the dialog was closed, so silently
   final result = await importPlaylistBundle(
     content,
     ref.read(libraryProvider),

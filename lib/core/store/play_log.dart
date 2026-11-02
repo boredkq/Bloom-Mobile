@@ -1,10 +1,9 @@
-/// Журнал прослушиваний — единственное хранилище «что и когда слушали»:
-/// таблица `plays` базы (порт `PlayLog` ПК). Одна строка на засчитанное
-/// прослушивание; из журнала выводятся «История», статистика профиля, сиды
-/// волны и «Итоги» — своих счётчиков больше нет нигде.
+/// Play log, the only store of what was played when: the `plays` table. One row
+/// per counted play; history, profile stats, wave seeds and Wrapped all derive
+/// from it, with no counters elsewhere.
 ///
-/// Снимок трека (название, обложка, длительность) лежит в `tracks` базы: он
-/// нужен и через год, когда самого трека давно нет в библиотеке.
+/// A track's snapshot (title, cover, duration) lies in the database's `tracks`:
+/// it's needed a year on, when the track has long left the library.
 library;
 
 import 'package:flutter/foundation.dart';
@@ -14,15 +13,15 @@ import '../db/db.dart';
 import '../db/track_store.dart';
 import '../entities/entities.dart';
 
-/// Часы журнала — ради тестов (тот же приём, что у `notifClockProvider`).
+/// The log's clock, for tests.
 final playLogClockProvider = Provider<DateTime Function()>((_) => DateTime.now);
 
-/// Одно засчитанное прослушивание.
+/// One counted play.
 @immutable
 class PlayEvent {
   const PlayEvent(this.ts, this.id);
 
-  /// Момент, когда прослушивание засчитано (90% трека или его конец).
+  /// When the play was counted (90% of the track or its end).
   final int ts;
   final String id;
 }
@@ -31,10 +30,10 @@ class PlayEvent {
 class PlayLog {
   const PlayLog({this.events = const [], this.tracks = const {}});
 
-  /// Все события, по возрастанию `ts`.
+  /// All events, by ascending `ts`.
   final List<PlayEvent> events;
 
-  /// Снимки всех когда-либо игранных треков.
+  /// Snapshots of all tracks ever played.
   final Map<String, Track> tracks;
 
   bool get isEmpty => events.isEmpty;
@@ -62,7 +61,7 @@ class PlayLogController extends Notifier<PlayLog> {
     );
   }
 
-  /// Записать прослушивание. Зовётся из плеера — одна точка на всё приложение.
+  /// Records a play. Called from the player, the one point in the app.
   void log(Track track) {
     if (track.id.isEmpty) return;
     final ts = ref.read(playLogClockProvider)().millisecondsSinceEpoch;
@@ -79,11 +78,11 @@ class PlayLogController extends Notifier<PlayLog> {
     );
   }
 
-  /// Перечитать журнал — после смены площадки трека: его прослушивания уже
-  /// переехали на новый id в самой базе ([TrackStore.rekey]).
+  /// Re-reads the log after a platform switch: its plays already moved to the
+  /// new id in the database ([TrackStore.rekey]).
   void reload() => state = _read();
 
-  /// Очистить журнал — часть «Очистить статистику» в профиле.
+  /// Clears the log, part of clearing stats.
   void clear() {
     _db.tx(() {
       _db.exec('DELETE FROM plays');

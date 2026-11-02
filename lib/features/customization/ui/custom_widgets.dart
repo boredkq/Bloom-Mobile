@@ -1,20 +1,18 @@
-/// Общее для «Кастомизации»: каркас страницы, значки контекстов, поля и
-/// форма добавления в шторке, подпись пустого списка.
-///
-/// Каркас свой, а не [SubPage]: там всё содержимое едет одним списком, а здесь
-/// листается только сетка вкладки — плитки и вкладки над ней стоят на месте.
+/// Shared for customization: page frame, context icons, the sheet's fields and
+/// add form, an empty list caption. Its own frame rather than [SubPage], which
+/// scrolls all content as one list: here only the tab's grid scrolls, with
+/// tiles and tabs staying put.
 library;
 
 import 'package:flutter/material.dart';
 
-import '../../../app/theme/tokens.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
-import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../custom_store.dart';
+import '../../../shared/ui/atoms.dart';
 
-/// A context's icon, the PC's: for the page's tiles, the picture sheet's rows
+/// A context's icon: for the page's tiles, the picture sheet's rows
 /// and the badge of where a picture is used.
 BloomGlyph customCtxIcon(CustomCtx ctx) => switch (ctx) {
   CustomCtx.bg => Bi.galleryWide,
@@ -22,60 +20,8 @@ BloomGlyph customCtxIcon(CustomCtx ctx) => switch (ctx) {
   CustomCtx.slider => Bi.sliderHorizontal,
 };
 
-/// Страница раздела: шапка сверху, содержимое под ней.
-class CustomizationPage extends StatelessWidget {
-  const CustomizationPage({
-    super.key,
-    required this.title,
-    required this.onBack,
-    required this.child,
-  });
-
-  final String title;
-  final VoidCallback onBack;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      bottom: false,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-            child: SubPageHeader(title: title, onBack: onBack),
-          ),
-          const SizedBox(height: 10),
-          Expanded(child: child),
-        ],
-      ),
-    );
-  }
-}
-
-/// Подпись на месте пустого списка — десктопные `.ssub` по центру.
-class EmptyHint extends StatelessWidget {
-  const EmptyHint({super.key, required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 40),
-    child: Center(
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.bodySmall,
-      ),
-    ),
-  );
-}
-
-/// Поле ввода в шторке — ровно то же, что у «Создать плейлист» ([SheetField]):
-/// широкое поле и акцентная галочка, которая появляется вместе с текстом.
-///
-/// Возвращает введённое значение через `Navigator.pop`.
+/// Input in a sheet, just like [SheetField]: a wide field and an accent tick
+/// appearing with text. Returns the value through `Navigator.pop`.
 class SheetTextField extends StatefulWidget {
   const SheetTextField({
     super.key,
@@ -120,11 +66,9 @@ class _SheetTextFieldState extends State<SheetTextField> {
   );
 }
 
-/// Шторка под плюсиком «Кастомизации»: поле ввода ([SheetTextField]) и под
-/// ним второй способ добавить — «Приложить фото» у библиотеки, «Импорт» у
-/// пресетов.
-///
-/// Закрывается введённой строкой или `true`, если выбрали пункт под полем.
+/// Sheet under customization's plus: an input ([SheetTextField]) and a second
+/// way to add below it, Attach photo for the library and Import for presets.
+/// Closes with the entered string, or `true` if the item below was picked.
 class SheetAddForm extends StatelessWidget {
   const SheetAddForm({
     super.key,
@@ -137,7 +81,7 @@ class SheetAddForm extends StatelessWidget {
   final String hint;
   final int? maxLength;
 
-  /// Пункт под полем.
+  /// Item under the field.
   final BloomGlyph icon;
   final String label;
 
@@ -151,7 +95,7 @@ class SheetAddForm extends StatelessWidget {
   );
 }
 
-/// Пункт под полем шторки добавления: закрывает её с `true`.
+/// The item under the field of an adding sheet: closes it with `true`.
 class SheetPickRow extends StatelessWidget {
   const SheetPickRow({super.key, required this.icon, required this.label});
 
@@ -159,31 +103,50 @@ class SheetPickRow extends StatelessWidget {
   final String label;
 
   @override
+  Widget build(BuildContext context) => SheetPanel(
+    children: [
+      SheetRow(
+        icon: icon,
+        label: label,
+        onTap: () => Navigator.of(context).pop(true),
+      ),
+    ],
+  );
+}
+
+/// A pane of tiles in two columns, or a note when there are none.
+class CustomPane extends StatelessWidget {
+  const CustomPane({
+    super.key,
+    required this.empty,
+    required this.itemCount,
+    required this.itemBuilder,
+  });
+
+  final String empty;
+  final int itemCount;
+  final IndexedWidgetBuilder itemBuilder;
+
+  @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
-    return SheetPanel(
-      children: [
-        Pressable(
-          onTap: () => Navigator.of(context).pop(true),
-          scale: 0.98,
-          child: Padding(
-            // Тот же ряд, что у пунктов меню шторки.
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
-            child: Row(
-              children: [
-                BloomIcon(icon, size: 22, color: t.text),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-              ],
-            ),
-          ),
+    if (itemCount == 0) {
+      return Center(
+        child: CenterNote(
+          empty,
+          padding: const EdgeInsets.symmetric(horizontal: 40),
         ),
-      ],
+      );
+    }
+    return GridView.builder(
+      padding: EdgeInsets.fromLTRB(16, 12, 16, 8 + bottomBarsInset(context)),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 4 / 3,
+      ),
+      itemCount: itemCount,
+      itemBuilder: itemBuilder,
     );
   }
 }

@@ -1,20 +1,13 @@
-/// Тосты Bloom — родня десктопного `GlobalToast` (`#toast` в `search-misc.css`):
-/// значок вида, текст, кнопка «Отменить» и видимый обратный отсчёт.
+/// Bloom's toasts: a kind icon, text, an Undo button and a visible countdown. A
+/// glass capsule, with the countdown as a ring around the icon; the bar stays
+/// only for the progress of long jobs ([ToastHandle.update]), where it shows a
+/// share rather than time.
 ///
-/// Вид телефонный, не портированный: стеклянная КАПСУЛА (та же поверхность,
-/// что у шторок и баров — [GlassBox]), а отсчёт идёт КОЛЬЦОМ вокруг значка, а
-/// не полосой по низу. Полоса осталась ровно за прогрессом долгих работ
-/// ([ToastHandle.update]) — там она показывает долю, а не время.
-///
-/// Почему поверх `ScaffoldMessenger`, а не свой оверлей: очередь (тосты не
-/// налезают друг на друга, а ждут очереди), смахивание, снятие вместе с
-/// экраном и позиционирование НАД нижними барами — всё это у него уже есть.
-/// Мы забираем у него только внешний вид: сам `SnackBar` делается прозрачным
-/// и без тени, а рисует всё [BloomToastCard].
-///
-/// Чтобы тост оказался над миниплеером, бары шелла лежат в
-/// `Scaffold.bottomNavigationBar` (см. `app/shell.dart`) — плавающий снекбар
-/// встаёт ровно над ними.
+/// On top of `ScaffoldMessenger` because it already queues toasts, handles
+/// swipes, clears with the screen and places them above the bottom bars. I take
+/// only the look: the `SnackBar` itself is transparent and [BloomToastCard]
+/// draws everything. The shell's bars live in `Scaffold.bottomNavigationBar`,
+/// so a floating snack bar lands right above them.
 library;
 
 import 'dart:async';
@@ -30,51 +23,46 @@ import 'atoms.dart';
 import 'bloom_icon.dart';
 import 'glass.dart';
 
-/// Вид тоста: от него зависят значок и цвет полосы (те же четыре, что на ПК).
+/// Toast kind: sets the icon and the bar colour.
 enum ToastKind { info, success, warn, error }
 
-/// Действие в тосте — «Отменить» десктопного `ToastAction`.
+/// The button in a toast, usually Undo.
 class ToastAction {
   const ToastAction({required this.fn, this.label, this.onExpire});
 
-  /// Что делать по нажатию (обычно — вернуть удалённое).
   final VoidCallback fn;
 
-  /// Текст кнопки; по умолчанию «Отменить».
+  /// Button text; Undo by default.
   final String? label;
 
-  /// Тост погас сам, без нажатия. Сюда вешается то, что нельзя было делать
-  /// сразу, потому что отмена ещё возможна (например, удаление файла обложки).
+  /// The toast went out with no press. For work I can't do right away while
+  /// Undo is still possible, like deleting a cover file.
   final VoidCallback? onExpire;
 }
 
-/// Сколько тост висит: обычный и с кнопкой — как на ПК (2с и 5с).
+/// How long a toast stays: plain and with a button.
 const Duration _plain = Duration(milliseconds: 2000);
 const Duration _withAction = Duration(milliseconds: 5000);
 
-/// Пока тост въезжает, `ScaffoldMessenger` ещё не завёл свой таймер — на
-/// столько же откладывается и полоса, иначе она уходит вперёд отсчёта.
+/// `ScaffoldMessenger` starts its timer after the toast slides in, so the bar
+/// waits as long, or it runs ahead of the countdown.
 const Duration _enter = Duration(milliseconds: 250);
 
-/// Долгий тост живёт до `close()`, но `SnackBar` требует конечный срок —
-/// берём заведомо больший, чем любая загрузка.
+/// A long toast lives until `close()`, but `SnackBar` wants a finite duration;
+/// I give it more than any download takes.
 const Duration _openEnded = Duration(minutes: 30);
 
-/// Сколько итог висит после `finish()`.
+/// How long the result stays after `finish()`.
 const Duration _finished = Duration(milliseconds: 2400);
 
-/// Мессенджер приложения (ставится в `MaterialApp.scaffoldMessengerKey`).
-///
-/// Нужен тем, у кого нет `BuildContext`: авто-обновление плейлистов ходит по
-/// расписанию из таймера, а сказать о новых треках всё равно надо.
+/// The app's messenger, for code with no `BuildContext`: playlist auto-update
+/// runs from a timer and still has to report new tracks.
 final GlobalKey<ScaffoldMessengerState> bloomMessengerKey =
     GlobalKey<ScaffoldMessengerState>();
 
 extension BloomToasts on ScaffoldMessengerState {
-  /// Обычный тост: текст, значок вида и полоса отсчёта.
-  ///
-  /// С [action] живёт дольше (5с) и показывает кнопку; если её не нажать,
-  /// сработает `action.onExpire`.
+  /// Plain toast: text, kind icon and countdown. With [action] it lives longer
+  /// and shows a button; unpressed, `action.onExpire` fires.
   void toast(
     String text, {
     ToastKind kind = ToastKind.info,
@@ -91,8 +79,8 @@ extension BloomToasts on ScaffoldMessengerState {
         text: text,
         kind: kind,
         barDuration: duration,
-        // Подпись по умолчанию ставит сама карточка: здесь `BuildContext`
-        // взять негде — тост зовут и из таймеров.
+        // The card fills in the default label: toasts come from timers too,
+        // with no `BuildContext` here.
         actionLabel: action?.label,
         hasAction: action != null,
         onAction: action == null
@@ -106,7 +94,7 @@ extension BloomToasts on ScaffoldMessengerState {
     );
 
     if (action?.onExpire != null) {
-      // Смахнули — это тоже «не нажал отмену»: решение остаётся в силе.
+      // A swipe also counts as not pressing Undo: the decision stands.
       unawaited(
         entry.closed.then((_) {
           if (!used) action!.onExpire!.call();
@@ -115,12 +103,12 @@ extension BloomToasts on ScaffoldMessengerState {
     }
   }
 
-  /// Тост «идёт работа»: значок заменён вертушкой, полосы-таймера нет, и живёт
-  /// он до [ToastHandle.finish]. Заменяет пару «Скачиваю…» → «Скачано»: вместо
-  /// двух тостов подряд один, который меняется на месте.
+  /// A toast for work in progress: a spinner instead of the icon, no timer bar,
+  /// lives until [ToastHandle.finish]. One toast that changes in place instead
+  /// of Downloading then Downloaded.
   ///
-  /// [content] позволяет подменить всю карточку — так тост пакетной загрузки
-  /// подписывается на стор и сам обновляет счётчик.
+  /// [content] replaces the whole card: the batch download toast watches its
+  /// store and updates the count itself.
   ToastHandle busyToast(
     String text, {
     String? actionLabel,
@@ -139,8 +127,8 @@ extension BloomToasts on ScaffoldMessengerState {
   }
 }
 
-/// Тост из `BuildContext` — короткая запись для мест, где мессенджер не нужен
-/// отдельно.
+/// Toast from a `BuildContext`, for places that don't need the messenger
+/// separately.
 void showToast(
   BuildContext context,
   String text, {
@@ -148,7 +136,7 @@ void showToast(
   ToastAction? action,
 }) => ScaffoldMessenger.of(context).toast(text, kind: kind, action: action);
 
-/// Состояние живого тоста — то, что [ToastHandle] меняет на лету.
+/// Live state of a toast: what [ToastHandle] changes on the fly.
 class ToastView {
   const ToastView({
     required this.text,
@@ -163,20 +151,20 @@ class ToastView {
   final String text;
   final ToastKind kind;
 
-  /// Вертушка вместо значка.
+  /// Spinner instead of the icon.
   final bool busy;
 
-  /// Доля 0..1 для нижней полосы; `null` — полосы прогресса нет.
+  /// Share 0..1 for the bottom bar; `null` means no progress bar.
   final double? progress;
 
-  /// Полоса-таймер на столько; `null` — не отсчитывать.
+  /// Countdown length; `null` means no countdown.
   final Duration? barDuration;
 
   final String? actionLabel;
   final VoidCallback? onAction;
 }
 
-/// Ручка живого тоста: пока идёт работа — [update], в конце — [finish].
+/// Handle of a live toast: [update] while working, [finish] at the end.
 class ToastHandle {
   ToastHandle._(this._entry, this._view) {
     unawaited(_entry.closed.then((_) => _closed = true));
@@ -187,7 +175,7 @@ class ToastHandle {
   bool _closed = false;
   Timer? _timer;
 
-  /// Обновить текст/прогресс, не пересоздавая тост.
+  /// Changes the text or progress without rebuilding the toast.
   void update(String text, {double? progress}) {
     if (_closed) return;
     _view.value = ToastView(
@@ -198,8 +186,8 @@ class ToastHandle {
     );
   }
 
-  /// Подменить содержимое итогом: вертушка уходит, появляется значок вида и
-  /// полоса отсчёта, через 2.4с тост гаснет сам.
+  /// Swaps in the result: the spinner gives way to the kind icon and countdown,
+  /// and the toast goes out on its own after 2.4 s.
   void finish(String text, {ToastKind kind = ToastKind.success}) {
     if (_closed) return;
     _view.value = ToastView(
@@ -220,7 +208,7 @@ class ToastHandle {
   }
 }
 
-/// Общая часть: показать произвольный виджет как снекбар без собственного вида.
+/// Shows any widget as a snack bar with no look of its own.
 ScaffoldFeatureController<SnackBar, SnackBarClosedReason> _show(
   ScaffoldMessengerState messenger, {
   required Widget child,
@@ -229,7 +217,8 @@ ScaffoldFeatureController<SnackBar, SnackBarClosedReason> _show(
   SnackBar(
     content: child,
     duration: duration,
-    // Весь вид — на карточке: у самого снекбара ни фона, ни тени, ни отступов.
+    // The card does all the drawing: the snack bar has no background, shadow or
+    // padding.
     backgroundColor: Colors.transparent,
     elevation: 0,
     padding: EdgeInsets.zero,
@@ -260,8 +249,8 @@ class _LiveToast extends StatelessWidget {
   );
 }
 
-/// Сама плашка: стеклянная капсула, значок вида с кольцом-отсчётом, текст,
-/// кнопка-пилюля и — только у долгих работ — полоса прогресса по низу.
+/// The plate: a glass capsule, a kind icon with its countdown ring, text, a
+/// pill button and, for long jobs only, a progress bar along the bottom.
 class BloomToastCard extends StatelessWidget {
   const BloomToastCard({
     super.key,
@@ -282,7 +271,7 @@ class BloomToastCard extends StatelessWidget {
   final Duration? barDuration;
   final String? actionLabel;
 
-  /// Кнопка есть, но своей подписи у неё нет — подставится «Отменить».
+  /// There is a button but no label of its own, so it says Undo.
   final bool hasAction;
   final VoidCallback? onAction;
 
@@ -295,21 +284,20 @@ class BloomToastCard extends StatelessWidget {
 
     return _Pop(
       child: Align(
-        // Ширина по содержимому, как inline-flex на ПК: короткому «Трек удалён»
-        // незачем растягиваться во весь экран. Потолок — чтобы на планшете
-        // капсула не расползлась во всю строку.
+        // Width follows the content: a short message has no reason to span the
+        // screen. The cap keeps the capsule from sprawling on a tablet.
         alignment: Alignment.center,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 460),
-          // Своя группа: тост всплывает поверх страницы и её баров, к их
-          // снимку подложки ему присоединяться нельзя (см. `glass.dart`).
+          // Own group: the toast floats above the page and its bars and can't
+          // join their backdrop snapshot.
           child: GlassGroup(
             child: GlassBox(
-              // Поверхность всплывающая — стекло берём то же, что у шторок и
-              // меню, а не то, что у блоков страницы.
+              // A floating surface: the glass of sheets and menus, not of page
+              // blocks.
               overlay: true,
-              // `pill`, а не `card`: на тёмной теме `card` — это цвет фона,
-              // и капсула читалась бы только по рамке.
+              // `pill`, not `card`: on the dark theme `card` equals the
+              // background and only the border would show.
               color: t.pill,
               shape: StadiumBorder(
                 side: BorderSide(color: t.ovlLine2, width: 1),
@@ -321,7 +309,7 @@ class BloomToastCard extends StatelessWidget {
                       8,
                       8,
                       action ? 8 : 18,
-                      // Место под полосу прогресса — только когда она есть.
+                      // Room for the progress bar only when there is one.
                       progress == null ? 8 : 12,
                     ),
                     child: Row(
@@ -360,12 +348,18 @@ class BloomToastCard extends StatelessWidget {
                   ),
                   if (progress != null)
                     Positioned(
-                      // Отступы по краям обязательны: у капсулы низ сужен
-                      // скруглением, полоса во всю ширину обрезалась бы.
+                      // Margins are a must: the capsule's rounding narrows the
+                      // bottom and would clip a full-width bar.
                       left: 18,
                       right: 18,
                       bottom: 5,
-                      child: _Bar(color: color, progress: progress!),
+                      child: BloomBar(
+                        value: progress!,
+                        color: color,
+                        track: color.withValues(alpha: 0.14),
+                        height: 3,
+                        animated: const Duration(milliseconds: 250),
+                      ),
                     ),
                 ],
               ),
@@ -377,11 +371,9 @@ class BloomToastCard extends StatelessWidget {
   }
 }
 
-/// Появление: тост не просто выезжает снекбаром, а всплывает — проявляется и
-/// чуть подрастает от нижнего края.
-///
-/// Живёт отдельным виджетом со своим состоянием: `_LiveToast` перестраивает
-/// карточку на каждом обновлении текста, и всплытие не должно играть заново.
+/// Entrance: the toast fades in and grows a little from the bottom edge. A
+/// separate stateful widget because `_LiveToast` rebuilds the card on every
+/// text update and this must not replay.
 class _Pop extends StatefulWidget {
   const _Pop({required this.child});
 
@@ -417,9 +409,8 @@ class _PopState extends State<_Pop> with SingleTickerProviderStateMixin {
   );
 }
 
-/// Цвета видов — те же значения, что в `search-misc.css`; `info` берёт акцент
-/// темы, а `error` — общий красный опасного, чтобы в приложении был ровно один
-/// красный (десктопный `#E0494A` от него почти неотличим).
+/// `info` takes the theme's accent, and `error` the shared danger red, so the
+/// app has exactly one red.
 Color kindColor(ToastKind kind, BloomTokens t) => switch (kind) {
   ToastKind.info => t.accent,
   ToastKind.success => const Color(0xFF2FBF6C),
@@ -427,7 +418,7 @@ Color kindColor(ToastKind kind, BloomTokens t) => switch (kind) {
   ToastKind.error => t.danger,
 };
 
-/// Значок вида в круге своего цвета, а вокруг — кольцо обратного отсчёта.
+/// Kind icon in a circle of its colour, with the countdown ring around it.
 class _Badge extends StatelessWidget {
   const _Badge({
     required this.color,
@@ -440,8 +431,8 @@ class _Badge extends StatelessWidget {
   final ToastKind kind;
   final bool busy;
 
-  /// Сколько тосту осталось жить; `null` — кольца нет (идёт работа или тост
-  /// висит до `close()`).
+  /// Time left to live; `null` means no ring (work in progress, or held until
+  /// `close()`).
   final Duration? duration;
 
   @override
@@ -455,26 +446,13 @@ class _Badge extends StatelessWidget {
           Positioned.fill(
             child: _Ring(color: color, duration: duration!),
           ),
-        Container(
-          width: 27,
-          height: 27,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: color.withValues(alpha: 0.16),
-          ),
+        TintCircle(
+          size: 27,
+          color: color.withValues(alpha: 0.16),
           child: busy
-              ? SizedBox(
-                  width: 15,
-                  height: 15,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: color,
-                  ),
-                )
-              // У «успеха» голая галочка, а не `checkCircle`: значок и так
-              // лежит в круге, круг в круге читался бы мишенью (на ПК то же —
-              // `CheckBare`).
+              ? BloomSpinner(size: 15, color: color)
+              // A bare tick for success: the icon already sits in a circle, and
+              // a circle in a circle reads as a target.
               : kind == ToastKind.success
               ? BloomIcon(Bi.check, size: 18, color: color)
               : BloomIcon(_glyph(kind), size: 17, color: color),
@@ -491,9 +469,8 @@ class _Badge extends StatelessWidget {
   };
 }
 
-/// Кольцо обратного отсчёта вокруг значка: дуга утекает по часовой за время
-/// жизни тоста. Старт отложен на въезд — таймер снекбара тоже начинается только
-/// по концу анимации появления, иначе кольцо ушло бы вперёд отсчёта.
+/// Countdown ring: the arc drains clockwise over the toast's life. The start
+/// waits for the entrance because the snack bar's timer does too.
 class _Ring extends StatefulWidget {
   const _Ring({required this.color, required this.duration});
 
@@ -517,7 +494,7 @@ class _RingState extends State<_Ring> with SingleTickerProviderStateMixin {
   @override
   void didUpdateWidget(_Ring old) {
     super.didUpdateWidget(old);
-    // Итог подменил содержимое — отсчёт начинается заново.
+    // A result replaced the content, so the countdown restarts.
     if (widget.duration != old.duration) _run();
   }
 
@@ -552,7 +529,7 @@ class _RingPainter extends CustomPainter {
 
   final Color color;
 
-  /// Доля оставшегося времени, 1 → 0.
+  /// Share of time left, 1 → 0.
   final double left;
 
   static const double _width = 2.5;
@@ -567,8 +544,8 @@ class _RingPainter extends CustomPainter {
       ..strokeWidth = _width
       ..strokeCap = StrokeCap.round;
 
-    // Дорожка кольца: тот же цвет, но еле заметный — по ней видно, сколько
-    // времени уже утекло.
+    // Ring track: the same colour, barely visible, shows how much time has
+    // gone.
     canvas.drawCircle(
       center,
       radius,
@@ -586,42 +563,4 @@ class _RingPainter extends CustomPainter {
   @override
   bool shouldRepaint(_RingPainter old) =>
       old.left != left || old.color != color;
-}
-
-/// Полоса прогресса долгой работы: доля скачанного, с дорожкой под ней.
-///
-/// Время тоста показывает кольцо у значка — сюда попадает ТОЛЬКО доля, и
-/// только у `busyToast` с прогрессом.
-class _Bar extends StatelessWidget {
-  const _Bar({required this.color, required this.progress});
-
-  final Color color;
-  final double progress;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    height: 3,
-    child: DecoratedBox(
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(3),
-      ),
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(end: progress.clamp(0, 1)),
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-        builder: (_, v, child) => FractionallySizedBox(
-          alignment: Alignment.centerLeft,
-          widthFactor: v,
-          child: child,
-        ),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(3),
-          ),
-        ),
-      ),
-    ),
-  );
 }

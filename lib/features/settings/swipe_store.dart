@@ -1,63 +1,53 @@
-/// Настройка свайпов: что делает движение пальцем влево и вправо в каждом из
-/// четырёх мест — библиотека, очередь, миниплеер, плеер.
-///
-/// Настройка мобильная целиком: на десктопе жестов нет, брать оттуда нечего.
-/// Раскладка экрана и набор действий — по скриншотам, которые прислал
-/// пользователь; смысл действий наш, из десктопного контекстного меню трека.
+/// What a finger's move left and right does in each of four places: library,
+/// queue, mini player, player.
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/store/json_store.dart' show jsonStoreProvider;
 
-/// Что делает свайп. Один и тот же список во всех четырёх местах — так же, как
-/// в референсе: строка библиотеки тоже умеет «Следующий», а плеер — «Удалить».
+/// One list in all four places: a library row can do "Next" too, and the player
+/// "Delete".
 enum SwipeAction {
-  /// Свайпа нет: строка не двигается, плеер не листается.
+  /// No swipe: the row doesn't move, the player doesn't flip.
   none,
 
-  /// Лайк — переключить «Любимое» у трека.
+  /// Toggles the track's like.
   like,
 
-  /// Добавить в конец очереди (десктопный `addToQueue`).
+  /// To the end of the queue.
   queue,
 
-  /// Поставить сразу после текущего (десктопный `playNextInQueue`).
+  /// Right after the current one.
   playNext,
 
-  /// Следующий трек.
   next,
 
-  /// Предыдущий трек.
   prev,
 
-  /// Скачать — офлайн-копия внутри приложения.
+  /// An offline copy inside the app.
   download,
 
-  /// Удалить: строку — из списка, трек в плеере — из очереди.
+  /// A row from its list, a track in the player from the queue.
   delete,
 }
 
-/// Место, где живёт жест.
 enum SwipeZone { library, queue, mini, player }
 
-/// Пара действий одного места.
 class SwipePair {
   const SwipePair(this.left, this.right);
 
-  /// Движение пальцем ВЛЕВО (строка уезжает влево, плашка вылезает справа).
+  /// The row goes left, the plate comes out on the right.
   final SwipeAction left;
 
-  /// Движение пальцем ВПРАВО.
   final SwipeAction right;
 
   SwipePair withSide(bool isLeft, SwipeAction action) =>
       isLeft ? SwipePair(action, right) : SwipePair(left, action);
 }
 
-/// Умолчания — те, что пользователь показал на скриншотах: в списках свайп
-/// влево удаляет, вправо кладёт в очередь; в очереди удаляют оба; плеер и
-/// миниплеер листают треки.
+/// In lists left deletes and right queues; in the queue both delete; the
+/// players flip tracks.
 const Map<SwipeZone, SwipePair> kDefaultSwipes = {
   SwipeZone.library: SwipePair(SwipeAction.delete, SwipeAction.queue),
   SwipeZone.queue: SwipePair(SwipeAction.delete, SwipeAction.delete),
@@ -110,9 +100,8 @@ class SwipeController extends Notifier<SwipeSettings> {
   });
 }
 
-/// Пара из хранилища. Битую или незнакомую запись (правили файл руками, откат
-/// на старую сборку) молча заменяем умолчанием — настройка жестов не повод
-/// ронять запуск.
+/// A broken or unknown entry becomes the default: gestures are no reason to
+/// fail a launch.
 SwipePair _pairFromJson(Object? raw, SwipePair fallback) {
   if (raw is! Map) return fallback;
   return SwipePair(

@@ -1,17 +1,13 @@
-/// Аватары исполнителей для топа статистики — порт десктопного
-/// `useArtistAvatars`.
+/// Artist avatars for the stats top. History keeps only a name, so a real
+/// avatar has to be searched by name, but on the platform where they were
+/// heard: elsewhere it finds someone else's account. Hence the cache key,
+/// platform and name.
 ///
-/// В истории от артиста остаётся одно имя, поэтому настоящий аватар приходится
-/// искать по имени — но НЕ где придётся: у той площадки, где его и слушали
-/// (десктоп ходит всегда в SoundCloud, и у слушателя Яндекса в топе оказывались
-/// чужие аккаунты). Поэтому и ключ кеша — «площадка|имя».
+/// An answer (even empty, not found) caches for 30 days: otherwise each profile
+/// opening hits the network for ten requests, and misses again and again.
 ///
-/// Ответ (в том числе пустой — «не нашли») кешируется на 30 дней: без этого
-/// каждое открытие профиля дёргало бы сеть на десять запросов, а промахи —
-/// снова и снова.
-///
-/// Загрузка фоновая и необязательная: сети нет или площадка не настроена —
-/// в топе просто остаётся обложка самого слушаемого трека артиста.
+/// Loading is background and optional: with no network or platform the top
+/// keeps the artist's most played cover.
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,14 +19,14 @@ import '../../core/store/json_store.dart' show jsonStoreProvider;
 import '../../shared/util/artists.dart';
 import 'tally.dart';
 
-/// Столько живёт запись кеша — как `TTL` на десктопе.
+/// Cache entry lifetime.
 const Duration _ttl = Duration(days: 30);
 
-/// Кого спрашивать и у какой площадки.
+/// Who to ask and on which platform.
 typedef ArtistRef = ({String name, MusicSource source});
 
-/// Ключ кеша и карты аватаров. Одна функция на запись и на чтение: разъедься
-/// они, топ смотрел бы в пустоту.
+/// Key of the cache and avatar map. One function for writing and reading, or
+/// the top would look at emptiness.
 String artistAvatarKey(MusicSource source, String name) =>
     '${source.id}|${name.trim().toLowerCase()}';
 
@@ -44,7 +40,7 @@ String? playedArtistAvatar(ArtistPlays a, Map<String, String> found) =>
 class _Cached {
   const _Cached(this.url, this.at);
 
-  /// Пустая строка — искали и не нашли. Тоже кешируется.
+  /// Empty string: looked and not found. Cached too.
   final String url;
   final int at;
 }
@@ -57,11 +53,11 @@ final artistAvatarsProvider =
 class ArtistAvatarsController extends Notifier<Map<String, String>> {
   final Map<String, _Cached> _cache = {};
 
-  /// Кого уже спросили в этом запуске — чтобы параллельные перестройки списка
-  /// не отправили десять одинаковых запросов.
+  /// Who was already asked this run, so parallel list rebuilds don't send ten
+  /// equal requests.
   final Set<String> _inFlight = {};
 
-  /// Загрузка асинхронная, а стор могут выбросить раньше её конца.
+  /// Loading is asynchronous, and the store may be dropped before it ends.
   bool _disposed = false;
 
   @override
@@ -71,8 +67,8 @@ class ArtistAvatarsController extends Notifier<Map<String, String>> {
     for (final e in raw.entries) {
       final v = e.value;
       if (v is! Map) continue;
-      // Записи старого кеша лежали под голым именем — площадки в них нет, и
-      // чьи это аватарки, уже не сказать. Роняем: перезапросятся у нужной.
+      // Entries under a bare name have no platform, and can't say whose they
+      // are. I drop them, and they get asked again on the right one.
       if (!e.key.contains('|')) continue;
       _cache[e.key] = _Cached(
         v['url'] as String? ?? '',
@@ -94,11 +90,9 @@ class ArtistAvatarsController extends Notifier<Map<String, String>> {
     });
   }
 
-  /// Догрузить недостающие аватары. Зовётся из UI при показе топа; лишние
-  /// вызовы безвредны — свежий кеш ничего не запрашивает.
-  ///
-  /// Каждого артиста спрашиваем у ЕГО площадки; свои файлы пропускаем — искать
-  /// их артиста негде.
+  /// Loads missing avatars. Called from the UI when the top shows; extra calls
+  /// are harmless, since a fresh cache requests nothing. Each artist is asked
+  /// on THEIR platform; local files are skipped, with nowhere to search.
   Future<void> ensure(Iterable<ArtistRef> artists) async {
     final now = DateTime.now().millisecondsSinceEpoch;
     final todo = <ArtistRef>[];
@@ -119,7 +113,7 @@ class ArtistAvatarsController extends Notifier<Map<String, String>> {
     for (final artist in todo) {
       final key = artistAvatarKey(artist.source, artist.name);
       final provider = registry.byId(artist.source.id);
-      // Площадка выключена — промах не запоминаем: включат, и спросим.
+      // The platform is off, so no miss is remembered: once on, I'll ask.
       if (provider == null) {
         _inFlight.remove(key);
         continue;
@@ -128,8 +122,8 @@ class ArtistAvatarsController extends Notifier<Map<String, String>> {
       try {
         url = (await findArtistByName(provider, artist.name))?.avatar ?? '';
       } catch (_) {
-        // Сети нет или площадка отказала — запомним промах, чтобы не биться
-        // об неё каждым открытием профиля.
+        // No network or a refusal: I remember the miss, so as not to hit it on
+        // each profile opening.
       }
       _cache[key] = _Cached(url, DateTime.now().millisecondsSinceEpoch);
       _inFlight.remove(key);

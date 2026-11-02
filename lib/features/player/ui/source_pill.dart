@@ -1,18 +1,13 @@
-/// Пилюля источника в шапке плеера: что именно сейчас играет — «Любимые»,
-/// плейлист, альбом, страница артиста, выдача поиска.
+/// Source pill in the player's header: what's playing now, being favourites, a
+/// playlist, an album, an artist page or search results. A 24×24 source
+/// picture, then its name, a shuffle icon when on (the list isn't in its order,
+/// and that should show), and at the right edge past a hairline divider the
+/// queue's track count.
 ///
-/// Порт десктопного `#qpSourcePill` из `QueueBlock.tsx`: слева картинка
-/// источника 24×24, дальше его имя, за именем — значок перемешки, когда она
-/// включена (список идёт не в своём порядке, и это должно быть видно), а на
-/// правом краю через волосяной разделитель — счётчик треков очереди, ровно как
-/// на ПК.
-///
-/// Жестов два, и это главное отличие от десктопа. ТАП открывает шторку очереди:
-/// пилюля — единственная кнопка очереди на экране (в ряду инструментов её
-/// больше нет), а очередь открывают в разы чаще, чем уходят на её источник.
-/// ДОЛГОЕ нажатие уводит на сам источник и закрывает плеер — это осталось от
-/// прежнего тапа. У источников без своей страницы (поиск, витрина главной,
-/// одиночный трек) долгого нажатия нет, тап работает всегда.
+/// Two gestures. A TAP opens the queue sheet: the pill is the only queue button
+/// on screen, and the queue opens far more often than its source. A LONG press
+/// goes to the source and closes the player. Sources with no page (search, a
+/// home shelf, a single track) have no long press.
 library;
 
 import 'package:flutter/material.dart';
@@ -34,21 +29,19 @@ import '../play_source.dart';
 import 'player_sheet.dart';
 import 'queue_sheet.dart';
 
-/// Размеры пилюли. Вынесены сюда, а не размазаны по разметке: шапка плеера
-/// собирается из них и из [kHeaderControl] — высота у пилюли та же, что у
-/// круглых кнопок по краям, иначе шапка читается ступенькой.
+/// Pill sizes, kept here: the header is built from these and [kHeaderControl],
+/// with the pill as tall as the round buttons at its edges, or the header reads
+/// as a step.
 const double _iconSize = 28;
 const double _gap = 10;
 
-/// Открыть источник очереди: закрыть плеер (и шторки над ним) и уйти на его
-/// страницу.
-///
-/// Страницу кладём в навигатор ТЕКУЩЕЙ вкладки, а не в корневой: из поиска и
-/// библиотеки те же страницы открываются под таб-баром и миниплеером, и
-/// открытая отсюда обязана выглядеть так же (см. [currentBranchNavigator]).
+/// Opens the queue's source: closes the player and sheets over it and goes to
+/// its page. The page goes in the CURRENT tab's navigator, not the root: from
+/// search and the library these pages open under the tab bar and mini player,
+/// and from here they must look the same (see [currentBranchNavigator]).
 void openPlaySource(BuildContext context, PlaySource source) {
-  // Шторки над плеером снимает навигатор, а сам плеер — не маршрут: он слой
-  // каркаса и складывается своим вызовом (см. `PlayerSheet`).
+  // The navigator clears sheets over the player, but the player isn't a route:
+  // it's a shell layer that folds by its own call (see `PlayerSheet`).
   Navigator.of(context, rootNavigator: true).popUntil((r) => r.isFirst);
   collapsePlayerSheet();
   switch (source) {
@@ -61,7 +54,7 @@ void openPlaySource(BuildContext context, PlaySource source) {
         if (root != null) showHistorySheet(root);
       });
     case LibSource(:final listId):
-      // Раздел библиотеки живёт маршрутом — заодно переключит вкладку.
+      // A library section is a route, which also switches the tab.
       bloomRouter.go('/library/list/$listId');
     case SetSource(:final set):
       final nav = currentBranchNavigator();
@@ -71,13 +64,13 @@ void openPlaySource(BuildContext context, PlaySource source) {
       if (nav != null) openArtistIn(nav, artist.id, initial: artist);
     case PlainSource():
     case WaveSource():
-      // Поиск, витрина, одиночный трек, волна — открывать нечего.
+      // Search, a shelf, a single track, the wave: nothing to open.
       break;
   }
 }
 
-/// Есть ли у источника своя страница. У [PlainSource] и [WaveSource] её нет —
-/// такая пилюля рисуется без ряби и не ловит тап.
+/// Whether a source has a page. [PlainSource] and [WaveSource] don't: that pill
+/// draws with no ripple and catches no tap.
 bool playSourceOpens(PlaySource source) =>
     source is! PlainSource && source is! WaveSource;
 
@@ -91,25 +84,24 @@ class SourcePill extends ConsumerWidget {
     this.borderColor,
   });
 
-  /// Заливка. `null` — обычная плашка темы (`pill`). Шапка плеера на своём
-  /// фоне передаёт сюда плёнку блоков: сплошная плашка на нём читается
-  /// чёрной нашлёпкой, а рядом стоят полупрозрачные транспорт и инструменты.
+  /// Fill. `null` is the theme's usual plate (`pill`). The player's header on
+  /// its own background passes the blocks' film here: a solid plate reads as a
+  /// black patch beside the translucent transport and tools.
   final Color? background;
 
-  /// Обводка — по той же причине, что у [CircleIconButton.borderColor].
+  /// Outline, for the same reason as [CircleIconButton.borderColor].
   final Color? borderColor;
 
-  /// Источник очереди. `null` — очередь ниоткуда (снимок старой сессии,
-  /// восстановленный до того, как источник начали запоминать): пилюля тогда
-  /// просто называет себя очередью.
+  /// Queue source. `null` means from nowhere (an old session snapshot), and the
+  /// pill just calls itself the queue.
   final PlaySource? source;
 
-  /// Перемешка — значок за именем источника.
+  /// Shuffle, an icon after the source's name.
   final bool shuffle;
 
-  /// Сколько треков в очереди — счётчик на правом краю пилюли (порт
-  /// `#qpSourceCount` с ПК). Ноль не рисуем: пустой очереди на этом экране не
-  /// бывает, но снимок старой сессии мог доехать и таким.
+  /// Tracks in the queue, the count at the pill's right edge. Zero isn't drawn:
+  /// there's no empty queue on this screen, but an old session snapshot might
+  /// arrive so.
   final int count;
 
   @override
@@ -119,18 +111,17 @@ class SourcePill extends ConsumerWidget {
     final label = source == null
         ? context.l.playerQueue
         : _label(context, ref, source);
-    // Уйти на источник можно не у всякой очереди — тогда остаётся один тап.
+    // Not every queue can go to its source; then only the tap remains.
     final opens = source != null && playSourceOpens(source);
 
     final border = borderColor;
     return Center(
       child: Pressable(
-        // Тап — очередь. Всегда: пилюля заменила собой кнопку очереди в ряду
-        // инструментов, и «мёртвой» она быть не может.
+        // Tap is the queue, always: the pill replaced the queue button in the
+        // tool row and can't be dead.
         onTap: () => showQueueSheet(context),
-        // Долгое нажатие — источник. Отклик обязателен: у долгого нажатия нет
-        // своего вида, и без него непонятно, сработало оно или ты просто
-        // задержал палец на тапе.
+        // Long press is the source. Feedback is a must: a long press has no
+        // look of its own, and otherwise you can't tell it from a slow tap.
         onLongPress: opens
             ? () {
                 HapticFeedback.selectionClick();
@@ -139,19 +130,19 @@ class SourcePill extends ConsumerWidget {
             : null,
         child: Material(
           color: background ?? t.pill,
-          // Пилюля ровно в высоту круглых кнопок, поэтому `StadiumBorder` — тот
-          // же радиус, что был; форма нужна ради обводки: у `Material` она
-          // задаётся либо радиусом, либо формой, но не тем и другим сразу.
+          // The pill is as tall as the round buttons, so `StadiumBorder` is the
+          // same radius; the shape is for the outline: `Material` takes either
+          // a radius or a shape, not both.
           shape: StadiumBorder(
             side: border == null ? BorderSide.none : BorderSide(color: border),
           ),
           clipBehavior: Clip.antiAlias,
           child: Padding(
-            // Слева поля больше, чем просвет над картинкой: край пилюли
-            // скруглён, и квадратная обложка, отодвинутая от него «поровну»,
-            // упирается в закругление. Справа меньше, чем было: у края теперь
-            // стоит счётчик, а он и сам обведён — двойной отступ отжимал бы его
-            // от края сильнее, чем картинку слева.
+            // More margin on the left than over the picture: the pill's edge is
+            // rounded, and a square cover set evenly from it hits the curve.
+            // Less on the right: the count stands there with its own outline,
+            // and a double margin would push it off the edge further than the
+            // picture on the left.
             padding: const EdgeInsets.fromLTRB(14, 0, 12, 0),
             child: SizedBox(
               height: kHeaderControl,
@@ -171,19 +162,17 @@ class SourcePill extends ConsumerWidget {
                   ),
                   if (shuffle) ...[
                     const SizedBox(width: 8),
-                    // Цветом в имя источника, а не акцентом: значок стоит
-                    // прямо за именем и читается его частью — акцент рядом
-                    // выдёргивал на себя больше внимания, чем сам источник.
+                    // The source name's colour, not the accent: the icon reads
+                    // as part of the name, and accent would pull more attention
+                    // than the source.
                     BloomIcon(Bi.shuffle, size: 14, color: t.text),
                   ],
                   if (count > 0) ...[
-                    // Волосяной разделитель перед счётчиком — порт того же
-                    // `span` с ПК: без него обведённая цифра липнет к имени и
-                    // читается его частью.
+                    // Hairline before the count: without it the outlined number
+                    // sticks to the name and reads as part of it.
                     const SizedBox(width: 8),
-                    // `ovlLine2`, а не `ovlLine`: шесть процентов плёнки —
-                    // это обводка целого блока, у волоска в 1 px на них не
-                    // остаётся ничего видимого.
+                    // `ovlLine2`, not `ovlLine`: six percent suits a whole
+                    // block's outline, but on a 1 px hair nothing would show.
                     Container(width: 1, height: 12, color: t.ovlLine2),
                     const SizedBox(width: 8),
                     _Count(count),
@@ -197,8 +186,8 @@ class SourcePill extends ConsumerWidget {
     );
   }
 
-  /// Подпись источника. У разделов библиотеки берётся ЖИВОЙ — плейлист могли
-  /// переименовать, пока он играет (см. `play_source.dart`).
+  /// The source's caption. For library sections it's LIVE: a playlist may be
+  /// renamed as it plays (see [PlaySource]).
   String _label(BuildContext context, WidgetRef ref, PlaySource source) {
     switch (source) {
       case LibSource(:final listId):
@@ -208,8 +197,8 @@ class SourcePill extends ConsumerWidget {
           'history' => context.l.commonHistory,
           _ =>
             _playlist(ref, listId)?.name ??
-                // Плейлист удалили прямо во время воспроизведения — очередь
-                // играет дальше, а называть её больше нечем.
+                // The playlist was deleted during playback: the queue plays on
+                // with nothing to call it.
                 context.l.commonPlaylist,
         };
       case SetSource(:final set):
@@ -224,10 +213,9 @@ class SourcePill extends ConsumerWidget {
   }
 }
 
-/// Счётчик треков очереди — порт `#qpSourceCount` с ПК: цифра в обводке, тем
-/// же цветом, что имя источника. Ширина по содержимому: трёхзначная очередь
-/// встречается чаще, чем кажется, а фиксировать её нечем — имя источника рядом
-/// и так ужимается первым.
+/// Queue track count: a number in an outline, in the source name's colour.
+/// Width by content: three-digit queues are common, and the name beside it
+/// shrinks first.
 class _Count extends StatelessWidget {
   const _Count(this.value);
 
@@ -264,8 +252,8 @@ UserPlaylist? _playlist(WidgetRef ref, String id) {
   return null;
 }
 
-/// Картинка источника: обложка сета, аватар артиста, коллаж плейлиста либо
-/// фирменный тинт раздела — ровно то же, что показывает его карточка.
+/// Source picture: a set's cover, an artist's avatar, a playlist's collage or a
+/// section's tint, just what its card shows.
 class _SourceIcon extends ConsumerWidget {
   const _SourceIcon({required this.source});
 
@@ -282,7 +270,8 @@ class _SourceIcon extends ConsumerWidget {
       case LibSource(:final listId):
         final glyph = systemListGlyph(listId);
         if (glyph != null) return _outline(t, radius, glyph);
-        // Плейлист: своя обложка → коллаж из первых треков, как на его плитке.
+        // Playlist: its own cover, then a collage of first tracks, as on its
+        // tile.
         final lib = ref.watch(libraryProvider);
         final playlist = _playlist(ref, listId);
         return Cover(
@@ -294,8 +283,8 @@ class _SourceIcon extends ConsumerWidget {
               : lib.tracksOf(playlist).map((track) => track.cover),
         );
       case WaveSource():
-        // Волна — не список, обложки у неё нет: значок берёт акцент темы, как
-        // и её карточка на главной.
+        // The wave isn't a list and has no cover: the icon takes the theme's
+        // accent.
         return _tint(t, radius, t.ovlBg, t.accent, Bi.soundwaveBold);
       case SetSource(:final set):
         return Cover(url: set.cover, size: _iconSize, radius: radius);

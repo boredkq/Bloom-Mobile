@@ -1,11 +1,6 @@
-/// Настройки «Яндекс.Музыка» — порт десктопной секции `YandexSection.tsx`.
-///
-/// OAuth device-flow: «Подключить» → открывается страница Яндекс ID и
-/// показывается код → идёт поллинг токена. Всё состояние живёт в
-/// [ymAuthProvider]; здесь только вид и перевод типизированных причин.
-///
-/// Раскладка — [PlatformPage]: знак площадки посреди экрана, статус под ним,
-/// действие внизу. Инструкция с ПК живёт в шторке под карточкой.
+/// Yandex Music: OAuth device flow, "Connect" opens the Yandex ID page and
+/// shows a code while the token is polled. State lives in [ymAuthProvider];
+/// here it's the look and wording the typed reasons.
 library;
 
 import 'dart:async' show scheduleMicrotask;
@@ -19,7 +14,6 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../providers/yandex/ym_auth.dart';
-import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/platform_logo.dart';
@@ -34,15 +28,13 @@ class YandexSettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _YandexSettingsScreenState extends ConsumerState<YandexSettingsScreen> {
-  /// Контроллер держим ссылкой: в [dispose] `ref` уже мёртв и бросает
-  /// `Bad state: Cannot use "ref" after the widget was disposed`.
+  /// Kept: in [dispose] `ref` is dead and throws.
   late final YmAuthController _auth = ref.read(ymAuthProvider.notifier);
 
   @override
   void initState() {
     super.initState();
-    // Статус перечитываем при открытии экрана, а поллинг гасим при уходе —
-    // как `useEffect` в десктопной секции.
+    // Status anew on opening, polling stops on leaving.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _auth.refresh();
     });
@@ -50,9 +42,9 @@ class _YandexSettingsScreenState extends ConsumerState<YandexSettingsScreen> {
 
   @override
   void dispose() {
-    // Отмена меняет состояние провайдера, на который подписан этот же экран, а
-    // он в момент `dispose` уже мёртв: синхронный вызов роняет ассерт
-    // `_lifecycleState != defunct`. Микрозадача переносит её за разбор дерева.
+    // Cancelling changes a provider this screen listens to, and in `dispose`
+    // the screen is already dead: a sync call trips an assert. A microtask
+    // moves it past the tree's teardown.
     scheduleMicrotask(_auth.cancelAuth);
     super.dispose();
   }
@@ -123,27 +115,18 @@ class _YandexSettingsScreenState extends ConsumerState<YandexSettingsScreen> {
       ),
       actions: [
         if (s.authed)
-          BloomButton(
+          PlatformAction(
             label: l.ymLogout,
-            tone: ButtonTone.plate,
-            pill: false,
-            height: 54,
             onTap: () => ref.read(ymAuthProvider.notifier).logout(),
           )
         else if (s.userCode case final _?)
-          BloomButton(
+          PlatformAction(
             label: l.ymOpenPage,
-            tone: ButtonTone.plate,
-            pill: false,
-            height: 54,
             onTap: () => openVerifyPage(s.verifyUrl ?? 'https://ya.ru/device'),
           )
         else
-          BloomButton(
+          PlatformAction(
             label: l.ymConnect,
-            tone: ButtonTone.plate,
-            pill: false,
-            height: 54,
             busy: s.connecting,
             onTap: () => ref.read(ymAuthProvider.notifier).startAuth(),
           ),
@@ -152,8 +135,8 @@ class _YandexSettingsScreenState extends ConsumerState<YandexSettingsScreen> {
   }
 }
 
-/// Типизированная причина → фраза. Коды `ym.err.*` приходят из сетевого слоя,
-/// незнакомый код показываем как есть — это текст самой площадки.
+/// `ym.err.*` come from the network layer; an unknown code shows as it is, it's
+/// the service's text.
 String _noteText(AppLocalizations l, YmAuthNote note) => switch (note.kind) {
   YmAuthNoteKind.gettingCode => l.ymGettingCode,
   YmAuthNoteKind.waiting => l.ymWaiting,
@@ -161,7 +144,7 @@ String _noteText(AppLocalizations l, YmAuthNote note) => switch (note.kind) {
   YmAuthNoteKind.error => describeYmError(l, note.errorCode ?? ''),
 };
 
-/// Ошибка площадки на языке пользователя.
+/// In the user's language.
 String describeYmError(AppLocalizations l, String code) => switch (code) {
   'ym.err.auth' => l.ymErrAuth,
   'ym.err.noToken' => l.ymNotConnected,
@@ -180,8 +163,8 @@ class _PlusBadge extends StatelessWidget {
     final t = context.bloom;
     final l = context.l;
     final body = Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.5);
-    // Как на десктопе: первая половина фразы выделена, вторая — обычным
-    // текстом. Статус неизвестен — одна серая строка.
+    // The first half stands out, the second is plain. Status unknown: one grey
+    // line.
     return switch (hasPlus) {
       true => Text.rich(
         TextSpan(
@@ -215,9 +198,8 @@ class _PlusBadge extends StatelessWidget {
   }
 }
 
-/// Код устройства: крупные цифры (тап — копировать) и адрес страницы
-/// подтверждения. Открыть её повторно можно кнопкой внизу — браузер не всегда
-/// поднимается сам.
+/// Large digits (a tap copies) and the confirmation page's address. A button
+/// reopens it: the browser doesn't always rise by itself.
 class _CodeCard extends StatelessWidget {
   const _CodeCard({required this.code, required this.verifyUrl});
 
@@ -255,8 +237,7 @@ class _CodeCard extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
-            // Тап по коду копирует его: набирать цифры руками в чужом браузере
-            // неудобно.
+            // Typing digits by hand in another browser is awkward.
             GestureDetector(
               onTap: () {
                 Clipboard.setData(ClipboardData(text: code));

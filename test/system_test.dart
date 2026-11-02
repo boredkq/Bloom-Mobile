@@ -6,6 +6,8 @@
 /// [releaseFetchProvider], а хранилище — `JsonStore.memory`.
 library;
 
+import 'dart:io';
+
 import 'dart:convert';
 
 import 'package:bloom/core/entities/entities.dart';
@@ -41,25 +43,21 @@ ProviderContainer _container(
   return c;
 }
 
-/// Манифест заметок из двух версий — в том же виде, в каком он лежит в
-/// `update-notes/update-notes.json`.
+/// The notes' manifest with a major version and a patch.
 const String _manifest = '''
 {
   "1.0.0": {
-    "title": { "ru": "Первый релиз", "en": "First release" },
     "date": "2026-08-20",
-    "pages": [
-      {
-        "title": { "ru": "Начало", "en": "Start" },
-        "body": { "ru": "- раз\\n- два", "en": "- one\\n- two" },
-        "image": "start.png"
-      }
-    ]
+    "image": "start.png",
+    "summary": { "ru": "Первый релиз", "en": "First release" }
   },
   "1.0.1": {
-    "title": "Починки",
-    "date": "2026-09-01",
-    "pages": [{ "body": { "ru": "- поправили" } }]
+    "date": "2026-08-21",
+    "image": "ignored.png",
+    "items": { "ru": ["раз", "два"], "en": ["one", "two"] }
+  },
+  "1.0.2": {
+    "items": ["общий", { "ru": "только русский" }]
   }
 }
 ''';
@@ -353,7 +351,7 @@ void main() {
       final c = _container(
         JsonStore.memory(),
         fetch: (_) async =>
-            '[{"tag_name":"mobile-v1.4.0","html_url":"https://example/1.4.0"}]',
+            '{"tag_name":"v1.4.0","html_url":"https://example/1.4.0"}',
       );
       final about = c.read(aboutProvider.notifier);
       // Версию платформа в тестах не отдаёт — подставляем сами через проверку
@@ -368,27 +366,12 @@ void main() {
     test('та же версия — «установлена последняя»', () async {
       final c = _container(
         JsonStore.memory(),
-        fetch: (_) async => '[{"tag_name":"mobile-v1.3.0"}]',
+        fetch: (_) async => '{"tag_name":"v1.3.0"}',
       );
       final about = c.read(aboutProvider.notifier);
       about.state = const AboutState(version: '1.3.0');
       await about.check();
       expect(c.read(aboutProvider).phase, UpdatePhase.uptodate);
-    });
-
-    // Релизы ПК и мобилки лежат в одном репозитории, а версии у них независимые:
-    // без фильтра по префиксу десктопная 9.0.0 выглядела бы как обновление.
-    test('десктопный релиз не принимаем за мобильный', () async {
-      final c = _container(
-        JsonStore.memory(),
-        fetch: (_) async =>
-            '[{"tag_name":"desktop-v9.0.0"},{"tag_name":"mobile-v1.3.0"}]',
-      );
-      final about = c.read(aboutProvider.notifier);
-      about.state = const AboutState(version: '1.3.0');
-      await about.check();
-      expect(c.read(aboutProvider).phase, UpdatePhase.uptodate);
-      expect(c.read(aboutProvider).latest, '1.3.0');
     });
 
     test('сеть отвалилась — ошибка, а не падение', () async {
@@ -402,32 +385,50 @@ void main() {
   });
 
   group('заметки к версиям', () {
-    test('заметка разбирается под язык, картинка достраивается', () async {
+    test('a major version: summary and picture by language', () async {
       final c = _container(JsonStore.memory(), notes: (_) async => _manifest);
       final ru = await c.read(updateNotesProvider).note('1.0.0', 'ru');
-      expect(ru!.title, 'Первый релиз');
+      expect(ru!.summary, 'Первый релиз');
       expect(ru.date, '2026-08-20');
-      expect(ru.pages.single.title, 'Начало');
-      expect(ru.pages.single.body, '- раз\n- два');
       expect(
-        ru.pages.single.image,
-        'https://raw.githubusercontent.com/$kUpdateRepo/main/update-notes/mobile/assets/start.png',
+        ru.image,
+        'https://raw.githubusercontent.com/$kUpdateRepo/main/update-notes/assets/start.png',
       );
-
       final en = await c.read(updateNotesProvider).note('1.0.0', 'en');
-      expect(en!.pages.single.body, '- one\n- two');
-      // Заголовок строкой, а не парой — один на оба языка.
-      final plain = await c.read(updateNotesProvider).note('1.0.1', 'en');
-      expect(plain!.title, 'Починки');
-      // Нужного языка нет — падаем на русский, а не на пустоту.
-      expect(plain.pages.single.body, '- поправили');
+      expect(en!.summary, 'First release');
     });
 
-    test('версии из манифеста идут новыми сверху', () async {
+    test('a patch: items by language, no picture', () async {
+      final c = _container(JsonStore.memory(), notes: (_) async => _manifest);
+      final ru = await c.read(updateNotesProvider).note('1.0.1', 'ru');
+      expect(ru!.items, ['раз', 'два']);
+      expect(ru.image, isNull);
+      final en = await c.read(updateNotesProvider).note('1.0.1', 'en');
+      expect(en!.items, ['one', 'two']);
+    });
+
+    test('items as a list of texts fall back to the other language', () async {
+      final c = _container(JsonStore.memory(), notes: (_) async => _manifest);
+      final en = await c.read(updateNotesProvider).note('1.0.2', 'en');
+      expect(en!.items, ['общий', 'только русский']);
+    });
+
+    test('versions go newest first', () async {
       final c = _container(JsonStore.memory(), notes: (_) async => _manifest);
       final history = await c.read(updateNotesProvider).history('ru');
-      expect([for (final h in history) h.version], ['1.0.1', '1.0.0']);
-      expect(history.first.title, 'Починки');
+      expect([for (final h in history) h.version], ['1.0.2', '1.0.1', '1.0.0']);
+      expect(history[1].date, '2026-08-21');
+    });
+
+    test('the file in the repository parses and knows this version', () async {
+      final file = File('update-notes/update-notes.json').readAsStringSync();
+      final c = _container(JsonStore.memory(), notes: (_) async => file);
+      final version = RegExp(
+        r'^version: ([^+\s]+)',
+        multiLine: true,
+      ).firstMatch(File('pubspec.yaml').readAsStringSync())![1]!;
+      final note = await c.read(updateNotesProvider).note(version, 'ru');
+      expect(note?.hasContent, isTrue);
     });
 
     test('чужой версии в манифесте нет — заметки тоже', () async {
@@ -468,7 +469,7 @@ void main() {
         notes: (_) async => throw Exception('нет сети'),
       );
       final history = await offline.read(updateNotesProvider).history('ru');
-      expect([for (final h in history) h.version], ['1.0.1', '1.0.0']);
+      expect([for (final h in history) h.version], ['1.0.2', '1.0.1', '1.0.0']);
     });
 
     test('кэша нет и сети нет — ошибка, а не пустой список', () async {

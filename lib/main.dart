@@ -13,10 +13,12 @@ import 'app/theme/bloom_theme.dart';
 import 'core/l10n/l10n.dart';
 import 'core/log/bloom_log.dart';
 import 'core/db/db.dart';
+import 'core/store/cover_cache.dart';
 import 'core/store/cover_store.dart';
 import 'core/store/json_store.dart';
 import 'core/store/settings_store.dart';
 import 'core/store/days_store.dart';
+import 'features/lastfm/lastfm_store.dart';
 import 'features/customization/ui/app_background.dart';
 import 'features/library/local_tracks.dart';
 import 'features/library/pl_auto_store.dart';
@@ -33,34 +35,32 @@ import 'shared/ui/bloom_toast.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Только портрет. Вся вёрстка считана под узкий экран, и в ландшафте она
-  // разъезжается — с этим замком приложение, открытое с телефона на боку,
-  // само разворачивается обратно. На Android то же самое стоит в манифесте
-  // (там разворот происходит ещё до старта движка), здесь — ради iOS и на
-  // случай, если система всё же отдаст активити лежащей.
+  // Portrait only: the layout is built for a narrow screen and falls apart in
+  // landscape. Android's manifest says the same; this is for iOS and in case
+  // the system hands the activity over sideways.
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  // Журнал работы поднимаем первым — чтобы в него попало и то, что случится с
-  // остальными хранилищами (`Настройки → Система → Логи`).
+  // The log opens first, so it catches what happens to the other stores.
   await BloomLog.instance.open();
   _catchUnhandled();
   logInfo('app', 'запуск · ${Platform.operatingSystemVersion}');
-  // Хранилище читаем ДО первого кадра: иначе библиотека и тема моргнут
-  // пустыми, а экраны придётся городить с состояниями загрузки.
+  // The store is read BEFORE the first frame, or the library and theme blink
+  // empty and screens need loading states.
   final store = await _step('bloom.json', JsonStore.open);
-  // Данные слушателя — база, как на ПК: библиотека, журнал, подписки.
+  // The listener's data: library, play log, follows.
   final db = await _step('bloom.db', BloomDb.open);
-  // Свои шрифты — до первого кадра: иначе выбранный мелькнёт Inter.
+  // User fonts before the first frame, or the chosen one flashes as Inter.
   await _step('шрифты', () => initUserFonts(store));
   await _step('обложки', initCoverStore);
+  await _step('кеш обложек', initCoverCache);
   await _step('офлайн', initOfflineStore);
   await _step('свои треки', initLocalTracks);
 
-  // Канал уведомлений заводится ДО первого кадра, поэтому `context.l` тут ещё
-  // неоткуда взять — переводы грузим напрямую из делегата. Язык тот же, что
-  // потом увидит приложение: сохранённый, а если не выбирали — системный.
+  // The notification channel is created BEFORE the first frame, so there's no
+  // `context.l` yet and I load translations from the delegate directly, in the
+  // language the app will show.
   //
-  // Название канала Android запоминает при создании и позже само не меняет:
-  // после смены языка в настройках оно обновится со следующего запуска.
+  // Android remembers the channel's name at creation: after a language change
+  // it updates on the next launch.
   final saved = readSavedLocale(store.readMap('settings'));
   final l10n = await _step(
     'переводы',
@@ -75,9 +75,9 @@ Future<void> main() async {
 
   final handler = await _initAudioService(l10n);
 
-  // Контейнер создаём руками, чтобы дёрнуть playbackProvider ДО первого кадра:
-  // контроллер должен подписаться на хендлер сразу, иначе кнопки в шторке до
-  // открытия плеера ведут в никуда.
+  // I create the container by hand to touch playbackProvider BEFORE the first
+  // frame: the controller must subscribe to the handler at once, or shade
+  // buttons lead nowhere until the player opens.
   final container = ProviderContainer(
     overrides: [
       jsonStoreProvider.overrideWithValue(store),
@@ -90,24 +90,26 @@ Future<void> main() async {
   container
       .read(lyricsCacheProvider)
       .start(container.read(lyricsPrefsProvider).keep);
-  // Токен Яндекса поднимаем сразу: пока стор не создан, площадка считается
-  // выключенной и первый же поиск прошёл бы мимо неё.
+  unawaited(startCoverCache(container.read(coverKeepProvider)));
+  // Scrobbles left from the last run go out by themselves.
+  container.read(lastfmProvider);
+  // The Yandex token comes up right away: until the store exists the platform
+  // counts as off and the first search would skip it.
   container.read(ymAuthProvider);
-  // Мост авто-акцента живёт столько же, сколько процесс: цвет должен ехать за
-  // обложкой всегда, а не только пока открыт экран «Интерфейс».
+  // The auto accent bridge lives as long as the process: the colour follows the
+  // cover always, not only on one settings page.
   container.read(autoAccentProvider);
-  // Сегодняшний визит и время в приложении — с первой же секунды, как
-  // `Stats::start` на ПК. Живёт до конца процесса, снимать его некому и незачем.
+  // Today's visit and app time from the first second. Lives until the process
+  // ends.
   UsageTracker(container.read(daysProvider.notifier)).start();
-  // Расписание авто-обновления плейлистов — как `startPlAutoScheduler` на ПК.
-  // Таймер живёт столько же, сколько процесс: разбудить закрытое приложение
-  // нечем, зато при следующем запуске просроченный период виден по `lastRun`.
+  // Playlist auto-update schedule. The timer lives as long as the process:
+  // nothing can wake a closed app, but the next launch sees an overdue period
+  // by `lastRun`.
   container.read(plAutoProvider.notifier).startScheduler();
-  // Синхронизация с ПК, если он сопряжён: при запуске, по возвращении и
-  // время от времени — «Настройки → Компьютер».
+  // Sync with the paired computer: at launch, on return and now and then.
   container.read(pcProvider.notifier).start();
-  // Картинку с ПК могут делить два плейлиста или плейлист и профиль: файл
-  // удаляется, только когда на него никто не ссылается.
+  // A picture from another device can be shared by two playlists or a playlist
+  // and the profile, so a file goes only when nothing refers to it.
   coverInUse = (cover) {
     if (db.value(
           'SELECT 1 FROM lists WHERE cover = ? UNION ALL SELECT 1 FROM tracks WHERE cover = ? LIMIT 1',
@@ -127,25 +129,21 @@ Future<void> main() async {
     ),
   );
 
-  // Восстановление прошлой сессии — после первого кадра: резолв стрима идёт в
-  // сеть и просит разрешение на уведомления, и держать ради этого пустой экран
-  // незачем.
+  // Restoring the last session waits for the first frame: resolving a stream
+  // hits the network and asks for notification permission, with no reason to
+  // hold an empty screen.
   WidgetsBinding.instance.addPostFrameCallback((_) {
-    // Парная отметка ко всем `→` выше: запуск дошёл до экрана. Строка «запуск»
-    // без неё в журнале и означает «застряли на сплеше» — а на чём именно,
-    // видно по последнему шагу, у которого нет своей `✓`.
+    // Pairs with every `→` above: launch reached the screen. A log without this
+    // line means stuck on the splash, and the last step with no `✓` says where.
     logInfo('boot', '✓ первый кадр');
     _restoreSession(container);
   });
 }
 
-/// Шаг запуска с отметками в журнале: `→ имя` перед началом, `✓ имя (N мс)`
-/// после.
-///
-/// Весь запуск идёт ДО первого кадра, поэтому что здесь зависнет или бросит —
-/// то и оставит человека на сплеше навсегда, и понять по экрану ничего нельзя.
-/// Пары отметок и хватает: незакрытая `→` показывает и место сбоя, и то,
-/// сколько шаг успел прожить.
+/// A launch step with marks in the log: `→ name` before, `✓ name (N ms)` after.
+/// All of launch happens before the first frame, so whatever hangs or throws
+/// leaves the user on the splash forever, with nothing on screen to tell. An
+/// unclosed `→` shows the place.
 Future<T> _step<T>(String name, Future<T> Function() run) async {
   logInfo('boot', '→ $name');
   final started = DateTime.now();
@@ -155,33 +153,25 @@ Future<T> _step<T>(String name, Future<T> Function() run) async {
   return result;
 }
 
-/// Сколько ждём аудио-службу, прежде чем запуститься без неё.
-///
-/// Двенадцать секунд — заведомо больше, чем нужно живой системе (обычные
-/// десятки миллисекунд), и заведомо меньше, чем человек согласен смотреть на
-/// сплеш.
+/// How long I wait for the audio service before starting without it. Far above
+/// what a live system needs (tens of ms), and below what anyone will watch a
+/// splash for.
 const Duration _audioInitTimeout = Duration(seconds: 12);
 
-/// Хендлер один на процесс.
-///
-/// [AudioService.init] может ответить и после того, как мы устали ждать, —
-/// тогда `builder` позовут запоздало, и второй [BloomAudioHandler] означал бы
-/// второй `AudioPlayer`, то есть второй звук поверх первого.
+/// One handler per process. [AudioService.init] may answer after I gave up; its
+/// `builder` then runs late, and a second [BloomAudioHandler] would mean a
+/// second `AudioPlayer` playing on top.
 BloomAudioHandler? _audioHandler;
 BloomAudioHandler _buildAudioHandler() => _audioHandler ??= BloomAudioHandler();
 
-/// Поднять службу воспроизведения — шторка, экран блокировки, фоновая музыка.
+/// Brings up the playback service: shade, lock screen, background music. It has
+/// a timeout because the service outlives the app: on the next launch the
+/// plugin binds to the running one and waits for `onConnected`. If the system
+/// froze it (Samsung is eager), no answer ever comes: `AudioService.init`
+/// neither throws nor finishes and the splash stays until a reboot.
 ///
-/// Отдельно от `main()` и под защитой не от красоты: служба живёт дольше
-/// приложения, и в следующий запуск мы приходим к УЖЕ работающей — плагин
-/// биндится к ней и ждёт `onConnected`. Если система эту службу подморозила
-/// (Samsung усыпляет приложения охотнее прочих), ответа не будет никогда:
-/// `AudioService.init` не бросает и не завершается, а мы стоим на сплеше до
-/// перезагрузки телефона. Отсюда и таймаут.
-///
-/// Не поднялась — запускаемся без неё: звук играет (плеер-то наш, внутри
-/// хендлера), нет шторки и фонового воспроизведения. Это несравнимо лучше
-/// приложения, которое не открывается вовсе.
+/// If it fails I start without it: sound plays, with no shade or background
+/// playback. Far better than an app that won't open.
 Future<BloomAudioHandler> _initAudioService(AppLocalizations l10n) async {
   try {
     return await _step(
@@ -192,9 +182,8 @@ Future<BloomAudioHandler> _initAudioService(AppLocalizations l10n) async {
           androidNotificationChannelId: 'com.bxzlik.bloom.playback',
           androidNotificationChannelName: l10n.notifChannelName,
           androidNotificationChannelDescription: l10n.notifChannelDescription,
-          // Пара «ongoing + stopForegroundOnPause» — единственная рабочая:
-          // шторку нельзя смахнуть, пока играет, но на паузе она снова
-          // смахивается.
+          // Only the pair ongoing and stopForegroundOnPause works: the shade
+          // can't be swiped while playing, but can on pause.
           androidNotificationOngoing: true,
           androidStopForegroundOnPause: true,
           androidNotificationIcon: 'drawable/ic_stat_bloom',
@@ -213,12 +202,9 @@ Future<BloomAudioHandler> _initAudioService(AppLocalizations l10n) async {
   return _buildAudioHandler();
 }
 
-/// Необработанные ошибки — в журнал работы.
-///
-/// Обе двери: `FlutterError.onError` ловит падения в дереве виджетов,
-/// `PlatformDispatcher.onError` — всё остальное (оборванные `Future`).
-/// Поведение по умолчанию сохраняем: ошибка как печаталась в консоль, так и
-/// печатается, журнал только запоминает её.
+/// Unhandled errors go to the log. Two doors: `FlutterError.onError` for the
+/// widget tree, `PlatformDispatcher.onError` for the rest (dropped `Future`s).
+/// Default behaviour stays: errors still print to the console.
 void _catchUnhandled() {
   final presentError = FlutterError.onError;
   FlutterError.onError = (details) {
@@ -227,20 +213,18 @@ void _catchUnhandled() {
   };
   PlatformDispatcher.instance.onError = (error, stack) {
     logError('dart', '$error', stack);
-    return false; // false — пусть платформа обработает её как обычно
+    return false; // false lets the platform handle it as usual
   };
 }
 
-/// Вернуть трек, очередь и позицию прошлой сессии — «Настройки → Аудио».
-///
-/// Выключено по умолчанию: телефон приложение убивает постоянно, и молча
-/// поднимать очередь на каждом запуске мы не вправе. Карточка «Продолжить» на
-/// главной работает и без этой настройки — просто по нажатию.
+/// Restores the last session's track, queue and position. Off by default: the
+/// system kills the app constantly, and raising the queue silently on every
+/// launch isn't my call.
 void _restoreSession(ProviderContainer container) {
   final settings = container.read(settingsProvider);
   if (!settings.restoreQueue) return;
   final data = container.read(sessionProvider);
-  // Очередь очистили — в плеер её не поднимаем, «Продолжить» остаётся.
+  // A cleared queue doesn't come back into the player.
   if (data == null || data.cleared) return;
   logInfo(
     'player',
@@ -263,13 +247,12 @@ class BloomApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tokens = ref.watch(settingsProvider).tokens;
-    // Картинка фона живёт ПОД интерфейсом, и заливку снимают ровно те, кто
-    // обязан её пропустить: страницы роутера, каркас и страницы артиста и
-    // сета (см. `pageBackground`). Полноэкранный плеер и шторки поверх него
-    // остаются сплошными — фон в плеере пользователь видеть не хочет.
+    // The background picture lies UNDER the UI, and only those that must let it
+    // through drop their fill: router pages, the shell, artist and set pages
+    // (see `pageBackground`). The full player and sheets over it stay solid:
+    // the background isn't wanted in the player.
     final bgOn = ref.watch(backgroundOnProvider);
-    // Системные бары красим под тему — иначе на светлой теме белые иконки
-    // статус-бара исчезают.
+    // System bars follow the theme, or white status icons vanish on light.
     SystemChrome.setSystemUIOverlayStyle(
       SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -286,14 +269,14 @@ class BloomApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'Bloom',
       debugShowCheckedModeBanner: false,
-      // `locale: null` — язык берётся у системы и матчится с supportedLocales,
-      // где английский стоит первым и потому работает запасным. Как только
-      // язык выбран руками, отдаём его явно.
+      // `locale: null` takes the system's language, matched against
+      // supportedLocales, where English comes first and so acts as the
+      // fallback. A language picked by hand is passed explicitly.
       locale: ref.watch(settingsProvider).locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      // Свой ключ мессенджера: тосты бывают и без экрана — авто-обновление
-      // плейлистов ходит по таймеру.
+      // My own messenger key: toasts can come with no screen, from playlist
+      // auto-update's timer.
       scaffoldMessengerKey: bloomMessengerKey,
       scrollBehavior: const _SpringScroll(),
       theme: buildBloomTheme(
@@ -301,8 +284,8 @@ class BloomApp extends ConsumerWidget {
         transparentPages: bgOn,
         fontFamily: ref.watch(uiFontProvider),
       ),
-      // Фон — под навигатором: он один на всё приложение и не должен ни
-      // перерисовываться на каждом переходе, ни ехать вместе со страницей.
+      // The background goes under the navigator: one for the whole app, neither
+      // repainted per transition nor moving with a page.
       builder: (_, child) => Welcome(
         show: firstRun,
         child: AppBackground(child: child ?? const SizedBox()),

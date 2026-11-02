@@ -1,19 +1,14 @@
-/// Пресеты кастомизации — порт десктопного `presetsStore.ts`.
+/// Customization presets. A preset is a snapshot of contexts: which picture was
+/// the background, cover and knob, with the background's blur and dim and the
+/// cover mode at save time. Optionally (switches at creation) also theme,
+/// transparency and font.
 ///
-/// Пресет это снимок контекстов: какая картинка стояла фоном, какая обложкой,
-/// какая ползунком, — с размытием и затемнением фона и режимом обложки на
-/// момент сохранения. По желанию (тумблеры при создании) в него же ложатся
-/// тема, прозрачность и шрифт
+/// Pictures are stored as library `id`s rather than the picture: a copy would
+/// bloat the store and outlive deleting it (see [purgeImage]).
 ///
-/// Картинки хранятся как `id` картинки библиотеки, а не сама картинка —
-/// как на ПК, и по той же причине: копия данных раздула бы хранилище и
-/// пережила бы удаление картинки из библиотеки (см. [purgeImage]).
-///
-/// Экспорт разворачивает id в самодостаточный файл (`.bloompresets`), импорт
-/// кладёт картинки обратно в библиотеку и проставляет свежие id — тоже с ПК.
-/// Отличие в том, ЧТО едет в файле: на десктопе это `data:`-строка целиком, у
-/// нас — либо http(s)-ссылка как есть, либо картинка, закодированная base64
-/// (файл-то на телефоне свой, чужому устройству он ни о чём не говорит).
+/// Export expands ids into a self-contained file (`.bloompresets`), and import
+/// puts pictures back in the library with fresh ids. The file has an http(s)
+/// link as is, or a base64 picture: a local file means nothing elsewhere.
 library;
 
 import 'dart:convert';
@@ -29,10 +24,10 @@ import '../settings/transparency_store.dart';
 import 'custom_store.dart';
 import 'media_store.dart';
 
-/// Столько же, сколько на десктопе.
+/// Preset limit.
 const int kPresetsLimit = 20;
 
-/// Метка формата файла — по ней импорт отличает свой файл от чужого JSON.
+/// File format mark, by which import tells its file from foreign JSON.
 const String kPresetsKind = 'bloom-presets';
 
 class Preset {
@@ -54,23 +49,22 @@ class Preset {
   final String id;
   final String name;
 
-  /// Поля — id картинок библиотеки.
+  /// Fields are library picture ids.
   final String? bg;
   final String? cover;
   final String? slider;
 
-  /// Размытие и затемнение фона на момент сохранения. Живут они в самой
-  /// картинке ([MediaItem.blur]), и без снимка пресет брал бы то, что у неё
-  /// сейчас. `null` — пресет старый (снимка не было): применение не трогает
-  /// то, что стоит у картинки.
+  /// Background blur and dim at save time. They live in the picture
+  /// ([MediaItem.blur]), and with no snapshot a preset would take what it has
+  /// now. `null` for a preset with no snapshot: applying leaves the picture's
+  /// values alone.
   final double? blur;
   final double? dim;
 
-  /// Режим обложки на момент сохранения — только если обложка в пресете есть.
+  /// Cover mode at save time, only if the preset has a cover.
   final CoverMode? coverMode;
 
-  /// Тема, прозрачность и шрифт — по желанию, тумблерами при создании. На ПК
-  /// в пресете их нет: это наше расширение, десктоп эти поля файла пропустит.
+  /// Theme, transparency and font, optional by switches at creation.
   final ThemePreset? theme;
   final Transparency? transparency;
   final String? font;
@@ -82,12 +76,13 @@ class Preset {
 
   bool get hasImages => bg != null || cover != null || slider != null;
 
-  /// Пресет, в котором не осталось ничего, — такой не сохраняем, не
-  /// импортируем и удаляем, когда из него ушла последняя картинка.
+  /// A preset with nothing left isn't saved or imported, and is deleted when
+  /// its last picture leaves.
   bool get isEmpty =>
       !hasImages && theme == null && transparency == null && font == null;
 
-  /// id всех картинок пресета, в порядке карточек на странице картинки.
+  /// Ids of all the preset's pictures, in the order of cards on the picture's
+  /// page.
   List<String> get imageIds => [?bg, ?cover, ?slider];
 
   Preset scrub(String imageId) {
@@ -119,13 +114,13 @@ class Preset {
     'ts': ts,
   };
 
-  /// Всё, кроме картинок, — общее для хранилища и файла экспорта.
+  /// All but pictures, shared by the store and the export file.
   Map<String, dynamic> extrasToJson() => {
     if (blur != null) 'blur': blur,
     if (dim != null) 'dim': dim,
     if (coverMode != null) 'coverMode': coverMode!.name,
-    // Формат общий с ПК: цвета строками `#rrggbb`, режим прозрачности и как
-    // `on`, и как десктопный `trMode`.
+    // Colours as `#rrggbb` strings; the transparency mode goes as both `on` and
+    // `trMode`.
     if (theme != null)
       'theme': {
         'id': theme!.id,
@@ -173,8 +168,8 @@ class Preset {
   }
 }
 
-/// Поля пресета помимо картинок, разобранные из хранилища или файла. Битое
-/// поле молча выпадает — пресет от этого не ломается.
+/// Preset fields beyond pictures, parsed from the store or a file. A broken
+/// field silently drops, with no harm to the preset.
 class PresetExtras {
   const PresetExtras({
     this.blur,
@@ -213,9 +208,9 @@ class PresetExtras {
   }
 }
 
-/// Тема из снимка. Цвета — `#rrggbb` (так их пишут обе стороны) или число
-/// ARGB (так их хранит `ThemePreset`); встроенную тему от своей отличает флаг
-/// `custom`.
+/// Theme from a snapshot. Colours are `#rrggbb` or an ARGB number (as
+/// `ThemePreset` stores them); the `custom` flag tells a built-in theme from an
+/// own one.
 ThemePreset? _themeFromJson(Object? raw) {
   if (raw is! Map) return null;
   final id = raw['id'];
@@ -258,9 +253,9 @@ class PresetsController extends Notifier<List<Preset>> {
       ?Preset.fromJson(raw),
   ];
 
-  /// Снимок текущего вида: картинки контекстов с размытием, затемнением и
-  /// режимом обложки, а по флагам — тема, прозрачность и шрифт. `null` —
-  /// сохранять нечего или упёрлись в лимит.
+  /// Snapshot of the current look: context pictures with blur, dim and cover
+  /// mode, and by flags theme, transparency and font. `null` if there's nothing
+  /// to save or the limit was hit.
   Preset? save(
     String name, {
     bool theme = false,
@@ -291,9 +286,8 @@ class PresetsController extends Notifier<List<Preset>> {
     return preset;
   }
 
-  /// Применить: заданные контексты ставим, пустые НЕ трогаем — как
-  /// `applyPreset` на десктопе. Остальное из снимка возвращаем, только если
-  /// оно в пресете есть.
+  /// Applies: set contexts get placed, empty ones are NOT touched. The rest of
+  /// the snapshot returns only if the preset has it.
   void apply(String id) {
     final preset = byId(id);
     if (preset == null) return;
@@ -329,9 +323,9 @@ class PresetsController extends Notifier<List<Preset>> {
     return null;
   }
 
-  /// Каскад при удалении картинки: убрать ссылки на неё, опустевшие пресеты
-  /// удалить (десктопный `purgeImage`). Пресет с темой, прозрачностью или
-  /// шрифтом без картинок не пуст — он остаётся.
+  /// Cascade on deleting a picture: remove references and delete emptied
+  /// presets. A preset with a theme, transparency or font and no pictures isn't
+  /// empty and stays.
   void purgeImage(String imageId) {
     final next = <Preset>[];
     var changed = false;
@@ -353,8 +347,7 @@ class PresetsController extends Notifier<List<Preset>> {
     _save();
   }
 
-  /// Дописать импортированные пресеты (с учётом лимита). Возвращает, сколько
-  /// реально добавилось.
+  /// Adds imported presets within the limit. Returns how many really got added.
   int addAll(List<Preset> presets) {
     final room = kPresetsLimit - state.length;
     if (room <= 0 || presets.isEmpty) return 0;
@@ -371,13 +364,11 @@ class PresetsController extends Notifier<List<Preset>> {
 
 int _seq = 0;
 
-// ─── Файл `.bloompresets` ───────────────────────────────────────────────────
+// ─── `.bloompresets` file ────────────────────────────────────────────────
 
-/// Собрать содержимое файла: id картинок разворачиваются в сами картинки —
-/// ссылкой (как есть) или `data:`-строкой, если картинка лежит у нас файлом.
-///
-/// base64 тяжёлый, поэтому разворот идёт ТОЛЬКО в файл экспорта: внутри
-/// приложения по-прежнему ходят id.
+/// Builds the file's content: picture ids expand into the pictures, as a link
+/// or a `data:` string for a local file. base64 is heavy, so this goes ONLY
+/// into the export file; inside the app ids still travel.
 Future<String> encodePresets(List<Preset> presets, List<MediaItem> lib) async {
   final byId = {for (final item in lib) item.id: item};
   final out = <Map<String, dynamic>>[];
@@ -392,7 +383,7 @@ Future<String> encodePresets(List<Preset> presets, List<MediaItem> lib) async {
         final bytes = await File(path).readAsBytes();
         return 'data:${_mimeOf(item.name)};base64,${base64Encode(bytes)}';
       } catch (_) {
-        return null; // файла уже нет — пресет уедет без этой картинки
+        return null; // the file is gone, so the preset goes with no picture here
       }
     }
 
@@ -402,8 +393,8 @@ Future<String> encodePresets(List<Preset> presets, List<MediaItem> lib) async {
       'bg': await data(preset.bg),
       'cover': await data(preset.cover),
       'slider': await data(preset.slider),
-      // Размытие и затемнение — ключи десктопного файла; у старого пресета
-      // снимка нет, и берём то, что стоит у картинки.
+      // Blur and dim keys in the file; a preset with no snapshot takes what the
+      // picture has.
       'blur': _numOf(preset.blur ?? byId[preset.bg]?.blur),
       'dim': _numOf(preset.dim ?? byId[preset.bg]?.dim),
     }..removeWhere((_, value) => value == null);
@@ -411,12 +402,12 @@ Future<String> encodePresets(List<Preset> presets, List<MediaItem> lib) async {
         entry['bg'] != null ||
         entry['cover'] != null ||
         entry['slider'] != null;
-    // Режим обложки, тема, прозрачность и шрифт — наши поля: ПК их пропустит.
+    // Cover mode, theme, transparency and font; other readers skip them.
     final extras = preset.extrasToJson()
       ..remove('blur')
       ..remove('dim');
     if (!hasImages) {
-      // Без картинок у пресета остаётся только вид — без него он пуст.
+      // With no pictures a preset keeps only the look, and without it is empty.
       extras.remove('coverMode');
       if (extras.isEmpty) continue;
     }
@@ -442,9 +433,9 @@ String _mimeOf(String name) {
   };
 }
 
-/// Разобрать файл и завести из него пресеты: картинки уезжают в библиотеку,
-/// поля пресета получают их свежие id. Возвращает, сколько пресетов добавилось
-/// (0 — файл не наш, пуст или всё упёрлось в лимит).
+/// Parses a file and creates presets: pictures go to the library, and preset
+/// fields get their fresh ids. Returns how many presets were added (0 if the
+/// file is foreign, empty or all hit the limit).
 Future<int> importPresets(ReadProvider read, String content) async {
   final parsed = decodePresets(content);
   if (parsed.isEmpty) return 0;
@@ -452,8 +443,8 @@ Future<int> importPresets(ReadProvider read, String content) async {
   final out = <Preset>[];
   for (final entry in parsed) {
     final name = entry.name.isEmpty ? 'preset' : entry.name;
-    // Размытие и затемнение — свойство КАРТИНКИ фона, поэтому едут с ней, а не
-    // с пресетом: у нас эти ручки живут на странице картинки.
+    // Blur and dim are a property of the background PICTURE, so they travel
+    // with it rather than the preset.
     final bg = entry.bg == null
         ? null
         : await lib.ensureImage(
@@ -488,7 +479,7 @@ Future<int> importPresets(ReadProvider read, String content) async {
   return read(presetsProvider.notifier).addAll(out);
 }
 
-/// Разобранный пресет из файла: картинки ещё не в библиотеке.
+/// A preset parsed from a file: its pictures aren't in the library yet.
 class ImportedPreset {
   const ImportedPreset({
     required this.name,
@@ -502,14 +493,14 @@ class ImportedPreset {
 
   final String name;
 
-  /// Сами картинки: `data:`-строка либо http(s)-ссылка.
+  /// The pictures themselves: a `data:` string or an http(s) link.
   final String? bg;
   final String? cover;
   final String? slider;
   final double blur;
   final double dim;
 
-  /// Режим обложки, тема, прозрачность, шрифт — наши поля файла.
+  /// Cover mode, theme, transparency, font.
   final PresetExtras extras;
 
   bool get isEmpty =>
@@ -521,11 +512,8 @@ class ImportedPreset {
       extras.font == null;
 }
 
-/// Разобрать файл. Пустой список — файл не наш или в нём нет пресетов
-/// (десктопные `presets.toast.importBad` / `importEmpty`).
-///
-/// Как и на ПК, принимаем и обёртку `{kind, presets}`, и голый массив: файл
-/// могли собрать руками.
+/// Parses a file. An empty list means foreign or no presets. Both a `{kind,
+/// presets}` wrapper and a bare array are accepted: a file may be made by hand.
 List<ImportedPreset> decodePresets(String content) {
   Object? parsed;
   try {

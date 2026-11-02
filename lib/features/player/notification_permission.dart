@@ -1,26 +1,23 @@
-/// Запрос разрешения на уведомления (Android 13+).
+/// Asks for notification permission (Android 13+). Without `POST_NOTIFICATIONS`
+/// the playback shade just DOESN'T SHOW: the service lives and sound plays,
+/// with no controls in the shade or on the lock screen.
 ///
-/// Без `POST_NOTIFICATIONS` шторка воспроизведения просто НЕ ПОКАЗЫВАЕТСЯ:
-/// служба живёт, звук идёт, а управления нет ни в шторке, ни на экране
-/// блокировки — снаружи выглядит как «фон не работает».
-///
-/// Отдельного плагина ради одного разрешения не берём: `permission_handler`
-/// тянет за собой пол-андроида, а тут хватает пары строк в `MainActivity`.
-/// На iOS и на Android до 13 канал отвечает `false` и ничего не делает.
+/// No plugin for one permission: a couple of lines natively will do. On iOS and
+/// Android before 13 the channel answers `false` and does nothing.
 library;
 
 import 'package:flutter/services.dart';
 
 const _channel = MethodChannel('bloom/notifications');
 
-/// Спросить разрешение, если его ещё нет. Результат диалога не ждём — он
-/// системный и на воспроизведение не влияет.
+/// Asks if not yet granted. I don't wait for the dialog: it's the system's and
+/// doesn't affect playback.
 Future<void> ensureNotificationPermission() async {
   try {
     await _channel.invokeMethod<bool>('ensure');
   } on PlatformException {
-    // Канал не отвечает — не повод не играть.
+    // No answer from the channel is no reason not to play.
   } on MissingPluginException {
-    // iOS / тесты.
+    // iOS and tests.
   }
 }

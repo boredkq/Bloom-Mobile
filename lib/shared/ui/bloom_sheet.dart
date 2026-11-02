@@ -1,17 +1,12 @@
-/// Нижняя шторка — то, что открывается по «трём точкам» и длинному тапу.
+/// Bottom sheets: one floating frame for all of them, and the look of the menus
+/// about a track, list or artist — the cover as a banner, a capsule of icons,
+/// flat rows.
 ///
-/// Раскладка из референса: сверху ручка, затем шапка сущности (обложка +
-/// название), ниже пункты, собранные в скруглённые блоки по смыслу — сначала
-/// воспроизведение, потом действия над сущностью, в конце опасное.
-///
-/// Фон самой шторки — размытая обложка той сущности, о которой она; страница
-/// под шторкой НЕ размывается, только притемняется. Шторка идёт через корневой
-/// навигатор, поэтому накрывает и таб-бар с миниплеером — иначе бары остаются
-/// поверх затемнения и висят непрозрачной полосой.
-///
-/// Состав пунктов задаёт вызывающий: он берётся из десктопного Bloom, а не из
-/// референса — там свои функции, которых у нас нет.
+/// A sheet goes through the root navigator, so it covers the tab bar and the
+/// mini player too; otherwise they would stay above the dimming.
 library;
+
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,70 +20,60 @@ import 'bloom_icon.dart';
 import 'glass.dart';
 import 'pressable.dart';
 
-/// Пункт шторки.
+/// An item of a sheet: a row, or an icon in the capsule.
 class SheetAction {
   const SheetAction({
     required this.icon,
     required this.label,
+    this.subtitle,
     this.onTap,
     this.danger = false,
-    this.chevron = false,
     this.trailing,
   });
 
   final BloomGlyph icon;
   final String label;
 
-  /// Шторка закрывается ДО вызова: почти каждый пункт открывает диалог или
-  /// другую шторку, и делать это поверх текущей нельзя.
+  /// Grey line under the label. The capsule shows only the icon.
+  final String? subtitle;
+
+  /// The sheet closes BEFORE the call: nearly every item opens a dialog or
+  /// another sheet, and those can't open over this one.
   final VoidCallback? onTap;
 
-  /// Красный пункт — удаление.
+  /// Red: removes something.
   final bool danger;
 
-  /// Стрелка справа: пункт ведёт в следующую шторку.
-  final bool chevron;
-
-  /// Своя отметка справа (галочка активного состояния).
+  /// A mark on the right, like the tick of the active choice.
   final Widget? trailing;
 }
 
-/// Шторка со списком пунктов, разбитых на блоки. Пустые блоки выпадают.
-///
-/// [backdrop] — обложка сущности: размытая, она и служит фоном шторки.
+/// A sheet of items: [bar] in the capsule, [groups] as rows below it. Empty
+/// groups drop out.
 Future<void> showBloomSheet({
   required BuildContext context,
-  String? backdrop,
   Widget? header,
+  List<SheetAction> bar = const [],
   required List<List<SheetAction>> groups,
 }) {
-  final filled = groups.where((g) => g.isNotEmpty).toList();
   return showBloomSheetChild<void>(
     context: context,
-    backdrop: backdrop,
     header: header,
-    // Меню сущности на весь экран не растягивается: у трека потолок ниже —
-    // шапка там строкой. У плейлиста 0.78 — его число: на 0.7 список обрывался
-    // слишком рано, на общих 0.85 шторка лезла под статус-бар.
-    // Списки (выбор плейлиста, инфо о треке) идут мимо: у них свой
-    // [showBloomSheetChild] и общий потолок.
-    maxFraction: switch (header) {
-      SheetLineHeader() => 0.65,
-      SheetCoverHeader() => 0.78,
-      _ => _kSheetMaxFraction,
-    },
     child: Column(
       mainAxisSize: MainAxisSize.min,
-      children: [for (final group in filled) _SheetGroup(actions: group)],
+      children: [
+        if (bar.isNotEmpty) _ActionBar(actions: bar),
+        for (final group in groups)
+          if (group.isNotEmpty) _SheetGroup(actions: group),
+      ],
     ),
   );
 }
 
-/// Та же шторка, но с произвольным содержимым — для выбора плейлиста и других
-/// списков. Возвращает то, с чем её закрыли (`Navigator.pop`).
+/// The same sheet with any content. Returns what it was closed with
+/// (`Navigator.pop`).
 Future<T?> showBloomSheetChild<T>({
   required BuildContext context,
-  String? backdrop,
   Widget? header,
   Widget? footer,
   double maxFraction = _kSheetMaxFraction,
@@ -97,8 +82,7 @@ Future<T?> showBloomSheetChild<T>({
 }) {
   return showBloomModal<T>(
     context: context,
-    builder: (_) => _SheetShell(
-      backdrop: backdrop,
+    builder: (_) => SheetShell(
       header: header,
       footer: footer,
       maxFraction: maxFraction,
@@ -108,36 +92,32 @@ Future<T?> showBloomSheetChild<T>({
   );
 }
 
-/// Потолок высоты шторки по умолчанию — доля экрана. Меню трека и плейлиста
-/// ограничены сильнее (см. [showBloomSheet]).
+/// How tall a sheet may grow, as a share of the screen.
 const double _kSheetMaxFraction = 0.85;
 
-/// Отступ содержимого шторки от её краёв: на нём стоят шапки, блоки пунктов
-/// меню сущности, [SheetPanel] и [SheetField] — на любой шторке, с обложкой и
-/// без.
+/// Corner of the floating sheet, all four.
+const double kSheetRadius = 28;
+
+/// Inset of a sheet's content from its edges; headers, plates and fields stand
+/// on it.
 const double kSheetEdge = 20;
 
-/// Скругление блоков шторки на обложке — своё, крупнее общего `t.radius` (14):
-/// плашки там широкие и без заливки, на общем радиусе они читались углами.
-/// Одно число на блоки пунктов и на карточку обложки — иначе они спорят между
-/// собой. Общий радиус не трогаем: он на всё приложение. Шторка без обложки
-/// стоит на общем радиусе — см. [sheetPanelRadius].
-const double kSheetPanelRadius = 20;
+/// Inset of flat rows from the sheet's edge. A row adds its own 16, so icons
+/// stand at 24.
+const double _kFlatEdge = 8;
 
-/// Открыть шторку — одна точка входа на все: и на эти, и на те, у кого своя
-/// оболочка (очередь, скорость, пикер цвета).
+/// Height of a sheet's row, with a grey line or without.
+const double _kRowHeight = 56;
+
+/// Opens a sheet: the one way in for all of them, those with a shell of their
+/// own too (queue, speed, colour picker).
 ///
-/// Здесь же живёт стекло затемнения: при включённой «Прозрачности оверлеев»
-/// страница под шторкой не просто темнеет, а размывается тем же фильтром, что
-/// и блоки, — десктопный scrim с `backdrop-filter: var(--glass-filter)`. Оттуда
-/// же и осветление самого затемнения (0.5 → 0.28): под тёмной плёнкой размытие
-/// не видно, и стеклянная шторка висела бы над чёрным.
+/// With "Overlay transparency" on, the page under the sheet is also blurred and
+/// the dimming lighter (0.5 → 0.28): under a dark film the blur wouldn't show.
 Future<T?> showBloomModal<T>({
   required BuildContext context,
   required WidgetBuilder builder,
 }) {
-  // Корневой навигатор: иначе шторка живёт внутри ветки таба и таб-бар с
-  // миниплеером остаются поверх неё.
   final navigator = Navigator.of(context, rootNavigator: true);
   final glass = ProviderScope.containerOf(
     context,
@@ -145,10 +125,7 @@ Future<T?> showBloomModal<T>({
   ).read(overlayGlassProvider);
   return navigator.push(
     _BloomSheetRoute<T>(
-      builder: builder,
-      // Темы захватываем, как это делает сам `showModalBottomSheet`: шторка
-      // строится в оверлее корневого навигатора, и всё, что стоит НИЖЕ него
-      // (у нас — ничего критичного, но правило общее), иначе потерялось бы.
+      builder: (context) => _FloatingFrame(child: builder(context)),
       capturedThemes: InheritedTheme.capture(
         from: context,
         to: navigator.context,
@@ -162,12 +139,9 @@ Future<T?> showBloomModal<T>({
   );
 }
 
-/// Шторка, чьё затемнение умеет быть стеклом.
-///
-/// `ModalBottomSheetRoute` не принимает фильтр барьера (у `ModalRoute` поле
-/// `filter` есть, но конструктор шторки его не пробрасывает), поэтому
-/// подменяем сам барьер. Фильтр читается через `Consumer`: ползунок размытия
-/// живёт в шторке, и её собственное затемнение обязано меняться под пальцем.
+/// A sheet whose dimming can be glass. The sheet route doesn't pass a barrier
+/// filter on, so I replace the barrier itself; a `Consumer`, because the blur
+/// slider lives in a sheet and its own dimming must follow the finger.
 class _BloomSheetRoute<T> extends ModalBottomSheetRoute<T> {
   _BloomSheetRoute({
     required super.builder,
@@ -190,11 +164,53 @@ class _BloomSheetRoute<T> extends ModalBottomSheetRoute<T> {
   }
 }
 
-/// Поверхность шторки без обложки: сплошной фон темы, а при включённом стекле
-/// оверлеев — полупрозрачный с размытием того, что под шторкой.
-///
-/// Общая на шторки со своей оболочкой (очередь, скорость, пикер цвета) и на
-/// [SheetBackdrop] без картинки.
+/// Holds a sheet off the screen's left, right and bottom edges, every corner
+/// round. Below it the sheet sees its own width, and a screen without the
+/// keyboard: both are dealt with here.
+class _FloatingFrame extends StatelessWidget {
+  const _FloatingFrame({required this.child});
+
+  final Widget child;
+
+  /// Above this the bottom inset is a row of system buttons, and the sheet
+  /// stands over them. A gesture strip is lower: it lies over the sheet, whose
+  /// content steps clear of it.
+  static const double _gestureStrip = 40;
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final gap = (media.size.width * 0.032).clamp(10.0, 20.0);
+    final keyboard = media.viewInsets.bottom;
+    final inset = media.padding.bottom;
+    final overButtons = inset > _gestureStrip;
+    final inner = overButtons ? 0.0 : math.max(0.0, inset - gap);
+
+    return MediaQuery(
+      data: media.copyWith(
+        size: Size(media.size.width - gap * 2, media.size.height - keyboard),
+        viewInsets: media.viewInsets.copyWith(bottom: 0),
+        padding: media.padding.copyWith(bottom: inner),
+        viewPadding: media.viewPadding.copyWith(bottom: inner),
+      ),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          gap,
+          0,
+          gap,
+          keyboard + (overButtons ? inset : gap),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(kSheetRadius),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+/// A sheet's surface: the theme's plain background, or with overlay glass on a
+/// translucent one over a blur of what's underneath.
 class SheetSurface extends ConsumerWidget {
   const SheetSurface({super.key, required this.child});
 
@@ -204,175 +220,119 @@ class SheetSurface extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
     final glass = ref.watch(overlayGlassProvider);
-    // Обложки у такой шторки нет — значит и её плашкам красться не по чёрному:
-    // скин объявляем здесь, чтобы шторки со своей оболочкой (очередь, скорость,
-    // сон) получали его без своего кода.
-    final skinned = _SheetSkinScope(
-      skin: glass == null ? _SheetSkin.plain : _SheetSkin.glass,
-      child: child,
-    );
+    // Declared here so sheets with a shell of their own get it for free.
+    final skinned = _SheetSkinScope(glass: glass != null, child: child);
     if (glass == null) return ColoredBox(color: t.bg, child: skinned);
 
     final surface = ColoredBox(
       color: t.bg.withValues(alpha: t.bg.a * glass.opacity),
       child: skinned,
     );
-    // Фильтр здесь не `grouped`: шторка одна, снимок подложки ей нужен свой —
-    // и он обязан отличаться от того, что видят блоки страницы под ней.
     return glass.filter == null
         ? surface
         : BackdropFilter(filter: glass.filter!, child: surface);
   }
 }
 
-/// На чём стоят блоки шторки: на её обложке, на стекле или на обычном фоне
-/// темы. Отсюда их заливка — [sheetPanelColor] — и линии — [sheetLineColor].
-enum _SheetSkin { cover, glass, plain }
-
-/// Скин, объявленный оболочкой шторки. Вне шторки — [_SheetSkin.plain]: блок
-/// красится тем же, чем плашки страниц.
+/// What a sheet's blocks stand on. Under a [SheetHero] they're [flat]: rows
+/// without a plate or lines between them.
 class _SheetSkinScope extends InheritedWidget {
-  const _SheetSkinScope({required this.skin, required super.child});
+  const _SheetSkinScope({
+    required this.glass,
+    this.flat = false,
+    required super.child,
+  });
 
-  final _SheetSkin skin;
+  final bool glass;
+  final bool flat;
 
-  static _SheetSkin of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<_SheetSkinScope>()?.skin ??
-      _SheetSkin.plain;
+  static _SheetSkinScope? of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_SheetSkinScope>();
 
   @override
-  bool updateShouldNotify(_SheetSkinScope old) => old.skin != skin;
+  bool updateShouldNotify(_SheetSkinScope old) =>
+      old.glass != glass || old.flat != flat;
 }
 
-/// Заливка плашки внутри шторки — одна на все её блоки, включая собранные
-/// руками (превью стиля, строки выбора в настройках плеера и свайпов).
-///
-/// Над обложкой — чёрный с прозрачностью: токен-плёнка накрыла бы размытую
-/// картинку насмерть. На стекле — тонкая белая плёнка, иначе блок остался бы
-/// единственным непрозрачным пятном прозрачной шторки (десктопное «внутренние
-/// блоки прозрачны»). А шторка без обложки стоит на обычном фоне темы, и её
-/// строки красятся тем же `pill`, что строки страниц: чёрный на нём читался бы
-/// провалом.
+/// Fill of a plate inside a sheet: a thin film on glass, or it would be the one
+/// solid spot of a clear sheet; otherwise the same pill as plates of a page.
 Color sheetPanelColor(BuildContext context) =>
-    switch (_SheetSkinScope.of(context)) {
-      _SheetSkin.cover => Colors.black.withValues(alpha: 0.55),
-      _SheetSkin.glass => Colors.white.withValues(alpha: 0.06),
-      _SheetSkin.plain => context.bloom.pill,
-    };
+    _SheetSkinScope.of(context)?.glass ?? false
+    ? context.bloom.text.withValues(alpha: 0.06)
+    : context.bloom.pill;
 
-/// Линия внутри плашки шторки: на тёмном (обложка, стекло) — светлая, на
-/// обычной плашке — та же токенная линия, что делит строки на страницах.
+/// A line inside a sheet's plate.
 Color sheetLineColor(BuildContext context) =>
-    _SheetSkinScope.of(context) == _SheetSkin.plain
-    ? context.bloom.ovlLine
-    : Colors.white.withValues(alpha: 0.08);
+    _SheetSkinScope.of(context)?.glass ?? false
+    ? context.bloom.text.withValues(alpha: 0.08)
+    : context.bloom.ovlLine;
 
-/// Рамка блока шторки — чуть плотнее внутренних линий (0.08), но не жирнее:
-/// заливки у блока нет, и кромка должна только намечать его край, а не обводить.
-Color sheetPanelLineColor(BuildContext context) =>
-    _SheetSkinScope.of(context) == _SheetSkin.plain
-    ? context.bloom.ovlLine
-    : Colors.white.withValues(alpha: 0.08);
-
-/// Скругление блока шторки: над обложкой — [kSheetPanelRadius], без обложки —
-/// общий `t.radius`, как у плашек страниц (его правка: крупное скругление
-/// оставить только шторкам с обложкой).
-double sheetPanelRadius(BuildContext context) =>
-    _SheetSkinScope.of(context) == _SheetSkin.cover
-    ? kSheetPanelRadius
-    : context.bloom.radius;
-
-class _SheetShell extends ConsumerWidget {
-  const _SheetShell({
-    required this.backdrop,
-    required this.header,
-    required this.footer,
-    required this.maxFraction,
-    required this.scrolls,
+/// A sheet's body: surface, handle, a header and footer that stay put, and what
+/// scrolls between them. Sheets with state of their own build on it directly.
+class SheetShell extends ConsumerWidget {
+  const SheetShell({
+    super.key,
+    this.header,
+    this.footer,
+    this.maxFraction = _kSheetMaxFraction,
+    this.scrolls = true,
     required this.child,
   });
 
-  final String? backdrop;
   final Widget? header;
 
-  /// Прибитое к низу шторки (кнопка «Удалить» у картинки библиотеки): не
-  /// листается вместе с пунктами.
+  /// Pinned to the bottom, doesn't scroll with the items.
   final Widget? footer;
 
-  /// Доля экрана, выше которой шторка не растёт.
+  /// The share of the screen the sheet doesn't grow past.
   final double maxFraction;
 
-  /// False: the child is a list that scrolls itself and builds lazily, so the
-  /// sheet takes its full height instead of wrapping it.
+  /// False: the child is a list that scrolls itself and builds lazily. It takes
+  /// the full height, unless it shrink-wraps.
   final bool scrolls;
   final Widget child;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
     final media = MediaQuery.of(context);
-    // Стеклянной шторка становится, только если своей обложки у неё нет: с
-    // обложкой вид утверждён отдельно (затемнённая картинка фоном), и стекло
-    // его перечёркивает. Спрашиваем не ссылку, а картинку — ссылка бывает и
-    // без картинки (свой файл, а каталога обложек нет), и тогда фоном шторки
-    // всё равно встаёт [SheetSurface].
-    final cover = coverImage(backdrop) != null;
-    final glass = !cover && ref.watch(overlayGlassProvider) != null;
+    final hero = header is SheetHero;
 
-    // Отступ снизу под клавиатуру: шторка стоит на дне экрана, и без него поле
-    // ввода (создание плейлиста) осталось бы под ней. Потолок высоты на ту же
-    // величину опускается, иначе шторка вылезет за верх экрана.
-    return Padding(
-      padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: media.size.height * maxFraction - media.viewInsets.bottom,
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(t.radius * 1.7),
-          ),
-          child: _SheetSkinScope(
-            skin: cover
-                ? _SheetSkin.cover
-                : glass
-                ? _SheetSkin.glass
-                : _SheetSkin.plain,
-            // Своя группа: шторка лежит поверх страницы, и снимок подложки у
-            // неё обязан быть свой (см. `GlassGroup`).
-            child: GlassGroup(
-              child: Stack(
-                children: [
-                  // Картинок две: эта — фон всей шторки, и та же, но резкая и
-                  // яркая, в шапке поверх неё.
-                  Positioned.fill(child: SheetBackdrop(cover: backdrop)),
-                  SafeArea(
-                    top: false,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Ручка и шапка закреплены: листаются только пункты,
-                        // иначе в длинной шторке обложка уезжает вверх с ними.
-                        const SheetHandle(),
-                        ?header,
-                        if (scrolls)
-                          Flexible(
-                            child: SingleChildScrollView(
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: media.size.height * maxFraction),
+      child: _SheetSkinScope(
+        glass: ref.watch(overlayGlassProvider) != null,
+        flat: hero,
+        // A group of its own: the sheet lies over the page and its snapshot of
+        // what's underneath must be its own too.
+        child: GlassGroup(
+          child: Stack(
+            children: [
+              const Positioned.fill(
+                child: SheetSurface(child: SizedBox.expand()),
+              ),
+              SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // The handle and header stay put: only the items scroll.
+                    if (!hero) const SheetHandle(),
+                    ?header,
+                    Flexible(
+                      child: scrolls
+                          ? SingleChildScrollView(
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [child, const SizedBox(height: 10)],
                               ),
-                            ),
-                          )
-                        else
-                          Expanded(child: child),
-                        ?footer,
-                      ],
+                            )
+                          : child,
                     ),
-                  ),
-                ],
+                    ?footer,
+                  ],
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),
@@ -380,90 +340,11 @@ class _SheetShell extends ConsumerWidget {
   }
 }
 
-/// Фон шторки: обложка сущности сверху, притемнённая и уходящая в цвет темы.
-/// Один на все шторки — включая очередь, у которой своя оболочка.
-///
-/// Размытия здесь нет намеренно: картинка стоит резкой полосой наверху (его
-/// референс), а не размытым полотном на всю шторку.
-class SheetBackdrop extends StatelessWidget {
-  const SheetBackdrop({super.key, required this.cover});
-
-  /// Доля высоты шторки, которую занимает картинка. Ниже неё — ровный цвет:
-  /// растянутая на всю шторку обложка «плывёт» до самого низа, а надо, чтобы
-  /// фотография стояла полосой сверху и уходила в цвет.
-  static const double band = 0.4;
-
-  /// С какой доли полосы картинка начинает растворяться в цвет. Растворение
-  /// именно градиентом поверх, а не маской: маска обрывала полосу видимым швом.
-  static const double fade = 0.4;
-
-  final String? cover;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final image = coverImage(cover);
-    // Обложки нет — фон шторки берёт на себя [SheetSurface]: он же умеет быть
-    // стеклом.
-    if (image == null) return const SheetSurface(child: SizedBox.expand());
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Цвет, в который уходит картинка, — фон темы: низ шторки должен быть
-        // ровным, без остатков обложки.
-        ColoredBox(color: t.bg),
-        FractionallySizedBox(
-          alignment: Alignment.topCenter,
-          heightFactor: band,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Обложка квадратная, полоса шире — берём её центр (`cover` с
-              // выравниванием по центру), иначе картинка липнет к краю.
-              Image(image: image, fit: BoxFit.cover),
-              // Притемнение — только по картинке: светлые обложки забивают
-              // текст шапки. Ниже полосы его нет, иначе плёнка красила бы и
-              // ровный фон и дно шторки уходило бы в чёрное вместо цвета темы.
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Color(0x57000000), // 0.34 — у шапки обложка почти открыта
-                      Color(0xB8000000), // 0.72 — дальше текст уже уверенно
-                    ],
-                    stops: [0, 0.55],
-                  ),
-                ),
-              ),
-              // Растворение картинки в фон темы — последним, поверх плёнки:
-              // к низу полосы должен остаться ровно `t.bg`, без чёрного под ним.
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    // Тот же цвет с нулевой альфой, а не `transparent`: иначе
-                    // на светлой теме растворение шло бы через чёрный.
-                    colors: [t.bg.withValues(alpha: 0), t.bg],
-                    stops: const [fade, 1],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Ручка шторки — одна на все шторки, включая те, у кого своя оболочка
-/// (очередь, скорость).
+/// The sheet's handle: on the banner in [color], else in the theme's text.
 class SheetHandle extends StatelessWidget {
-  const SheetHandle({super.key});
+  const SheetHandle({super.key, this.color});
+
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
@@ -473,7 +354,7 @@ class SheetHandle extends StatelessWidget {
         width: 38,
         height: 4,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.35),
+          color: color ?? context.bloom.text.withValues(alpha: 0.25),
           borderRadius: BorderRadius.circular(999),
         ),
       ),
@@ -481,104 +362,356 @@ class SheetHandle extends StatelessWidget {
   }
 }
 
-/// Блок пунктов шторки. Один на все шторки — свой такой же собирать руками
-/// нельзя: заливка тут зависит от того, на чём стоит шторка ([sheetPanelColor]).
-class SheetPanel extends StatelessWidget {
-  const SheetPanel({super.key, required this.children, this.gap = 6});
+/// A sheet's title: a line under it, what acts on the whole sheet on its right.
+class SheetTitle extends StatelessWidget {
+  const SheetTitle(
+    this.title, {
+    super.key,
+    this.subtitle,
+    this.line,
+    this.leading,
+    this.trailing,
+    this.right = kSheetEdge,
+    this.bottom = 10,
+  });
 
-  final List<Widget> children;
+  final String title;
+  final String? subtitle;
 
-  /// Просвет сверху и снизу. Меньше обычного у списков выбора: там каждая
-  /// строка — свой блок, и полный отступ между ними растаскивает список.
-  final double gap;
+  /// Instead of [subtitle]: a line with more than text in it.
+  final Widget? line;
+
+  /// On the left of the text: what the sheet is about.
+  final Widget? leading;
+  final Widget? trailing;
+
+  /// Round buttons stand closer to the edge than text does.
+  final double right;
+  final double bottom;
 
   @override
   Widget build(BuildContext context) {
-    // Скругление и край — те же, что у блока меню сущности ([_SheetGroup]), на
-    // любой шторке. Над обложкой отличие одно: без заливки и с рамкой.
-    final cover = _SheetSkinScope.of(context) == _SheetSkin.cover;
+    final theme = Theme.of(context).textTheme;
+    final sub = subtitle;
     return Padding(
-      padding: EdgeInsets.fromLTRB(kSheetEdge, gap, kSheetEdge, gap),
-      child: Material(
-        // Без своего размытия: размыт фон шторки, а блок лежит поверх него
-        // ровной панелью.
-        color: cover ? Colors.transparent : sheetPanelColor(context),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(sheetPanelRadius(context)),
-          side: cover
-              ? BorderSide(color: sheetPanelLineColor(context))
-              : BorderSide.none,
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(mainAxisSize: MainAxisSize.min, children: children),
+      padding: EdgeInsets.fromLTRB(kSheetEdge, 6, right, bottom),
+      child: Row(
+        children: [
+          if (leading case final mark?) ...[mark, const SizedBox(width: 14)],
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.titleLarge,
+                ),
+                if (line != null || sub != null) ...[
+                  const SizedBox(height: 2),
+                  line ?? Text(sub!, style: theme.bodyMedium),
+                ],
+              ],
+            ),
+          ),
+          ?trailing,
+        ],
       ),
     );
   }
 }
 
-/// Разделитель внутри [SheetPanel]. Начинается там же, где текст: под иконками
-/// сплошная линия режет колонку глифов пополам.
+/// A big choice of a sheet, a block of its own: in a solid list the chosen one
+/// can't be lit. A picture, a name, a note under it, a mark on the right.
+class SheetOptionTile extends StatelessWidget {
+  const SheetOptionTile({
+    super.key,
+    this.icon,
+    this.leading,
+    required this.label,
+    required this.active,
+    required this.onTap,
+    this.sub,
+    this.check = false,
+    this.enabled = true,
+  });
+
+  final BloomGlyph? icon;
+
+  /// Instead of [icon]: a flag, a logo, a drawn preview.
+  final Widget? leading;
+  final String label;
+
+  /// A note under the name; `null` for one line.
+  final String? sub;
+
+  /// The chosen choice, or a switched-on item.
+  final bool active;
+
+  /// An item of a set: a checkbox instead of a tick and no lighting, since
+  /// several can be on.
+  final bool check;
+
+  /// Unavailable: greyed whole and not pressable. Not hidden: the sheet shows
+  /// what can be turned on, and the note says what's missing.
+  final bool enabled;
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final theme = Theme.of(context).textTheme;
+    final note = sub;
+    return Opacity(
+      opacity: enabled ? 1 : 0.4,
+      child: SheetPanel(
+        // Close together: these are large, a full gap would tear the list apart.
+        gap: 3,
+        children: [
+          Pressable(
+            onTap: enabled ? onTap : null,
+            scale: 0.98,
+            child: Ink(
+              color: active && !check ? t.accent.withValues(alpha: 0.12) : null,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 15, 18, 15),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: active
+                            ? t.accent.withValues(alpha: 0.16)
+                            : t.text.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(t.radius * 0.6),
+                      ),
+                      child:
+                          leading ??
+                          BloomIcon(
+                            icon!,
+                            size: 20,
+                            color: active ? t.accent : t.iconFg,
+                          ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.titleMedium,
+                          ),
+                          if (note != null) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              note,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.bodySmall,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    if (check)
+                      BloomCheck(on: active)
+                    else if (active)
+                      BloomIcon(Bi.check, size: 20, color: t.accent),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A sheet's row with a switch: the whole row toggles.
+class SheetSwitchRow extends StatelessWidget {
+  const SheetSwitchRow({
+    super.key,
+    this.icon,
+    required this.label,
+    this.subtitle,
+    required this.value,
+    required this.onChanged,
+    this.danger = false,
+    this.padding = const EdgeInsets.all(kSheetEdge),
+  });
+
+  final BloomGlyph? icon;
+  final String label;
+  final String? subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  /// Turning it on removes something: the switch is red, and the row while on.
+  final bool danger;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final theme = Theme.of(context).textTheme;
+    final color = danger && value ? t.danger : t.text;
+    final glyph = icon;
+    final sub = subtitle;
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: padding,
+        child: Row(
+          children: [
+            if (glyph != null) ...[
+              BloomIcon(glyph, size: 22, color: color),
+              const SizedBox(width: 16),
+            ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: theme.titleMedium?.copyWith(color: color)),
+                  if (sub != null) ...[
+                    const SizedBox(height: 3),
+                    Text(sub, style: theme.bodySmall),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 14),
+            BloomSwitch(
+              value: value,
+              onChanged: onChanged,
+              color: danger ? t.danger : null,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Radius of a [SheetSlider]'s thumb. The track is inset by it at both ends, so
+/// marks drawn along the track count from it.
+const double kSheetSliderThumb = 7;
+
+/// The bar of a sheet that picks a value by ear.
+class SheetSlider extends StatelessWidget {
+  const SheetSlider({
+    super.key,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.divisions,
+    required this.label,
+    required this.onChanged,
+  });
+
+  final double value;
+  final double min;
+  final double max;
+  final int divisions;
+  final String label;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) => SliderTheme(
+    data: SliderTheme.of(context).copyWith(
+      trackHeight: 5,
+      thumbShape: const RoundSliderThumbShape(
+        enabledThumbRadius: kSheetSliderThumb,
+      ),
+      // Divisions are many, and their own marks would ripple.
+      tickMarkShape: SliderTickMarkShape.noTickMark,
+    ),
+    child: Slider(
+      value: value,
+      min: min,
+      max: max,
+      divisions: divisions,
+      label: label,
+      onChanged: onChanged,
+    ),
+  );
+}
+
+/// A block of a sheet's rows: a plate, or flat under a [SheetHero].
+class SheetPanel extends StatelessWidget {
+  const SheetPanel({super.key, required this.children, this.gap = 6});
+
+  final List<Widget> children;
+
+  /// Air above and below; less in lists where each row is a block of its own.
+  final double gap;
+
+  @override
+  Widget build(BuildContext context) {
+    final column = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: children,
+    );
+    if (_SheetSkinScope.of(context)?.flat ?? false) {
+      return Padding(
+        padding: EdgeInsets.symmetric(horizontal: _kFlatEdge, vertical: gap),
+        child: column,
+      );
+    }
+    return Padding(
+      padding: EdgeInsets.fromLTRB(kSheetEdge, gap, kSheetEdge, gap),
+      child: Material(
+        color: sheetPanelColor(context),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(context.bloom.radius),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: column,
+      ),
+    );
+  }
+}
+
+/// A divider inside a [SheetPanel], starting where the text does: a line under
+/// the icons would cut their column in half. Flat rows go without one.
 ///
-/// [indent] — где в строках блока начинается текст. 54 — у строки с иконкой
-/// (16 + 22 + 16); у строк с обложкой или без иконки своё число, иначе линия
-/// заходит под картинку или отстаёт от текста.
+/// [indent] is where the block's text starts: 54 for an icon (16 + 22 + 16).
 Widget sheetDivider({double indent = 54}) => Builder(
-  builder: (context) => Divider(
-    height: 1,
-    thickness: 1,
-    indent: indent,
-    color: sheetLineColor(context),
-  ),
+  builder: (context) => _SheetSkinScope.of(context)?.flat ?? false
+      ? const SizedBox.shrink()
+      : Divider(
+          height: 1,
+          thickness: 1,
+          indent: indent,
+          color: sheetLineColor(context),
+        ),
 );
 
-/// Блок пунктов меню сущности — [SheetPanel] ему не подходит: у меню свой вид,
-/// утверждённый отдельно (прозрачная плашка на градиенте, только рамка), а у
-/// остальных шторок — свои плашки с заливкой, и трогать их не просили.
+/// The menu's items as flat rows.
 class _SheetGroup extends StatelessWidget {
   const _SheetGroup({required this.actions});
 
   final List<SheetAction> actions;
 
-  /// Отступ строки от края блока. Разделитель начинается на 56 = 18 + иконка 22
-  /// + просвет 16, то есть ровно под текстом.
-  static const double pad = 18;
-
-  /// Шторка стоит на обложке — тогда у блока свой вид.
-  bool _cover(BuildContext context) =>
-      _SheetSkinScope.of(context) == _SheetSkin.cover;
-
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(kSheetEdge, 6, kSheetEdge, 6),
-      child: Material(
-        // Прозрачным блок бывает только над обложкой: там заливка спорила бы с
-        // градиентом фона и возвращала бы шторке лоскутный вид, а держит блок
-        // рамка. У шторки без обложки (сортировка, выбор из списка) фон ровный —
-        // там всё как было: заливка и никакой кромки.
-        color: _cover(context) ? Colors.transparent : sheetPanelColor(context),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(sheetPanelRadius(context)),
-          side: _cover(context)
-              ? BorderSide(color: sheetPanelLineColor(context))
-              : BorderSide.none,
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var i = 0; i < actions.length; i++) ...[
-              if (i > 0)
-                Divider(
-                  height: 1,
-                  thickness: 1,
-                  indent: pad + 38,
-                  color: sheetLineColor(context),
-                ),
-              _SheetTile(action: actions[i]),
-            ],
-          ],
-        ),
+      padding: const EdgeInsets.symmetric(horizontal: _kFlatEdge, vertical: 2),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [for (final action in actions) _SheetTile(action: action)],
       ),
     );
   }
@@ -591,44 +724,203 @@ class _SheetTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return SheetRow(
+      icon: action.icon,
+      label: action.label,
+      subtitle: action.subtitle,
+      danger: action.danger,
+      trailing: action.trailing,
+      onTap: _closeThen(context, action.onTap),
+    );
+  }
+}
+
+/// Closes the sheet, then acts. Null stays null: the item is greyed out.
+VoidCallback? _closeThen(BuildContext context, VoidCallback? onTap) =>
+    onTap == null
+    ? null
+    : () {
+        Navigator.of(context).pop();
+        onTap();
+      };
+
+/// A sheet's row: icon, label, grey line under it, a mark on the right.
+class SheetRow extends StatelessWidget {
+  const SheetRow({
+    super.key,
+    this.icon,
+    this.leading,
+    required this.label,
+    this.subtitle,
+    this.color,
+    this.danger = false,
+    this.trailing,
+    this.gap = 22,
+    this.onTap,
+  });
+
+  final BloomGlyph? icon;
+
+  /// Instead of [icon]: a platform's logo, a cover.
+  final Widget? leading;
+  final String label;
+  final String? subtitle;
+
+  /// The row's own colour instead of the text's.
+  final Color? color;
+  final bool danger;
+  final Widget? trailing;
+
+  /// Between [icon] and the text; a cover stands closer.
+  final double gap;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
     final t = context.bloom;
-    final enabled = action.onTap != null;
-    final color = action.danger
-        ? t.danger
-        : enabled
-        ? t.text
-        : t.muted;
+    final theme = Theme.of(context).textTheme;
+    final ink =
+        color ??
+        (danger
+            ? t.danger
+            : onTap != null
+            ? t.text
+            : t.muted);
 
     return Pressable(
-      onTap: enabled
-          ? () {
-              Navigator.of(context).pop();
-              action.onTap!();
-            }
-          : null,
+      onTap: onTap,
       scale: 0.98,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: _SheetGroup.pad,
-          vertical: 15,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: _kRowHeight),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              leading ?? BloomIcon(icon!, size: 22, color: ink),
+              SizedBox(width: gap),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.titleMedium?.copyWith(
+                        color: ink,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    if (subtitle case final subtitle?)
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.bodySmall,
+                      ),
+                  ],
+                ),
+              ),
+              ?trailing,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A small caption over a block of a sheet, what acts on the block on its right.
+class SheetCaption extends StatelessWidget {
+  const SheetCaption(
+    this.text, {
+    super.key,
+    this.trailing,
+    this.color,
+    this.padding = const EdgeInsets.fromLTRB(kSheetEdge, 10, kSheetEdge, 4),
+  });
+
+  final String text;
+  final Widget? trailing;
+
+  /// `text2` when not set.
+  final Color? color;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: padding,
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            text,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: color ?? context.bloom.text2,
+            ),
+          ),
+        ),
+        ?trailing,
+      ],
+    ),
+  );
+}
+
+/// On the right of a [SheetRow]: where a tap leads on.
+class SheetChevron extends StatelessWidget {
+  const SheetChevron({super.key});
+
+  @override
+  Widget build(BuildContext context) =>
+      BloomIcon(Bi.altArrowRight, size: 20, color: context.bloom.muted);
+}
+
+/// On the right of a [SheetRow]: the one that's picked.
+class SheetTick extends StatelessWidget {
+  const SheetTick({super.key});
+
+  @override
+  Widget build(BuildContext context) =>
+      BloomIcon(Bi.check, size: 18, color: context.bloom.accent);
+}
+
+/// The capsule of main actions under the banner: icons only, evenly spaced.
+class _ActionBar extends StatelessWidget {
+  const _ActionBar({required this.actions});
+
+  final List<SheetAction> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Container(
+        height: _kRowHeight,
+        decoration: BoxDecoration(
+          color: sheetPanelColor(context),
+          borderRadius: BorderRadius.circular(999),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            BloomIcon(action.icon, size: 22, color: color),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                action.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(color: color),
+            for (final action in actions)
+              Expanded(
+                child: Semantics(
+                  button: true,
+                  label: action.label,
+                  child: Pressable(
+                    onTap: _closeThen(context, action.onTap),
+                    child: Center(
+                      child: BloomIcon(
+                        action.icon,
+                        size: 24,
+                        color: action.onTap == null ? t.muted : t.text,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
-            ?action.trailing,
-            if (action.chevron)
-              BloomIcon(Bi.altArrowRight, size: 20, color: t.muted),
           ],
         ),
       ),
@@ -636,10 +928,8 @@ class _SheetTile extends StatelessWidget {
   }
 }
 
-/// Дата под подписью в шапке шторки: «Добавлен 2 сент. 2026 г.», «Создан …».
-///
-/// Метка и дата хранятся врозь не ради перевода, а ради вида: метка идёт
-/// приглушённой, сама дата — ярче, чтобы глаз цеплялся за неё, а не за слово.
+/// A date for a sheet's header: "Created 2 Sept 2026". The label goes muted and
+/// the date brighter, so the eye catches the date.
 class SheetMeta {
   const SheetMeta({required this.label, required this.date});
 
@@ -647,9 +937,7 @@ class SheetMeta {
   final String date;
 }
 
-/// Дата события для шапки шторки. Метка времени пустая (трека нет в
-/// библиотеке, плейлист заведён до появления `createdAt`) — `null`, и строки не
-/// будет: прочерк на её месте не сказал бы ничего.
+/// No timestamp, no line: a dash in its place would say nothing.
 SheetMeta? sheetDateMeta(BuildContext context, String label, int? ms) {
   if (ms == null || ms <= 0) return null;
   return SheetMeta(
@@ -658,13 +946,10 @@ SheetMeta? sheetDateMeta(BuildContext context, String label, int? ms) {
   );
 }
 
-/// Строка [SheetMeta]. [onCover] — шапка стоит поверх обложки, и цвета там не
-/// из темы, а белые: под чужой картинкой приглушённый текст темы пропадает.
 class _MetaLine extends StatelessWidget {
-  const _MetaLine({required this.meta, this.onCover = false});
+  const _MetaLine({required this.meta});
 
   final SheetMeta meta;
-  final bool onCover;
 
   @override
   Widget build(BuildContext context) {
@@ -675,14 +960,11 @@ class _MetaLine extends StatelessWidget {
         children: [
           TextSpan(
             text: '${meta.label} ',
-            style: TextStyle(color: onCover ? Colors.white60 : t.muted),
+            style: TextStyle(color: t.muted),
           ),
           TextSpan(
             text: meta.date,
-            style: TextStyle(
-              color: onCover ? Colors.white : t.text,
-              fontWeight: FontWeight.w600,
-            ),
+            style: TextStyle(color: t.text, fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -693,62 +975,108 @@ class _MetaLine extends StatelessWidget {
   }
 }
 
-/// Шапка шторки для трека и артиста: маленькая обложка слева, название и
-/// подпись справа.
-class SheetLineHeader extends StatelessWidget {
-  const SheetLineHeader({
+/// The header of a sheet about a track, list or artist: the cover as a banner
+/// across the sheet, melting into its surface, with the title over the melt.
+/// Holds the handle too.
+class SheetHero extends StatelessWidget {
+  const SheetHero({
     super.key,
     required this.cover,
     required this.title,
-    required this.subtitle,
-    this.circle = false,
+    this.subtitle = '',
+    this.subtitleWidget,
     this.meta,
   });
+
+  /// Share of the sheet's width the banner takes, and the least it may be:
+  /// under that the title climbs into the handle.
+  static const double band = 0.24;
+  static const double bandMin = 112;
 
   final String? cover;
   final String title;
   final String subtitle;
-  final bool circle;
 
-  /// Когда трек попал в библиотеку. Нет записи в библиотеке — нет и строки:
-  /// у трека из поиска этой даты не существует.
+  /// Instead of [subtitle]: a line that's alive, like a list's offline count.
+  final Widget? subtitleWidget;
   final SheetMeta? meta;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context).textTheme;
-    return Padding(
-      // Обложка встаёт ровно по краю блоков ниже — прежние +4 при отступе 20
-      // уводили её вправо от их линии.
-      padding: const EdgeInsets.fromLTRB(kSheetEdge, 10, kSheetEdge, 18),
-      child: Row(
+    final image = coverImage(cover);
+    final width = MediaQuery.sizeOf(context).width;
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        minHeight: image == null ? 0 : math.max(bandMin, width * band),
+      ),
+      child: Stack(
+        alignment: Alignment.bottomLeft,
         children: [
-          Cover(url: cover, size: 72, circle: circle),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.titleLarge?.copyWith(fontSize: 22),
-                ),
-                if (subtitle.isNotEmpty) ...[
-                  const SizedBox(height: 3),
+          if (image != null)
+            Positioned.fill(
+              // A mask, not a gradient to the sheet's colour: the surface may
+              // be glass, and the picture must melt into whatever is there.
+              child: ShaderMask(
+                blendMode: BlendMode.dstIn,
+                shaderCallback: (rect) => const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFFFFFFFF),
+                    Color(0xD9FFFFFF),
+                    Color(0x33FFFFFF),
+                    Color(0x00FFFFFF),
+                  ],
+                  stops: [0, 0.35, 0.7, 1],
+                ).createShader(rect),
+                child: Image(image: image, fit: BoxFit.cover),
+              ),
+            ),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: SheetHandle(
+                color: image == null
+                    ? null
+                    : Colors.white.withValues(alpha: 0.7),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 26, 16, 2),
+            // Full width: the text is what sizes the stack, and the banner with it.
+            child: SizedBox(
+              width: double.infinity,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    subtitle,
+                    title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.bodyMedium?.copyWith(fontSize: 15),
+                    style: theme.titleLarge?.copyWith(fontSize: 20),
                   ),
+                  if (subtitleWidget != null || subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    subtitleWidget ??
+                        Text(
+                          subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.bodyMedium?.copyWith(fontSize: 14),
+                        ),
+                  ],
+                  if (meta case final meta?) ...[
+                    const SizedBox(height: 2),
+                    _MetaLine(meta: meta),
+                  ],
                 ],
-                if (meta case final meta?) ...[
-                  const SizedBox(height: 3),
-                  _MetaLine(meta: meta),
-                ],
-              ],
+              ),
             ),
           ),
         ],
@@ -757,13 +1085,8 @@ class SheetLineHeader extends StatelessWidget {
   }
 }
 
-/// Шапка шторки для плейлиста и альбома: широкая обложка, название поверх неё
-/// в нижнем углу.
-/// Поле шторки с галочкой справа. Галочка появляется вместе с текстом — до
-/// него кнопке нечего делать (то же условие, что в `lam-check` на ПК).
-///
-/// Общее у шторок «Создать плейлист» и «Создать пресет»: поле ввода в шторке
-/// должно выглядеть одинаково, где бы оно ни стояло.
+/// A sheet's field with a tick on the right. The tick comes with the text:
+/// until then the button has nothing to do.
 class SheetField extends StatelessWidget {
   const SheetField({
     super.key,
@@ -773,8 +1096,11 @@ class SheetField extends StatelessWidget {
     required this.onSubmit,
     this.autofocus = false,
     this.busy = false,
+    this.autocorrect = true,
     this.maxLength,
+    this.keyboardType,
     this.trailing,
+    this.padding = const EdgeInsets.fromLTRB(kSheetEdge, 4, kSheetEdge, 6),
   });
 
   final TextEditingController controller;
@@ -783,59 +1109,47 @@ class SheetField extends StatelessWidget {
   final VoidCallback onSubmit;
   final bool autofocus;
 
-  /// Идёт долгая работа (импорт по ссылке) — на кнопке кружок, нажатие не
-  /// проходит.
+  /// Long work under way (import by link): a spinner on the button, no taps.
   final bool busy;
+  final bool autocorrect;
   final int? maxLength;
+  final TextInputType? keyboardType;
 
-  /// Значок внутри поля справа — площадка, узнанная по ссылке.
+  /// An icon inside the field on the right: the platform a link was recognised
+  /// as.
   final Widget? trailing;
+  final EdgeInsets padding;
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
     final filled = controller.text.trim().isNotEmpty;
-    // Скругление и край — как у [SheetPanel]; над обложкой без заливки и с
-    // рамкой.
-    final cover = _SheetSkinScope.of(context) == _SheetSkin.cover;
-    final radius = BorderRadius.circular(sheetPanelRadius(context));
+    final radius = BorderRadius.circular(t.radius);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(kSheetEdge, 4, kSheetEdge, 6),
+      padding: padding,
       child: Row(
         children: [
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                // Как и блоки шторки — по тому же скину.
-                color: cover ? Colors.transparent : sheetPanelColor(context),
+                color: sheetPanelColor(context),
                 borderRadius: radius,
-                border: cover
-                    ? Border.all(color: sheetPanelLineColor(context))
-                    : null,
               ),
               child: Row(
                 children: [
                   Expanded(
-                    child: TextField(
+                    child: BloomField(
                       controller: controller,
+                      hint: hint,
                       autofocus: autofocus,
+                      enabled: !busy,
+                      autocorrect: autocorrect,
                       maxLength: maxLength,
-                      cursorColor: t.accent,
-                      textInputAction: TextInputAction.done,
-                      style: theme.titleMedium,
-                      decoration: InputDecoration(
-                        isDense: true,
-                        border: InputBorder.none,
-                        counterText: '',
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 16,
-                        ),
-                        hintText: hint,
-                        hintStyle: theme.titleMedium?.copyWith(color: t.muted),
-                      ),
+                      keyboardType: keyboardType,
+                      action: TextInputAction.done,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                       onChanged: onChanged,
                       onSubmitted: (_) => onSubmit(),
                     ),
@@ -848,8 +1162,8 @@ class SheetField extends StatelessWidget {
               ),
             ),
           ),
-          // Ширина ряда меняется вместе с кнопкой — иначе поле дёргалось бы
-          // рывком на первом же символе.
+          // The row's width moves with the button, or the field would jerk on
+          // the first character.
           AnimatedSize(
             duration: const Duration(milliseconds: 160),
             curve: Curves.easeOut,
@@ -879,7 +1193,7 @@ class _ConfirmButton extends StatelessWidget {
 
   final bool busy;
 
-  /// Скругление поля рядом — кнопка повторяет его, чтобы пара не спорила.
+  /// The field's corner, so the pair doesn't argue.
   final BorderRadius radius;
   final VoidCallback onTap;
 
@@ -893,117 +1207,8 @@ class _ConfirmButton extends StatelessWidget {
         height: 54,
         decoration: BoxDecoration(color: t.accent, borderRadius: radius),
         child: busy
-            ? Center(
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: t.accentText,
-                  ),
-                ),
-              )
+            ? Center(child: BloomSpinner(size: 20, color: t.accentText))
             : BloomIcon(Bi.check, size: 24, color: t.accentText),
-      ),
-    );
-  }
-}
-
-class SheetCoverHeader extends StatelessWidget {
-  const SheetCoverHeader({
-    super.key,
-    required this.cover,
-    required this.title,
-    this.subtitle = '',
-    this.meta,
-    this.subtitleWidget,
-  });
-
-  final String? cover;
-  final String title;
-  final String subtitle;
-
-  /// Подпись виджетом вместо строки — мета-строка списка («177 треков · 🖫
-  /// 1/177 · 1ч 23м»), та же, что на плитке в библиотеке. Виджетом, а не
-  /// строкой: офлайн-тег живой и со значком. Когда задана, [subtitle] не
-  /// показывается.
-  final Widget? subtitleWidget;
-
-  /// Когда плейлист завели. У списков, заведённых до появления этой метки
-  /// (`createdAt == 0`), даты нет — строка тогда не встаёт вовсе.
-  final SheetMeta? meta;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context).textTheme;
-    final width = MediaQuery.of(context).size.width - kSheetEdge * 2;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(kSheetEdge, 4, kSheetEdge, 8),
-      child: ClipRRect(
-        // То же скругление, что у блоков пунктов под ней.
-        borderRadius: BorderRadius.circular(sheetPanelRadius(context)),
-        child: SizedBox(
-          width: width,
-          // Карточка низкая: у плейлиста шапка не должна съедать шторку —
-          // название с числом треков помещается и в полосу.
-          height: width * 0.42,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Обложка квадратная, а карточка широкая — берём центр по
-              // вертикали, там у обложек обычно и есть главное.
-              Cover(url: cover, size: width, radius: 0),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.center,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0),
-                      Colors.black.withValues(alpha: 0.75),
-                    ],
-                  ),
-                ),
-              ),
-              Positioned(
-                left: 16,
-                right: 16,
-                bottom: 14,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.titleLarge?.copyWith(
-                        fontSize: 20,
-                        color: Colors.white,
-                      ),
-                    ),
-                    if (subtitleWidget != null || subtitle.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      subtitleWidget ??
-                          Text(
-                            subtitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.bodyMedium?.copyWith(
-                              color: Colors.white70,
-                            ),
-                          ),
-                    ],
-                    if (meta case final meta?) ...[
-                      const SizedBox(height: 2),
-                      _MetaLine(meta: meta, onCover: true),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -1042,8 +1247,6 @@ class OptionTile extends StatelessWidget {
         padding: padding,
         alignment: alignment,
         decoration: BoxDecoration(
-          // The sheet's own plate, not the page film: under a sheet lies a
-          // blurred backdrop and the film would show on it as a spot.
           color: active ? t.accent : sheetPanelColor(context),
           border: Border.all(
             color: active ? t.accent : sheetLineColor(context),

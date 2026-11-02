@@ -1,13 +1,10 @@
-/// Список треков раздела библиотеки: встроенные «Все треки» / «Любимые» и
-/// пользовательские плейлисты — один экран на всё.
+/// Track list of a library section: built-in all tracks and favourites and user
+/// playlists, one screen for all. A full-width hero cover with title and count
+/// over it, a Play, shuffle and edit row, and the track list below. The pencil
+/// enters edit mode: [ListEditor] replaces the whole page.
 ///
-/// Раскладка: hero-обложка во всю ширину, название и счётчик поверх неё, ряд
-/// «Воспроизвести» + шафл + правка, ниже трек-лист. Карандаш переводит экран в
-/// режим правки — он живёт в [ListEditor] и заменяет собой всю страницу.
-///
-/// У встроенных разделов своей обложки нет, поэтому берётся коллаж 2×2 из
-/// первых треков (как `.home-quick-card` на десктопе), а если и их не хватает —
-/// плоский тинт раздела с его цветной иконкой.
+/// Built-in sections have no cover, so it's a 2×2 collage of first tracks, or
+/// if too few, a flat section tint with its coloured icon.
 library;
 
 import 'dart:async';
@@ -52,17 +49,15 @@ import 'merge_sheet.dart';
 import 'list_hero.dart';
 import 'now_playing_jump.dart';
 
-/// Верхний отступ трек-листа под шапкой. По нему пилюля «Сейчас играет»
-/// считает, где стоит строка, — число обязано быть тем же, что у `SliverPadding`.
+/// Top padding of the track list under the header. The Now playing pill
+/// computes rows from it, so it must match `SliverPadding`.
 const double _listPadTop = 10;
 
-/// Сортировка трек-листа — все режимы десктопного `TrackSortMode` и вдобавок
-/// «Скачанные»: этот не сортирует, а оставляет в списке только то, что уже
-/// лежит на устройстве. Повторный тап выворачивает отбор — остаются как раз НЕ
-/// скачанные (этого на ПК нет).
+/// Track list sort, plus Downloaded: not a sort but a filter leaving what's on
+/// the device. A second tap inverts it, leaving what's NOT downloaded.
 ///
-/// Порядок значений — порядок пунктов в шторке, как в десктопном `SortPage`:
-/// сперва сортировки, под чертой «По умолчанию» и «Скачанные».
+/// Value order is the sheet's item order: sorts first, then Default and
+/// Downloaded below a line.
 enum TrackSort {
   name(Bi.sort),
   artist(Bi.user),
@@ -76,7 +71,7 @@ enum TrackSort {
   const TrackSort(this.icon);
   final BloomGlyph icon;
 
-  /// [desc] у «Скачанных» значит вывернутый отбор — «Не скачанные».
+  /// [desc] on Downloaded means the inverted filter, Not downloaded.
   String label(AppLocalizations l, {bool desc = false}) => switch (this) {
     TrackSort.manual => l.tlSortManual,
     TrackSort.name => l.tlSortName,
@@ -88,30 +83,29 @@ enum TrackSort {
     TrackSort.downloaded => desc ? l.tlSortNotDownloaded : l.tlSortDownloaded,
   };
 
-  /// Порядок разворачивается повторным тапом — кроме тех режимов, где своего
-  /// порядка нет: «По порядку» отдаёт список как есть, «Скачанные» только
-  /// отсеивают лишнее.
+  /// A second tap reverses the order, except for modes with no order of their
+  /// own: In order gives the list as is, Downloaded only filters.
   bool get directional =>
       this != TrackSort.manual && this != TrackSort.downloaded;
 
-  /// Что-то меняет повторный тап: у направленных режимов — порядок, у
-  /// «Скачанных» — сам отбор (скачанные ↔ не скачанные).
+  /// A second tap changes something: order for directional modes, the filter
+  /// itself for Downloaded.
   bool get flips => directional || this == TrackSort.downloaded;
 
-  /// С какого конца режим начинается: у даты и прослушиваний сверху свежее и
-  /// частое — как `defaultDir` в десктопном сторе.
+  /// Which end a mode starts from: date and plays show newest and most frequent
+  /// on top.
   bool get descFirst => this == TrackSort.date || this == TrackSort.plays;
 }
 
 class TracklistScreen extends ConsumerStatefulWidget {
   const TracklistScreen({super.key, required this.listId, this.flight});
 
-  /// `all` / `fav` либо id пользовательского плейлиста.
+  /// `all`, `fav` or a user playlist's id.
   final String listId;
 
-  /// Обложка плитки библиотеки, с которой сюда пришли: она перелетает в шапку.
-  /// `null` — у плитки обложки не было (в шапке коллаж или тинт раздела) или
-  /// список открыт не с плитки.
+  /// Cover of the library tile this came from, flying into the header. `null`
+  /// if the tile had no cover (a collage or tint in the header) or the list
+  /// wasn't opened from a tile.
   final CoverFlight? flight;
 
   @override
@@ -121,43 +115,39 @@ class TracklistScreen extends ConsumerStatefulWidget {
 class _TracklistScreenState extends ConsumerState<TracklistScreen> {
   TrackSort _sort = TrackSort.manual;
 
-  /// Порядок развёрнут — обратный тому, с которого режим начинается.
+  /// Order reversed, opposite of the mode's start.
   bool _desc = false;
 
   bool _searchOpen = false;
   String _query = '';
 
-  /// Экран отдан [ListEditor]: список правится, а не листается.
+  /// The screen is given to [ListEditor]: the list is being edited, not
+  /// browsed.
   bool _editing = false;
 
-  /// Режим дублей включён на ЭТОМ списке — снимок последнего кадра.
-  ///
-  /// Нужен в [dispose], а спросить там уже некого: `ref` после снятия виджета
-  /// бросает `Cannot use "ref" after the widget was disposed`, и вместе с ним
-  /// падал весь `dispose` — режим так и оставался включённым для следующего
-  /// открытия, а журнал засыпало ошибками. Значение берём из `build`, где
-  /// провайдер и так под `watch`: измениться незаметно оно не может.
+  /// Duplicates mode on for THIS list, a snapshot from the last frame. Needed
+  /// in [dispose], where nothing can be asked: `ref` throws after the widget is
+  /// gone, which would kill `dispose` and leave the mode on. The value comes
+  /// from `build`, where the provider is watched anyway.
   bool _dupsHere = false;
 
-  /// Сам стор — тоже заранее: он переживает виджет, и гасить режим им можно
-  /// уже после снятия.
+  /// The store itself, also ahead of time: it outlives the widget, and can turn
+  /// the mode off after removal.
   late final DupsController _dups = ref.read(dupsProvider.notifier);
 
-  /// Свой контроллер прокрутки: по нему пилюля «Сейчас играет» понимает, видна
-  /// ли строка играющего трека, и возвращает список к ней.
+  /// Own scroll controller: through it the Now playing pill knows whether the
+  /// playing row shows, and returns the list to it.
   final ScrollController _scroll = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _dups; // взять стор, пока `ref` ещё жив
+    _dups; // take the store while `ref` still lives
   }
 
   @override
   void dispose() {
-    // Уходя со списка, гасим режим дублей: он про ЭТОТ плейлист, и остаться
-    // включённым для следующего открытия не должен (на десктопе то же делает
-    // эффект в `LibTracklist`).
+    // Leaving a list turns duplicates mode off: it's about THIS playlist.
     if (_dupsHere) _dups.exit();
     _scroll.dispose();
     super.dispose();
@@ -165,15 +155,14 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
     final lib = ref.watch(libraryProvider);
-    // Режим дублей включён для этого списка — вместо строк идут группы
-    // повторов. Читаем в самом начале, до всех ранних возвратов: снимок нужен
-    // ещё и в [dispose], см. [_dupsHere].
+    // Duplicates mode is on for this list: repeat groups replace rows. Read at
+    // the very start, before any early return: [dispose] needs the snapshot
+    // too, see [_dupsHere].
     final dups = _dupsHere = ref.watch(dupsProvider) == widget.listId;
 
-    // id плейлистов теперь как на ПК (`plmvio1qa0`), без приставки — ищем
-    // всегда, встроенные `all`/`fav` просто не найдутся.
+    // Playlist ids have no prefix, so I always search; built-in `all` and `fav`
+    // just won't be found.
     UserPlaylist? playlist;
     for (final p in lib.playlists) {
       if (p.id == widget.listId) {
@@ -196,41 +185,40 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
         listId: widget.listId,
         title: title,
         playlist: playlist,
-        // Правится ВЕСЬ список в его собственном порядке: сортировка и поиск
-        // на входе в режим сбрасываются.
+        // The WHOLE list is edited in its own order: sort and search reset on
+        // entering.
         tracks: source,
         onClose: () => setState(() => _editing = false),
       );
     }
 
-    // Офлайн-состав спрашиваем, только когда он на экран влияет: индекс дёргается
-    // на каждом проценте пакетной загрузки, и подписываться на него ради списка,
-    // который её не показывает, значит перестраивать его без повода.
+    // Offline contents are asked only when they affect the screen: the index
+    // changes on every percent of a batch download, and subscribing for a list
+    // not showing it means rebuilding for nothing.
     final offline = _sort == TrackSort.downloaded
         ? ref.watch(offlineProvider)
         : null;
-    // Статистику — тоже только когда она на экран влияет: она пересчитывается
-    // на каждое засчитанное прослушивание.
+    // Stats too, only when they affect the screen: they recount on every
+    // counted play.
     final stats = _sort == TrackSort.plays
         ? ref.watch(playStatsProvider)
         : null;
     final tracks = _apply(source, lib, offline, stats);
-    // Ключи нужны не только перетаскиванию: строку можно смахнуть, а список
-    // тут не анимированный — без ключа состояние жеста досталось бы соседу,
-    // который встал на освободившееся место.
-    final keys = _keysFor(tracks);
+    // Keys aren't only for dragging: a row can be swiped, the list isn't
+    // animated, and with no key the gesture state goes to the neighbour taking
+    // its place.
+    final keys = trackRowKeys(tracks);
     final width = MediaQuery.of(context).size.width;
 
-    // Геометрия для пилюли «Сейчас играет»: сколько от верха списка закрыто
-    // прилипшей шапкой и где в координатах прокрутки лежит его первая строка.
-    // Строки играющего трека в дереве может не быть (список ленивый), поэтому
-    // её место считается по модели, как `win.offsetOf` на десктопе.
+    // Geometry for the Now playing pill: how much of the list's top the stuck
+    // header covers, and where the first row lies in scroll coordinates. The
+    // playing row may not be in the tree, so its place comes from the model.
     final barHeight = _searchOpen ? kHeaderControl * 2 + 10 : kHeaderControl;
     final collapsed = StickyHero.collapsedHeight(context, barHeight);
     final heroExtent = math.max(width * 0.62 + 76, collapsed);
 
     double? rowTopOf(String id) {
-      // Режим дублей подменяет собой весь список — строк трека там нет.
+      // Duplicates mode replaces the whole list, with no track rows.
       if (dups) return null;
       final i = tracks.indexWhere((t) => t.id == id);
       return i < 0 ? null : heroExtent + _listPadTop + i * kTrackRowHeight;
@@ -248,8 +236,8 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
               playlist: playlist,
               tracks: source,
               visible: tracks,
-              // Летим только на свою обложку: коллаж 2×2 собирается из чужих
-              // картинок, и обложке плитки в нём места нет.
+              // A flight only to an own cover: a 2×2 collage is built from
+              // other pictures, with no place for the tile's.
               flight: playlist?.cover == null ? null : widget.flight,
               height: width * 0.62 + 76,
               sort: _sort,
@@ -270,57 +258,47 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
                 _desc = false;
               }),
             ),
-            // Ход пакетной загрузки больше не строка под шапкой: он в тосте
-            // (`BatchToastBody`) и виден с любого экрана, а не только отсюда.
+            // Batch download progress lives in a toast (`BatchToastBody`),
+            // visible from any screen.
             //
-            // «Найти дубли» подменяет собой ТОЛЬКО список: шапка с обложкой и
-            // кнопками остаётся на месте, как в десктопном `DupsInline`. Пул для
-            // поиска — весь состав списка, а не видимая часть: искать повторы в
-            // отфильтрованном поиском списке значит их не найти.
+            // Find duplicates replaces ONLY the list: the header stays. The
+            // search pool is the whole list, not the visible part: looking for
+            // repeats in a filtered list means not finding them.
             if (dups)
               DupsSliver(listId: widget.listId, tracks: source)
             else if (tracks.isEmpty)
               SliverFillRemaining(
                 hasScrollBody: false,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 60),
-                  child: Center(
-                    child: Text(
-                      _query.isNotEmpty
-                          ? context.l.tlNothingFound
-                          // Список не пуст — просто в нём нечего показать под
-                          // отбором: об этом и говорим, иначе «Плейлист пуст»
-                          // на полном плейлисте выглядит поломкой.
-                          : _sort == TrackSort.downloaded
-                          ? (_desc
-                                ? context.l.tlNothingNotDownloaded
-                                : context.l.tlNothingDownloaded)
-                          : switch (widget.listId) {
-                              'fav' => context.l.tlEmptyFav,
-                              'all' => context.l.tlEmptyAll,
-                              _ => context.l.tlEmptyPlaylist,
-                            },
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: t.muted),
-                    ),
+                child: Center(
+                  child: CenterNote(
+                    _query.isNotEmpty
+                        ? context.l.tlNothingFound
+                        // The list isn't empty, just nothing to show under the
+                        // filter: I say so, or playlist empty on a full
+                        // playlist looks broken.
+                        : _sort == TrackSort.downloaded
+                        ? (_desc
+                              ? context.l.tlNothingNotDownloaded
+                              : context.l.tlNothingDownloaded)
+                        : switch (widget.listId) {
+                            'fav' => context.l.tlEmptyFav,
+                            'all' => context.l.tlEmptyAll,
+                            _ => context.l.tlEmptyPlaylist,
+                          },
+                    padding: const EdgeInsets.symmetric(vertical: 60),
                   ),
                 ),
               )
-            // Свой порядок списка — строки можно двигать: зажать обложку и тащить,
-            // как в очереди и на десктопе.
+            // The list's own order: rows can be dragged by holding the cover,
+            // as in the queue.
             else if (_canReorder)
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(8, _listPadTop, 8, 12),
                 sliver: SliverReorderableList(
                   itemCount: tracks.length,
                   onReorder: (from, to) => _reorder(source, from, to),
-                  proxyDecorator: (child, _, _) => Material(
-                    color: t.pill,
-                    elevation: 6,
-                    borderRadius: BorderRadius.circular(t.radius * 0.85),
-                    child: child,
-                  ),
+                  proxyDecorator: (child, _, _) =>
+                      trackRowDragged(context, child),
                   itemBuilder: (context, i) => TrackSwipe(
                     key: keys[i],
                     zone: SwipeZone.library,
@@ -355,15 +333,14 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
                   ),
                 ),
               ),
-            // Хвост под бары каркаса — общий для всех веток выше: они плавают
-            // над списком, и последняя строка иначе не вылезает из-под
-            // миниплеера.
+            // Room for the shell's bars, shared by all branches above: they
+            // float over the list, and otherwise the last row can't clear the
+            // mini player.
             const SliverBottomBarsInset(),
           ],
         ),
-        // Пилюля «Сейчас играет» лежит ВНЕ прокрутки и потому висит на одном
-        // месте (на ПК она так же стоит абсолютом в `.lib-content`, а не внутри
-        // скролл-контейнера). Справа над миниплеером — так на его скриншоте.
+        // The Now playing pill lies OUTSIDE the scroll and so stays in place,
+        // on the right above the mini player.
         Positioned(
           right: 16,
           bottom: bottomBarsInset(context) + 12,
@@ -377,9 +354,8 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
     );
   }
 
-  /// Выбор в шторке сортировки. Повторный тап по уже выбранному режиму
-  /// разворачивает порядок — как на десктопе, где та же строка меню показывает
-  /// ↑/↓ и переключает их.
+  /// A pick in the sort sheet. A second tap on the current mode reverses the
+  /// order.
   void _pickSort(TrackSort next) {
     setState(() {
       if (next == _sort && next.flips) {
@@ -391,24 +367,15 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
     });
   }
 
-  /// Тянуть строки можно, только когда на экране собственный порядок списка:
-  /// при сортировке и поиске видно не его, и перестановка легла бы не туда.
+  /// Rows can be dragged only with the list's own order on screen: under sort
+  /// or search a move would land in the wrong place.
   bool get _canReorder => _sort == TrackSort.manual && _query.isEmpty;
 
-  /// Ключи строк: один трек может стоять в списке дважды, а `ReorderableList`
-  /// на дублях падает — дописываем номер вхождения (как в очереди).
-  List<Key> _keysFor(List<Track> tracks) {
-    final seen = <String, int>{};
-    return [
-      for (final track in tracks)
-        ValueKey('${track.id}#${seen[track.id] = (seen[track.id] ?? -1) + 1}'),
-    ];
-  }
-
-  /// Новый порядок уезжает в хранилище целиком — теми же ручками, что и режим
-  /// правки: состав не меняется, меняются только места.
+  /// Row keys: a track can be in a list twice, and `ReorderableList` crashes on
+  /// duplicates, so I add the occurrence number.
   void _reorder(List<Track> source, int from, int to) {
-    // Индекс вставки считается ДО изъятия строки — всё, что ниже, уже сдвинуто.
+    // The insertion index counts BEFORE the row is removed, and all below is
+    // already shifted.
     if (to > from) to--;
     final next = [...source];
     next.insert(to, next.removeAt(from));
@@ -424,11 +391,10 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
     }
   }
 
-  /// Поиск, отбор и сортировка применяются к копии: исходный порядок плейлиста
-  /// трогать нельзя, «По порядку» должен уметь вернуть его как было.
+  /// Search, filter and sort apply to a copy: the playlist's order must stay,
+  /// so In order can bring it back.
   ///
-  /// [offline] приходит только в режиме «Скачанные», [stats] — только в «По
-  /// прослушиваниям»: остальным они не нужны.
+  /// [offline] comes only in Downloaded mode, [stats] only in By plays.
   List<Track> _apply(
     List<Track> source,
     LibraryState lib,
@@ -447,12 +413,12 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
               .toList();
 
     if (_sort == TrackSort.downloaded) {
-      // Порядок остаётся своим — режим только отсеивает то, чего на устройстве
-      // нет. Качающиеся сейчас треки не в счёт: файла ещё нет, играть нечего.
-      // Свои треки — файлы с телефона, и в офлайн-индексе их нет (качать
-      // нечего): без них список «скачанного» врал бы про свою же музыку.
-      // Вывернутый отбор ([_desc]) оставляет ровно остальное — то, что без
-      // сети не заиграет, включая качающееся сейчас.
+      // Order stays its own: the mode only drops what's not on the device.
+      // Tracks downloading now don't count: no file yet. Local tracks are phone
+      // files with no offline index entry, and without them the downloaded list
+      // would lie about the user's own music. The inverted filter ([_desc])
+      // leaves exactly the rest: what won't play offline, including those
+      // downloading.
       list.removeWhere((t) {
         final onDevice =
             t.source == MusicSource.local || offline?.has(t.id) == true;
@@ -462,14 +428,14 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
     }
     if (!_sort.directional) return list;
 
-    // Время добавления берём из того раздела, который на экране: в «Любимых»
-    // это время лайка (на ПК то же деление по `libMode`).
+    // Add time comes from the section on screen: in favourites it's the like's
+    // time.
     int addedAt(Track t) => switch (widget.listId) {
       'fav' => lib.favs[t.id] ?? 0,
       _ => lib.inLib[t.id] ?? 0,
     };
 
-    // Прослушивания — свои, из журнала.
+    // Plays are the listener's own, from the log.
     final int dir = _desc ? -1 : 1;
     list.sort((a, b) {
       final c = switch (_sort) {
@@ -516,18 +482,18 @@ class _Hero extends ConsumerWidget {
   final String title;
   final UserPlaylist? playlist;
 
-  /// Полный состав — по нему считается счётчик и запускается воспроизведение.
+  /// Full contents, for the count and for starting playback.
   final List<Track> tracks;
 
-  /// То, что реально показано (после поиска и сортировки).
+  /// What's really shown, after search and sort.
   final List<Track> visible;
 
-  /// Обложка плитки, с которой пришли, — цель перелёта.
+  /// Cover of the source tile, the flight's target.
   final CoverFlight? flight;
 
-  /// Полная высота шапки — вместе с полосой названия и ряда действий под
-  /// обложкой. Считается снаружи: по ней пилюля «Сейчас играет» знает, с какого
-  /// места начинается список.
+  /// Full header height, with the title strip and action row under the cover.
+  /// Computed outside: the Now playing pill learns from it where the list
+  /// starts.
   final double height;
   final TrackSort sort;
   final bool desc;
@@ -537,7 +503,7 @@ class _Hero extends ConsumerWidget {
   final VoidCallback onToggleSearch;
   final ValueChanged<String> onQuery;
 
-  /// Уйти в режим правки — карандаш в ряду действий.
+  /// Enters edit mode, the pencil in the action row.
   final VoidCallback onEdit;
 
   @override
@@ -547,8 +513,8 @@ class _Hero extends ConsumerWidget {
     return StickyHero(
       height: height,
       flying: flight != null,
-      // Обложка на всю шапку, включая ряд действий: её скруглённый нижний
-      // край и есть граница со списком.
+      // The cover fills the header with the action row: its rounded bottom edge
+      // is the border with the list.
       background: HeroCover(
         child: CoverHero(
           tag: flight?.tag,
@@ -560,8 +526,8 @@ class _Hero extends ConsumerWidget {
           ),
         ),
       ),
-      // Открытый поиск едет вместе с кнопками: искать по списку, глядя на него,
-      // и есть смысл только в прокрученном виде.
+      // Open search rides with the buttons: searching a list while looking at
+      // it matters most when scrolled.
       barHeight: searchOpen ? kHeaderControl * 2 + 10 : kHeaderControl,
       bar: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -573,11 +539,15 @@ class _Hero extends ConsumerWidget {
                 onTap: () => context.go('/library'),
               ),
               const SizedBox(width: 8),
-              _SortButton(sort: sort, desc: desc, onSort: onSort),
+              GlassIconButton(
+                icon: Bi.sort,
+                background: sort != TrackSort.manual ? t.accent : null,
+                color: sort != TrackSort.manual ? t.accentText : null,
+                onTap: () => showSortSheet(context, sort, desc, onSort),
+              ),
               const Spacer(),
-              // Плюс — только во «Всех треках», как `libUploadBtn` на ПК
-              // (`mode === 'all'`): в «Любимых» состав не свой, а в плейлист
-              // трек добавляют из шторки самого трека.
+              // The plus only in all tracks: favourites' contents aren't own,
+              // and a track joins a playlist from its own sheet.
               if (listId == 'all') ...[
                 const _AddLocalButton(),
                 const SizedBox(width: 8),
@@ -613,7 +583,7 @@ class _Hero extends ConsumerWidget {
             style: theme.headlineSmall?.copyWith(fontSize: 30),
           ),
           const SizedBox(height: 4),
-          // Счётчик, офлайн-тег и общее время.
+          // Count, offline tag and total time.
           ListMeta(
             tracks: tracks,
             style: theme.bodyMedium,
@@ -631,12 +601,10 @@ class _Hero extends ConsumerWidget {
   }
 }
 
-/// Плюс в шапке «Всех треков»: системный выбор аудиофайлов и добавление их в
-/// библиотеку своими треками (порт `libUploadBtn` → `importTracks`).
-///
-/// Пока идёт диалог и разбор выбранного, кнопка показывает кольцо: копирование
-/// большого файла и чтение тегов занимают заметное время, и без этого второй
-/// тап открыл бы второй диалог (нативная сторона такой запрос отбивает).
+/// The plus in the all tracks header: system audio picker, adding files to the
+/// library as local tracks. During the dialog and parsing it shows a ring:
+/// copying a large file and reading tags take time, and a second tap would open
+/// a second dialog (the native side refuses such a request).
 class _AddLocalButton extends ConsumerStatefulWidget {
   const _AddLocalButton();
 
@@ -650,15 +618,15 @@ class _AddLocalButtonState extends ConsumerState<_AddLocalButton> {
   Future<void> _add() async {
     if (_busy) return;
     setState(() => _busy = true);
-    // Мессенджер и переводы берём до похода в диалог: он системный, экран за
-    // это время может уехать, и `context` после await уже не годится.
+    // Messenger and translations come before the dialog: it's the system's, the
+    // screen may leave meanwhile, and `context` won't do after await.
     final messenger = ScaffoldMessenger.of(context);
     final l10n = context.l;
     final result = await importLocalTracks(ref, l10n);
     if (mounted) setState(() => _busy = false);
     switch (result.status) {
       case LocalImportStatus.cancelled:
-        break; // диалог просто закрыли — молчим, как на ПК
+        break; // the dialog was just closed, so quietly
       case LocalImportStatus.nothing:
         messenger.toast(l10n.ltNothingAdded);
       case LocalImportStatus.added:
@@ -669,63 +637,19 @@ class _AddLocalButtonState extends ConsumerState<_AddLocalButton> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    if (!_busy) {
-      return GlassIconButton(icon: Bi.add, onTap: _add);
-    }
-    return GlassSurface(
-      shape: BorderRadius.circular(kHeaderControl / 2),
-      child: const SizedBox(
-        width: kHeaderControl,
-        height: kHeaderControl,
-        child: Center(
-          child: SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: Colors.white,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => GlassIconButton(
+    icon: Bi.add,
+    onTap: _add,
+    child: _busy
+        ? const Center(child: BloomSpinner(size: 18, color: Colors.white))
+        : null,
+  );
 }
 
-class _SortButton extends StatelessWidget {
-  const _SortButton({
-    required this.sort,
-    required this.desc,
-    required this.onSort,
-  });
-
-  final TrackSort sort;
-  final bool desc;
-  final ValueChanged<TrackSort> onSort;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    // Список показан не как есть — кнопка горит акцентом, как у сортировки
-    // библиотеки: иначе отбор «Скачанные» ничем себя не выдаёт, и коротким
-    // плейлист выглядит поломкой.
-    final on = sort != TrackSort.manual;
-    return GlassIconButton(
-      icon: Bi.sort,
-      background: on ? t.accent : null,
-      color: on ? t.accentText : null,
-      onTap: () => showSortSheet(context, sort, desc, onSort),
-    );
-  }
-}
-
-/// Выбор сортировки списка — такая же нижняя шторка, как по удержанию трека, а
-/// не всплывающее меню: на телефоне до низа экрана рука достаёт, до угла шапки
-/// нет.
-///
-/// Повторный тап по выбранному режиму разворачивает порядок — стрелка справа
-/// показывает, каким концом список идёт сейчас.
+/// List sort choice, a bottom sheet like a track's rather than a popup: a hand
+/// reaches the screen's bottom on a phone, not the header's corner. A second
+/// tap on the current mode reverses the order, with an arrow on the right
+/// showing which end leads.
 Future<void> showSortSheet(
   BuildContext context,
   TrackSort sort,
@@ -743,8 +667,8 @@ Future<void> showSortSheet(
             switch (s) {
               _ when s.directional =>
                 desc ? Bi.altArrowDownBold : Bi.altArrowUpBold,
-              // Вывернутый отбор «Скачанных» — «Не скачанные»: галочка тут
-              // читалась бы как «скачано», поэтому крестик.
+              // The inverted Downloaded filter is Not downloaded: a tick would
+              // read as downloaded, so a cross.
               TrackSort.downloaded when desc => Bi.close,
               _ => Bi.check,
             },
@@ -752,7 +676,7 @@ Future<void> showSortSheet(
             color: t.accent,
           ),
   );
-  // Черта отделяет сортировки от «По умолчанию» и отбора — как `cx-sep` на ПК.
+  // The line separates sorts from Default and the filter.
   return showBloomSheet(
     context: context,
     groups: [
@@ -775,44 +699,11 @@ class _InlineSearch extends StatelessWidget {
   final ValueChanged<String> onQuery;
 
   @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return GlassSurface(
-      shape: BorderRadius.circular(999),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: SizedBox(
-          height: kHeaderControl,
-          child: Row(
-            children: [
-              const BloomIcon(Bi.magnifier, size: 21, color: Colors.white),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextField(
-                  autofocus: true,
-                  onChanged: onQuery,
-                  cursorColor: t.accent,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontSize: kHeaderTitleSize,
-                    color: Colors.white,
-                  ),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    border: InputBorder.none,
-                    hintText: context.l.tlSearchHint,
-                    hintStyle: const TextStyle(
-                      color: Colors.white54,
-                      fontSize: kHeaderTitleSize,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => HeaderSearchField(
+    hint: context.l.tlSearchHint,
+    overPicture: true,
+    onChanged: onQuery,
+  );
 }
 
 class _Actions extends ConsumerWidget {
@@ -822,14 +713,13 @@ class _Actions extends ConsumerWidget {
     required this.onEdit,
   });
 
-  /// `all` / `fav` / id плейлиста — он же источник очереди.
+  /// `all`, `fav` or a playlist id, also the queue's source.
   final String listId;
 
   final List<Track> tracks;
 
-  /// Карандаш есть у каждого списка библиотеки, кроме «Истории»: из неё ничего
-  /// не убирается, а порядок задаёт время (как на ПК). Во встроенных разделах
-  /// правятся состав и порядок, просто имя с обложкой там не свои.
+  /// Every library list has a pencil. Built-in sections edit contents and
+  /// order, with no own name or cover.
   final VoidCallback onEdit;
 
   @override
@@ -865,8 +755,7 @@ class _Actions extends ConsumerWidget {
   }
 }
 
-/// Шторка «трёх точек» плейлиста — общая для его страницы и плитки в
-/// библиотеке.
+/// A playlist's three-dot sheet, shared by its page and its library tile.
 Future<void> showPlaylistMenu(
   BuildContext context,
   WidgetRef ref,
@@ -883,12 +772,12 @@ Future<void> showPlaylistMenu(
     }
   }
 
-  // У плейлиста без своей обложки её роль играет первый трек — так же, как в
-  // hero экрана.
+  // With no own cover the first track plays that role, as in the screen's hero.
   final cover = playlist.cover ?? (tracks.isEmpty ? null : tracks.first.cover);
 
-  // Офлайн-состав считаем до открытия шторки: в её обработчиках `watch` уже
-  // недоступен, а `read` внутри пункта дал бы состояние на момент нажатия.
+  // Offline contents are counted before the sheet opens: `watch` isn't
+  // available in its handlers, and `read` in an item would give the state at
+  // press time.
   final offlineStatus = listOfflineState(
     ref.read(offlineProvider),
     ref.read(offlineProvider.notifier),
@@ -899,52 +788,48 @@ Future<void> showPlaylistMenu(
 
   await showBloomSheet(
     context: context,
-    backdrop: cover,
-    header: SheetCoverHeader(
+    header: SheetHero(
       cover: cover,
       title: playlist.name,
-      // Та же подпись, что на плитке в библиотеке: сколько треков, сколько из
-      // них скачано и сколько всего играть.
+      // The same line as on the library's card.
       subtitleWidget: ListMeta(
         tracks: tracks,
-        style: Theme.of(
-          context,
-        ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 14),
       ),
       meta: sheetDateMeta(context, l10n.commonCreatedOn, playlist.createdAt),
     ),
+    bar: [
+      SheetAction(
+        icon: Bi.playBold,
+        label: context.l.commonPlay,
+        onTap: tracks.isEmpty ? null : play,
+      ),
+      SheetAction(
+        icon: Bi.shuffle,
+        label: context.l.commonShuffle,
+        onTap: tracks.isEmpty ? null : () => play(shuffle: true),
+      ),
+      ...queueSheetActions(
+        context,
+        ref,
+        tracks,
+        source: LibSource(playlist.id),
+      ),
+    ],
     groups: [
       [
-        SheetAction(
-          icon: Bi.playBold,
-          label: context.l.commonPlay,
-          onTap: tracks.isEmpty ? null : play,
-        ),
-        SheetAction(
-          icon: Bi.shuffle,
-          label: context.l.commonShuffle,
-          onTap: tracks.isEmpty ? null : () => play(shuffle: true),
-        ),
-        ...queueSheetActions(
-          context,
-          ref,
-          tracks,
-          source: LibSource(playlist.id),
-        ),
-      ],
-      [
-        // Пакет ЭТОГО плейлиста качается прямо сейчас — единственное, что
-        // здесь уместно, это его остановить. Чужой пакет пунктов не меняет:
-        // остановить его отсюда было бы неожиданно, а `downloadAll` сам
-        // ответит, что уже качает другой список.
+        // THIS playlist's batch is downloading now: the only fitting thing is
+        // stopping it. Another batch doesn't change the items: stopping it from
+        // here would surprise, and `downloadAll` itself says it's busy with
+        // another list.
         if (ref.read(offlineProvider).batch?.sourceId == playlist.id)
           SheetAction(
             icon: Bi.close,
             label: context.l.tlStopSaving,
             onTap: () => ref.read(offlineProvider.notifier).cancelBatch(),
           )
-        // Скачать целиком есть смысл, пока в списке остались несохранённые
-        // треки; когда всё на устройстве — пункт становится «убрать».
+        // Download all makes sense while unsaved tracks remain; when all are on
+        // the device it becomes remove.
         else if (offlineStatus.total > 0) ...[
           SheetAction(
             icon: offlineStatus.all
@@ -955,6 +840,7 @@ Future<void> showPlaylistMenu(
                 : context.l.tlListenOffline(
                     offlineStatus.total - offlineStatus.cached,
                   ),
+            subtitle: offlineStatus.all ? null : context.l.tlOfflineHint,
             onTap: () => offlineStatus.all
                 ? removeListOffline(messenger, l10n, ref, tracks)
                 : downloadListOffline(
@@ -969,21 +855,24 @@ Future<void> showPlaylistMenu(
             SheetAction(
               icon: Bi.downloadMinimalistic,
               label: context.l.tlDownloadFiles(offlineStatus.total),
+              subtitle: context.l.tlFilesHint,
               onTap: () =>
                   saveListFiles(messenger, l10n, ref, playlist.id, tracks),
             ),
         ],
-        // Тот же «Обновить треки», что кнопкой в шапке: в шторку он попадает
-        // и с плитки библиотеки, где шапки нет.
+        // The same Refresh tracks as the header button: the sheet also opens
+        // from a library tile, which has no header.
         if (playlist.sources.isNotEmpty)
           SheetAction(
             icon: Bi.refresh,
             label: context.l.tlRefreshTracks,
+            subtitle: context.l.tlRefreshHint,
             onTap: () => refreshOnePlaylist(messenger, l10n, ref, playlist),
           ),
         SheetAction(
           icon: Bi.pin,
           label: playlist.pinned ? context.l.commonUnpin : context.l.commonPin,
+          subtitle: playlist.pinned ? null : context.l.commonPinHint,
           onTap: () => ref
               .read(libraryProvider.notifier)
               .setPinned(libKeyOfPlaylist(playlist.id), !playlist.pinned),
@@ -991,38 +880,40 @@ Future<void> showPlaylistMenu(
         SheetAction(
           icon: Bi.import,
           label: context.l.tlMergeWith,
-          chevron: true,
+          subtitle: context.l.tlMergeHint,
           onTap: () => showMergeSheet(context, ref, playlist),
         ),
-        // Перенос — копия плейлиста с треками другой площадки. Пустой плейлист
-        // переносить нечего.
+        // Transfer is a copy with another platform's tracks. An empty playlist
+        // has nothing to transfer.
         if (tracks.isNotEmpty)
           SheetAction(
             icon: Bi.arrowRight,
             label: context.l.tlConvert,
-            chevron: true,
+            subtitle: context.l.tlConvertHint,
             onTap: () => showConvertSheet(context, ref, playlist, tracks),
           ),
-        // Поиск повторов включается прямо в списке — поэтому сперва открываем
-        // сам плейлист, иначе режим включился бы там, где его не видно.
+        // Duplicate search runs right in the list, so I open the playlist
+        // first, or the mode turns on where it can't be seen.
         if (tracks.isNotEmpty)
           SheetAction(
             icon: Bi.copy,
             label: context.l.tlFindDups,
+            subtitle: context.l.tlFindDupsHint,
             onTap: () {
               context.go('/library/list/${playlist.id}');
               ref.read(dupsProvider.notifier).enter(playlist.id);
             },
           ),
-        // Файл переноса на один плейлист — тем же форматом, что «Настройки →
-        // Система → Экспорт»: обратно его читает тот же импорт.
+        // A transfer file for one playlist, in the settings export format, so
+        // the same import reads it.
         SheetAction(
           icon: Bi.export,
           label: context.l.tlExportPlaylist,
+          subtitle: context.l.tlExportHint,
           onTap: () => _exportPlaylist(messenger, l10n, ref, playlist),
         ),
-        // Имя и обложка правятся только в режиме правки: там они видны сразу
-        // на шапке, и отменить их можно тем же ✕, что и остальные изменения.
+        // Name and cover edit only in edit mode: they show at once on the
+        // header there, and the same ✕ undoes them.
       ],
       [
         SheetAction(
@@ -1030,9 +921,8 @@ Future<void> showPlaylistMenu(
           label: context.l.tlDeletePlaylist,
           danger: true,
           onTap: () {
-            // Удаляем сразу и даём «Отменить» в тосте — как `PlMenu` на ПК:
-            // плейлист это всего лишь список id, вернуть его дёшево, а сами
-            // треки в библиотеке не трогаются.
+            // Deletes at once with Undo in the toast: a playlist is just a list
+            // of ids, cheap to bring back, and the tracks stay in the library.
             final lib = ref.read(libraryProvider.notifier);
             lib.deletePlaylist(playlist.id);
             context.go('/library');
@@ -1040,17 +930,17 @@ Future<void> showPlaylistMenu(
               l10n.tlPlaylistDeleted(playlist.name),
               action: ToastAction(
                 fn: () => lib.restorePlaylist(playlist),
-                // Своя обложка живёт файлом в каталоге приложения; удаляем её
-                // только когда отменять уже нечего, иначе возвращённый
-                // плейлист остался бы без картинки.
+                // An own cover is a file in the app's directory, deleted only
+                // when there's nothing left to undo, or a restored playlist
+                // would have no picture.
                 onExpire: () => deleteCover(playlist.cover),
               ),
             );
           },
         ),
-        // «И треки» — отдельным пунктом, а не переспросом у первого: разница
-        // между «убрать список» и «стереть музыку» слишком велика, чтобы
-        // прятать её за одинаковыми словами.
+        // With tracks is a separate item, not a question after the first:
+        // removing a list and erasing music differ too much to hide behind the
+        // same words.
         if (tracks.isNotEmpty)
           SheetAction(
             icon: Bi.trashBinTrash,
@@ -1066,8 +956,8 @@ Future<void> showPlaylistMenu(
   );
 }
 
-/// Выгрузить один плейлист файлом `.bloomplaylist` (десктопный
-/// `exportPlaylistFile`). Отмена системного диалога — тихая, как и везде.
+/// Exports one playlist as a `.bloomplaylist` file. Cancelling the system
+/// dialog is quiet.
 Future<void> _exportPlaylist(
   ScaffoldMessengerState messenger,
   AppLocalizations l10n,
@@ -1081,14 +971,13 @@ Future<void> _exportPlaylist(
   if (ok) messenger.toast(l10n.sysExported, kind: ToastKind.success);
 }
 
-/// Удалить плейлист ВМЕСТЕ с его треками — насквозь, как `removePlWithTracks` на
-/// ПК: треки уходят из библиотеки, лайков и остальных плейлистов. В «Истории»
-/// их записи остаются — она переживает удаление треков.
+/// Deletes a playlist WITH its tracks, throughout: they leave the library,
+/// likes and other playlists. History entries stay.
 ///
-/// Переспроса нет, но есть «Отменить»: возвращается снимок всей библиотеки —
-/// по частям такое удаление не собрать (см. [LibraryController.snapshot]).
-/// Файлы (офлайн-копии, свои треки, обложка плейлиста) стираем только когда
-/// отменять уже поздно.
+/// No second question, but Undo restores a snapshot of the whole library: this
+/// delete can't be rebuilt piece by piece (see [LibraryController.snapshot]).
+/// Files (offline copies, local tracks, the playlist's cover) go only when it's
+/// too late to undo.
 void _deletePlaylistWithTracks(
   ScaffoldMessengerState messenger,
   AppLocalizations l10n,

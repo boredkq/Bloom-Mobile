@@ -1,10 +1,9 @@
-/// Список «История» — представление над журналом прослушиваний, а не своё
-/// хранилище. Из истории ничего не удаляется: ни целиком, ни поштучно — как
-/// на ПК, она показывает журнал как есть.
+/// The History list, a view over the play log with no store of its own. Nothing
+/// is removed from it, whole or one by one: it shows the log as it is.
 ///
-/// Трек для строки — из библиотеки, а если его там нет, снимок из базы: он
-/// хранится на каждый когда-либо игранный трек, так что старая строка не
-/// пропадает, даже когда трека давно нет нигде.
+/// A row's track comes from the library, or else the database snapshot, kept
+/// for every track ever played, so an old row survives the track's being gone
+/// everywhere.
 library;
 
 import 'package:flutter/foundation.dart';
@@ -14,12 +13,12 @@ import '../entities/entities.dart';
 import 'library_store.dart';
 import 'play_stats.dart';
 
-/// Ряды «Истории» без треков — тем, кому нужны только id и время (волна).
+/// History rows with no tracks, for those needing only id and time (the wave).
 final historyRowsProvider = Provider<List<HistoryRow>>(
   (ref) => ref.watch(playStatsProvider).historyRows(),
 );
 
-/// Строка «Истории» вместе с треком, которым её показать и заиграть.
+/// A history row with the track to show and play it.
 @immutable
 class HistoryItem {
   const HistoryItem(this.row, this.track);
@@ -28,7 +27,7 @@ class HistoryItem {
   final Track track;
 }
 
-/// Строки «Истории», свежие сверху.
+/// History rows, newest first.
 final historyProvider = Provider<List<HistoryItem>>((ref) {
   final stats = ref.watch(playStatsProvider);
   final lib = ref.watch(libraryProvider);
@@ -39,6 +38,6 @@ final historyProvider = Provider<List<HistoryItem>>((ref) {
   ];
 });
 
-/// Трек строки истории: библиотека → снимок из базы.
+/// A history row's track: library, then database snapshot.
 Track? resolveHistoryTrack(String id, LibraryState lib, PlayStats stats) =>
     lib.tracks[id] ?? stats.tracks[id];

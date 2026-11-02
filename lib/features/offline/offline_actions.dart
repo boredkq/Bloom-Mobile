@@ -1,10 +1,7 @@
-/// Действия офлайна с обратной связью — то, что на ПК делают `download.ts`
-/// вместе с тостами: сам стор молча возвращает результат, а сообщать о нём
-/// пользователю приходится здесь.
-///
-/// Мессенджер передаётся снаружи, а не берётся из `context`: шторка действий
-/// закрывается ДО вызова обработчика, и её `context` к моменту снекбара уже
-/// отвязан от дерева.
+/// Offline actions with feedback: the store silently returns a result, and
+/// telling the user happens here. The messenger comes from outside rather than
+/// `context`: the actions sheet closes BEFORE the handler runs, and by the
+/// snack bar its `context` has left the tree.
 library;
 
 import 'package:flutter/foundation.dart';
@@ -17,11 +14,8 @@ import '../../shared/ui/bloom_toast.dart';
 import 'file_download.dart';
 import 'offline_store.dart';
 
-/// Скачать трек или убрать его копию — «Слушать офлайн» / «Убрать из офлайна».
-///
-/// Переводы передаются рядом с мессенджером и по той же причине: шторка
-/// действий закрывается раньше, чем приходит результат, и брать их из её
-/// `context` в этот момент уже нельзя.
+/// Downloads a track or removes its copy. Translations come beside the
+/// messenger for the same reason: the sheet closes before the result arrives.
 Future<void> toggleTrackOffline(
   ScaffoldMessengerState messenger,
   AppLocalizations l,
@@ -34,8 +28,8 @@ Future<void> toggleTrackOffline(
     messenger.toast(l.ofRemoved);
     return;
   }
-  // Один тост на всю операцию: вертушка меняется на галочку прямо в нём, а не
-  // сменой двух тостов подряд.
+  // One toast for the whole operation: the spinner turns into a tick in place
+  // rather than two toasts in a row.
   final toast = messenger.busyToast(l.ofSaving);
   final error = await offline.download(track);
   toast.finish(
@@ -46,10 +40,8 @@ Future<void> toggleTrackOffline(
   );
 }
 
-/// Скачать список целиком (плейлист, «Любимые», «Все треки»).
-///
-/// [sourceId] — id списка (`listId` его экрана): по нему индикатор пакета
-/// понимает, на чьей странице ему показываться.
+/// Downloads a whole list. [sourceId] is the list's id, telling the batch
+/// indicator whose page to show on.
 Future<void> downloadListOffline(
   ScaffoldMessengerState messenger,
   AppLocalizations l,
@@ -71,9 +63,8 @@ Future<void> downloadListOffline(
   }, kind: result == null || result.busy ? ToastKind.warn : ToastKind.success);
 }
 
-/// «Скачать файлом» — второе скачивание десктопа: трек ложится туда, где его
-/// видно вне Bloom (на Android — общая «Музыка/Bloom», на iOS — папка
-/// приложения в «Файлах»).
+/// Saves a file where it's seen outside Bloom (shared Music/Bloom on Android,
+/// the app's folder in Files on iOS).
 Future<void> saveTrackFile(
   ScaffoldMessengerState messenger,
   AppLocalizations l,
@@ -113,7 +104,7 @@ Future<void> saveCoverFile(
   }
 }
 
-/// Сохранить файлами весь список.
+/// Saves a whole list as files.
 Future<void> saveListFiles(
   ScaffoldMessengerState messenger,
   AppLocalizations l,
@@ -121,8 +112,8 @@ Future<void> saveListFiles(
   String sourceId,
   List<Track> tracks,
 ) async {
-  // Тот же индикатор пакета, что у офлайн-копий (см. `beginBatch`), — значит и
-  // тост тот же.
+  // The same batch indicator as offline copies (see `beginBatch`), so the same
+  // toast.
   final toast = messenger.busyToast(
     l.ofDownloadingFiles,
     content: (view) => BatchToastBody(view: view),
@@ -143,7 +134,7 @@ Future<void> saveListFiles(
   );
 }
 
-/// Убрать офлайн-копии всех треков списка.
+/// Removes offline copies of all the list's tracks.
 Future<void> removeListOffline(
   ScaffoldMessengerState messenger,
   AppLocalizations l,
@@ -157,12 +148,10 @@ Future<void> removeListOffline(
   );
 }
 
-/// Офлайн-состояние списка: сколько его скачиваемых треков уже лежит на
-/// устройстве. Порт `usePlaylistOffline` с десктопа.
-///
-/// Состояние передаётся аргументом, а не читается изнутри: зовут и из `build`
-/// (там нужен `watch`, чтобы тег обновлялся по ходу загрузки), и из
-/// обработчика шторки (там можно только `read`).
+/// A list's offline state: how many of its downloadable tracks are on the
+/// device. State comes as an argument rather than read inside: it's called from
+/// `build` (needing `watch`, so the tag updates as it loads) and from a sheet's
+/// handler (only `read`).
 ({bool any, bool all, int cached, int total}) listOfflineState(
   OfflineState state,
   OfflineController offline,
@@ -178,18 +167,15 @@ Future<void> removeListOffline(
   );
 }
 
-/// Тело тоста пакетной загрузки: счётчик «N/M», полоса снизу как индикатор
-/// прогресса (вместо отсчёта) и «Прервать». Раньше это была строка под шапкой
-/// списка — теперь тост, поэтому ход загрузки видно с любого экрана, а не
-/// только на той странице, откуда её запустили.
-///
-/// Пакет в сторе один на приложение, поэтому сверять `sourceId` не с чем: если
-/// пакет идёт — он и есть наш.
+/// Batch download toast body: an N/M count, a progress bar below instead of a
+/// countdown, and Stop. A toast, so progress shows from any screen. The store
+/// has one batch per app, so there's no `sourceId` to check: a running batch is
+/// ours.
 class BatchToastBody extends ConsumerWidget {
   const BatchToastBody({super.key, required this.view});
 
-  /// Состояние тоста от [ToastHandle]: до `finish()` тут «идёт работа», после —
-  /// готовый итог, и счётчик пакета уже не при чём.
+  /// Toast state from [ToastHandle]: before `finish()` work is under way, after
+  /// it the result, and the batch count no longer matters.
   final ValueListenable<ToastView> view;
 
   @override
@@ -218,13 +204,8 @@ class BatchToastBody extends ConsumerWidget {
   }
 }
 
-// Индикатор «доступно офлайн» (порт `PlaylistOfflineTag`) отдельным виджетом
-// больше не живёт: он всюду шёл в одной строке со счётчиком треков и общим
-// временем, а ужимать эту строку под ширину можно только целиком —
-// см. `ListMeta` в `features/library/ui/list_meta.dart`.
-
-/// Причина отказа офлайна — фразой. Живёт здесь, а не в сторе: только у UI
-/// есть язык интерфейса.
+/// A refusal's reason as a phrase. Here rather than in the store: only the UI
+/// has the language.
 String describeOfflineFailure(AppLocalizations l, OfflineFailure failure) =>
     switch (failure.kind) {
       OfflineFailureKind.noStorage => l.ofNoStorage,
@@ -236,7 +217,7 @@ String describeOfflineFailure(AppLocalizations l, OfflineFailure failure) =>
       OfflineFailureKind.unknown => l.ofSaveFailed(failure.detail ?? ''),
     };
 
-/// То же для сохранения файлом.
+/// The same for saving a file.
 String describeSaveError(AppLocalizations l, DownloadFailure failure) =>
     switch (failure.kind) {
       DownloadFailureKind.notDownloadable => l.fdCantDownload,
@@ -245,7 +226,7 @@ String describeSaveError(AppLocalizations l, DownloadFailure failure) =>
       DownloadFailureKind.unknown => failure.detail ?? l.fdSaveFailed,
     };
 
-/// Итог пакетной загрузки фразой.
+/// A batch's result as a phrase.
 String batchSummary(AppLocalizations l, BatchResult r) {
   if (r.failed == 0) return l.ofDownloadedAll(r.ok);
   if (r.ok == 0) return l.ofDownloadedNone;

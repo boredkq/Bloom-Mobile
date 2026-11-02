@@ -1,18 +1,5 @@
-/// Настройки мини-плеера — карточки над таб-баром.
-///
-/// Своя страница, а не группа в «Плеере»: настроек у карточки шесть, и в конце
-/// длинной страницы полноэкранного плеера их приходилось искать прокруткой
-/// (так решил пользователь, показав макет). Десктопной пары у страницы нет — на
-/// ПК все `mp*` живут одной секцией «Вид».
-///
-/// Настройки самих переходов при смене трека («Смена трека» → «Мини-плеер»)
-/// остались в «Плеере»: там обе поверхности стоят рядом и настраиваются
-/// сравнением одна с другой.
-///
-/// Строки — те же, что на странице «Плеера» ([SettingsValueRow]): название,
-/// под ним выбранное, справа значок. Варианты — списком в шторке, а не
-/// плитками: подписи тут длинные («Кольцо на обложке»), в четверть ширины
-/// телефона они превращаются в многоточие.
+/// Settings of the mini player, the card above the tab bar. Choices are lists
+/// in sheets, not tiles: labels here are long.
 library;
 
 import 'package:flutter/material.dart';
@@ -24,6 +11,7 @@ import '../../../features/player/mini_style_store.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/subpage_header.dart';
+import 'settings_rows.dart';
 import 'settings_sheets.dart';
 
 class MiniPlayerSettingsScreen extends ConsumerWidget {
@@ -38,7 +26,7 @@ class MiniPlayerSettingsScreen extends ConsumerWidget {
       title: l.setMiniPlayer,
       onBack: () => context.go('/settings'),
       children: [
-        SettingsCaption(l.pvGroupLook.toUpperCase()),
+        SettingsCaption(l.pvGroupLook),
         const SizedBox(height: 10),
         SettingsGroupCard(
           rows: [
@@ -63,21 +51,21 @@ class MiniPlayerSettingsScreen extends ConsumerWidget {
             SettingsValueRow(
               title: l.pvMiniProgressRow,
               value: _miniProgressSummary(l, mini),
-              // Набор: значок общий — про сам прогресс.
+              // A set: the icon is about the progress as such.
               glyph: const BloomIcon(Bi.soundwave),
               onTap: () => _openMiniProgress(context),
             ),
           ],
         ),
         const SizedBox(height: 22),
-        SettingsCaption(l.pvGroupMiniControls.toUpperCase()),
+        SettingsCaption(l.pvGroupMiniControls),
         const SizedBox(height: 10),
         SettingsGroupCard(
           rows: [
             SettingsValueRow(
               title: l.pvMiniButtonsRow,
               value: _miniButtonsSummary(l, mini),
-              // Набор: значок общий — про кнопки.
+              // A set: the icon is about the buttons.
               glyph: const BloomIcon(Bi.gamepad),
               onTap: () => _openMiniButtons(context),
             ),
@@ -94,8 +82,7 @@ class MiniPlayerSettingsScreen extends ConsumerWidget {
   }
 }
 
-// ── Внешний вид ─────────────────────────────────────────────────────────────
-// Десктопные `mp*`: фон, форма обложки, скругление углов, индикаторы прогресса.
+// ── Look ─────────────────────────────────────────────────────────────────────
 
 String _miniBgLabel(AppLocalizations l, MiniBg bg) => switch (bg) {
   MiniBg.theme => l.pvMiniBgTheme,
@@ -148,9 +135,7 @@ BloomGlyph _miniProgressIcon(MiniProgressKind kind) => switch (kind) {
   MiniProgressKind.ring => Bi.refreshCircle,
 };
 
-/// Подпись строки «Индикаторы прогресса»: включённое через запятую, в том же
-/// порядке, в каком идут строки шторки. Через запятую, а не через точку, как у
-/// соседей: тут не «одно из», а набор.
+/// What's on, in the sheet's order. Commas: it's a set, not one of several.
 String _miniProgressSummary(AppLocalizations l, MiniStyle mini) {
   final parts = [
     for (final kind in MiniProgressKind.values)
@@ -192,17 +177,12 @@ Future<void> _openMiniRadius(BuildContext context, WidgetRef ref) =>
       apply: ref.read(miniStyleProvider.notifier).setRadius,
     );
 
-/// Шторка индикаторов прогресса — набор, а не выбор: строки переключаются на
-/// месте, и шторка остаётся открытой, их настраивают подряд.
+/// A set: rows toggle in place and the sheet stays open.
 Future<void> _openMiniProgress(BuildContext context) {
   final l = context.l;
   return showBloomSheetChild<void>(
     context: context,
-    header: settingsSheetHeader(
-      context,
-      l.pvMiniProgressRow,
-      l.pvMiniProgressSub,
-    ),
+    header: SheetTitle(l.pvMiniProgressRow, subtitle: l.pvMiniProgressSub),
     child: Consumer(
       builder: (context, ref, _) {
         final mini = ref.watch(miniStyleProvider);
@@ -225,7 +205,7 @@ Future<void> _openMiniProgress(BuildContext context) {
   );
 }
 
-// ── Управление ──────────────────────────────────────────────────────────────
+// ── Controls ─────────────────────────────────────────────────────────────────
 
 String _miniButtonLabel(AppLocalizations l, MiniButton button) =>
     switch (button) {
@@ -242,8 +222,7 @@ BloomGlyph _miniButtonIcon(MiniButton button) => switch (button) {
   MiniButton.fav => Bi.heart,
 };
 
-/// Подпись строки «Кнопки управления» — включённые в том порядке, в каком они
-/// стоят в самой карточке.
+/// What's on, in the card's own order.
 String _miniButtonsSummary(AppLocalizations l, MiniStyle mini) {
   final parts = [
     for (final button in MiniButton.values)
@@ -252,17 +231,12 @@ String _miniButtonsSummary(AppLocalizations l, MiniStyle mini) {
   return parts.isEmpty ? l.pvMiniButtonsNone : parts.join(', ');
 }
 
-/// Шторка кнопок — тоже набор: включать можно любые, включая ни одной (тогда в
-/// карточке остаются обложка с подписью, а играет она с полноэкранного плеера).
+/// A set too: any, or none at all, and then the card is its cover and caption.
 Future<void> _openMiniButtons(BuildContext context) {
   final l = context.l;
   return showBloomSheetChild<void>(
     context: context,
-    header: settingsSheetHeader(
-      context,
-      l.pvMiniButtonsRow,
-      l.pvMiniButtonsSub,
-    ),
+    header: SheetTitle(l.pvMiniButtonsRow, subtitle: l.pvMiniButtonsSub),
     child: Consumer(
       builder: (context, ref, _) {
         final mini = ref.watch(miniStyleProvider);
@@ -290,9 +264,7 @@ String _miniNeighborsLabel(AppLocalizations l, bool on) =>
 
 BloomGlyph _miniNeighborsIcon(bool on) => on ? Bi.transferHorizontal : Bi.stop;
 
-/// Соседние треки — выбор из двух, а не тумблер: строка стоит в одной карточке
-/// с остальным видом миниплеера, и её значение должно читаться так же, как у
-/// соседних строк («Фон», «Скругление»).
+/// A choice of two, not a switch: it reads like its neighbours in this card.
 Future<void> _openMiniNeighbors(BuildContext context, WidgetRef ref) =>
     pickOneSheet<bool>(
       context: context,

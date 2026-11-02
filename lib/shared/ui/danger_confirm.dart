@@ -1,7 +1,6 @@
-/// Подтверждение необратимого — шторкой с красной кнопкой, а не системным
-/// `confirm()`, как на ПК: по строке в списке на телефоне промахнуться легко,
-/// по кнопке в шторке нет. Один вид на все места: сбросы в «Системе», очистка
-/// в «Хранилище», «Отключить» у компьютера.
+/// Confirmation of something irreversible: a sheet with a red button. A row in
+/// a list is easy to hit by accident on a phone, a button in a sheet isn't. One
+/// look everywhere: resets, clearing storage, disconnecting a computer.
 library;
 
 import 'package:flutter/material.dart';
@@ -11,7 +10,7 @@ import 'atoms.dart';
 import 'bloom_icon.dart';
 import 'bloom_sheet.dart';
 
-/// Шторка «значок, что будет, красная кнопка»; `true` — нажали кнопку.
+/// Sheet with an icon, what will happen and a red button; `true` if pressed.
 Future<bool> confirmDanger(
   BuildContext context, {
   required BloomGlyph icon,
@@ -30,7 +29,7 @@ Future<bool> confirmDanger(
     ) ==
     true;
 
-/// Тело шторки: крупный значок на красном круге, название, что произойдёт, и
+/// Sheet body: a large icon on a red circle, a title, what happens and
 /// [DangerSheetButton].
 class DangerConfirmBody extends StatelessWidget {
   const DangerConfirmBody({
@@ -55,13 +54,9 @@ class DangerConfirmBody extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 6, 20, 8),
       child: Column(
         children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: t.danger.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
+          TintCircle(
+            size: 72,
+            color: t.danger.withValues(alpha: 0.12),
             child: BloomIcon(icon, size: 28, color: t.danger),
           ),
           const SizedBox(height: 16),
@@ -80,8 +75,8 @@ class DangerConfirmBody extends StatelessWidget {
   }
 }
 
-/// Красная кнопка во всю ширину шторки: закрывает её с `true`. Погашенная
-/// ([enabled] = false) — когда делать нечего (пустой кеш).
+/// Full-width red button that closes the sheet with `true`. With [enabled]
+/// false there's nothing to do (an empty cache).
 class DangerSheetButton extends StatelessWidget {
   const DangerSheetButton({
     super.key,

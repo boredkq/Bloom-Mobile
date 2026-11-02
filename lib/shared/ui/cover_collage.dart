@@ -1,12 +1,10 @@
-/// Коллаж из обложек первых треков — картинка списка, у которого своей нет.
+/// Collage from the first tracks' covers, the picture of a list with none of
+/// its own. However many distinct covers it finds is the layout: 1 fills the
+/// area, 2 split in half, 3 a big one on the left with two on the right, 4 a
+/// 2×2 grid. With none, [fallback] stays.
 ///
-/// Один в один десктопный `PlaylistCover`: сколько РАЗНЫХ обложек нашлось в
-/// начале списка, такой и коллаж — 1 на всю площадь, 2 половинами, 3 большой
-/// слева плюс две справа, 4 сеткой 2×2. Ни одной — остаётся [fallback]
-/// (заглушка карточки или тинт раздела).
-///
-/// Обложки приходят готовыми ссылками в порядке списка: коллаж ничего не знает
-/// ни про плейлисты, ни про библиотеку, и одинаково годится и плитке, и шапке.
+/// Covers come as ready links in list order, so the collage knows nothing about
+/// playlists or the library.
 library;
 
 import 'package:flutter/material.dart';
@@ -14,10 +12,8 @@ import 'package:flutter/material.dart';
 import '../../app/theme/tokens.dart';
 import '../../core/store/cover_store.dart';
 
-/// Первые до четырёх разных непустых обложек — в порядке списка.
-///
-/// Дубли отсеиваются: у альбома все треки с одной картинкой, и сетка 2×2 из
-/// четырёх её копий выглядела бы поломанной, а не коллажем.
+/// First four distinct non-empty covers, in list order. Duplicates go: every
+/// track of an album has one picture, and four copies look broken.
 List<String> pickCollageCovers(Iterable<String?> covers) {
   final out = <String>[];
   for (final cover in covers) {
@@ -31,30 +27,26 @@ List<String> pickCollageCovers(Iterable<String?> covers) {
 class CoverCollage extends StatelessWidget {
   const CoverCollage({super.key, required this.covers, required this.fallback});
 
-  /// Обложки треков списка в его порядке — с пустыми и повторами, разбор
-  /// внутри.
+  /// Covers of the list's tracks in order, with gaps and repeats; sorted out
+  /// inside.
   final Iterable<String?> covers;
 
-  /// Чем занять место, если обложек нет вовсе.
-  ///
-  /// Только на всю площадь: у заглушки свой значок (тинт раздела, знак bloom),
-  /// и в ячейке коллажа он бы повторился — четыре не загрузившиеся картинки
-  /// давали четыре иконки вместо картинки. Упавшая ячейка гасится ровной
-  /// плашкой, см. [_blank].
+  /// What fills the area if there are no covers at all. Only for the whole
+  /// area: its icon would repeat in every cell, so a failed cell gets [_blank].
   final Widget fallback;
 
   @override
   Widget build(BuildContext context) {
     final picked = pickCollageCovers(covers);
     if (picked.isEmpty) return fallback;
-    // Одна обложка — это и есть вся площадь: не загрузилась, значит показывать
-    // нечего и заглушка раздела уместна.
+    // A single cover is the whole area: if it failed, there's nothing to show
+    // and the placeholder fits.
     if (picked.length == 1) return _cell(picked.first, fallback);
 
     final blank = _blank(context.bloom);
 
-    // Две обложки — колонки во всю высоту; три и четыре — два ряда, и при трёх
-    // первая занимает левую колонку целиком.
+    // Two covers are full-height columns; three and four are two rows, and with
+    // three the first takes the whole left column.
     if (picked.length == 2) {
       return Row(children: [_half(picked[0], blank), _half(picked[1], blank)]);
     }
@@ -86,13 +78,12 @@ class CoverCollage extends StatelessWidget {
     );
   }
 
-  /// Ячейка без картинки — глухая плашка подложки, без значка: рядом с
-  /// соседними такими же коллаж читается как одно приглушённое пятно, а не как
-  /// сетка иконок.
+  /// Cell with no picture: a plain plate with no icon, so failed cells read as
+  /// one muted patch, not a grid of icons.
   Widget _blank(BloomTokens t) => ColoredBox(color: t.coverEmpty);
 
-  /// Доля коллажа: `Expanded` в обе стороны — ряды и колонки делят площадь
-  /// поровну, размер задаёт родитель.
+  /// A collage part: `Expanded` both ways splits the area evenly; the parent
+  /// sets the size.
   Widget _half(String cover, Widget empty) =>
       Expanded(child: _cell(cover, empty));
 

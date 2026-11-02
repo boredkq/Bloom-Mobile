@@ -1,9 +1,8 @@
-/// Связь с ПК в домашней сети — телефонная сторона `Devices` ПК
-/// (`src/devices/Devices.cpp`): сопряжение по QR или коду, TLS с закреплённым
-/// сертификатом ПК, поиск ПК в сети, когда его адрес сменился.
+/// Link to a computer on the home network: pairing by QR or code, TLS with its
+/// pinned certificate, finding it when its address changed.
 ///
-/// Каждый круг ведёт телефон; ПК только подсказывает потоком событий
-/// ([PcClient.events]), что у него появилось новое.
+/// The phone drives every round; the computer only hints through its event
+/// stream ([PcClient.events]) that it has something new.
 library;
 
 import 'dart:async';
@@ -13,17 +12,17 @@ import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 
-/// Порт поиска ПК — первый порт домашней сети ПК (`kPort` в Devices.cpp).
+/// Discovery port, the first of the computer's home network ports.
 const int kFindPort = 49410;
 
 String _b64url(List<int> bytes) => base64Url.encode(bytes).replaceAll('=', '');
 
-/// Отпечаток сертификата — как `f` в QR ПК: SHA-256 DER, base64url без `=`.
+/// Certificate print, as `f` in the QR: SHA-256 of DER, base64url with no `=`.
 String certPrint(X509Certificate cert) =>
     _b64url(sha256.convert(cert.der).bytes);
 
-/// Что показывает QR на экране ПК:
-/// `{"bloom":"pair","v":1,"a":[адреса],"p":порт,"s":секрет,"f":отпечаток}`.
+/// What the QR on the computer's screen shows:
+/// `{"bloom":"pair","v":1,"a":[addresses],"p":port,"s":secret,"f":print}`.
 class PairOffer {
   const PairOffer({
     required this.addresses,
@@ -37,7 +36,7 @@ class PairOffer {
   final String secret;
   final String print;
 
-  /// `null` — это не QR Bloom.
+  /// `null` if it isn't a Bloom QR.
   static PairOffer? parse(String text) {
     Object? doc;
     try {
@@ -57,8 +56,8 @@ class PairOffer {
   }
 }
 
-/// Сопряжённый ПК: кто он, где был в последний раз, чем доказывает, что это
-/// он ([print]), и ключ этого телефона ([token]). Лежит в kv `sync.pc`.
+/// A paired computer: who it is, where it last was, what proves it ([print])
+/// and this phone's key ([token]). Stored in kv `sync.pc`.
 class PcLink {
   const PcLink({
     required this.device,
@@ -74,7 +73,7 @@ class PcLink {
   final String token;
   final String print;
 
-  /// Где ПК отвечал; первым — где ответил в последний раз.
+  /// Where it answered; the last answering one first.
   final List<String> addresses;
   final int port;
 
@@ -125,7 +124,7 @@ class PcLink {
   }
 }
 
-/// ПК, ответивший на поиск.
+/// A computer that answered discovery.
 class FoundPc {
   const FoundPc({
     required this.address,
@@ -140,27 +139,29 @@ class FoundPc {
   final String name;
 }
 
-/// Ответ ПК, который не 2xx.
+/// A non-2xx answer.
 class PcHttpError implements Exception {
   const PcHttpError(this.status, this.code);
 
   final int status;
 
-  /// `error` из ответа ПК: `wrong`, `not_pairing`, `too_many`, `unauthorized`…
+  /// `error` from the answer: `wrong`, `not_pairing`, `too_many`,
+  /// `unauthorized`…
   final String code;
 
   @override
   String toString() => 'PcHttpError($status, $code)';
 }
 
-/// Сертификат ПК не тот, что закреплён: другой ПК или его данные сброшены.
+/// The certificate isn't the pinned one: another computer, or its data was
+/// reset.
 class PcPrintMismatch implements Exception {
   const PcPrintMismatch();
 }
 
-/// Один ПК по одному адресу. [print] — закреплённый отпечаток; `null` —
-/// первое знакомство по коду: берём сертификат, какой есть, и запоминаем его
-/// в [seen].
+/// One computer at one address. [print] is the pinned print; `null` is a first
+/// meeting by code: I take whatever certificate comes and remember it in
+/// [seen].
 class PcClient {
   PcClient(this.address, this.port, {this.print, this.token});
 
@@ -169,7 +170,7 @@ class PcClient {
   final String? print;
   final String? token;
 
-  /// Отпечаток сертификата, увиденного в последнем запросе.
+  /// Print of the certificate seen in the last request.
   String? seen;
 
   Future<Map<String, Object?>> json(
@@ -190,7 +191,7 @@ class PcClient {
 
   HttpClient _client() => HttpClient()
     ..connectionTimeout = const Duration(seconds: 4)
-    // Сертификат ПК самоподписанный: цепочку не проверяем, сверяем отпечаток.
+    // The certificate is self-signed: I don't check the chain, only the print.
     ..badCertificateCallback = (cert, _, _) =>
         print == null || certPrint(cert) == print;
 
@@ -207,7 +208,7 @@ class PcClient {
           Uri(scheme: 'https', host: address, port: port, path: path),
         )
         .timeout(timeout);
-    // Сервер ПК знает только Content-Length, не chunked.
+    // The server knows only Content-Length, not chunked.
     req.contentLength = body?.length ?? 0;
     if (token != null) req.headers.set('Authorization', 'Bearer $token');
     if (body != null) {
@@ -248,16 +249,16 @@ class PcClient {
       }
       return data;
     } on HandshakeException {
-      // Отпечаток не сошёлся — badCertificateCallback сказал «нет».
+      // The print didn't match: badCertificateCallback said no.
       throw const PcPrintMismatch();
     } finally {
       client.close(force: true);
     }
   }
 
-  /// Поток событий ПК (`GET /v1/events`, SSE): держится, пока его слушают.
-  /// Кончается, когда ПК закрыл соединение, или ошибкой, если ПК молчит дольше
-  /// [silence] (сам он шлёт пинг раз в 15 с) — значит, связь пропала молча.
+  /// The computer's event stream (`GET /v1/events`, SSE), held while listened
+  /// to. Ends when it closes the connection, or with an error if silent longer
+  /// than [silence] (it pings every 15 s), meaning the link died quietly.
   Stream<PcEvent> events({
     Duration silence = const Duration(seconds: 40),
   }) async* {
@@ -304,7 +305,7 @@ class PcClient {
         } else if (line.startsWith('data:')) {
           data.write(line.substring(5).trimLeft());
         }
-        // `:` — пинг, остальное SSE нам не нужно.
+        // `:` is a ping; nothing else in SSE is needed.
       }
     } finally {
       client.close(force: true);
@@ -312,13 +313,14 @@ class PcClient {
   }
 }
 
-/// Событие из потока ПК: `player`, `position`, `queue`, `sync`…
+/// An event from the stream: `player`, `position`, `queue`, `sync`…
 typedef PcEvent = ({String name, Map<String, Object?> data});
 
-/// Сопряжение: [secret] из QR (сертификат сверен с его `f` до отправки) или
-/// [code] с экрана ПК (сертификат, увиденный сейчас, закрепляется). Адрес — тот
-/// из [addresses], что отозвался первым. Ошибка ПК — [PcHttpError] (`wrong`,
-/// `not_pairing`, `too_many`), никто не отозвался — `null`.
+/// Pairing: [secret] from the QR (certificate checked against its `f` before
+/// sending) or [code] from the computer's screen (the certificate seen now gets
+/// pinned). The address is the first of [addresses] to respond. Its error is a
+/// [PcHttpError] (`wrong`, `not_pairing`, `too_many`); nobody responded is
+/// `null`.
 Future<PcLink?> pairPc({
   required List<String> addresses,
   required int port,
@@ -328,7 +330,7 @@ Future<PcLink?> pairPc({
   required String name,
   required String device,
 }) async {
-  // Кто отвечает: без ключа ПК скажет 401 — значит, он там.
+  // Who answers: with no key it says 401, which means it's there.
   Future<String?> probe(String a) async {
     try {
       await PcClient(
@@ -371,9 +373,9 @@ Future<PcLink?> pairPc({
   );
 }
 
-/// Поиск ПК в сети: широковещательно и по [to]. С [print] отвечает только ПК с
-/// этим сертификатом; без него — только ПК с открытым окном «Подключить
-/// телефон» (сопряжение по коду).
+/// Finds computers on the network: broadcast and to [to]. With [print] only the
+/// one with that certificate answers; without it, only one with the Connect
+/// phone window open (pairing by code).
 Future<List<FoundPc>> findPcs({
   String? print,
   Iterable<String> to = const [],
@@ -409,14 +411,14 @@ Future<List<FoundPc>> findPcs({
       try {
         socket.send(msg, InternetAddress(target), kFindPort);
       } catch (_) {
-        // Адрес из другой сети или без маршрута — пробуем остальные.
+        // An address from another network or with no route: I try the rest.
       }
     }
     unawaited(Future<void>.delayed(wait).then((_) => done.complete()));
     await done.future;
     await sub.cancel();
   } catch (_) {
-    // Сети нет — никого и не нашли.
+    // No network, so nobody found.
   } finally {
     socket?.close();
   }

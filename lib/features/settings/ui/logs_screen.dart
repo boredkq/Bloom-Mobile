@@ -1,16 +1,6 @@
-/// Настройки → Система → «Журнал работы» — порт десктопного
-/// `LogsViewerModal.tsx`.
-///
-/// На ПК это модалка с моноширинным «хвостом» лог-файла и кнопками
-/// «Копировать»/«Закрыть»; здесь — своя страница (модалка во весь экран
-/// телефона и есть страница), а «Сохранить» и «Очистить» с десктопной строки
-/// «Журнал работы» переехали сюда же: держать действия над журналом в двух
-/// местах на телефоне незачем.
-///
-/// Порядок записей ОБРАТНЫЙ файлу: свежее сверху. В файле лог читается сверху
-/// вниз, но на телефоне открывший страницу почти всегда ищет то, что случилось
-/// только что, и мотать до конца ради этого не должен. Выгрузка и копирование
-/// отдают журнал как есть — по времени.
+/// Settings → System → Log: its own page with copy, save and clear. Newest on
+/// top: whoever opens it looks for what just happened; copies and files keep
+/// the time order.
 library;
 
 import 'package:flutter/material.dart';
@@ -27,6 +17,7 @@ import '../../../shared/ui/bloom_toast.dart';
 import '../../../shared/ui/glass.dart';
 import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/subpage_header.dart';
+import '../../../shared/ui/atoms.dart';
 
 class LogsScreen extends ConsumerStatefulWidget {
   const LogsScreen({super.key});
@@ -36,8 +27,7 @@ class LogsScreen extends ConsumerStatefulWidget {
 }
 
 class _LogsScreenState extends ConsumerState<LogsScreen> {
-  /// Снимок журнала на момент открытия — иначе список ехал бы под пальцем от
-  /// каждой новой записи (а пишет в него и сама эта страница).
+  /// A snapshot, or the list would move under the finger with each new entry.
   late List<LogEntry> _entries = BloomLog.instance.entries.reversed.toList();
 
   void _reload() =>
@@ -57,14 +47,12 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
     final name = 'bloom-${now.year}-${two(now.month)}-${two(now.day)}.log';
     final ok = await saveTextFile(
       name,
-      // Первым символом — метка кодировки (BOM). Файл уезжает с телефона на
-      // чужой компьютер, а Windows без неё открывает UTF-8 как ANSI, и весь
-      // русский текст приходит кракозябрами («Ð·Ð°Ð¿ÑÑÐº» вместо «запуск»).
-      // Всё, что читает UTF-8 честно, метку просто не показывает.
+      // A BOM first: the file travels to other computers, and Windows opens
+      // UTF-8 without it as ANSI.
       '\u{FEFF}${BloomLog.instance.text()}',
       mime: 'text/plain',
     );
-    if (!ok) return; // диалог закрыли — молчим, как везде с файлами
+    if (!ok) return; // the dialog was closed: silence
     messenger.toast(l.logsSaved, kind: ToastKind.success);
   }
 
@@ -79,7 +67,6 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
   @override
   Widget build(BuildContext context) {
     final l = context.l;
-    final t = context.bloom;
     final empty = _entries.isEmpty;
 
     return SubPage(
@@ -116,17 +103,7 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
         ),
         const SizedBox(height: 14),
         if (empty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 40),
-            child: Center(
-              child: Text(
-                l.logsEmpty,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: t.muted),
-              ),
-            ),
-          )
+          Center(child: CenterNote(l.logsEmpty))
         else
           GlassBox(
             child: Padding(
@@ -146,7 +123,7 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
   }
 }
 
-/// Одна запись: моноширинная строка, цвет — по уровню.
+/// A monospaced line, coloured by level.
 class _LogLine extends StatelessWidget {
   const _LogLine({required this.entry});
 
@@ -156,7 +133,6 @@ class _LogLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.bloom;
     final color = switch (entry.level) {
-      // Тот же красный, что у ошибок в уведомлениях (`notifications.css` на ПК).
       LogLevel.error => const Color(0xFFFF6B6B),
       LogLevel.warn => t.text,
       LogLevel.info => t.text2,
@@ -166,8 +142,7 @@ class _LogLine extends StatelessWidget {
       child: Text(
         entry.format(),
         style: TextStyle(
-          // Своё семейство, а не Inter: журнал читают столбиком по времени, и
-          // пропорциональный шрифт эти столбцы разваливает.
+          // Read as columns by time: a proportional font breaks them.
           fontFamily: 'monospace',
           fontSize: 11,
           height: 1.45,
@@ -178,7 +153,7 @@ class _LogLine extends StatelessWidget {
   }
 }
 
-/// Кнопка над журналом: значок и подпись, во всю ширину своей трети.
+/// An icon and a label, a third of the width.
 class _LogButton extends StatelessWidget {
   const _LogButton({
     required this.icon,

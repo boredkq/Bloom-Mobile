@@ -1,35 +1,30 @@
-/// Контракт музыкального провайдера — порт
-/// `src/features/providers/model/types.ts` из десктопного Bloom.
+/// The contract of a music provider, the only thing a platform implements. It
+/// maps its results to shared [Track], [Artist] and [Playlist]; the whole UX
+/// knows nothing of the platform.
 ///
-/// Единственное, что реализует площадка. Провайдер маппит свою выдачу в общие
-/// [Track]/[Artist]/[Playlist]; весь UX (поиск, страницы, плеер) общий и о
-/// площадке не знает.
-///
-/// Необязательных методов в Dart нет, поэтому «не поддерживаю» выражается
-/// возвратом `null` из базовой реализации — вызывающий проверяет результат, а
-/// не наличие метода (как `p.getArtist?` на десктопе).
+/// Dart has no optional methods, so not supported means `null` from the base
+/// implementation: callers check the result.
 library;
 
 import '../entities/entities.dart';
 
 enum SearchSort {
-  /// По релевантности (по умолчанию).
+  /// By relevance, the default.
   relevance,
 
-  /// Сначала новые — у SoundCloud это `&sort=created_at`.
+  /// Newest first; on SoundCloud, `&sort=created_at`.
   newest,
 }
 
-/// Нормализованная поисковая выдача. Все провайдеры приводят ответы к ней,
-/// поэтому UI поиска один на всех. Альбомы — тот же [Playlist], их рисует та же
-/// карточка.
+/// Normalized search results, so search UI is one for all. Albums are the same
+/// [Playlist] with the same card.
 class SearchResults {
   final List<Artist> artists;
   final List<Playlist> playlists;
   final List<Playlist> albums;
   final List<Track> tracks;
 
-  /// Есть ли ещё треки (для «загрузить ещё»).
+  /// Whether more tracks exist.
   final bool tracksHasMore;
 
   const SearchResults({
@@ -46,7 +41,7 @@ class SearchResults {
       artists.isEmpty && playlists.isEmpty && albums.isEmpty && tracks.isEmpty;
 }
 
-/// Результат резолва вставленной ссылки.
+/// Result of resolving a pasted link.
 sealed class ResolvedUrl {
   const ResolvedUrl();
 }
@@ -66,9 +61,9 @@ class ResolvedSet extends ResolvedUrl {
   const ResolvedSet(this.playlist);
 }
 
-/// Новинки площадки. У Яндекса/YTM это свежие альбомы, у SoundCloud — треки
-/// «New & Hot»: глобальной ленты альбомов у него нет. Поэтому union — блок сам
-/// решает, чем рендерить.
+/// A platform's new releases. Fresh albums on Yandex and YTM, New & Hot tracks
+/// on SoundCloud, which has no global album feed. So a union: the block decides
+/// how to draw it.
 sealed class NewReleases {
   const NewReleases();
 }
@@ -83,15 +78,15 @@ class NewTracks extends NewReleases {
   const NewTracks(this.tracks);
 }
 
-/// Контент страницы артиста.
+/// Artist page content.
 class ArtistPageData {
-  /// Артист, обогащённый description/website/bannerUrl.
+  /// The artist enriched with description, website and bannerUrl.
   final Artist artist;
 
-  /// Секция «Популярные».
+  /// Popular section.
   final List<Track> topTracks;
 
-  /// Все треки артиста (секция «Треки» с «загрузить ещё»).
+  /// All of the artist's tracks.
   final List<Track> tracks;
   final List<Playlist> albums;
 
@@ -102,14 +97,14 @@ class ArtistPageData {
   /// [tracks] are these likes.
   final Playlist? likes;
 
-  /// Похожие исполнители; пусто у площадок, которые их не отдают.
+  /// Similar artists; empty on platforms that don't give them.
   final List<Artist> similarArtists;
 
-  /// Непрозрачный курсор следующей страницы треков (null — больше нет).
+  /// Opaque cursor of the next track page; null if no more.
   final String? tracksCursor;
 
-  /// Сколько всего треков у артиста по данным площадки — счётчик в шапке, пока
-  /// догружено не всё. `null` — площадка не знает, считаем по загруженным.
+  /// The artist's total tracks per the platform, for the header count until all
+  /// are loaded. `null`: the platform doesn't know, so I count what's loaded.
   final int? tracksTotal;
 
   const ArtistPageData({
@@ -125,32 +120,32 @@ class ArtistPageData {
   });
 }
 
-/// Порция треков + курсор/флаг продолжения.
+/// A batch of tracks with a cursor or more flag.
 class TrackPage {
   final List<Track> tracks;
   final bool hasMore;
 
-  /// Непрозрачный курсор, если площадка листает им, а не смещением.
+  /// Opaque cursor, if the platform pages by it rather than an offset.
   final String? cursor;
 
   const TrackPage({this.tracks = const [], this.hasMore = false, this.cursor});
 }
 
-/// Содержимое альбома или плейлиста.
+/// Album or playlist content.
 class SetContent {
   final Playlist playlist;
   final List<Track> tracks;
   const SetContent({required this.playlist, this.tracks = const []});
 }
 
-/// Играбельный поток трека.
+/// A playable track stream.
 class PlayableStream {
   final String url;
 
-  /// HLS требует от плеера другого обращения, чем progressive-файл.
+  /// HLS needs different handling by the player than a progressive file.
   final bool isHls;
 
-  /// Заголовки, без которых CDN не отдаст байты (у SoundCloud не нужны).
+  /// Headers the CDN needs to serve the bytes (SoundCloud needs none).
   final Map<String, String> headers;
 
   const PlayableStream({
@@ -160,8 +155,8 @@ class PlayableStream {
   });
 }
 
-/// Порция радио площадки — `StationPage` ПК. [cursor] ведёт к следующей, пусто —
-/// радио кончилось (следующий раз начнётся сначала).
+/// A batch of a platform's radio. [cursor] leads to the next; empty means the
+/// radio ended and next time starts over.
 class StationPage {
   final List<Track> tracks;
   final String cursor;
@@ -174,42 +169,40 @@ abstract class MusicProvider {
 
   MusicSource get source;
 
-  /// Технический id (`source.id`); отдельный геттер — чтобы реестр не зависел
-  /// от enum, когда появятся площадки вне него.
+  /// Source id; a separate getter so the registry doesn't depend on the enum.
   String get id => source.id;
 
   String get label => source.label;
 
-  /// Включён ли провайдер прямо сейчас (Яндекс — только после логина).
+  /// Whether the provider is on right now (Yandex only after login).
   bool get isEnabled => true;
 
-  /// Поиск. Возвращает выдачу целиком; отсутствующие разделы просто пустые.
+  /// Search. Returns all results; missing sections are just empty.
   Future<SearchResults> search(
     String query, {
     SearchSort sort = SearchSort.relevance,
   });
 
-  /// Артисты по имени — точечный запрос без остальной выдачи. Нужен там, где
-  /// от площадки хочется одно поле: аватар исполнителя в топе статистики.
+  /// Artists by name, with no other results. For when only one field is wanted,
+  /// like an artist's avatar in the stats top.
   ///
-  /// По умолчанию берётся из общего поиска; площадка с отдельным эндпоинтом
-  /// (у SoundCloud это `/search/users`) переопределяет и не тянет лишнего.
+  /// By default comes from general search; a platform with its own endpoint
+  /// (SoundCloud's `/search/users`) overrides it.
   Future<List<Artist>> searchArtists(String query, {int limit = 3}) async =>
       (await search(query)).artists.take(limit).toList();
 
-  /// Догрузить ещё треки. `offset` — сколько уже показано. `null` —
-  /// пагинации нет.
+  /// Loads more tracks. `offset` is how many are shown; `null` means no paging.
   Future<TrackPage?> loadMoreTracks(
     String query,
     int offset, {
     SearchSort sort = SearchSort.relevance,
   }) async => null;
 
-  /// Резолв вставленной ссылки этого источника.
+  /// Resolves a pasted link of this source.
   Future<ResolvedUrl?> resolveUrl(String url) async => null;
 
-  /// Ре-резолв одного трека по сквозному id — для проигрывания из «недавних»
-  /// после рестарта, когда трека уже нет в памяти.
+  /// Resolves one track by global id, to play a recent item after a restart,
+  /// when it's no longer in memory.
   Future<Track?> resolveTrackById(String id) async => null;
 
   Future<ArtistPageData?> getArtist(String id) async => null;
@@ -218,34 +211,34 @@ abstract class MusicProvider {
 
   Future<SetContent?> getPlaylist(String id) async => null;
 
-  /// Догрузка треков артиста по курсору из [ArtistPageData.tracksCursor].
+  /// Loads an artist's tracks by the cursor from [ArtistPageData.tracksCursor].
   Future<TrackPage?> getArtistTracksPage(String cursor) async => null;
 
-  /// Витрина на главной: чарт площадки. `null` — не участвует.
+  /// Home shelf: the platform's chart. `null` means it doesn't take part.
   Future<List<Track>?> getCharts() async => null;
 
   Future<NewReleases?> getNewReleases() async => null;
 
-  /// Похожие на трек — витрины «Для вас» и «Похожие на» на главной. Сид —
-  /// сквозной id трека: он приходит из журнала прослушиваний, и резолвить его
-  /// в [Track] ради одного запроса не из чего.
+  /// Similar to a track, for home shelves. The seed is a global id: it comes
+  /// from the play log, with no [Track] to hand.
   ///
-  /// `null` — площадка похожих не отдаёт. Чужой или не-трековый id — пустой
-  /// список, без похода в сеть.
+  /// `null`: the platform gives no similar tracks. A foreign or non-track id
+  /// gives an empty list with no network call.
   Future<List<Track>?> getSimilarTracks(String seedId) async => null;
 
-  /// Радио, с которого волна стартует от трека этой площадки (`track:<id>`), —
-  /// как `Provider::trackStation` ПК. Пусто — радио у площадки нет.
+  /// Radio the wave starts from for this platform's track (`track:<id>`).
+  /// Empty: no radio here.
   String trackStation(Track track) => '';
 
-  /// Порция радио [station] (`track:<id>`, у Яндекса и `user:onyourwave`,
-  /// `artist:<id>`) с [cursor]; пустой курсор — с начала. Сбой — пустая порция:
-  /// волна опрашивает сиды пачкой, и один упавший не должен ронять остальные.
+  /// A batch of radio [station] (`track:<id>`, on Yandex also
+  /// `user:onyourwave`, `artist:<id>`) from [cursor]; an empty cursor starts
+  /// over. A failure is an empty batch: the wave polls seeds in a batch, and
+  /// one failing mustn't bring down the rest.
   Future<StationPage> station(String station, String cursor) async =>
       const StationPage();
 
-  /// Отзыв радио, которое учится само (Яндекс): `radioStarted`,
-  /// `trackStarted`, `trackFinished`, `skip`; [played] — секунды.
+  /// Feedback to a self-learning radio (Yandex): `radioStarted`,
+  /// `trackStarted`, `trackFinished`, `skip`; [played] is in seconds.
   void stationFeedback(
     String station,
     String event, {
@@ -253,16 +246,15 @@ abstract class MusicProvider {
     double played = 0,
   }) {}
 
-  /// Играбельный URL трека этой площадки.
+  /// Playable URL of this platform's track.
   Future<PlayableStream?> resolveStream(Track track) async => null;
 
-  /// Умеет ли площадка отдавать трек ФАЙЛОМ — порт `isDownloadable` с
-  /// десктопа. Отдельно от [resolveStream]: играть можно и HLS, а сохранить
-  /// на диск — нет.
+  /// Whether the platform can serve the track as a FILE. Separate from
+  /// [resolveStream]: HLS plays but can't be saved.
   bool canDownload(Track track) => false;
 
-  /// Ссылка на файл трека для офлайн-копии. Отличается от [resolveStream] тем,
-  /// что обязана вернуть цельный файл (progressive), а не плейлист кусков;
-  /// бросает, если у трека такого варианта нет.
+  /// File link for an offline copy. Unlike [resolveStream] it must be a whole
+  /// file (progressive), not a playlist of chunks; throws if the track has
+  /// none.
   Future<PlayableStream?> resolveDownload(Track track) async => null;
 }

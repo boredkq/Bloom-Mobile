@@ -1,9 +1,5 @@
-/// Доступ к переводам.
-///
-/// Сами строки лежат в `lib/l10n/*.arb` и собираются в `AppLocalizations`
-/// кодогенератором (`flutter gen-l10n`, настройки в `l10n.yaml`). Здесь только
-/// две удобные точки входа: короткая `context.l` для виджетов и [globalL10n]
-/// для того, у чего своего контекста нет.
+/// Access to translations: a short `context.l` for widgets and [globalL10n] for
+/// things with no context.
 library;
 
 import 'package:flutter/material.dart';
@@ -14,23 +10,19 @@ import '../../shared/ui/bloom_toast.dart';
 export '../../l10n/app_localizations.dart' show AppLocalizations;
 
 extension BloomL10n on BuildContext {
-  /// Переводы текущей локали. Короткая запись вместо
-  /// `AppLocalizations.of(context)` — как `context.bloom` для токенов темы.
+  /// Translations of the current locale, short for
+  /// `AppLocalizations.of(context)`.
   AppLocalizations get l => AppLocalizations.of(this);
 }
 
-/// Переводы для кода без `BuildContext` — фоновых тостов и утилит.
+/// Translations for code with no `BuildContext`: background toasts and
+/// utilities. The context comes from the global messenger, which lives as long
+/// as `MaterialApp`, so a string is found even for a toast from a timer.
 ///
-/// Контекст берётся у глобального мессенджера (`bloomMessengerKey`): он живёт
-/// столько же, сколько `MaterialApp`, поэтому строка находится даже когда
-/// тост прилетает из таймера авто-обновления, а не с экрана.
-///
-/// `null` возможен ровно до первого кадра — тогда показывать всё равно некому.
-///
-/// `currentContext` у `GlobalKey` не просто пуст, а БРОСАЕТ, если биндинг
-/// виджетов ещё не поднят — так бывает в юнит-тестах стора, где дерева нет
-/// вовсе. Для звонящего это тот же случай «языка взять негде», поэтому ловим
-/// и отдаём null.
+/// `null` is possible only before the first frame, when nobody's there to show
+/// it. `GlobalKey.currentContext` THROWS if the widget binding isn't up, as in
+/// store unit tests with no tree; that's the same no-language case, so I catch
+/// it and return null.
 AppLocalizations? get globalL10n {
   try {
     final context = bloomMessengerKey.currentContext;

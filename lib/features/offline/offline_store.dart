@@ -1,20 +1,14 @@
-/// Офлайн-копии треков — порт десктопной фичи `src/features/offline`.
+/// Offline track copies. It resolves a direct FILE link from the platform
+/// ([MusicProvider.resolveDownload]), downloads it to `offline/` in the app's
+/// data and remembers track id to file. Then the player plays the copy from
+/// disk (see `PlaybackController._load`).
 ///
-/// Что делает: резолвит у площадки прямую ссылку на ФАЙЛ трека
-/// ([MusicProvider.resolveDownload]), качает его в каталог `offline/` внутри
-/// данных приложения и помнит связь `id трека → файл`. Дальше плеер играет
-/// копию с диска, а не из сети (см. `PlaybackController._load`) — ровно как
-/// офлайн-резолвер на ПК, который стоит первым в очереди резолверов.
+/// The index keeps a FILE NAME, not an absolute path: the iOS app container
+/// moves between launches. No tags go in the file: only Bloom reads it, and the
+/// metadata is in the library.
 ///
-/// Два отличия от десктопа, сделанные осознанно:
-/// - в индексе хранится ИМЯ ФАЙЛА, а не абсолютный путь: контейнер приложения
-///   на iOS переезжает между запусками, и записанный сегодня путь завтра
-///   указывал бы в пустоту (в [initCoverStore] это уже решено так же);
-/// - теги в файл не вшиваются. На ПК их пишет Rust (`embed_tags_async`); здесь
-///   файл читает только сам Bloom, а метаданные и так лежат в библиотеке.
-///
-/// Скачанный трек кладётся в библиотеку: иначе `_prune` выбросит его из
-/// хранилища треков, и от офлайн-копии остался бы файл без строки.
+/// A downloaded track goes in the library, or `_prune` drops it from the track
+/// store, leaving a file with no row.
 library;
 
 import 'dart:async';
@@ -31,8 +25,8 @@ import '../../core/store/library_store.dart';
 
 Directory? _dir;
 
-/// Готовит каталог офлайн-копий. Зовётся из `main()` до первого кадра — дальше
-/// путь нужен синхронно, прямо в `build`.
+/// Prepares the offline directory. Called from `main()` before the first frame:
+/// afterwards the path is needed synchronously, in `build`.
 Future<void> initOfflineStore() async {
   final root = await appPrivateDir();
   final dir = Directory('${root.path}/offline');
@@ -40,16 +34,14 @@ Future<void> initOfflineStore() async {
     if (!dir.existsSync()) await dir.create(recursive: true);
     _dir = dir;
   } catch (_) {
-    // Нет прав на запись — офлайн просто недоступен, приложение работает.
+    // No write rights: offline is just unavailable, and the app works.
   }
 }
 
-/// Ход пакетной загрузки (плейлист целиком) — то, что на ПК показывает
-/// `downloadBanner`.
+/// Progress of a batch download (a whole playlist).
 class OfflineBatch {
-  /// Чей это пакет — id списка, с которого его запустили (`listId` экрана).
-  /// Индикатор один на всё приложение, поэтому без него строка «Сохраняю…»
-  /// висела бы на КАЖДОМ плейлисте, а не на том, который качается.
+  /// Whose batch this is: the id of the list it started from. There's one
+  /// indicator for the app, or the saving line would hang on EVERY playlist.
   final String sourceId;
   final int done;
   final int total;
@@ -71,13 +63,13 @@ class OfflineBatch {
 }
 
 class OfflineState {
-  /// id трека → имя файла в каталоге `offline/`.
+  /// Track id to file name in `offline/`.
   final Map<String, String> files;
 
-  /// Что качается прямо сейчас: id трека → доля 0..1 (`-1` — размер неизвестен).
+  /// What's downloading now: track id to share 0..1 (`-1` if size unknown).
   final Map<String, double> pending;
 
-  /// Пакетная загрузка, если идёт.
+  /// A batch download, if running.
   final OfflineBatch? batch;
 
   const OfflineState({
@@ -89,7 +81,7 @@ class OfflineState {
   bool has(String trackId) => files.containsKey(trackId);
   bool isPending(String trackId) => pending.containsKey(trackId);
 
-  /// Доля скачанного (`null` — трек не качается сейчас).
+  /// Share downloaded (`null` if the track isn't downloading now).
   double? progressOf(String trackId) {
     final p = pending[trackId];
     return (p == null || p < 0) ? null : p;
@@ -111,9 +103,8 @@ final offlineProvider = NotifierProvider<OfflineController, OfflineState>(
   OfflineController.new,
 );
 
-/// Сколько треков подряд качаем в пакете, прежде чем перевести дух: у SC при
-/// потоке резолвов api-v2 начинает отдавать 401/403 (то же лечение, что в
-/// `downloadPlaylistOffline` на десктопе).
+/// Pause between tracks in a batch: under a stream of resolves SoundCloud's
+/// api-v2 starts giving 401 and 403.
 const Duration _betweenTracks = Duration(milliseconds: 250);
 
 class OfflineController extends Notifier<OfflineState> {
@@ -123,8 +114,8 @@ class OfflineController extends Notifier<OfflineState> {
   OfflineState build() {
     final files = <String, String>{};
     _store.readMap('offline').forEach((id, name) {
-      // Записи, чей файл не пережил переустановку или очистку, не показываем —
-      // но и сам индекс не переписываем: см. `offline_scan_all` на ПК.
+      // Entries whose file didn't survive a reinstall or clearing aren't shown,
+      // but the index itself isn't rewritten.
       if (name is String && _fileOf(name)?.existsSync() == true) {
         files[id] = name;
       }
@@ -137,7 +128,7 @@ class OfflineController extends Notifier<OfflineState> {
     return dir == null ? null : File('${dir.path}/$name');
   }
 
-  /// Путь к офлайн-копии; `null` — трека офлайн нет.
+  /// Path to an offline copy; `null` if there's none.
   String? pathOf(String trackId) {
     final name = state.files[trackId];
     return name == null ? null : _fileOf(name)?.path;
@@ -145,7 +136,7 @@ class OfflineController extends Notifier<OfflineState> {
 
   bool has(String trackId) => state.has(trackId);
 
-  /// Можно ли вообще сохранить этот трек — спрашиваем у его площадки.
+  /// Whether this track can be saved at all, asked of its platform.
   bool canDownload(Track track) =>
       ref.read(registryProvider).forEntity(track.id)?.canDownload(track) ??
       false;
@@ -161,14 +152,10 @@ class OfflineController extends Notifier<OfflineState> {
     state = state.copyWith(pending: next);
   }
 
-  /// Скачать трек. Возвращает `null` при успехе либо ПРИЧИНУ отказа.
-  ///
-  /// Именно причину, а не готовую фразу: стор не знает языка интерфейса и
-  /// вообще не должен решать, какими словами говорить с пользователем —
-  /// текст собирается на UI (`describeOfflineFailure`).
-  ///
-  /// Идемпотентна, как `offline_download` на ПК: трек уже в кеше или уже
-  /// качается — второй раз не качаем.
+  /// Downloads a track. Returns `null` on success or a REASON for refusal, not
+  /// a phrase: the store doesn't know the language, and the UI builds the text
+  /// (`describeOfflineFailure`). Idempotent: a track cached or downloading
+  /// isn't fetched twice.
   Future<OfflineFailure?> download(Track track) async {
     if (state.has(track.id) || state.isPending(track.id)) return null;
     if (_dir == null) return const OfflineFailure(OfflineFailureKind.noStorage);
@@ -194,8 +181,8 @@ class OfflineController extends Notifier<OfflineState> {
         files: {...state.files, track.id: file.uri.pathSegments.last},
       );
       _saveIndex();
-      // Скачанное обязано быть в библиотеке — иначе трек вычистит `_prune`, и
-      // файл останется сиротой, на который никто не ссылается.
+      // What's downloaded must be in the library, or `_prune` cleans the track
+      // and the file is an orphan.
       ref.read(libraryProvider.notifier).addToLibrary([track]);
       return null;
     } catch (e) {
@@ -205,8 +192,8 @@ class OfflineController extends Notifier<OfflineState> {
     }
   }
 
-  /// Убрать офлайн-копию: файл + запись индекса. Сам трек в библиотеке
-  /// остаётся — как «Убрать из офлайна» на десктопе.
+  /// Removes an offline copy: file and index entry. The track stays in the
+  /// library.
   Future<void> remove(String trackId) async {
     final name = state.files[trackId];
     if (name == null) return;
@@ -216,7 +203,8 @@ class OfflineController extends Notifier<OfflineState> {
       final file = _fileOf(name);
       if (file != null && file.existsSync()) await file.delete();
     } catch (_) {
-      // Файл не удалился — индекс уже без него, это просто мусор в каталоге.
+      // The file wasn't removed: the index is free of it, and it's just junk in
+      // the directory.
     }
   }
 
@@ -228,12 +216,11 @@ class OfflineController extends Notifier<OfflineState> {
     return download(track);
   }
 
-  /// Скачать все скачиваемые треки списка. Ссылки резолвятся покадрово, прямо
-  /// перед каждым треком: подписанный CDN-URL живёт минуты, и пачка ссылок,
-  /// взятая заранее, к концу списка протухла бы.
-  ///
-  /// Возвращает счёт для итогового снекбара; `null` — качать было нечего.
-  /// `busy` — уже идёт другая пакетная загрузка.
+  /// Downloads all a list's downloadable tracks. Links resolve one at a time
+  /// right before each track: a signed CDN URL lives minutes, and a batch of
+  /// links taken ahead goes stale by the list's end. Returns a count for the
+  /// final snack bar; `null` if there's nothing to download. `busy`: another
+  /// batch is running.
   Future<BatchResult?> downloadAll(String sourceId, List<Track> tracks) async {
     final pending = tracks
         .where((t) => !state.has(t.id) && canDownload(t))
@@ -247,7 +234,7 @@ class OfflineController extends Notifier<OfflineState> {
     for (var i = 0; i < pending.length; i++) {
       final err = await download(pending[i]);
       if (err != null) failed++;
-      // Пакет мог быть отменён, пока качался трек.
+      // The batch may have been cancelled while a track downloaded.
       if (!advanceBatch(failed: err != null)) break;
       if (i < pending.length - 1) await Future<void>.delayed(_betweenTracks);
     }
@@ -255,10 +242,9 @@ class OfflineController extends Notifier<OfflineState> {
     return BatchResult(total: pending.length, failed: failed);
   }
 
-  /// Занять индикатор пакета. `false` — другой пакет уже идёт: два счётчика на
-  /// один индикатор не налезут, да и площадку душить параллельными резолвами
-  /// незачем. Публичный, потому что тем же индикатором пользуется сохранение
-  /// списка файлами (см. `file_download.dart`).
+  /// Takes the batch indicator. `false` if another batch is running: two counts
+  /// don't fit one indicator, and parallel resolves strain a platform. Public
+  /// because saving a list as files shares it.
   bool beginBatch(String sourceId, int total) {
     if (state.batch != null || total == 0) return false;
     state = state.copyWith(
@@ -267,7 +253,8 @@ class OfflineController extends Notifier<OfflineState> {
     return true;
   }
 
-  /// Отметить трек обработанным. `false` — пакет отменили, дальше не идём.
+  /// Marks a track processed. `false` if the batch was cancelled, stopping
+  /// there.
   bool advanceBatch({bool failed = false}) {
     final batch = state.batch;
     if (batch == null) return false;
@@ -282,11 +269,11 @@ class OfflineController extends Notifier<OfflineState> {
 
   void endBatch() => state = state.copyWith(clearBatch: true);
 
-  /// Прервать пакетную загрузку. Трек, который качается сейчас, дойдёт до
-  /// конца — рвать запись файла на середине незачем.
+  /// Stops the batch. A track downloading now finishes: no reason to break a
+  /// file write midway.
   void cancelBatch() => endBatch();
 
-  /// Убрать из офлайна все треки списка.
+  /// Removes all a list's tracks from offline.
   Future<int> removeAll(List<Track> tracks) async {
     var n = 0;
     for (final t in tracks) {
@@ -297,7 +284,7 @@ class OfflineController extends Notifier<OfflineState> {
     return n;
   }
 
-  /// Сколько треков и байт лежит в кеше — для раздела «Хранилище».
+  /// Tracks and bytes in the cache, for the storage section.
   Future<({int count, int bytes})> stats() async {
     var count = 0;
     var bytes = 0;
@@ -308,13 +295,13 @@ class OfflineController extends Notifier<OfflineState> {
       try {
         bytes += await file.length();
       } catch (_) {
-        // Файл исчез между проверкой и чтением — просто не считаем его.
+        // The file vanished between check and read, so it just doesn't count.
       }
     }
     return (count: count, bytes: bytes);
   }
 
-  /// Стереть весь кеш. Возвращает число удалённых файлов.
+  /// Erases the whole cache. Returns the number of files removed.
   Future<int> clearAll() async {
     final names = state.files.values.toList();
     state = state.copyWith(files: const {});
@@ -328,43 +315,37 @@ class OfflineController extends Notifier<OfflineState> {
           deleted++;
         }
       } catch (_) {
-        // Не удалился — остальные всё равно чистим.
+        // Not removed: the others still get cleared.
       }
     }
     return deleted;
   }
 }
 
-/// Каким куском берём файл с CDN.
-///
-/// Одной длинной загрузкой googlevideo отдавать не хочет: соединение рвётся на
-/// середине трека («Connection closed while receiving data»), и особенно охотно
-/// на iOS. Кусок в мегабайт живёт секунды — рваться там почти нечему, а если
-/// всё же порвалось, перезапрашивается только он, а не весь файл.
+/// Chunk size from the CDN. googlevideo won't give one long download: the
+/// connection breaks mid-track, especially on iOS. A megabyte chunk lives
+/// seconds with little to break, and if it does, only it is requested again.
 const int _chunkBytes = 1 << 20;
 
-/// Сколько раз подряд повторить кусок, который не доехал. Сбрасывается на
-/// каждом куске, где пришёл хоть байт: иначе длинная загрузка с редкими
-/// обрывами упиралась бы в общий лимит.
+/// Retries in a row for a chunk that didn't arrive. Reset on each chunk where
+/// any byte came, or a long download with rare breaks would hit a total limit.
 const int _chunkRetries = 3;
 
 const Duration _retryPause = Duration(milliseconds: 400);
 
-/// Сколько ждать следующий байт. Оборванное соединение не всегда приходит
-/// ошибкой: бывает, что оно просто замолкает — и без этого срока загрузка
-/// висела бы в «качается…» до конца жизни приложения.
+/// How long to wait for the next byte. A broken connection doesn't always come
+/// as an error: it may just go silent, and with no limit the download hangs
+/// forever.
 const Duration _stallTimeout = Duration(seconds: 20);
 
-/// Качает трек по прямой ссылке в [dir] и возвращает получившийся файл.
+/// Downloads a track by direct link into [dir] and returns the file. A stream
+/// to a temp `.part`: tracks are megabytes, not to be held in memory, and a
+/// broken download mustn't leave a stub passing as a finished file. Shared by
+/// offline copies and saving files.
 ///
-/// Пишем потоком во временный `.part`: трек это мегабайты, держать их целиком
-/// в памяти незачем, а оборванная загрузка не должна оставить огрызок, который
-/// сойдёт за готовый файл. Общая для обоих скачиваний — офлайн-копии и
-/// сохранения файлом в память телефона.
-///
-/// Берём файл кусками с `Range` (см. [_chunkBytes]). Площадка, которая Range не
-/// понимает, отвечает на такой запрос обычным 200 с телом целиком — его просто
-/// дочитываем, как раньше.
+/// The file comes in `Range` chunks (see [_chunkBytes]). A platform that
+/// doesn't know Range answers with an ordinary 200 and the whole body, which
+/// just gets read to the end.
 Future<File> fetchAudioToFile({
   required String url,
   required Map<String, String> headers,
@@ -378,8 +359,8 @@ Future<File> fetchAudioToFile({
     '${dir.path}/.part_${DateTime.now().microsecondsSinceEpoch}',
   );
   final sink = part.openWrite();
-  // Расширение — по первым байтам, как `audio_ext` на ПК: SoundCloud отдаёт
-  // и mp3, и m4a, а по URL этого не понять.
+  // Extension by the first bytes: SoundCloud serves mp3 and m4a, and a URL
+  // can't tell.
   String? ext;
   var received = 0;
   int? total;
@@ -404,8 +385,9 @@ Future<File> fetchAudioToFile({
         }
 
         if (response.statusCode == 200) {
-          // Range не поддержан — в теле весь файл с нуля. В середине загрузки
-          // это означало бы дубль уже записанного, поэтому только в начале.
+          // Range unsupported, so the body is the whole file from zero.
+          // Mid-download that would duplicate what's written, so only at the
+          // start.
           if (received > 0) {
             throw const HttpException('CDN потерял позицию в файле');
           }
@@ -414,8 +396,8 @@ Future<File> fetchAudioToFile({
         } else if (response.statusCode == 206) {
           total ??= _rangeTotal(response.headers['content-range']);
         } else if (response.statusCode == 416) {
-          // Запросили за концом файла: у CDN длины мы не спрашивали, так что
-          // конец мог совпасть с границей куска.
+          // Asked past the end of the file: I didn't ask the CDN for a length,
+          // so the end may match a chunk boundary.
           break;
         } else {
           throw HttpException('CDN ответил ${response.statusCode}');
@@ -432,8 +414,8 @@ Future<File> fetchAudioToFile({
             );
           }
         } on Exception {
-          // Кусок оборвался на полпути — дописанное остаётся, повторяем с той
-          // позиции, до которой дошли.
+          // A chunk broke midway: what's written stays, and I retry from the
+          // position reached.
           if (received > before) fails = 0;
           if (++fails > _chunkRetries) rethrow;
           await Future<void>.delayed(_retryPause);
@@ -444,7 +426,7 @@ Future<File> fetchAudioToFile({
         if (total != null) {
           done = received >= total;
         } else if (received - before < _chunkBytes) {
-          // Длины не знаем — конец виден по недобору куска.
+          // Length unknown: the end shows as a short chunk.
           done = true;
         }
       }
@@ -465,13 +447,13 @@ Future<File> fetchAudioToFile({
     final name = _uniqueName(dir, base, ext ?? 'mp3');
     return part.rename('${dir.path}/$name');
   } catch (_) {
-    // Недокачанный огрызок не должен пережить ошибку: он никому не пригодится,
-    // а место в кеше занимает.
+    // An unfinished stub mustn't outlive an error: it's useless and takes cache
+    // space.
     if (part.existsSync()) {
       try {
         await part.delete();
       } catch (_) {
-        // Не удалился — переживём, о самой ошибке загрузки доложим выше.
+        // Not removed: I'll live, and report the download error itself above.
       }
     }
     rethrow;
@@ -480,14 +462,14 @@ Future<File> fetchAudioToFile({
   }
 }
 
-/// Общий размер файла из заголовка `Content-Range: bytes 0-1048575/3283727`.
+/// Total file size from the `Content-Range: bytes 0-1048575/3283727` header.
 int? _rangeTotal(String? header) {
   final size = header?.split('/').last;
   return size == null ? null : int.tryParse(size);
 }
 
-/// Итог пакетной загрузки — общий для обоих скачиваний. Фразу из него делает
-/// `batchSummary` в `offline_actions.dart`, где есть язык интерфейса.
+/// A batch's result, shared by both downloads. `batchSummary` makes a phrase
+/// from it, where the language is.
 class BatchResult {
   const BatchResult({
     required this.total,
@@ -498,13 +480,13 @@ class BatchResult {
   final int total;
   final int failed;
 
-  /// Пакет не стартовал: уже качается другой список.
+  /// The batch didn't start: another list is downloading.
   final bool busy;
 
   int get ok => total - failed;
 }
 
-/// Почему трек не сохранился офлайн.
+/// Why a track wasn't saved offline.
 enum OfflineFailureKind {
   noStorage,
   notSavable,
@@ -515,7 +497,7 @@ enum OfflineFailureKind {
   unknown,
 }
 
-/// Причина отказа + сырьё для `unknown` (текст исключения площадки).
+/// Refusal reason, plus raw data for `unknown` (the platform's exception text).
 class OfflineFailure {
   const OfflineFailure(this.kind, [this.detail]);
 
@@ -523,14 +505,14 @@ class OfflineFailure {
   final String? detail;
 }
 
-/// «Артист - Название» — то же имя файла, что даёт `trackFileBase` на ПК.
+/// "Artist - Title", the file name.
 String trackFileBase(Track track) {
   final raw = (track.artist.isEmpty ? '' : '${track.artist} - ') + track.name;
   final safe = raw.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
   return safe.isEmpty ? 'track' : safe;
 }
 
-/// m4a у файлов с боксом `ftyp` в начале, иначе mp3 — порт `audio_ext`.
+/// m4a for files with an `ftyp` box at the start, otherwise mp3.
 String _audioExt(List<int> bytes) {
   if (bytes.length > 8 &&
       bytes[4] == 0x66 &&
@@ -542,8 +524,8 @@ String _audioExt(List<int> bytes) {
   return 'mp3';
 }
 
-/// Свободное имя вида `База.ext`, `База (2).ext`, … — два разных трека могут
-/// называться одинаково.
+/// A free name like `Base.ext`, `Base (2).ext`, …: two different tracks may
+/// share a name.
 String _uniqueName(Directory dir, String base, String ext) {
   var name = '$base.$ext';
   var i = 2;
@@ -554,8 +536,8 @@ String _uniqueName(Directory dir, String base, String ext) {
   return name;
 }
 
-/// Коды площадки понятны только разработчику — разбираем их в причину, а
-/// человеческий текст собирается на UI (порт строк `dict.ts`).
+/// Platform codes mean something only to a developer, so I parse them into a
+/// reason, and the UI builds the text.
 OfflineFailure _readableError(Object e) {
   final msg = e is Exception ? e.toString() : '$e';
   if (msg.contains('hlsOnly')) {

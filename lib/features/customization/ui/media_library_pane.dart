@@ -1,11 +1,8 @@
-/// Вкладка «Библиотека» страницы «Кастомизация» — сетка своих картинок и
-/// шторка добавления (ссылка или фото из галереи) под плюсиком.
-///
-/// Куда картинка применена, выбирается не здесь, а в её собственной шторке
-/// ([showMediaItemSheet]): на ПК сперва выбирают карточку контекста, потом
-/// картинку, а тут наоборот — сперва картинку, потом галочки «Фон / Обложка /
-/// Слайдер». Меньше состояний и нечего забыть выбрать. Снять картинку можно и
-/// плиткой контекста наверху страницы — как на ПК.
+/// Library tab of customization: a grid of own pictures and an add sheet (a
+/// link or a gallery photo) under the plus. Where a picture applies is chosen
+/// in its own sheet ([showMediaItemSheet]): first a picture, then the
+/// Background, Cover and Slider ticks. Fewer states and nothing to forget. A
+/// context tile on top can also clear a picture.
 library;
 
 import 'package:flutter/material.dart';
@@ -30,25 +27,15 @@ class MediaLibraryPane extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(mediaLibProvider);
-    if (items.isEmpty) return EmptyHint(text: context.l.custLibraryEmpty);
-    return GridView.builder(
-      padding: EdgeInsets.fromLTRB(16, 12, 16, 8 + bottomBarsInset(context)),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        // Ландшафтная плитка: обои и есть ландшафт, а квадрат резал бы их
-        // посередине ещё в списке.
-        childAspectRatio: 4 / 3,
-      ),
+    return CustomPane(
+      empty: context.l.custLibraryEmpty,
       itemCount: items.length,
       itemBuilder: (_, i) => _MediaCard(item: items[i]),
     );
   }
 }
 
-/// Плюсик вкладки: шторка с полем ссылки и пунктом «Приложить фото» — на ПК
-/// это строка добавления под «+» и кнопка файлов рядом с ней.
+/// The tab's plus: a sheet with a link field and an Attach photo item.
 Future<void> showAddMediaSheet(BuildContext context, WidgetRef ref) async {
   final l10n = context.l;
   final messenger = ScaffoldMessenger.of(context);
@@ -70,7 +57,7 @@ Future<void> showAddMediaSheet(BuildContext context, WidgetRef ref) async {
     return;
   }
   final added = await ref.read(mediaLibProvider.notifier).addFromGallery();
-  if (added == 0) return; // отменили или не дали доступ — молчим
+  if (added == 0) return; // cancelled or denied, so quietly
   messenger.toast(l10n.custFilesAdded(added), kind: ToastKind.success);
 }
 
@@ -98,37 +85,35 @@ class _MediaCard extends ConsumerWidget {
                 Image(
                   image: image,
                   fit: BoxFit.cover,
-                  // Битая ссылка не должна ломать сетку — остаётся пустая
-                  // плитка, которую видно и можно открыть, чтобы удалить.
+                  // A broken link mustn't break the grid: an empty tile stays,
+                  // visible and openable for deleting.
                   errorBuilder: (_, _, _) => Center(
                     child: BloomIcon(Bi.gallery, size: 22, color: t.muted),
                   ),
                 ),
-              // Куда картинка применена — значками поверх неё. Пустой список
-              // не рисуем вовсе: плитка ничем не занятой картинки чистая.
+              // Where a picture applies, as icons over it. An empty list isn't
+              // drawn: a free picture's tile is clean.
               if (usage.isNotEmpty) Center(child: _UsageBadge(usage: usage)),
             ],
           ),
         ),
       ),
     );
-    // Второй способ поставить картинку — перетащить её на плитку контекста
-    // наверху страницы, как на ПК. Тянется по долгому нажатию: простое
-    // движение пальца по сетке остаётся прокруткой.
+    // A second way to place a picture: drag it to a context tile on top. It
+    // drags on a long press: a plain move over the grid stays a scroll.
     return LongPressDraggable<MediaItem>(
       data: item,
       hapticFeedbackOnStart: true,
       dragAnchorStrategy: pointerDragAnchorStrategy,
       feedback: _DragGhost(src: item.src),
-      // Карточка-источник, пока её тянут, — десктопная `.cz-card.dragging`.
+      // Source card while being dragged.
       childWhenDragging: Opacity(opacity: 0.45, child: tile),
       child: tile,
     );
   }
 }
 
-/// Превью, летящее за пальцем, — десктопный `cz-drag-ghost`: 72×48 по центру
-/// точки касания.
+/// Preview following the finger: 72×48 centred on the touch point.
 class _DragGhost extends StatelessWidget {
   const _DragGhost({required this.src});
 
@@ -168,9 +153,9 @@ class _DragGhost extends StatelessWidget {
   }
 }
 
-/// Плашка «эта картинка стоит вот здесь»: по значку на каждый занятый
-/// контекст. Стекло то же, что у бейджа площадки в строке трека, — под ней
-/// картинка, и сплошная плашка темы читалась бы заплаткой.
+/// Plate saying where this picture stands, an icon per taken context. The same
+/// glass as a platform badge in a track row: there's a picture below, and a
+/// solid plate reads as a patch.
 class _UsageBadge extends StatelessWidget {
   const _UsageBadge({required this.usage});
 

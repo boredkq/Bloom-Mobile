@@ -1,18 +1,16 @@
-/// Скелетоны загрузки: серые плашки в раскладке того, что сейчас грузится.
+/// Loading skeletons: grey plates laid out like what's loading. No progress
+/// bars on purpose: a skeleton holds the future height, so results don't jump
+/// when the answer comes.
 ///
-/// Полоски прогресса на экранах нет намеренно — заготовка держит будущую
-/// высоту, поэтому выдача не «прыгает», когда ответ приходит.
-///
-/// Мигает не каждая плашка по отдельности, а всё поддерево целиком
-/// ([SkeletonPulse]): один контроллер на экран и ни одного рассинхрона между
-/// соседними плашками.
+/// The whole subtree pulses ([SkeletonPulse]), not each plate: one controller
+/// per screen and neighbours never go out of sync.
 library;
 
 import 'package:flutter/material.dart';
 
 import '../../app/theme/tokens.dart';
 
-/// Плашка-заготовка. [width] `null` — занять всю доступную ширину.
+/// Placeholder plate. A `null` [width] takes all available width.
 class SkeletonBox extends StatelessWidget {
   const SkeletonBox({
     super.key,
@@ -43,8 +41,31 @@ class SkeletonBox extends StatelessWidget {
   }
 }
 
-/// Плашка на месте строки текста: скругление по высоте, ширина — доля от
-/// доступной, чтобы «строки» не выглядели одинаковой линейкой.
+/// A section's title while it loads.
+class SectionLabelSkeleton extends StatelessWidget {
+  const SectionLabelSkeleton({
+    super.key,
+    required this.width,
+    this.height = 14,
+    this.padding = const EdgeInsets.fromLTRB(8, 24, 8, 12),
+  });
+
+  final double width;
+  final double height;
+  final EdgeInsets padding;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: padding,
+    child: Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: SkeletonBox(width: width, height: height, radius: height / 2),
+    ),
+  );
+}
+
+/// Plate in place of a text line: rounding from height, width a share of what's
+/// available, so the lines don't look like a ruler.
 class SkeletonLine extends StatelessWidget {
   const SkeletonLine({super.key, required this.widthFactor, this.height = 12});
 
@@ -61,7 +82,7 @@ class SkeletonLine extends StatelessWidget {
   }
 }
 
-/// Общее мигание для поддерева заготовок.
+/// Shared pulse for a subtree of skeletons.
 class SkeletonPulse extends StatefulWidget {
   const SkeletonPulse({super.key, required this.child});
 
@@ -91,21 +112,20 @@ class _SkeletonPulseState extends State<SkeletonPulse>
 
   @override
   Widget build(BuildContext context) {
-    // Не ловит тапы: под заготовкой ничего нажимаемого нет, но и «мёртвых»
-    // касаний по ней быть не должно.
+    // Takes no taps: nothing here can be pressed, and touches on it shouldn't
+    // die here.
     return IgnorePointer(
       child: FadeTransition(opacity: _opacity, child: widget.child),
     );
   }
 }
 
-/// Ширины «строк» подписей — по кругу, чтобы плашки не выстраивались в
-/// одинаковую линейку.
+/// Caption line widths, cycled so plates don't form a uniform column.
 const List<double> _titleWidths = [0.62, 0.48, 0.71, 0.55];
 const List<double> _subWidths = [0.34, 0.42, 0.28, 0.38];
 
-/// Плашка на месте [TrackRow]: те же отступы и обложка 48, поэтому высота
-/// строки совпадает с настоящей.
+/// Stand-in for [TrackRow]: the same padding and 48 cover, so the row height
+/// matches.
 class TrackRowSkeleton extends StatelessWidget {
   const TrackRowSkeleton({super.key, required this.index});
 
@@ -143,15 +163,14 @@ class TrackRowSkeleton extends StatelessWidget {
   }
 }
 
-/// Плашка на месте [SetCard]/[ArtistCard]: обложка на всю ширину ячейки и две
-/// строки подписи (у артиста — одна, как и в карточке без счётчика).
+/// Stand-in for [SetCard] and [ArtistCard]: a cover filling the cell and two
+/// caption lines (one for an artist).
 class CardSkeleton extends StatelessWidget {
   const CardSkeleton({super.key, required this.circle, this.width});
 
   final bool circle;
 
-  /// `null` — на всю ширину ячейки сетки; число — фиксированная ширина
-  /// карточки в карусели.
+  /// `null` fills a grid cell; a number is a fixed carousel card width.
   final double? width;
 
   @override
@@ -180,8 +199,8 @@ class CardSkeleton extends StatelessWidget {
   }
 }
 
-/// Лента заготовок вместо [EntityCarousel]: карточек ровно столько, чтобы
-/// ряд был заполнен до правого края.
+/// Skeleton strip instead of [EntityCarousel], with enough cards to fill the
+/// row to the right edge.
 class CarouselSkeleton extends StatelessWidget {
   const CarouselSkeleton({
     super.key,

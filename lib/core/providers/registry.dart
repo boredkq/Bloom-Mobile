@@ -1,9 +1,7 @@
-/// Реестр музыкальных провайдеров — порт
-/// `src/features/providers/model/registry.ts`.
-///
-/// Площадка регистрируется один раз при старте, UI спрашивает у реестра.
-/// Уровнем ниже лежит резолв стрима (`MusicProvider.resolveStream`): там «как
-/// достать звук», здесь — «как искать и отдавать сущности».
+/// Registry of music providers. A platform registers once at launch and the UI
+/// asks the registry. A level below lies stream resolving
+/// (`MusicProvider.resolveStream`): how to get the sound, while this is how to
+/// search and serve entities.
 library;
 
 import 'dart:async';
@@ -11,13 +9,13 @@ import 'dart:async';
 import '../entities/entities.dart';
 import 'music_provider.dart';
 
-/// Сентинел «все источники» для переключателя площадки.
+/// Sentinel for all sources in the platform picker.
 const String kAllProviders = 'all';
 
 class ProviderRegistry {
   final List<MusicProvider> _providers = [];
 
-  /// Зарегистрировать (или заменить по id).
+  /// Registers, or replaces by id.
   void register(MusicProvider p) {
     final i = _providers.indexWhere((x) => x.id == p.id);
     if (i >= 0) {
@@ -27,12 +25,11 @@ class ProviderRegistry {
     }
   }
 
-  /// Включённые провайдеры, в порядке регистрации.
+  /// Enabled providers, in registration order.
   List<MusicProvider> get enabled =>
       _providers.where((p) => p.isEnabled).toList();
 
-  /// Все зарегистрированные, включая выключённые — для переключателя площадки,
-  /// где они показываются всегда, даже ненастроенные.
+  /// All registered, disabled too, for the picker, which always shows them.
   List<MusicProvider> get all => List.unmodifiable(_providers);
 
   MusicProvider? byId(String id) {
@@ -42,11 +39,10 @@ class ProviderRegistry {
     return null;
   }
 
-  /// Кого опрашивать: конкретную площадку либо все включённые.
-  ///
-  /// Явно выбранную площадку уважаем, даже если она «выключена» — переключатель
-  /// показывает все, и провайдер сам вернёт результат или ошибку. Не нашли
-  /// вовсе (протухший id из настроек) — фолбэк на включённые.
+  /// Who to ask: one platform or all enabled. An explicitly picked one is
+  /// honoured even if off: the picker shows all, and the provider returns a
+  /// result or an error. Not found at all (a stale id from settings) falls back
+  /// to enabled.
   List<MusicProvider> _pick(String? providerId) {
     final onlyId = (providerId != null && providerId != kAllProviders)
         ? providerId
@@ -57,12 +53,12 @@ class ProviderRegistry {
     return picked.isEmpty ? enabledNow : picked;
   }
 
-  /// Искать по всем включённым площадкам параллельно и слить выдачу.
-  /// Упавший провайдер просто не вносит вклад.
+  /// Searches all enabled platforms in parallel and merges results. A failed
+  /// provider just adds nothing.
   ///
-  /// Пер-провайдерный таймаут: одна медленная площадка (SoundCloud во время
-  /// скрейпа client_id) не должна держать всю выдачу. По таймауту вклад пустой,
-  /// как при ошибке. При поиске по одному источнику ждать нечего — даём больше.
+  /// Per-provider timeout: one slow platform (SoundCloud scraping client_id)
+  /// shouldn't hold everything. A timeout contributes nothing, like an error.
+  /// With one source there's nothing to wait for, so it gets longer.
   Future<SearchResults> searchAll(
     String query, {
     String? providerId,
@@ -106,7 +102,7 @@ class ProviderRegistry {
     );
   }
 
-  /// Догрузить ещё треки по всем (или выбранной) площадкам.
+  /// Loads more tracks across all platforms or the picked one.
   Future<TrackPage> loadMoreTracksAll(
     String query,
     int offset, {
@@ -134,8 +130,8 @@ class ProviderRegistry {
     return TrackPage(tracks: tracks, hasMore: hasMore);
   }
 
-  /// Резолв вставленной ссылки: опрашиваем площадки, первый непустой ответ
-  /// выигрывает.
+  /// Resolves a pasted link: asks the platforms, the first non-empty answer
+  /// wins.
   Future<({MusicProvider provider, ResolvedUrl resolved})?> resolveUrlAny(
     String url,
   ) async {
@@ -144,13 +140,13 @@ class ProviderRegistry {
         final resolved = await p.resolveUrl(url);
         if (resolved != null) return (provider: p, resolved: resolved);
       } catch (_) {
-        // пробуем следующую площадку
+        // try the next platform
       }
     }
     return null;
   }
 
-  /// Площадка сущности по префиксу её сквозного id.
+  /// A platform of an entity by its global id prefix.
   MusicProvider? forEntity(String entityId) =>
       byId(MusicSource.fromId(entityId).id);
 }

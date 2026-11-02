@@ -1,14 +1,10 @@
-/// Бегущая строка длинного названия — порт десктопного `MarqueeTitle.tsx`.
+/// Scrolling line for a long title. I measure the text against the wrapper; if
+/// it's more than 4 px wider, I draw text, gap, text and scroll left by exactly
+/// text plus gap, so the second copy lands on the first and the loop has no
+/// seam. The speed is constant but a cycle takes at least 4 s, or short titles
+/// jitter.
 ///
-/// Схема ровно как на ПК: меряем строку и сравниваем с шириной обёртки; шире
-/// больше чем на 4 px — рисуем «текст + зазор + текст» и катим влево ровно на
-/// `текст + зазор`, после чего вторая копия оказывается на месте первой и цикл
-/// повторяется без стыка. Скорость постоянная (55 px/s, `@keyframes ps-marquee`
-/// + `duration = max(4, шаг/55)`), но цикл не короче 4 s — иначе короткие
-/// названия дёргаются.
-///
-/// Влезает — обычный `Text` с эллипсисом: ни таймера, ни лишних перерисовок.
-/// Пауза по ховеру с ПК не переносится — наводить на телефоне нечем.
+/// If it fits, a plain `Text` with an ellipsis: no timer, no extra repaints.
 library;
 
 import 'package:flutter/material.dart';
@@ -26,14 +22,14 @@ class MarqueeText extends StatefulWidget {
   final String text;
   final TextStyle? style;
 
-  /// Выравнивание, ПОКА строка влезает. Когда катится — всегда от левого края,
-  /// как десктопное `.title-wrap.scrolling{justify-content:flex-start}`.
+  /// Alignment while the line fits. Once scrolling it always starts from the
+  /// left.
   final TextAlign align;
 
-  /// Зазор между копиями текста, px.
+  /// Gap between the copies, px.
   final double gap;
 
-  /// Скорость прокрутки, px/s.
+  /// Scroll speed, px/s.
   final double speed;
 
   @override
@@ -50,9 +46,9 @@ class _MarqueeTextState extends State<MarqueeText>
     super.dispose();
   }
 
-  /// Запустить цикл нужной длины или остановить его. Зовётся из `build`, где
-  /// известна ширина, поэтому саму правку контроллера откладываем на конец
-  /// кадра — трогать анимацию посреди раскладки нельзя.
+  /// Starts a cycle of the right length or stops it. Called from `build`, where
+  /// the width is known, so the controller change waits for the end of the
+  /// frame: an animation can't be touched mid-layout.
   void _sync(Duration? duration) {
     if (_c.duration == duration && _c.isAnimating == (duration != null)) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -84,8 +80,7 @@ class _MarqueeTextState extends State<MarqueeText>
         final height = painter.height;
         final maxWidth = constraints.maxWidth;
 
-        // Порог тот же, что на ПК: пара пикселей разницы — это округление
-        // измерителя, а не переполнение.
+        // A couple of pixels is the measurer's rounding, not an overflow.
         if (!maxWidth.isFinite || width <= maxWidth + 4) {
           _sync(null);
           return Text(
@@ -101,9 +96,9 @@ class _MarqueeTextState extends State<MarqueeText>
         final seconds = (step / widget.speed).round();
         _sync(Duration(seconds: seconds < 4 ? 4 : seconds));
 
-        // Копии стоят в `Stack`, а не в `Row`: `Positioned` с явной шириной
-        // уходит за границу родителя, а строка в `Row` получила бы ограничение
-        // по ширине обёртки и снова обрезалась бы эллипсисом.
+        // The copies sit in a `Stack`, not a `Row`: `Positioned` with an
+        // explicit width may overflow the parent, while a `Row` would limit the
+        // text to the wrapper width and ellipsize it again.
         final line = Text(
           widget.text,
           maxLines: 1,

@@ -1,16 +1,13 @@
-/// The profile editor: nick, about, status and the banner's fill (Auto /
-/// colour / gradient). On top a live copy of the page's head — the banner, the
-/// avatar and the nick as they'll be once saved; a tap on the banner or the
-/// avatar changes it. Then the fields, and one wide Save at the bottom.
+/// The profile editor: nick, about, status and the banner's fill (Auto / colour
+/// / gradient). On top a live copy of the page's head: the banner, the avatar
+/// and the nick as they'll be once saved; a tap on the banner or the avatar
+/// changes it. Then the fields, and one wide Save at the bottom.
 ///
-/// Обводок нигде нет: ни кольца у аватара, ни рамок у полей и плашек — блоки
-/// держатся своей заливкой. Десктопная настройка «Обводка» вместе с ней и
-/// пропала.
+/// No outlines anywhere: blocks hold by their fill.
 ///
-/// Правка идёт ЧЕРНОВИКОМ и уходит в стор одним куском по «Сохранить» — как в
-/// десктопном `draft`. Картинки при этом сохраняются файлами сразу (иначе
-/// нечего показывать в превью), поэтому брошенный черновик за собой прибирает:
-/// выбранный, но не сохранённый файл удаляется.
+/// Edits go as a DRAFT and reach the store in one piece on Save. Pictures save
+/// as files at once (or the preview has nothing to show), so an abandoned draft
+/// cleans up: a picked but unsaved file gets deleted.
 library;
 
 import 'dart:async';
@@ -34,13 +31,14 @@ import '../profile_store.dart';
 import 'image_cropper.dart';
 import 'profile_avatar.dart';
 import 'profile_banner.dart';
+import '../../../shared/ui/big_tabs.dart';
 import 'profile_screen.dart'
     show ProfileBannerHero, ProfileWho, kProfileBannerStrip;
 
-/// Стрелки к [kBannerAngles] — те же, что в десктопной модалке.
+/// Arrows for [kBannerAngles].
 const List<String> _angleArrows = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'];
 
-/// Какую из двух картинок профиля меняем.
+/// Which of the two profile pictures is changing.
 enum ProfileImage { avatar, banner }
 
 class ProfileEditScreen extends ConsumerStatefulWidget {
@@ -70,7 +68,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       _bio.text.trim() != _saved.bio ||
       _status.text.trim() != _saved.status;
 
-  /// Стрелка «назад» взведена: следующее нажатие бросит правку.
+  /// The back arrow is armed: the next press drops the edit.
   bool _armed = false;
   Timer? _disarm;
 
@@ -85,14 +83,12 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
 
   void _patch(UserProfile next) => setState(() => _draft = next);
 
-  // ── Картинки ──────────────────────────────────────────────────────────────
+  // ── Pictures ──────────────────────────────────────────────────────────────
 
-  /// Одна шторка на обе картинки: наверху переключатель «Аватар / Обложка»,
-  /// под ним превью выбранной и кнопка загрузки — как в макете, где обложка
-  /// ставится тем же меню, что и аватар.
-  ///
-  /// [target] — с какой вкладки открыть: тап по аватару приводит на аватар,
-  /// тап по полосе — на обложку, кнопка в шапке открывает на аватаре.
+  /// One sheet for both pictures: an Avatar and Banner switch on top, the
+  /// picked one's preview below and an upload button. [target] is the tab to
+  /// open: a tap on the avatar leads to avatar, on the band to banner, and the
+  /// header button to avatar.
   void _imageMenu(ProfileImage target) => showBloomSheetChild(
     context: context,
     child: _ImageSheet(
@@ -117,8 +113,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   }
 
   Future<void> _pickBanner() async {
-    // Аспект рамки берём у настоящей полосы на странице профиля — как на
-    // десктопе, где кроппер спрашивает размеры у самой карточки.
+    // The frame's aspect comes from the real band on the profile page.
     final width = MediaQuery.sizeOf(context).width;
     final picked = await pickAndCropImage(
       context,
@@ -145,10 +140,10 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     unawaited(deleteCover(stale));
   }
 
-  // ── Выход ─────────────────────────────────────────────────────────────────
+  // ── Leaving ───────────────────────────────────────────────────────────────
 
   void _save() {
-    // Пустой ник сохраняется пустым, как на ПК: показывается «Пользователь».
+    // An empty nick saves empty, and the default name shows.
     ref
         .read(profileProvider.notifier)
         .save(
@@ -158,51 +153,51 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
             status: _status.text.trim(),
           ),
         );
-    // Прежние свои картинки больше никому не нужны.
+    // Former own pictures are no longer needed.
     if (_draft.avatar != _saved.avatar) unawaited(deleteCover(_saved.avatar));
     if (_draft.banner != _saved.banner) unawaited(deleteCover(_saved.banner));
     showToast(context, context.l.profileSaved, kind: ToastKind.success);
     context.go(kProfileLocation);
   }
 
-  /// Уход с непустой правкой спрашивает вторым нажатием на саму стрелку — как
-  /// удаление своей темы в «Оформлении»: модалки на такое тут нет.
+  /// Leaving with a non-empty edit asks by a second press on the arrow itself,
+  /// with no modal for this.
   void _cancel() {
     if (_dirty && !_armed) {
       setState(() => _armed = true);
-      // Само остывает — иначе взведённая стрелка так и ждёт промаха.
+      // Cools down by itself, or the armed arrow waits for a slip.
       _disarm?.cancel();
       _disarm = Timer(const Duration(seconds: 3), () {
         if (mounted) setState(() => _armed = false);
       });
       return;
     }
-    // Выбранные, но не сохранённые файлы — мусор, на который никто не сошлётся.
+    // Picked but unsaved files are junk nothing will refer to.
     if (_draft.avatar != _saved.avatar) unawaited(deleteCover(_draft.avatar));
     if (_draft.banner != _saved.banner) unawaited(deleteCover(_draft.banner));
     context.go(kProfileLocation);
   }
 
-  // ── Раскладка ─────────────────────────────────────────────────────────────
+  // ── Layout ────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
 
     return PopScope(
-      // Системное «назад» — та же «Отмена»: первое взводит стрелку, второе
-      // бросает правку.
+      // System Back is the same Cancel: the first arms the arrow, the second
+      // drops the edit.
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _cancel();
       },
-      // Свой [Scaffold]: страница идёт поверх каркаса приложения, а без
-      // material-предка `TextField` просто падает. Он же поднимает кнопку
-      // «Сохранить» над клавиатурой.
+      // Own [Scaffold]: the page goes over the app's shell, and with no
+      // material ancestor `TextField` crashes. It also lifts Save above the
+      // keyboard.
       child: Scaffold(
         backgroundColor: t.bg,
-        // Сверху [SafeArea] нет: полоса обложки уходит под системную строку,
-        // как на самой странице профиля, и свой отступ считает сама.
+        // No top [SafeArea]: the banner band goes under the status bar, as on
+        // the profile page, and counts its own inset.
         body: Column(
           children: [
             Expanded(
@@ -273,8 +268,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                 ],
               ),
             ),
-            // Кнопка лежит на своей заливке фона: список под ней прокручивается
-            // и без подложки цеплялся бы за текст.
+            // The button lies on its own background fill: the list scrolls
+            // under it, and with no backing it would catch on text.
             ColoredBox(
               color: t.bg,
               child: SafeArea(
@@ -297,11 +292,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   }
 }
 
-/// Шторка картинок профиля: две вкладки-превью сверху, крупное превью
-/// выбранной под ними и кнопка загрузки внизу.
-///
-/// «По ссылке» из макета не переношу — на десктопе картинки профиля берутся
-/// только файлом, своего загрузчика по URL у Bloom нет.
+/// Profile pictures sheet: two preview tabs on top, a large preview of the
+/// picked one below and an upload button at the bottom.
 class _ImageSheet extends StatefulWidget {
   const _ImageSheet({
     required this.draft,
@@ -314,8 +306,8 @@ class _ImageSheet extends StatefulWidget {
   final UserProfile draft;
   final ProfileImage initial;
 
-  /// Цвет и градиент обложки правятся прямо в шторке — черновик страницы
-  /// должен узнавать об этом сразу, а не по закрытию.
+  /// Banner colour and gradient are edited right in the sheet, and the page's
+  /// draft should learn at once, not on closing.
   final ValueChanged<UserProfile> onChanged;
 
   final ValueChanged<ProfileImage> onPick;
@@ -328,9 +320,9 @@ class _ImageSheet extends StatefulWidget {
 class _ImageSheetState extends State<_ImageSheet> {
   late ProfileImage _target = widget.initial;
 
-  /// Свой снимок черновика: цвет обложки правится прямо тут, и превью должно
-  /// меняться под пальцем. Наружу каждая правка уходит сразу — страница под
-  /// шторкой уже живёт с ней.
+  /// Own draft snapshot: banner colour is edited right here, and the preview
+  /// should change under the finger. Each edit goes out at once: the page below
+  /// already lives with it.
   late UserProfile _draft = widget.draft;
 
   bool get _hasOwn => switch (_target) {
@@ -343,8 +335,8 @@ class _ImageSheetState extends State<_ImageSheet> {
     widget.onChanged(next);
   }
 
-  /// Пункт закрывает шторку ДО действия: дальше открывается галерея, а поверх
-  /// шторки её звать нельзя (то же правило, что у [SheetAction]).
+  /// An item closes the sheet BEFORE acting: the gallery opens next and can't
+  /// be called over the sheet (the same rule as [SheetAction]).
   void _run(ValueChanged<ProfileImage> action) {
     final target = _target;
     Navigator.of(context).pop();
@@ -366,23 +358,25 @@ class _ImageSheetState extends State<_ImageSheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Вкладки — только миниатюры, без подписей: по кружку и полоске и
-          // так видно, где аватар, а где обложка.
+          // Tabs are just thumbnails with no captions: the circle and band show
+          // which is which.
           Row(
             children: [
               Expanded(
-                child: _ImageTab(
+                child: OptionTile(
                   active: !banner,
+                  height: 66,
                   onTap: () => setState(() => _target = ProfileImage.avatar),
-                  child: ProfileAvatar(profile: _draft, size: 38),
+                  builder: (_) => ProfileAvatar(profile: _draft, size: 38),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _ImageTab(
+                child: OptionTile(
                   active: banner,
+                  height: 66,
                   onTap: () => setState(() => _target = ProfileImage.banner),
-                  child: ClipRRect(
+                  builder: (_) => ClipRRect(
                     borderRadius: BorderRadius.circular(6),
                     child: SizedBox(
                       width: 54,
@@ -395,8 +389,8 @@ class _ImageSheetState extends State<_ImageSheet> {
             ],
           ),
           const SizedBox(height: 10),
-          // Превью выбранного, а для обложки ещё и её цвет: она бывает не
-          // картинкой, и красить её больше негде.
+          // Preview of the picked one, and for the banner its colour too: it's
+          // not always a picture, with nowhere else to paint it.
           SheetPanel(
             children: [
               SizedBox(
@@ -423,7 +417,9 @@ class _ImageSheetState extends State<_ImageSheet> {
                         Row(
                           children: [
                             if (_draft.bannerMode != BannerColorMode.auto)
-                              _Swatch(
+                              ColorChip(
+                                width: 46,
+                                height: 36,
                                 color: _draft.bannerColor,
                                 onTap: () => _pickColor(
                                   _draft.bannerColor,
@@ -434,7 +430,9 @@ class _ImageSheetState extends State<_ImageSheet> {
                             if (_draft.bannerMode ==
                                 BannerColorMode.gradient) ...[
                               const SizedBox(width: 10),
-                              _Swatch(
+                              ColorChip(
+                                width: 46,
+                                height: 36,
                                 color: _draft.bannerColor2,
                                 onTap: () => _pickColor(
                                   _draft.bannerColor2,
@@ -444,17 +442,18 @@ class _ImageSheetState extends State<_ImageSheet> {
                               ),
                             ],
                             const Spacer(),
-                            _Segmented<BannerColorMode>(
-                              value: _draft.bannerMode,
-                              items: {
-                                BannerColorMode.auto: (l) => l.profileColorAuto,
-                                BannerColorMode.solid: (l) =>
-                                    l.profileColorSolid,
-                                BannerColorMode.gradient: (l) =>
-                                    l.profileColorGradient,
-                              },
-                              onChanged: (m) =>
-                                  _patch(_draft.copyWith(bannerMode: m)),
+                            PillTabs(
+                              labels: [
+                                context.l.profileColorAuto,
+                                context.l.profileColorSolid,
+                                context.l.profileColorGradient,
+                              ],
+                              index: _draft.bannerMode.index,
+                              onPick: (i) => _patch(
+                                _draft.copyWith(
+                                  bannerMode: BannerColorMode.values[i],
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -504,40 +503,7 @@ class _ImageSheetState extends State<_ImageSheet> {
   }
 }
 
-/// Вкладка шторки: одна миниатюра. Выбранная не обводится, а светлеет —
-/// плёнкой поверх той же тёмной панели.
-class _ImageTab extends StatelessWidget {
-  const _ImageTab({
-    required this.active,
-    required this.onTap,
-    required this.child,
-  });
-
-  final bool active;
-  final VoidCallback onTap;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Material(
-      color: active
-          ? Colors.white.withValues(alpha: 0.14)
-          : sheetPanelColor(context),
-      borderRadius: BorderRadius.circular(t.radius),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          child: SizedBox(height: 38, child: Center(child: child)),
-        ),
-      ),
-    );
-  }
-}
-
-/// Поле ввода: подпись сверху, счётчик символов внутри плашки справа.
+/// Input: a caption on top, a character count inside the plate on the right.
 class _Field extends StatelessWidget {
   const _Field({
     required this.label,
@@ -579,24 +545,16 @@ class _Field extends StatelessWidget {
                     : CrossAxisAlignment.center,
                 children: [
                   Expanded(
-                    child: TextField(
+                    child: BloomField(
                       controller: controller,
+                      hint: hint,
                       maxLines: lines,
                       minLines: lines,
-                      cursorColor: t.accent,
-                      inputFormatters: [
-                        LengthLimitingTextInputFormatter(limit),
-                      ],
+                      formatters: [LengthLimitingTextInputFormatter(limit)],
                       style: theme.titleMedium?.copyWith(
                         fontStyle: italic ? FontStyle.italic : FontStyle.normal,
                       ),
-                      decoration: InputDecoration(
-                        hintText: hint,
-                        hintStyle: theme.titleMedium?.copyWith(color: t.muted),
-                        isDense: true,
-                        isCollapsed: true,
-                        border: InputBorder.none,
-                      ),
+                      padding: EdgeInsets.zero,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -614,59 +572,6 @@ class _Field extends StatelessWidget {
   }
 }
 
-/// Сегментированный переключатель — десктопный `.pedit-mode-toggle`.
-class _Segmented<T> extends StatelessWidget {
-  const _Segmented({
-    required this.value,
-    required this.items,
-    required this.onChanged,
-  });
-
-  final T value;
-  final Map<T, String Function(AppLocalizations l)> items;
-  final ValueChanged<T> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: t.bg,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final entry in items.entries)
-            GestureDetector(
-              onTap: () => onChanged(entry.key),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: entry.key == value ? t.accent : Colors.transparent,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  entry.value(context.l),
-                  style: theme.bodySmall?.copyWith(
-                    color: entry.key == value ? t.accentText : t.text2,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Восемь углов градиента стрелками.
 class _AngleRow extends StatelessWidget {
   const _AngleRow({required this.value, required this.onChanged});
 
@@ -675,58 +580,23 @@ class _AngleRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
         for (var i = 0; i < kBannerAngles.length; i++)
-          GestureDetector(
-            onTap: () => onChanged(kBannerAngles[i]),
-            child: Container(
-              width: 36,
-              height: 36,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: kBannerAngles[i] == value ? t.accent : t.bg,
-                borderRadius: BorderRadius.circular(t.radius * 0.6),
-              ),
-              child: Text(
+          SizedBox.square(
+            dimension: 36,
+            child: OptionTile(
+              active: kBannerAngles[i] == value,
+              onTap: () => onChanged(kBannerAngles[i]),
+              builder: (ink) => Text(
                 _angleArrows[i],
-                style: TextStyle(
-                  fontSize: 15,
-                  color: kBannerAngles[i] == value ? t.accentText : t.text2,
-                ),
+                style: TextStyle(fontSize: 15, color: ink),
               ),
             ),
           ),
       ],
-    );
-  }
-}
-
-/// Кликабельный сватч цвета. Единственная линия, что тут осталась, — самая
-/// тихая: без неё тёмный цвет на тёмной плашке просто не виден.
-class _Swatch extends StatelessWidget {
-  const _Swatch({required this.color, required this.onTap});
-
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 46,
-        height: 36,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(t.radius * 0.5),
-          border: Border.all(color: t.ovlLine),
-        ),
-      ),
     );
   }
 }

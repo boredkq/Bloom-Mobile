@@ -1,16 +1,7 @@
-/// Заметки к версиям: «Что нового» после обновления и «История обновлений» —
-/// порт десктопного `updateStore.ts` в части манифеста (проверка версии живёт
-/// отдельно, в `about_store.dart`).
-///
-/// Манифест — тот же формат, что на ПК: `{"<версия>": {title, date, pages[]}}`,
-/// где `title`/`body` могут быть либо строкой, либо парой `{ru, en}`. Правится
-/// он здесь, в `update-notes/`, а release.yml заливает папку в публичный
-/// репозиторий релизов (`update-notes/mobile/`, рядом с десктопной `desktop/`),
-/// откуда она и тянется по `raw.githubusercontent` — так текст правится и новые
-/// версии добавляются без пересборки APK.
-///
-/// Разобранный манифест кладём в `bloom.json`. Сеть нужна ровно один раз: без
-/// неё «История обновлений» открывается из кэша, а не пустым списком.
+/// Version notes: "What's new" after an update and the update history. The
+/// manifest is `{"<version>": {date, image, summary, items}}`; a text is a string
+/// or `{ru, en}`. It's read from the repository, so the text changes without a
+/// release.
 library;
 
 import 'dart:convert';
@@ -21,72 +12,58 @@ import 'package:intl/intl.dart';
 
 import '../../core/log/bloom_log.dart';
 import '../../core/store/json_store.dart';
-import 'about_store.dart' show compareVersions, kUpdateRepo;
+import 'about_store.dart' show compareVersions, isMajorVersion, kUpdateRepo;
 
-const String _rawBase =
-    'https://raw.githubusercontent.com/$kUpdateRepo/main/update-notes/mobile/';
+const String _base =
+    'https://raw.githubusercontent.com/$kUpdateRepo/main/update-notes/';
 
-Uri get _manifestUrl => Uri.parse('${_rawBase}update-notes.json');
+/// For checking a note before it's in `main`: another manifest's address, and
+/// "What's new" opening at each launch.
+const String _testNotes = String.fromEnvironment('UPDATE_NOTES');
+const bool _force = bool.fromEnvironment('UPDATE_FORCE');
 
-/// Куда в `bloom.json` ложатся кэш манифеста и версия прошлого запуска.
+Uri get _manifestUrl =>
+    Uri.parse(_testNotes.isEmpty ? '${_base}update-notes.json' : _testNotes);
+
+/// Where the manifest's cache and the last run's version live in `bloom.json`.
 const String kNotesCacheKey = 'updateNotes';
 const String _lastRunKey = 'lastRun';
 
-/// Страница заметки: заголовок, текст и, может быть, картинка.
-class UpdateNotePage {
-  const UpdateNotePage({required this.title, required this.body, this.image});
-
-  final String title;
-
-  /// Текст страницы. Разметка — только списки строками с `- ` в начале, как их
-  /// пишет десктопный манифест; рисует их `update_notes_sheet.dart`.
-  final String body;
-
-  /// Полная ссылка на картинку или `null`. Имя файла из манифеста
-  /// достраивается до `update-notes/assets/<имя>`.
-  final String? image;
-
-  bool get isEmpty => title.isEmpty && body.isEmpty && image == null;
-}
-
-/// Заметка к одной версии, уже разобранная под текущий язык.
+/// One version's note, already parsed for the language.
 class UpdateNote {
   const UpdateNote({
     required this.version,
-    required this.title,
     required this.date,
-    required this.pages,
+    required this.summary,
+    required this.items,
+    this.image,
   });
 
   final String version;
-  final String title;
 
-  /// Дата релиза в ISO (`2026-08-20`) или пусто.
+  /// ISO or empty.
   final String date;
-  final List<UpdateNotePage> pages;
 
-  /// Есть ли что показывать. Пустую заметку не открываем автоматом — незачем
-  /// дёргать человека пустой шторкой.
-  bool get hasContent => title.isNotEmpty || pages.any((page) => !page.isEmpty);
+  /// A full link, only for a major version.
+  final String? image;
+  final String summary;
+  final List<String> items;
+
+  /// An empty note doesn't open by itself.
+  bool get hasContent =>
+      summary.isNotEmpty || items.isNotEmpty || image != null;
 }
 
-/// Строка списка «История обновлений».
 class NoteHeadline {
-  const NoteHeadline({
-    required this.version,
-    required this.title,
-    required this.date,
-  });
+  const NoteHeadline({required this.version, required this.date});
 
   final String version;
-  final String title;
 
-  /// Дата в ISO — форматируется при показе, чтобы кэш не зависел от языка.
+  /// Formatted when shown, so the cache doesn't depend on the language.
   final String date;
 }
 
-/// Как ходим за манифестом. Отдельным провайдером ради тестов — как
-/// `releaseFetchProvider` у проверки версии.
+/// A provider for tests.
 typedef NotesFetch = Future<String> Function(Uri url);
 
 final notesFetchProvider = Provider<NotesFetch>((ref) => _get);
@@ -106,20 +83,19 @@ class UpdateNotes {
 
   final Ref _ref;
 
-  /// Манифест этой сессии. Держим и промис: «Что нового» при старте и открытая
-  /// следом история не должны качать файл дважды.
+  /// This session's manifest. The future too: "What's new" and the history
+  /// opening after it mustn't fetch twice.
   Map<String, dynamic>? _manifest;
   Future<Map<String, dynamic>>? _loading;
 
   JsonStore get _store => _ref.read(jsonStoreProvider);
 
-  /// Версия прошлого запуска; пусто — приложение запускается впервые.
+  /// Empty on the first launch.
   String get lastRun {
     final raw = _store.readMap(kNotesCacheKey)[_lastRunKey];
     return raw is String ? raw : '';
   }
 
-  /// Запомнить версию этого запуска.
   void markRun(String version) {
     if (version.isEmpty) return;
     final data = Map<String, dynamic>.from(_store.readMap(kNotesCacheKey));
@@ -128,13 +104,13 @@ class UpdateNotes {
     _store.write(kNotesCacheKey, data);
   }
 
-  /// Заметка версии или `null`, если её в манифесте нет.
+  /// `null` if the manifest doesn't have it.
   Future<UpdateNote?> note(String version, String locale) async {
     final manifest = await _load();
     return _note(manifest, version, locale);
   }
 
-  /// Все версии манифеста, новые сверху.
+  /// Newest first.
   Future<List<NoteHeadline>> history(String locale) async {
     final manifest = await _load();
     final versions = manifest.keys.toList()
@@ -144,35 +120,31 @@ class UpdateNotes {
         if (manifest[version] is Map)
           NoteHeadline(
             version: version,
-            title: _text((manifest[version] as Map)['title'], locale),
             date: _iso((manifest[version] as Map)['date']),
           ),
     ];
   }
 
-  /// Заметка для авто-показа после обновления — или `null`, если показывать
-  /// нечего.
-  ///
-  /// Молчим в трёх случаях: версия не сменилась; это первый запуск (прошлой
-  /// версии не записано — там свой онбординг); в манифесте про эту версию
-  /// ничего нет. Отметку о запуске ставим в любом из них: иначе следующий
-  /// запуск снова считал бы версию новой.
+  /// What opens by itself after an update, or `null`. Silent if the version
+  /// didn't change, on the first launch, and if the manifest doesn't know it.
+  /// The run is marked in all of these: otherwise the next launch would count
+  /// the version as new.
   Future<UpdateNote?> whatsNew(String version, String locale) async {
     final previous = lastRun;
     markRun(version);
-    if (version.isEmpty || previous.isEmpty || previous == version) return null;
+    if (version.isEmpty) return null;
+    if (!_force && (previous.isEmpty || previous == version)) return null;
     try {
       final fresh = await note(version, locale);
       return fresh != null && fresh.hasContent ? fresh : null;
     } catch (e) {
-      // Офлайн после обновления — не беда, «Что нового» откроется руками из
-      // «Системы».
+      // Offline after an update is fine: it opens by hand.
       logWarn('notes', 'заметка к версии $version не загрузилась: $e');
       return null;
     }
   }
 
-  /// Манифест: память → сеть → кэш в `bloom.json`.
+  /// Memory, the network, the cache in `bloom.json`.
   Future<Map<String, dynamic>> _load() {
     final cached = _manifest;
     if (cached != null) return Future.value(cached);
@@ -190,7 +162,7 @@ class UpdateNotes {
       final decoded = jsonDecode(body);
       if (decoded is! Map) throw const FormatException('не JSON-объект');
       final manifest = decoded.cast<String, dynamic>();
-      // Версия прошлого запуска лежит в том же ключе — её не затираем.
+      // The last run's version lives in the same key: not overwritten.
       final data = Map<String, dynamic>.from(_store.readMap(kNotesCacheKey))
         ..['manifest'] = manifest;
       _store.write(kNotesCacheKey, data);
@@ -213,36 +185,26 @@ UpdateNote? _note(
 ) {
   final raw = manifest[version];
   if (raw is! Map) return null;
-  final rawPages = raw['pages'];
-  final pages = <UpdateNotePage>[
-    if (rawPages is List)
-      for (final page in rawPages)
-        if (page is Map)
-          UpdateNotePage(
-            title: _text(page['title'], locale),
-            body: _text(page['body'], locale),
-            image: _image(page['image']),
-          ),
-  ];
   return UpdateNote(
     version: version,
-    title: _text(raw['title'], locale),
     date: _iso(raw['date']),
-    // Старая запись без `pages` (такие есть в десктопном манифесте) — одна
-    // страница из `body`.
-    pages: pages.isNotEmpty
-        ? pages
-        : [
-            UpdateNotePage(
-              title: '',
-              body: _text(raw['body'], locale),
-              image: null,
-            ),
-          ],
+    image: isMajorVersion(version) ? _image(raw['image']) : null,
+    summary: _text(raw['summary'], locale),
+    items: _lines(raw['items'], locale),
   );
 }
 
-/// Строка под язык: строка — как есть; `{ru, en}` — язык, иначе ru, иначе en.
+/// A list of texts, or `{ru: [...], en: [...]}`.
+List<String> _lines(Object? raw, String locale) {
+  final list = raw is Map ? raw[locale] ?? raw['ru'] ?? raw['en'] : raw;
+  if (list is! List) return const [];
+  return [
+    for (final item in list)
+      if (_text(item, locale).isNotEmpty) _text(item, locale),
+  ];
+}
+
+/// A string as it is; `{ru, en}` by language, else ru, else en.
 String _text(Object? raw, String locale) {
   if (raw is String) return raw;
   if (raw is! Map) return '';
@@ -252,15 +214,14 @@ String _text(Object? raw, String locale) {
 
 String _iso(Object? raw) => raw is String ? raw : '';
 
-/// Имя файла → ссылка в `update-notes/assets/`; готовую ссылку не трогаем.
+/// A file in `update-notes/assets/`, or a link as it is.
 String? _image(Object? raw) {
   if (raw is! String || raw.isEmpty) return null;
   if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
-  return '${_rawBase}assets/${raw.replaceAll(RegExp(r'^/+'), '')}';
+  return '${_base}assets/${raw.replaceAll(RegExp(r'^/+'), '')}';
 }
 
-/// ISO-дата → «20 августа 2026» под язык. Кривую дату отдаём как есть — это
-/// то же поведение, что у `formatNoteDate` на ПК.
+/// By language. A broken date stays as it is.
 String formatNoteDate(String iso, String locale) {
   if (iso.isEmpty) return '';
   final date = DateTime.tryParse(iso);

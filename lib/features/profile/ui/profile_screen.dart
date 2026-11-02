@@ -35,6 +35,7 @@ import 'level_sheet.dart';
 import 'profile_avatar.dart';
 import 'profile_banner.dart';
 import 'stats_sheet.dart';
+import '../../settings/ui/settings_rows.dart';
 
 /// The avatar beside the nick.
 const double kProfileAvatarSize = 84;
@@ -471,14 +472,12 @@ class _Entries extends ConsumerWidget {
   }
 }
 
-/// A way into a sheet: icon, name, a value and a chevron on the right; no
-/// plate.
 class _Entry extends StatelessWidget {
   const _Entry({
     required this.icon,
     required this.label,
-    required this.onTap,
     this.value = '',
+    required this.onTap,
     this.alt,
     this.fresh = false,
   });
@@ -488,10 +487,10 @@ class _Entry extends StatelessWidget {
   final String value;
   final VoidCallback onTap;
 
-  /// Given: the value swaps with this every 10 s.
+  /// Takes turns with [value].
   final String? alt;
 
-  /// Not watched yet: "New" before the chevron.
+  /// Not seen yet: a NEW pill before the value.
   final bool fresh;
 
   @override
@@ -499,36 +498,26 @@ class _Entry extends StatelessWidget {
     final t = context.bloom;
     final style = bloomText(size: 15, weight: 500, color: t.text2);
     final alt = this.alt;
-    return Pressable(
-      scale: 0.98,
+    return SettingsRowShell(
+      leading: BloomIcon(icon, size: 22, color: t.iconFgSb),
+      title: label,
+      titleStyle: bloomText(size: 16, weight: 500, color: t.text),
+      padding: const EdgeInsets.symmetric(vertical: 14),
       onTap: onTap,
-      child: SizedBox(
-        height: 54,
-        child: Row(
-          children: [
-            BloomIcon(icon, size: 22, color: t.iconFgSb),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: bloomText(size: 16, weight: 500, color: t.text),
-              ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (fresh) ...[const _NewPill(), const SizedBox(width: 8)],
+          if (alt == null)
+            Text(value, style: style)
+          else
+            _SwapValue(
+              first: Text(value, style: style),
+              second: Text(alt, style: style),
             ),
-            const SizedBox(width: 10),
-            if (fresh) ...[const _NewPill(), const SizedBox(width: 8)],
-            if (alt == null)
-              Text(value, style: style)
-            else
-              _SwapValue(
-                first: Text(value, style: style),
-                second: Text(alt, style: style),
-              ),
-            const SizedBox(width: 6),
-            BloomIcon(Bi.altArrowRight, size: 16, color: t.muted),
-          ],
-        ),
+          const SizedBox(width: 6),
+          BloomIcon(Bi.altArrowRight, size: 16, color: t.muted),
+        ],
       ),
     );
   }
