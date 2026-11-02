@@ -18,11 +18,12 @@ import '../media_store.dart';
 import 'custom_widgets.dart';
 import 'media_library_pane.dart';
 import 'presets_pane.dart';
+import '../cloud_customizations.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../../../shared/ui/big_tabs.dart';
 import '../../../shared/ui/atoms.dart';
 
-enum _Pane { library, presets }
+enum _Pane { library, presets, cloud }
 
 /// Tab change: a slide from the side switched to, with a fade.
 const Duration _kPaneSwitch = Duration(milliseconds: 260);
@@ -52,6 +53,9 @@ class _CustomizationScreenState extends ConsumerState<CustomizationScreen> {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
+    final isRu = Localizations.localeOf(context).languageCode == 'ru';
+    final cloudLabel = isRu ? 'Облако Vercel' : 'Vercel Cloud';
+
     return SubPage(
       title: context.l.stCustom,
       onBack: () => context.go('/settings'),
@@ -70,14 +74,23 @@ class _CustomizationScreenState extends ConsumerState<CustomizationScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                PillTabs(
-                  labels: [context.l.custLibrary, context.l.custPresets],
-                  index: _pane.index,
-                  onPick: (i) => _pick(_Pane.values[i]),
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: PillTabs(
+                      labels: [
+                        context.l.custLibrary,
+                        context.l.custPresets,
+                        cloudLabel,
+                      ],
+                      index: _pane.index,
+                      onPick: (i) => _pick(_Pane.values[i]),
+                    ),
+                  ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 CircleIconButton(
-                  icon: Bi.add,
+                  icon: _pane == _Pane.cloud ? Bi.refresh : Bi.add,
                   size: 40,
                   iconSize: 22,
                   background: Colors.transparent,
@@ -85,6 +98,14 @@ class _CustomizationScreenState extends ConsumerState<CustomizationScreen> {
                   onTap: () => switch (_pane) {
                     _Pane.library => showAddMediaSheet(context, ref),
                     _Pane.presets => showAddPresetSheet(context, ref),
+                    _Pane.cloud => {
+                      ref.invalidate(cloudPresetsProvider),
+                      ScaffoldMessenger.of(context).toast(
+                        isRu
+                            ? 'Обновление тем из Vercel...'
+                            : 'Refreshing themes from Vercel...',
+                      ),
+                    },
                   },
                 ),
               ],
@@ -121,6 +142,7 @@ class _CustomizationScreenState extends ConsumerState<CustomizationScreen> {
                 child: switch (_pane) {
                   _Pane.library => const MediaLibraryPane(),
                   _Pane.presets => const PresetsPane(),
+                  _Pane.cloud => const CloudCustomizationsPane(),
                 },
               ),
             ),

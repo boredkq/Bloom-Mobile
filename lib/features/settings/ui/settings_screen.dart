@@ -12,7 +12,6 @@ import '../../../core/l10n/l10n.dart';
 import '../../../core/store/settings_store.dart';
 import '../../../providers/yandex/ym_auth.dart';
 import '../../../shared/ui/bloom_icon.dart';
-import '../../../features/customization/cloud_customizations.dart';
 import '../../lastfm/lastfm_store.dart';
 import '../../pc/pc_store.dart';
 import '../../telegram/telegram_store.dart';
@@ -87,11 +86,6 @@ class SettingsScreen extends StatelessWidget {
                 icon: Bi.album,
                 title: context.l.stCustom,
                 onTap: () => context.go('/settings/customization'),
-              ),
-              SettingsRow(
-                icon: Bi.magicStick,
-                title: 'Облачные темы Vercel',
-                onTap: () => showCloudCustomizationsSheet(context),
               ),
             ],
           ),

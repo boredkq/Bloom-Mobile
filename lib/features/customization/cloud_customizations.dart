@@ -16,6 +16,7 @@ import '../../features/player/player_style_store.dart';
 import '../../features/telegram/telegram_store.dart' show defaultVercelUrl;
 import '../../shared/ui/bloom_icon.dart';
 import '../../shared/ui/bloom_sheet.dart';
+import '../../shared/ui/bloom_toast.dart';
 
 class CloudPreset {
   final String id;
@@ -220,15 +221,17 @@ final cloudPresetsProvider = FutureProvider<List<CloudPreset>>((ref) async {
 void applyCloudPreset(WidgetRef ref, CloudPreset preset) {
   final settings = ref.read(settingsProvider.notifier);
 
-  // 1. Create or apply theme colors
+  // 1. Create or restore theme preset without duplicates
   Color blockColor = Color.lerp(preset.bg, Colors.white, 0.08) ?? preset.bg;
-  final themePreset = settings.createCustomTheme(
+  final themePreset = ThemePreset(
+    id: 'cloud_${preset.id}',
     name: preset.name,
     bg: preset.bg,
     blockColor: blockColor,
     accent: preset.accent,
+    custom: true,
   );
-  settings.setTheme(themePreset.id);
+  settings.restoreTheme(themePreset);
 
   // 2. Set player style
   ref.read(playerStyleProvider.notifier).setStyle(preset.playerStyle);
@@ -237,6 +240,199 @@ void applyCloudPreset(WidgetRef ref, CloudPreset preset) {
   try {
     settings.setFontFamily(preset.fontFamily);
   } catch (_) {}
+}
+
+/// Full-height pane embedded directly into CustomizationScreen.
+class CloudCustomizationsPane extends ConsumerWidget {
+  const CloudCustomizationsPane({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final presetsAsync = ref.watch(cloudPresetsProvider);
+
+    return presetsAsync.when(
+      loading: () => const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: CircularProgressIndicator(),
+        ),
+      ),
+      error: (_, _) => const _CloudPaneList(presets: kFallbackPresets),
+      data: (presets) => _CloudPaneList(presets: presets),
+    );
+  }
+}
+
+class _CloudPaneList extends ConsumerWidget {
+  const _CloudPaneList({required this.presets});
+
+  final List<CloudPreset> presets;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.bloom;
+    final currentStyle = ref.watch(playerStyleProvider);
+    final settings = ref.watch(settingsProvider);
+
+    return ListView.separated(
+      padding: EdgeInsets.fromLTRB(16, 12, 16, 24 + bottomBarsInset(context)),
+      itemCount: presets.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final p = presets[index];
+        final isActive = currentStyle == p.playerStyle &&
+            (settings.themeId == 'cloud_${p.id}' || settings.preset.name == p.name);
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: t.ovlBg,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isActive ? p.accent.withValues(alpha: 0.8) : t.ovlLine,
+              width: isActive ? 1.5 : 1.0,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  // Swatch circles
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: p.accent,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white24, width: 1.2),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: p.accent2,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white24, width: 1.2),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: p.bg,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white24, width: 1.2),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          p.name,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: t.text,
+                          ),
+                        ),
+                        Text(
+                          '${p.author} · ${p.playerStyle.name}',
+                          style: TextStyle(fontSize: 11.5, color: t.text2),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          isActive ? t.text.withValues(alpha: 0.12) : p.accent,
+                      foregroundColor: isActive ? t.text : Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 9,
+                      ),
+                      elevation: 0,
+                    ),
+                    onPressed: () {
+                      applyCloudPreset(ref, p);
+                      ScaffoldMessenger.of(context).toast(
+                        'Применена тема «${p.name}»',
+                        kind: ToastKind.success,
+                      );
+                    },
+                    child: Text(
+                      isActive ? 'Активна' : 'Применить',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (p.description.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(
+                  p.description,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: t.text2,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: [
+                  _CloudBadge(label: p.category.toUpperCase(), bg: t.ovlLine, color: t.text2),
+                  _CloudBadge(label: 'Дека: ${p.playerStyle.name}', bg: t.ovlLine, color: p.accent),
+                  _CloudBadge(label: 'Шрифт: ${p.fontFamily}', bg: t.ovlLine, color: t.text2),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _CloudBadge extends StatelessWidget {
+  const _CloudBadge({required this.label, required this.bg, required this.color});
+
+  final String label;
+  final Color bg;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10.5,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
+    );
+  }
 }
 
 Future<void> showCloudCustomizationsSheet(BuildContext context) {
