@@ -791,15 +791,11 @@ class _AuthButton extends StatelessWidget {
     final t = context.bloom;
 
     return Material(
-      color: isConnected
-          ? accentColor.withValues(alpha: 0.12)
-          : t.ovlBg,
+      color: isConnected ? accentColor.withValues(alpha: 0.12) : t.ovlBg,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: isConnected
-              ? accentColor.withValues(alpha: 0.5)
-              : t.ovlLine,
+          color: isConnected ? accentColor.withValues(alpha: 0.5) : t.ovlLine,
           width: isConnected ? 1.4 : 1.0,
         ),
       ),

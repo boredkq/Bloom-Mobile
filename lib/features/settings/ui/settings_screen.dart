@@ -116,11 +116,7 @@ class _IntegrationsGroup extends ConsumerWidget {
       rows: [
         SettingsRow(
           title: 'Telegram',
-          leading: const BloomIcon(
-            Bi.send,
-            size: 20,
-            color: Color(0xFF2AABEE),
-          ),
+          leading: const BloomIcon(Bi.send, size: 20, color: Color(0xFF2AABEE)),
           value: tg.authed ? (tg.user?.displayName ?? 'Подключен') : null,
           onTap: () => _openTelegramSettings(context, ref),
         ),
@@ -361,9 +357,8 @@ Future<void> _openTelegramSettings(BuildContext context, WidgetRef ref) async {
                     children: [
                       Text(
                         tg.user?.displayName ?? 'Telegram',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
                       ),
                       if (tg.user?.handle case final handle?)
                         Text(
@@ -427,9 +422,9 @@ Future<void> _openTelegramSettings(BuildContext context, WidgetRef ref) async {
               const SizedBox(width: 12),
               Text(
                 'Подключение Telegram',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
               ),
             ],
           ),

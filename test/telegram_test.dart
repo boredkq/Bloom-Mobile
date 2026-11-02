@@ -56,11 +56,7 @@ void main() {
 
   test('выход очищает данные пользователя', () {
     final store = JsonStore.memory({
-      'telegram': {
-        'id': 999,
-        'first_name': 'Alice',
-        'auth_date': 1700000000,
-      },
+      'telegram': {'id': 999, 'first_name': 'Alice', 'auth_date': 1700000000},
     });
     final c = _container(store);
     expect(c.read(telegramAuthProvider).authed, isTrue);

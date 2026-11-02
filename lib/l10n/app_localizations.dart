@@ -4550,11 +4550,40 @@ abstract class AppLocalizations {
   /// **'Welcome to Bloom'**
   String get welcomeTitle;
 
+  /// No description provided for @welcomeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your music without limits'**
   String get welcomeSubtitle;
+
+  /// No description provided for @welcomeContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Start listening'**
   String get welcomeContinue;
+
+  /// No description provided for @welcomeTelegramLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with Telegram'**
   String get welcomeTelegramLogin;
+
+  /// No description provided for @welcomeYandexLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with Yandex Music'**
   String get welcomeYandexLogin;
+
+  /// No description provided for @welcomeTelegramConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Telegram connected'**
   String get welcomeTelegramConnected;
+
+  /// No description provided for @welcomeYandexConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Yandex Music connected'**
   String get welcomeYandexConnected;
 
   /// desktop: wave.title
