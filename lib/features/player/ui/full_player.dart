@@ -329,7 +329,9 @@ class _Cover extends ConsumerWidget {
     return LayoutBuilder(
       builder: (context, box) {
         final side = box.biggest.shortestSide;
-        final radius = vinyl ? side / 2 : (ivory ? 8.0 : (aura ? 24.0 : _coverRadius));
+        final radius = vinyl
+            ? side / 2
+            : (ivory ? 8.0 : (aura ? 24.0 : _coverRadius));
         final double scale = (aura && !spinning) ? 0.88 : 1.0;
 
         return Stack(
@@ -362,14 +364,14 @@ class _Cover extends ConsumerWidget {
                           ),
                         ]
                       : (ivory
-                          ? [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.35),
-                                blurRadius: 14,
-                                offset: const Offset(0, 5),
-                              ),
-                            ]
-                          : null),
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.35),
+                                  blurRadius: 14,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ]
+                            : null),
                   border: ivory
                       ? Border.all(
                           color: t.accent.withValues(alpha: 0.75),

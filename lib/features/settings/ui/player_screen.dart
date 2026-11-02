@@ -486,22 +486,26 @@ class _StylePreview extends ConsumerWidget {
                               ),
                             ]
                           : (ivory
-                              ? [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.35),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ]
-                              : (!vinyl
-                                  ? [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.20),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 4),
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.35,
                                       ),
-                                    ]
-                                  : null)),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ]
+                                : (!vinyl
+                                      ? [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(
+                                              alpha: 0.20,
+                                            ),
+                                            blurRadius: 12,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ]
+                                      : null)),
                       border: ivory
                           ? Border.all(
                               color: t.accent.withValues(alpha: 0.8),
@@ -534,7 +538,10 @@ class _StylePreview extends ConsumerWidget {
               if (ivory) ...[
                 Container(
                   margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: t.accent.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(3),
@@ -569,7 +576,10 @@ class _StylePreview extends ConsumerWidget {
               ] else if (aura) ...[
                 Container(
                   margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: t.accent.withValues(alpha: 0.20),
                     borderRadius: BorderRadius.circular(10),
