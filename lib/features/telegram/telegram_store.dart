@@ -7,6 +7,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/db/db.dart';
 import '../../core/store/json_store.dart';
+import '../../core/sync/full_backup.dart';
+
+const String defaultVercelUrl = 'https://bloom-auth.vercel.app';
 
 class TelegramUser {
   final int id;
@@ -137,6 +140,14 @@ class TelegramAuthController extends Notifier<TelegramAuthState> {
         connecting: false,
         clearError: true,
       );
+
+      // Auto-sync in background: try pulling first; if none, push current
+      Future.microtask(() async {
+        final pulled = await pullBackup();
+        if (!pulled) {
+          await pushBackup();
+        }
+      });
     } catch (e) {
       state = state.copyWith(
         connecting: false,
@@ -173,6 +184,40 @@ class TelegramAuthController extends Notifier<TelegramAuthState> {
 
   void cancelConnecting() {
     state = state.copyWith(connecting: false);
+  }
+
+  /// Syncs all user data (favorites, playlists, stats, level, profile) to Vercel cloud
+  Future<bool> pushBackup([String? vercelUrl]) async {
+    final user = state.user;
+    if (user == null) return false;
+    final url = vercelUrl ?? defaultVercelUrl;
+    try {
+      final db = ref.read(dbProvider);
+      return await pushBackupToVercel(
+        serverUrl: url,
+        userId: user.id.toString(),
+        db: db,
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Restores all user data (favorites, playlists, stats, level, profile) from Vercel cloud
+  Future<bool> pullBackup([String? vercelUrl]) async {
+    final user = state.user;
+    if (user == null) return false;
+    final url = vercelUrl ?? defaultVercelUrl;
+    try {
+      final db = ref.read(dbProvider);
+      return await pullBackupFromVercel(
+        serverUrl: url,
+        userId: user.id.toString(),
+        db: db,
+      );
+    } catch (_) {
+      return false;
+    }
   }
 
   void logout() {

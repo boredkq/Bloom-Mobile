@@ -1,5 +1,8 @@
-/// First launch onboarding experience: interactive feature showcase,
-/// Telegram authentication, Yandex Music connect, and smooth entry to the app.
+/// First launch onboarding experience: authentic editorial showcase,
+/// Telegram cloud sync, Yandex Music integration, and direct entry.
+///
+/// Designed with the Unslop philosophy: zero corporate buzzwords, high content
+/// density, honest descriptions, and refined tactile typography.
 library;
 
 import 'package:flutter/material.dart';
@@ -39,7 +42,7 @@ class Welcome extends ConsumerStatefulWidget {
 
 class _WelcomeState extends ConsumerState<Welcome>
     with SingleTickerProviderStateMixin {
-  static const _transitionMs = Duration(milliseconds: 500);
+  static const _transitionMs = Duration(milliseconds: 450);
 
   late final AnimationController _cover = AnimationController(
     vsync: this,
@@ -85,7 +88,7 @@ class _WelcomeState extends ConsumerState<Welcome>
             child: FadeTransition(
               opacity: CurvedAnimation(
                 parent: _cover,
-                curve: Curves.easeInOutQuad,
+                curve: Curves.easeOutCubic,
               ),
               child: _OnboardingScreen(onContinue: _leave),
             ),
@@ -110,32 +113,32 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
 
   static const List<_FeatureSlide> _slides = [
     _FeatureSlide(
-      tag: 'БЕЗ КОМПРОМИССОВ',
-      title: 'Музыка без границ',
-      subtitle:
-          'Слушайте миллионы треков, открывайте чарты и наслаждайтесь любимым звуком в премиальном качестве.',
-      icon: Bi.soundwave,
+      eyebrow: 'ФОНОТЕКА',
+      title: 'Вся музыка в одном месте',
+      description:
+          'Локальные треки, Яндекс Музыка, SoundCloud и YouTube. Никакой навязчивой рекламы и искусственных ограничений.',
+      kind: _SlideVisualKind.sources,
     ),
     _FeatureSlide(
-      tag: 'AURA · VINYL · IVORY',
-      title: 'Плееры нового поколения',
-      subtitle:
-          'Живое свечение Apple Music Aura, крутящийся виниловый диск и строгий редакционный минимализм Ivory.',
-      icon: Bi.magicStick,
+      eyebrow: 'ТРИ ХАРАКТЕРА',
+      title: 'Деки под любое настроение',
+      description:
+          'Apple Music Aura с динамическим свечением под обложку, тактильный крутящийся винил с тонармом или лаконичный Ivory.',
+      kind: _SlideVisualKind.decks,
     ),
     _FeatureSlide(
-      tag: 'ВОДОПАД LRC & SHAZAM',
-      title: 'Слова песен и поиск звука',
-      subtitle:
-          'Синхронизированный водопадный текст с романизацией и встроенное распознавание музыки через микрофон.',
-      icon: Bi.microphone,
+      eyebrow: 'ТЕКСТ И ЗВУК',
+      title: 'Слова в такт и быстрый поиск',
+      description:
+          'Построчный текст песен с синхронизацией и романизацией, а также мгновенное определение играющей рядом музыки.',
+      kind: _SlideVisualKind.lyrics,
     ),
     _FeatureSlide(
-      tag: 'ВАША ФОНОТЕКА',
-      title: 'Telegram & Яндекс Музыка',
-      subtitle:
-          'Подключите ваши аккаунты прямо сейчас или начните слушать без регистрации — выбор всегда за вами.',
-      icon: Bi.heart,
+      eyebrow: 'ОБЛАКО И БЭКАП',
+      title: 'Синхронизация профиля',
+      description:
+          'Избранное, плейлисты, уровень слушателя и история прослушиваний автоматически сохраняются через Telegram и Vercel.',
+      kind: _SlideVisualKind.cloud,
     ),
   ];
 
@@ -156,48 +159,40 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Top Bar: Logo & App Name
+            // Top Bar: Clean Brand & Skip
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+              padding: const EdgeInsets.fromLTRB(24, 16, 20, 0),
               child: Row(
                 children: [
                   Container(
-                    width: 38,
-                    height: 38,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
-                      color: t.accent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
+                      color: t.accent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: t.accent.withValues(alpha: 0.3),
-                        width: 1.2,
+                        color: t.accent.withValues(alpha: 0.25),
+                        width: 1.0,
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: t.accent.withValues(alpha: 0.25),
-                          blurRadius: 16,
-                          spreadRadius: 1,
-                        ),
-                      ],
                     ),
                     padding: const EdgeInsets.all(7),
                     child: Image.asset(
                       'assets/brand/bloom_mark.png',
                       errorBuilder: (_, _, _) =>
-                          BloomIcon(Bi.soundwave, color: t.accent),
+                          BloomIcon(Bi.soundwave, color: t.accent, size: 20),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Text(
                     'Bloom',
                     style: bloomText(
-                      size: 22,
+                      size: 20,
                       weight: 700,
                       color: t.text,
-                      letterSpacing: -0.4,
+                      letterSpacing: -0.3,
                     ),
                   ),
                   const Spacer(),
-                  // Skip button
                   GestureDetector(
                     onTap: widget.onContinue,
                     behavior: HitTestBehavior.opaque,
@@ -210,7 +205,7 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
                         'Пропустить',
                         style: TextStyle(
                           color: t.text2,
-                          fontSize: 14,
+                          fontSize: 13.5,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -220,7 +215,7 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
               ),
             ),
 
-            // Middle Carousel
+            // Middle Carousel: Feature Slides
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
@@ -229,58 +224,30 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
                 itemBuilder: (context, index) {
                   final slide = _slides[index];
                   return Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Large Feature Icon with Aura Glow
-                        Container(
-                          width: 86,
-                          height: 86,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: t.accent.withValues(alpha: 0.12),
-                            border: Border.all(
-                              color: t.accent.withValues(alpha: 0.4),
-                              width: 1.5,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: t.accent.withValues(alpha: 0.35),
-                                blurRadius: 32,
-                                spreadRadius: 4,
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: BloomIcon(
-                              slide.icon,
-                              size: 40,
-                              color: t.accent,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 28),
-                        // Badge Tag
+                        // Visual Centerpiece
+                        _SlideVisual(kind: slide.kind),
+                        const SizedBox(height: 32),
+                        // Eyebrow Tag
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,
-                            vertical: 3,
+                            vertical: 3.5,
                           ),
                           decoration: BoxDecoration(
                             color: t.ovlBg,
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(16),
                             border: Border.all(color: t.ovlLine),
                           ),
                           child: Text(
-                            slide.tag,
+                            slide.eyebrow,
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 10.5,
                               fontWeight: FontWeight.w700,
-                              letterSpacing: 1.4,
+                              letterSpacing: 1.2,
                               color: t.accent,
                             ),
                           ),
@@ -291,21 +258,24 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
                           slide.title,
                           textAlign: TextAlign.center,
                           style: bloomText(
-                            size: 26,
+                            size: 24,
                             weight: 700,
                             color: t.text,
-                            letterSpacing: -0.5,
+                            letterSpacing: -0.4,
                           ),
                         ),
                         const SizedBox(height: 10),
                         // Slide Subtitle
-                        Text(
-                          slide.subtitle,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14.5,
-                            color: t.text2,
-                            height: 1.45,
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 320),
+                          child: Text(
+                            slide.description,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: t.text2,
+                              height: 1.45,
+                            ),
                           ),
                         ),
                       ],
@@ -315,16 +285,16 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
               ),
             ),
 
-            // Dots Indicator
+            // Page Dots
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(_slides.length, (i) {
                 final active = i == _currentPage;
                 return AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  width: active ? 22 : 6,
-                  height: 6,
+                  duration: const Duration(milliseconds: 220),
+                  margin: const EdgeInsets.symmetric(horizontal: 3.5),
+                  width: active ? 20 : 6,
+                  height: 5,
                   decoration: BoxDecoration(
                     color: active ? t.accent : t.muted.withValues(alpha: 0.35),
                     borderRadius: BorderRadius.circular(3),
@@ -333,9 +303,9 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
               }),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
-            // Auth Connectors & Action Section
+            // Auth Connectors & Primary Start Button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
@@ -345,13 +315,15 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
                   _AuthButton(
                     onTap: () => _openTelegramAuth(context, ref),
                     icon: Bi.send,
-                    accentColor: const Color(0xFF2AABEE),
+                    brandColor: const Color(0xFF2AABEE),
                     title: tgState.authed
                         ? 'Telegram: ${tgState.user?.displayName ?? "Подключен"}'
-                        : 'Войти через Telegram',
+                        : 'Подключить Telegram',
                     subtitle: tgState.authed
-                        ? (tgState.user?.handle ?? 'Аккаунт синхронизирован')
-                        : 'Вход через виджет Vercel или бота',
+                        ? (tgState.user?.handle != null
+                              ? '@${tgState.user!.handle} · Синхронизация активна'
+                              : 'Облачная копия активна')
+                        : 'Синхронизация фонотеки, плейлистов и уровня',
                     isConnected: tgState.authed,
                   ),
 
@@ -361,30 +333,30 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
                   _AuthButton(
                     onTap: () => _openYandexAuth(context, ref),
                     icon: Bi.musicNote,
-                    accentColor: const Color(0xFFFC3F1D),
+                    brandColor: const Color(0xFFFC3F1D),
                     title: ymState.authed
-                        ? 'Яндекс Музыка'
-                        : 'Войти в Яндекс Музыку',
+                        ? 'Яндекс Музыка подключена'
+                        : 'Подключить Яндекс Музыку',
                     subtitle: ymState.authed
                         ? (ymState.hasPlus == true
-                              ? 'Подписка Плюс активна ✓'
-                              : 'Подключено ✓')
-                        : 'Вход по коду устройства или токену',
+                              ? 'Подписка Плюс активна · Моя волна доступна'
+                              : 'Каталог подключен')
+                        : 'Быстрый вход по коду ya.ru/device или токену',
                     isConnected: ymState.authed,
                   ),
 
                   const SizedBox(height: 14),
 
-                  // Main Continue Button
+                  // Primary Action
                   SizedBox(
                     width: double.infinity,
-                    height: 52,
+                    height: 50,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: t.accent,
                         foregroundColor: t.accentText,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(14),
                         ),
                         elevation: 0,
                       ),
@@ -395,9 +367,9 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
                           Text(
                             context.l.welcomeContinue,
                             style: const TextStyle(
-                              fontSize: 16,
+                              fontSize: 15.5,
                               fontWeight: FontWeight.w600,
-                              letterSpacing: 0.2,
+                              letterSpacing: 0.1,
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -410,7 +382,7 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
                 ],
               ),
             ),
@@ -424,35 +396,109 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
   void _openTelegramAuth(BuildContext context, WidgetRef ref) {
     final tg = ref.read(telegramAuthProvider);
     if (tg.authed) {
-      // Show details & logout option
       showBloomSheetChild<void>(
         context: context,
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(22),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'Telegram подключен',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${tg.user?.displayName} (${tg.user?.handle ?? ""})',
-                style: TextStyle(color: context.bloom.text2),
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2AABEE).withValues(alpha: 0.18),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: BloomIcon(
+                        Bi.send,
+                        color: Color(0xFF2AABEE),
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          tg.user?.displayName ?? 'Telegram подключен',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: context.bloom.text,
+                          ),
+                        ),
+                        if (tg.user?.handle != null)
+                          Text(
+                            '@${tg.user!.handle}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: context.bloom.text2,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 20),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: context.bloom.text,
+                  side: BorderSide(
+                    color: context.bloom.accent.withValues(alpha: 0.4),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                icon: BloomIcon(
+                  Bi.refresh,
+                  size: 16,
+                  color: context.bloom.accent,
+                ),
+                label: const Text('Синхронизировать сейчас'),
+                onPressed: () async {
+                  final ok = await ref
+                      .read(telegramAuthProvider.notifier)
+                      .pushBackup();
+                  if (context.mounted) {
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          ok
+                              ? 'Фонотека и плейлисты сохранены в Vercel!'
+                              : 'Ошибка связи с Vercel',
+                        ),
+                      ),
+                    );
+                  }
+                },
+              ),
+              const SizedBox(height: 10),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: context.bloom.danger,
                   foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(46),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  elevation: 0,
                 ),
                 onPressed: () {
                   ref.read(telegramAuthProvider.notifier).logout();
                   Navigator.of(context).pop();
                 },
-                child: const Text('Выйти из Telegram'),
+                child: const Text('Отключить аккаунт'),
               ),
             ],
           ),
@@ -461,10 +507,7 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
       return;
     }
 
-    // Modal with Telegram Login Options
-    final vercelController = TextEditingController(
-      text: 'https://bloom-auth.vercel.app',
-    );
+    final vercelController = TextEditingController(text: defaultVercelUrl);
 
     showBloomSheetChild<void>(
       context: context,
@@ -479,7 +522,7 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2AABEE).withValues(alpha: 0.2),
+                    color: const Color(0xFF2AABEE).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const BloomIcon(
@@ -491,22 +534,28 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
                 const SizedBox(width: 12),
                 Text(
                   'Вход через Telegram',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  style: TextStyle(
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
+                    color: context.bloom.text,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 14),
             Text(
-              'Для входа через официальный Telegram Login Widget укажите адрес развернутого Vercel-бэкенда:',
-              style: TextStyle(fontSize: 13, color: context.bloom.text2),
+              'Для входа через официальный Telegram Login Widget укажите адрес развернутого бэкенда Vercel:',
+              style: TextStyle(
+                fontSize: 13,
+                color: context.bloom.text2,
+                height: 1.4,
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: vercelController,
               decoration: InputDecoration(
-                hintText: 'https://your-bloom.vercel.app',
+                hintText: defaultVercelUrl,
                 filled: true,
                 fillColor: context.bloom.ovlBg,
                 border: OutlineInputBorder(
@@ -519,15 +568,16 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2AABEE),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 padding: const EdgeInsets.symmetric(vertical: 13),
+                elevation: 0,
               ),
               onPressed: () {
                 final url = vercelController.text.trim();
@@ -545,7 +595,7 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
             TextButton(
               onPressed: () => _manualTelegramDataDialog(context, ref),
               child: Text(
-                'Ввести данные пользователя вручную',
+                'Ввести имя и username вручную',
                 style: TextStyle(fontSize: 12.5, color: context.bloom.text2),
               ),
             ),
@@ -564,13 +614,14 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: context.bloom.blockColor,
-        title: const Text('Ввод профиля Telegram'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Данные Telegram профиля'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameCtrl,
-              decoration: const InputDecoration(labelText: 'Имя пользователя'),
+              decoration: const InputDecoration(labelText: 'Отображаемое имя'),
             ),
             const SizedBox(height: 10),
             TextField(
@@ -613,25 +664,67 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
       showBloomSheetChild<void>(
         context: context,
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(22),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'Яндекс Музыка подключена',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                ym.hasPlus == true ? 'Плюс активен' : 'Аккаунт активен',
-                style: TextStyle(color: context.bloom.text2),
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFC3F1D).withValues(alpha: 0.18),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: BloomIcon(
+                        Bi.musicNote,
+                        color: Color(0xFFFC3F1D),
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Яндекс Музыка',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: context.bloom.text,
+                          ),
+                        ),
+                        Text(
+                          ym.hasPlus == true
+                              ? 'Подписка Плюс активна ✓'
+                              : 'Аккаунт подключен',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: ym.hasPlus == true
+                                ? const Color(0xFF00C853)
+                                : context.bloom.text2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 20),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: context.bloom.danger,
                   foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(46),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  elevation: 0,
                 ),
                 onPressed: () {
                   ref.read(ymAuthProvider.notifier).logout();
@@ -661,7 +754,7 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFC3F1D).withValues(alpha: 0.2),
+                    color: const Color(0xFFFC3F1D).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const BloomIcon(
@@ -673,22 +766,24 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
                 const SizedBox(width: 12),
                 Text(
                   'Вход в Яндекс Музыку',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  style: TextStyle(
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
+                    color: context.bloom.text,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            // Option 1: Device flow (ya.ru/device)
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFC3F1D),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 padding: const EdgeInsets.symmetric(vertical: 13),
+                elevation: 0,
               ),
               onPressed: () {
                 ref.read(ymAuthProvider.notifier).startAuth();
@@ -699,7 +794,7 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
                 style: TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(child: Divider(color: context.bloom.ovlLine)),
@@ -717,7 +812,7 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
                 Expanded(child: Divider(color: context.bloom.ovlLine)),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             TextField(
               controller: tokenController,
               decoration: InputDecoration(
@@ -739,7 +834,7 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
               style: OutlinedButton.styleFrom(
                 side: BorderSide(color: context.bloom.ovlLine),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
@@ -768,7 +863,7 @@ class _AuthButton extends StatelessWidget {
   const _AuthButton({
     required this.onTap,
     required this.icon,
-    required this.accentColor,
+    required this.brandColor,
     required this.title,
     required this.subtitle,
     required this.isConnected,
@@ -776,7 +871,7 @@ class _AuthButton extends StatelessWidget {
 
   final VoidCallback onTap;
   final BloomGlyph icon;
-  final Color accentColor;
+  final Color brandColor;
   final String title;
   final String subtitle;
   final bool isConnected;
@@ -786,19 +881,19 @@ class _AuthButton extends StatelessWidget {
     final t = context.bloom;
 
     return Material(
-      color: isConnected ? accentColor.withValues(alpha: 0.12) : t.ovlBg,
+      color: isConnected ? brandColor.withValues(alpha: 0.10) : t.ovlBg,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         side: BorderSide(
-          color: isConnected ? accentColor.withValues(alpha: 0.5) : t.ovlLine,
-          width: isConnected ? 1.4 : 1.0,
+          color: isConnected ? brandColor.withValues(alpha: 0.45) : t.ovlLine,
+          width: isConnected ? 1.3 : 1.0,
         ),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           child: Row(
             children: [
               Container(
@@ -806,19 +901,19 @@ class _AuthButton extends StatelessWidget {
                 height: 36,
                 decoration: BoxDecoration(
                   color: isConnected
-                      ? accentColor
-                      : accentColor.withValues(alpha: 0.18),
+                      ? brandColor
+                      : brandColor.withValues(alpha: 0.16),
                   shape: BoxShape.circle,
                 ),
                 child: Center(
                   child: BloomIcon(
                     isConnected ? Bi.check : icon,
                     size: 18,
-                    color: isConnected ? Colors.white : accentColor,
+                    color: isConnected ? Colors.white : brandColor,
                   ),
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -828,7 +923,7 @@ class _AuthButton extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 14.5,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: t.text,
                       ),
@@ -839,8 +934,8 @@ class _AuthButton extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 12,
-                        color: isConnected ? accentColor : t.text2,
+                        fontSize: 11.5,
+                        color: isConnected ? brandColor : t.text2,
                       ),
                     ),
                   ],
@@ -859,16 +954,363 @@ class _AuthButton extends StatelessWidget {
   }
 }
 
+enum _SlideVisualKind { sources, decks, lyrics, cloud }
+
 class _FeatureSlide {
-  final String tag;
+  final String eyebrow;
   final String title;
-  final String subtitle;
-  final BloomGlyph icon;
+  final String description;
+  final _SlideVisualKind kind;
 
   const _FeatureSlide({
-    required this.tag,
+    required this.eyebrow,
+    required this.title,
+    required this.description,
+    required this.kind,
+  });
+}
+
+class _SlideVisual extends StatelessWidget {
+  const _SlideVisual({required this.kind});
+
+  final _SlideVisualKind kind;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+
+    switch (kind) {
+      case _SlideVisualKind.sources:
+        return _SourcesVisual(t: t);
+      case _SlideVisualKind.decks:
+        return _DecksVisual(t: t);
+      case _SlideVisualKind.lyrics:
+        return _LyricsVisual(t: t);
+      case _SlideVisualKind.cloud:
+        return _CloudVisual(t: t);
+    }
+  }
+}
+
+/// Slide 0: Unified catalog pill cluster
+class _SourcesVisual extends StatelessWidget {
+  const _SourcesVisual({required this.t});
+  final BloomThemeColors t;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 220,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      decoration: BoxDecoration(
+        color: t.ovlBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: t.ovlLine),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _SourceChip(
+                label: 'Яндекс Музыка',
+                dotColor: const Color(0xFFFC3F1D),
+                t: t,
+              ),
+              const SizedBox(width: 8),
+              _SourceChip(
+                label: 'SoundCloud',
+                dotColor: const Color(0xFFFF5500),
+                t: t,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _SourceChip(
+                label: 'Локальные FLAC/MP3',
+                dotColor: t.accent,
+                t: t,
+              ),
+              const SizedBox(width: 8),
+              _SourceChip(
+                label: 'YouTube',
+                dotColor: const Color(0xFFFF0000),
+                t: t,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SourceChip extends StatelessWidget {
+  const _SourceChip({
+    required this.label,
+    required this.dotColor,
+    required this.t,
+  });
+
+  final String label;
+  final Color dotColor;
+  final BloomThemeColors t;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: t.blockColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: t.ovlLine),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              color: dotColor,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: t.text,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Slide 1: Three deck style badges
+class _DecksVisual extends StatelessWidget {
+  const _DecksVisual({required this.t});
+  final BloomThemeColors t;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 240,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      decoration: BoxDecoration(
+        color: t.ovlBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: t.ovlLine),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _DeckBadge(title: 'Aura', subtitle: 'Glow', icon: Bi.magicStick, t: t, active: true),
+          _DeckBadge(title: 'Vinyl', subtitle: 'Analog', icon: Bi.album, t: t, active: false),
+          _DeckBadge(title: 'Ivory', subtitle: 'Editorial', icon: Bi.soundwave, t: t, active: false),
+        ],
+      ),
+    );
+  }
+}
+
+class _DeckBadge extends StatelessWidget {
+  const _DeckBadge({
     required this.title,
     required this.subtitle,
     required this.icon,
+    required this.t,
+    required this.active,
   });
+
+  final String title;
+  final String subtitle;
+  final BloomGlyph icon;
+  final BloomThemeColors t;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 66,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: active ? t.accent.withValues(alpha: 0.15) : t.blockColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: active ? t.accent.withValues(alpha: 0.4) : t.ovlLine,
+        ),
+      ),
+      child: Column(
+        children: [
+          BloomIcon(
+            icon,
+            size: 20,
+            color: active ? t.accent : t.text2,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: active ? t.text : t.text2,
+            ),
+          ),
+          Text(
+            subtitle,
+            style: TextStyle(
+              fontSize: 9.5,
+              color: t.text2.withValues(alpha: 0.7),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Slide 2: Karaoke text preview
+class _LyricsVisual extends StatelessWidget {
+  const _LyricsVisual({required this.t});
+  final BloomThemeColors t;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 240,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: t.ovlBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: t.ovlLine),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Hold on to the light',
+            style: TextStyle(
+              fontSize: 12,
+              color: t.text2.withValues(alpha: 0.5),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: t.accent.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Where the sound blooms deep',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: t.accent,
+                    ),
+                  ),
+                ),
+                BloomIcon(Bi.lyrics, size: 14, color: t.accent),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'And the rhythm takes control',
+            style: TextStyle(
+              fontSize: 12,
+              color: t.text2.withValues(alpha: 0.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Slide 3: Cloud profile preview
+class _CloudVisual extends StatelessWidget {
+  const _CloudVisual({required this.t});
+  final BloomThemeColors t;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 230,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: t.ovlBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: t.ovlLine),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: const Color(0xFF2AABEE).withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Center(
+              child: BloomIcon(
+                Bi.send,
+                size: 20,
+                color: Color(0xFF2AABEE),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Слушатель · Lvl 1',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: t.text,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF00C853),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      'Vercel Cloud Sync',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: t.text2,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

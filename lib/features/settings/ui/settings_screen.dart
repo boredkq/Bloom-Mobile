@@ -370,7 +370,59 @@ Future<void> _openTelegramSettings(BuildContext context, WidgetRef ref) async {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: t.text,
+                side: BorderSide(color: t.accent.withValues(alpha: 0.5)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              icon: BloomIcon(Bi.refresh, size: 18, color: t.accent),
+              label: const Text('Синхронизировать с облаком'),
+              onPressed: () async {
+                final ok = await ref.read(telegramAuthProvider.notifier).pushBackup();
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(ok
+                          ? 'Медиатека, уровень и плейлисты сохранены в облаке!'
+                          : 'Ошибка сохранения в облако'),
+                    ),
+                  );
+                }
+              },
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: t.text2,
+                side: BorderSide(color: t.ovlLine),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              icon: BloomIcon(Bi.downloadMinimalistic, size: 18, color: t.text2),
+              label: const Text('Восстановить из облака'),
+              onPressed: () async {
+                final ok = await ref.read(telegramAuthProvider.notifier).pullBackup();
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(ok
+                          ? 'Данные успешно восстановлены из облака!'
+                          : 'Облачная копия не найдена'),
+                    ),
+                  );
+                }
+              },
+            ),
+            const SizedBox(height: 12),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: t.danger,
