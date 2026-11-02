@@ -317,7 +317,7 @@ bool applyFullBackup(BloomDb db, Map<String, dynamic> data) {
     logInfo('sync', 'Full backup applied successfully');
     return true;
   } catch (e, st) {
-    logError('sync', 'Failed to apply full backup', e, st);
+    logError('sync', 'Failed to apply full backup', e);
     return false;
   }
 }

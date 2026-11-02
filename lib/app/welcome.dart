@@ -995,7 +995,7 @@ class _SlideVisual extends StatelessWidget {
 /// Slide 0: Unified catalog pill cluster
 class _SourcesVisual extends StatelessWidget {
   const _SourcesVisual({required this.t});
-  final BloomThemeColors t;
+  final BloomTokens t;
 
   @override
   Widget build(BuildContext context) {
@@ -1058,7 +1058,7 @@ class _SourceChip extends StatelessWidget {
 
   final String label;
   final Color dotColor;
-  final BloomThemeColors t;
+  final BloomTokens t;
 
   @override
   Widget build(BuildContext context) {
@@ -1095,7 +1095,7 @@ class _SourceChip extends StatelessWidget {
 /// Slide 1: Three deck style badges
 class _DecksVisual extends StatelessWidget {
   const _DecksVisual({required this.t});
-  final BloomThemeColors t;
+  final BloomTokens t;
 
   @override
   Widget build(BuildContext context) {
@@ -1149,7 +1149,7 @@ class _DeckBadge extends StatelessWidget {
   final String title;
   final String subtitle;
   final BloomGlyph icon;
-  final BloomThemeColors t;
+  final BloomTokens t;
   final bool active;
 
   @override
@@ -1192,7 +1192,7 @@ class _DeckBadge extends StatelessWidget {
 /// Slide 2: Karaoke text preview
 class _LyricsVisual extends StatelessWidget {
   const _LyricsVisual({required this.t});
-  final BloomThemeColors t;
+  final BloomTokens t;
 
   @override
   Widget build(BuildContext context) {
@@ -1254,7 +1254,7 @@ class _LyricsVisual extends StatelessWidget {
 /// Slide 3: Cloud profile preview
 class _CloudVisual extends StatelessWidget {
   const _CloudVisual({required this.t});
-  final BloomThemeColors t;
+  final BloomTokens t;
 
   @override
   Widget build(BuildContext context) {
