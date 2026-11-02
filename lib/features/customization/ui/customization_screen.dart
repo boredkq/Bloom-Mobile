@@ -165,7 +165,7 @@ class _CtxTile extends ConsumerWidget {
     return DragTarget<MediaItem>(
       onAcceptWithDetails: (details) {
         ref.read(customProvider.notifier).set(ctx, details.data.id);
-        showToast(context, switch (ctx) {
+        toaster.show(switch (ctx) {
           CustomCtx.bg => context.l.custBgUpdated,
           CustomCtx.cover => context.l.custCoverUpdated,
           CustomCtx.slider => context.l.custSliderUpdated,
@@ -202,7 +202,7 @@ class _CtxTile extends ConsumerWidget {
           ? null
           : () {
               ref.read(customProvider.notifier).set(ctx, null);
-              showToast(context, switch (ctx) {
+              toaster.show(switch (ctx) {
                 CustomCtx.bg => context.l.custBgRemoved,
                 CustomCtx.cover => context.l.custCoverRemoved,
                 CustomCtx.slider => context.l.custSliderRemoved,

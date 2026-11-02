@@ -163,7 +163,6 @@ class _ConvertScreenState extends ConsumerState<ConvertScreen> {
     final tracks = convertResult(_items, _decisions);
     if (tracks.isEmpty) return;
     final l10n = context.l;
-    final messenger = ScaffoldMessenger.of(context);
     // I take the router BEFORE closing the screen: after `pop` this context has
     // left the tree and can't navigate to the new playlist.
     final router = GoRouter.of(context);
@@ -174,7 +173,7 @@ class _ConvertScreenState extends ConsumerState<ConvertScreen> {
 
     Navigator.of(context).pop();
     router.go('/library/list/${created.id}');
-    messenger.toast(
+    toaster.show(
       l10n.cvCreated(created.name, l10n.tracksCount(tracks.length)),
       kind: ToastKind.success,
     );

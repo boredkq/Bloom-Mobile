@@ -57,9 +57,8 @@ Future<void> showTrackActions(
   // history the same item would be a different action.
   final fromPlaylist = lib.playlists.any((p) => p.id == listId) ? listId : null;
   final player = ref.read(playbackProvider.notifier);
-  // I take the messenger here: the sheet closes before the handler runs, and by
-  // the time of the snack bar its context has left the tree.
-  final messenger = ScaffoldMessenger.of(context);
+  // I take translations here: the sheet closes before the handler runs, and by
+  // the time of the toast its context has left the tree.
   final l10n = context.l;
 
   await showBloomSheet(
@@ -87,7 +86,7 @@ Future<void> showTrackActions(
       SheetAction(
         icon: Bi.inboxIn,
         label: context.l.taToQueue,
-        onTap: () => messenger.toast(
+        onTap: () => toaster.show(
           player.addToQueue(track)
               ? l10n.swAddedToQueue
               : l10n.swAlreadyInQueue,
@@ -111,7 +110,7 @@ Future<void> showTrackActions(
           subtitle: context.l.taPlayNextHint,
           onTap: () {
             player.playNext(track);
-            messenger.toast(l10n.swPlaysNext);
+            toaster.show(l10n.swPlaysNext);
           },
         ),
         // Only platforms with radio: elsewhere it would open just to refuse.
@@ -160,8 +159,7 @@ Future<void> showTrackActions(
             icon: Bi.close,
             label: context.l.taRemoveFromPlaylist,
             danger: true,
-            onTap: () =>
-                removeTrackFromList(messenger, l10n, ref, playlistId, track),
+            onTap: () => removeTrackFromList(l10n, ref, playlistId, track),
           ),
         if (inQueueAt >= 0)
           SheetAction(
@@ -176,7 +174,7 @@ Future<void> showTrackActions(
             icon: Bi.trashBinTrash,
             label: context.l.taDeleteTrack,
             danger: true,
-            onTap: () => _deleteTrack(messenger, l10n, ref, track),
+            onTap: () => _deleteTrack(l10n, ref, track),
           ),
       ],
     ],
@@ -186,19 +184,14 @@ Future<void> showTrackActions(
 /// Deletes throughout with no second question: the track leaves favourites and
 /// playlists too; the item is red, so the tap is the decision. Its history
 /// entry stays: that's a log of what was played, and only the user clears it.
-void _deleteTrack(
-  ScaffoldMessengerState messenger,
-  AppLocalizations l10n,
-  WidgetRef ref,
-  Track track,
-) {
+void _deleteTrack(AppLocalizations l10n, WidgetRef ref, Track track) {
   // The offline copy goes with the track, or the file would be garbage nothing
   // points at. For a local track too: the copy in the app goes, the user's file
   // stays.
   unawaited(ref.read(offlineProvider.notifier).remove(track.id));
   unawaited(forgetLocalTracks([track]));
   ref.read(libraryProvider.notifier).deleteTrack(track.id);
-  messenger.toast(l10n.taTrackDeleted);
+  toaster.show(l10n.taTrackDeleted);
 }
 
 /// Download sheet: a copy inside the app, or a file outside. Offline state is
@@ -212,7 +205,6 @@ Future<void> _showDownloadSheet(
 }) async {
   final isOffline = ref.read(offlineProvider).has(track.id);
   final hasCover = track.cover?.isNotEmpty ?? false;
-  final messenger = ScaffoldMessenger.of(context);
   final l10n = context.l;
 
   // Order: track, cover, offline.
@@ -225,7 +217,7 @@ Future<void> _showDownloadSheet(
           color: context.bloom.text,
           onTap: () {
             Navigator.of(sheetContext).pop();
-            unawaited(saveTrackFile(messenger, l10n, ref, track));
+            unawaited(saveTrackFile(l10n, ref, track));
           },
         ),
       ),
@@ -237,7 +229,7 @@ Future<void> _showDownloadSheet(
           color: context.bloom.text,
           onTap: () {
             Navigator.of(sheetContext).pop();
-            unawaited(saveCoverFile(messenger, l10n, track));
+            unawaited(saveCoverFile(l10n, track));
           },
         ),
       ),
@@ -249,7 +241,7 @@ Future<void> _showDownloadSheet(
           color: isOffline ? context.bloom.accent : context.bloom.text,
           onTap: () {
             Navigator.of(sheetContext).pop();
-            unawaited(toggleTrackOffline(messenger, l10n, ref, track));
+            unawaited(toggleTrackOffline(l10n, ref, track));
           },
         ),
       ),
@@ -274,7 +266,6 @@ Future<void> _showSwitchPlatformSheet(
   Track track,
 ) async {
   final targets = switchTargets(ref, track);
-  final messenger = ScaffoldMessenger.of(context);
   final l10n = context.l;
 
   await showBloomSheetChild<void>(
@@ -294,9 +285,7 @@ Future<void> _showSwitchPlatformSheet(
               source: target,
               onTap: () {
                 Navigator.of(sheetContext).pop();
-                unawaited(
-                  switchTrackPlatform(messenger, l10n, ref, track, target),
-                );
+                unawaited(switchTrackPlatform(l10n, ref, track, target));
               },
             ),
         ],
@@ -370,16 +359,12 @@ Future<void> showAddTracksToPlaylistSheet(
                 label: context.l.commonAddToLibrary,
                 color: t.accent,
                 onTap: () {
-                  // I take the messenger before pop: after it the sheet's
-                  // context has left the tree and can't reach the Scaffold.
-                  final messenger = ScaffoldMessenger.of(context);
+                  // I take translations before pop: after it the sheet's
+                  // context has left the tree.
                   final l10n = context.l;
                   ref.read(libraryProvider.notifier).addToLibrary(outside);
                   Navigator.of(context).pop();
-                  messenger.toast(
-                    l10n.taAddedToLibrary,
-                    kind: ToastKind.success,
-                  );
+                  toaster.show(l10n.taAddedToLibrary, kind: ToastKind.success);
                 },
               ),
             ],
@@ -411,7 +396,6 @@ List<SheetAction> queueSheetActions(
   List<Track> tracks, {
   PlaySource? source,
 }) {
-  final messenger = ScaffoldMessenger.of(context);
   final l10n = context.l;
   final player = ref.read(playbackProvider.notifier);
   return [
@@ -422,7 +406,7 @@ List<SheetAction> queueSheetActions(
           ? null
           : () {
               final added = player.queueTracks(tracks, source: source);
-              messenger.toast(
+              toaster.show(
                 added > 0 ? l10n.tlQueuedTracks(added) : l10n.swAlreadyInQueue,
               );
             },
@@ -434,7 +418,7 @@ List<SheetAction> queueSheetActions(
           ? null
           : () {
               final moved = player.queueTracksNext(tracks, source: source);
-              if (moved > 0) messenger.toast(l10n.tlQueuedNext(moved));
+              if (moved > 0) toaster.show(l10n.tlQueuedNext(moved));
             },
     ),
   ];

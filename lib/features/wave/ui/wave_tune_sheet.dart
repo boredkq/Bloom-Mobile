@@ -62,8 +62,7 @@ class _TuneSheet extends ConsumerWidget {
                       // With no Yandex account there's nothing to choose, but
                       // silence won't do: I say where to log in.
                       onTap: s == MusicSource.yandex && !ymAuthed
-                          ? () => showToast(
-                              context,
+                          ? () => toaster.show(
                               context.l.waveToastYmNoAuth,
                               kind: ToastKind.warn,
                             )

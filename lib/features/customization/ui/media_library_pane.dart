@@ -38,7 +38,6 @@ class MediaLibraryPane extends ConsumerWidget {
 /// The tab's plus: a sheet with a link field and an Attach photo item.
 Future<void> showAddMediaSheet(BuildContext context, WidgetRef ref) async {
   final l10n = context.l;
-  final messenger = ScaffoldMessenger.of(context);
   final picked = await showBloomSheetChild<Object>(
     context: context,
     child: SheetAddForm(
@@ -50,7 +49,7 @@ Future<void> showAddMediaSheet(BuildContext context, WidgetRef ref) async {
   if (picked == null) return;
   if (picked is String) {
     final ok = ref.read(mediaLibProvider.notifier).addUrl(picked);
-    messenger.toast(
+    toaster.show(
       ok ? l10n.custAdded : l10n.custBadUrl,
       kind: ok ? ToastKind.success : ToastKind.warn,
     );
@@ -58,7 +57,7 @@ Future<void> showAddMediaSheet(BuildContext context, WidgetRef ref) async {
   }
   final added = await ref.read(mediaLibProvider.notifier).addFromGallery();
   if (added == 0) return; // cancelled or denied, so quietly
-  messenger.toast(l10n.custFilesAdded(added), kind: ToastKind.success);
+  toaster.show(l10n.custFilesAdded(added), kind: ToastKind.success);
 }
 
 class _MediaCard extends ConsumerWidget {

@@ -199,8 +199,7 @@ class _ListEditorState extends ConsumerState<ListEditor> {
       n++;
     }
     final tracks = context.l.tracksCount(n);
-    showToast(
-      context,
+    toaster.show(
       off
           ? context.l.leRemovedFromFavorites(tracks)
           : context.l.leAddedToFavorites(tracks),
@@ -262,8 +261,7 @@ class _ListEditorState extends ConsumerState<ListEditor> {
         // This deletes THROUGHOUT, so ✓ asks with a second press.
         if (gone.isNotEmpty && !_armedPurge) {
           setState(() => _armedPurge = true);
-          showToast(
-            context,
+          toaster.show(
             context.l.leDeleteArm(context.l.tracksCount(gone.length)),
             kind: ToastKind.warn,
           );
@@ -305,7 +303,7 @@ class _ListEditorState extends ConsumerState<ListEditor> {
     // An empty draft has nothing to discard, so ✕ leaves at once.
     if (_dirty && !_armedCancel) {
       setState(() => _armedCancel = true);
-      showToast(context, context.l.leDiscardArm, kind: ToastKind.warn);
+      toaster.show(context.l.leDiscardArm, kind: ToastKind.warn);
       // Cools down by itself, or it waits for a stray second tap.
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted) setState(() => _armedCancel = false);

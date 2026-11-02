@@ -707,7 +707,7 @@ abstract class AppLocalizations {
   /// No description provided for @artistImportLoading.
   ///
   /// In en, this message translates to:
-  /// **'Loading all of the artist\'s tracks…'**
+  /// **'Loading the artist’s tracks…'**
   String get artistImportLoading;
 
   /// No description provided for @artistLikesLoading.
@@ -1025,7 +1025,7 @@ abstract class AppLocalizations {
   /// No description provided for @tlPlaylistDeleted.
   ///
   /// In en, this message translates to:
-  /// **'Playlist “{name}” deleted'**
+  /// **'“{name}” deleted'**
   String tlPlaylistDeleted(String name);
 
   /// No description provided for @tlDeletePlaylistWithTracks.
@@ -1037,8 +1037,8 @@ abstract class AppLocalizations {
   /// No description provided for @tlPlaylistAndTracksDeleted.
   ///
   /// In en, this message translates to:
-  /// **'Playlist “{name}” and its tracks deleted'**
-  String tlPlaylistAndTracksDeleted(String name);
+  /// **'Deleted with tracks'**
+  String get tlPlaylistAndTracksDeleted;
 
   /// No description provided for @leAddedToFavorites.
   ///
@@ -1055,13 +1055,13 @@ abstract class AppLocalizations {
   /// No description provided for @leDeleteArm.
   ///
   /// In en, this message translates to:
-  /// **'Tap again — {tracks} will be gone everywhere'**
+  /// **'Tap again: delete {tracks}'**
   String leDeleteArm(String tracks);
 
   /// No description provided for @leDiscardArm.
   ///
   /// In en, this message translates to:
-  /// **'Tap again to discard your changes'**
+  /// **'Tap again to discard'**
   String get leDiscardArm;
 
   /// No description provided for @cpImported.
@@ -1073,7 +1073,7 @@ abstract class AppLocalizations {
   /// No description provided for @cpAllAlreadyIn.
   ///
   /// In en, this message translates to:
-  /// **'All of it is already in your library'**
+  /// **'Already in your library'**
   String get cpAllAlreadyIn;
 
   /// No description provided for @cpAdded.
@@ -1289,13 +1289,13 @@ abstract class AppLocalizations {
   /// No description provided for @paNewTracks.
   ///
   /// In en, this message translates to:
-  /// **'New tracks: {added} (playlists: {playlists})'**
-  String paNewTracks(int added, int playlists);
+  /// **'New tracks: {added}'**
+  String paNewTracks(int added);
 
   /// No description provided for @paFailed.
   ///
   /// In en, this message translates to:
-  /// **'Couldn’t refresh playlists: {count}'**
+  /// **'Not refreshed: {count}'**
   String paFailed(int count);
 
   /// No description provided for @paNoNewTracks.
@@ -1355,7 +1355,7 @@ abstract class AppLocalizations {
   /// No description provided for @psDuplicate.
   ///
   /// In en, this message translates to:
-  /// **'This source is already linked'**
+  /// **'Source already linked'**
   String get psDuplicate;
 
   /// No description provided for @iuUnrecognized.
@@ -1373,7 +1373,7 @@ abstract class AppLocalizations {
   /// No description provided for @iuOnlySupported.
   ///
   /// In en, this message translates to:
-  /// **'Only a playlist, an album or likes can be pasted'**
+  /// **'Only playlist, album or likes'**
   String get iuOnlySupported;
 
   /// No description provided for @iuNoTracks.
@@ -1409,7 +1409,7 @@ abstract class AppLocalizations {
   /// No description provided for @ofNothingToSave.
   ///
   /// In en, this message translates to:
-  /// **'Nothing here to save offline'**
+  /// **'Nothing to save offline'**
   String get ofNothingToSave;
 
   /// No description provided for @ofDownloadingTrack.
@@ -1448,12 +1448,6 @@ abstract class AppLocalizations {
   /// **'Removed from offline: {count}'**
   String ofRemovedCount(int count);
 
-  /// No description provided for @ofSavingProgress.
-  ///
-  /// In en, this message translates to:
-  /// **'Saving: {done}/{total}'**
-  String ofSavingProgress(int done, int total);
-
   /// No description provided for @ofAbort.
   ///
   /// In en, this message translates to:
@@ -1469,13 +1463,13 @@ abstract class AppLocalizations {
   /// No description provided for @ofCantSaveTrack.
   ///
   /// In en, this message translates to:
-  /// **'This track can’t be saved offline'**
+  /// **'This track can’t be saved'**
   String get ofCantSaveTrack;
 
   /// No description provided for @ofBusyWithAnother.
   ///
   /// In en, this message translates to:
-  /// **'Already downloading another list'**
+  /// **'Already downloading a list'**
   String get ofBusyWithAnother;
 
   /// No description provided for @ofDownloadedAll.
@@ -1487,19 +1481,19 @@ abstract class AppLocalizations {
   /// No description provided for @ofDownloadedNone.
   ///
   /// In en, this message translates to:
-  /// **'Couldn’t download a single track'**
+  /// **'Nothing downloaded'**
   String get ofDownloadedNone;
 
   /// No description provided for @ofDownloadedPartial.
   ///
   /// In en, this message translates to:
-  /// **'Downloaded {ok} of {total}, failed: {failed}'**
+  /// **'Got {ok}/{total}, failed: {failed}'**
   String ofDownloadedPartial(int ok, int total, int failed);
 
   /// No description provided for @ofStreamOnly.
   ///
   /// In en, this message translates to:
-  /// **'This track is stream-only — it can’t be saved'**
+  /// **'Stream-only, can’t be saved'**
   String get ofStreamOnly;
 
   /// No description provided for @ofDrm.
@@ -1511,7 +1505,7 @@ abstract class AppLocalizations {
   /// No description provided for @ofNoFileLink.
   ///
   /// In en, this message translates to:
-  /// **'The source didn’t return a file link'**
+  /// **'No file link from the source'**
   String get ofNoFileLink;
 
   /// No description provided for @ofNoConnection.
@@ -1541,13 +1535,13 @@ abstract class AppLocalizations {
   /// No description provided for @fdCantDownload.
   ///
   /// In en, this message translates to:
-  /// **'This track can’t be downloaded'**
+  /// **'Can’t download this track'**
   String get fdCantDownload;
 
   /// No description provided for @fdNeedPermission.
   ///
   /// In en, this message translates to:
-  /// **'Storage access is required — allow it and try again'**
+  /// **'Storage access needed'**
   String get fdNeedPermission;
 
   /// No description provided for @fdSaveFailed.
@@ -1697,7 +1691,7 @@ abstract class AppLocalizations {
   /// No description provided for @spFailed.
   ///
   /// In en, this message translates to:
-  /// **'The source didn’t answer — try again'**
+  /// **'The source didn’t answer'**
   String get spFailed;
 
   /// No description provided for @spUnavailable.
@@ -1757,7 +1751,7 @@ abstract class AppLocalizations {
   /// No description provided for @mgNothingToMerge.
   ///
   /// In en, this message translates to:
-  /// **'There is no other playlist to merge with'**
+  /// **'No other playlists'**
   String get mgNothingToMerge;
 
   /// No description provided for @mgMerged.
@@ -2207,7 +2201,7 @@ abstract class AppLocalizations {
   /// No description provided for @achUnlockedToast.
   ///
   /// In en, this message translates to:
-  /// **'🏅 Achievement unlocked: {name} — {tier}'**
+  /// **'🏅 {name} — {tier}'**
   String achUnlockedToast(String name, String tier);
 
   /// No description provided for @achMax.
@@ -3797,13 +3791,13 @@ abstract class AppLocalizations {
   /// No description provided for @ymErrAuth.
   ///
   /// In en, this message translates to:
-  /// **'Yandex Music token is invalid — sign in again'**
+  /// **'Sign in to Yandex again'**
   String get ymErrAuth;
 
   /// No description provided for @ymErrNeedPlus.
   ///
   /// In en, this message translates to:
-  /// **'Track unavailable — Yandex Plus subscription required'**
+  /// **'Yandex Plus required'**
   String get ymErrNeedPlus;
 
   /// No description provided for @ymErrNetwork.
@@ -3983,7 +3977,7 @@ abstract class AppLocalizations {
   /// No description provided for @stCleared.
   ///
   /// In en, this message translates to:
-  /// **'Offline cache cleared, files deleted: {count}'**
+  /// **'Offline cache cleared: {count}'**
   String stCleared(int count);
 
   /// No description provided for @stCovers.
@@ -4031,7 +4025,7 @@ abstract class AppLocalizations {
   /// No description provided for @stStaleRemoved.
   ///
   /// In en, this message translates to:
-  /// **'Stale entries removed: {count}'**
+  /// **'Stale removed: {count}'**
   String stStaleRemoved(int count);
 
   /// No description provided for @stKeepNever.
@@ -4073,7 +4067,7 @@ abstract class AppLocalizations {
   /// No description provided for @stCustomCleared.
   ///
   /// In en, this message translates to:
-  /// **'Customization library cleared'**
+  /// **'Library cleared'**
   String get stCustomCleared;
 
   /// No description provided for @stAllCleared.
@@ -4151,13 +4145,13 @@ abstract class AppLocalizations {
   /// No description provided for @ltNothingAdded.
   ///
   /// In en, this message translates to:
-  /// **'Nothing to add: these tracks are already in the library, or the format is unsupported'**
+  /// **'Nothing to add'**
   String get ltNothingAdded;
 
   /// No description provided for @ltImportFailed.
   ///
   /// In en, this message translates to:
-  /// **'Could not open the file picker'**
+  /// **'File picker failed'**
   String get ltImportFailed;
 
   /// shown in the player when a content:// grant is gone or the copy was wiped
@@ -4193,7 +4187,7 @@ abstract class AppLocalizations {
   /// No description provided for @custBadUrl.
   ///
   /// In en, this message translates to:
-  /// **'Enter a valid image URL'**
+  /// **'Invalid image URL'**
   String get custBadUrl;
 
   /// No description provided for @custFilesAdded.
@@ -4361,13 +4355,13 @@ abstract class AppLocalizations {
   /// No description provided for @custPresetNothing.
   ///
   /// In en, this message translates to:
-  /// **'Nothing is applied — set a background, cover or slider first'**
+  /// **'Nothing to save'**
   String get custPresetNothing;
 
   /// No description provided for @custPresetsFull.
   ///
   /// In en, this message translates to:
-  /// **'No room for more presets — the limit is {limit}'**
+  /// **'No room past {limit}'**
   String custPresetsFull(int limit);
 
   /// No description provided for @custPresetUntitled.
@@ -4403,7 +4397,7 @@ abstract class AppLocalizations {
   /// No description provided for @custImportBad.
   ///
   /// In en, this message translates to:
-  /// **'Could not read file — invalid format'**
+  /// **'Invalid file format'**
   String get custImportBad;
 
   /// No description provided for @custImported.
@@ -4589,7 +4583,7 @@ abstract class AppLocalizations {
   /// No description provided for @waveToastDisliked.
   ///
   /// In en, this message translates to:
-  /// **'Disliked — won’t suggest it in the wave again'**
+  /// **'Won’t suggest it again'**
   String get waveToastDisliked;
 
   /// No description provided for @waveToastUndisliked.
@@ -4607,13 +4601,13 @@ abstract class AppLocalizations {
   /// No description provided for @waveToastNotEnough.
   ///
   /// In en, this message translates to:
-  /// **'Not enough data for My Wave — listen to some music first'**
+  /// **'Too little data: play some music'**
   String get waveToastNotEnough;
 
   /// No description provided for @waveToastNoSeed.
   ///
   /// In en, this message translates to:
-  /// **'Couldn’t find a track for the wave'**
+  /// **'No track for a wave'**
   String get waveToastNoSeed;
 
   /// No description provided for @waveToastQueueEmpty.
@@ -4625,25 +4619,25 @@ abstract class AppLocalizations {
   /// No description provided for @waveToastNoSeedsInQueue.
   ///
   /// In en, this message translates to:
-  /// **'No platform tracks in the queue to find similar ones'**
+  /// **'No platform tracks in the queue'**
   String get waveToastNoSeedsInQueue;
 
   /// No description provided for @waveToastArtistNoSeeds.
   ///
   /// In en, this message translates to:
-  /// **'No tracks of this artist to build a wave from'**
+  /// **'No artist tracks for a wave'**
   String get waveToastArtistNoSeeds;
 
   /// No description provided for @waveToastNoSimilar.
   ///
   /// In en, this message translates to:
-  /// **'The platform returned no similar tracks'**
+  /// **'No similar tracks'**
   String get waveToastNoSimilar;
 
   /// No description provided for @waveToastYmNoAuth.
   ///
   /// In en, this message translates to:
-  /// **'Not signed in to Yandex Music (Settings → Platforms)'**
+  /// **'Sign in to Yandex Music'**
   String get waveToastYmNoAuth;
 
   /// without the ✓: the page shows it in green
@@ -5303,13 +5297,13 @@ abstract class AppLocalizations {
   /// No description provided for @sysImportOld.
   ///
   /// In en, this message translates to:
-  /// **'This file format isn’t supported'**
+  /// **'Format not supported'**
   String get sysImportOld;
 
   /// No description provided for @sysImportNewer.
   ///
   /// In en, this message translates to:
-  /// **'A file from a newer Bloom — update the app'**
+  /// **'Newer file: update Bloom'**
   String get sysImportNewer;
 
   /// No description provided for @sysImportedFull.
@@ -5471,7 +5465,7 @@ abstract class AppLocalizations {
   /// No description provided for @playerNoPlayable.
   ///
   /// In en, this message translates to:
-  /// **'No tracks available to play'**
+  /// **'No tracks to play'**
   String get playerNoPlayable;
 
   /// No description provided for @errDrm.
@@ -5501,19 +5495,19 @@ abstract class AppLocalizations {
   /// No description provided for @errScForbidden.
   ///
   /// In en, this message translates to:
-  /// **'SoundCloud: access denied (401/403)'**
+  /// **'SoundCloud: access denied'**
   String get errScForbidden;
 
   /// No description provided for @errScClientId.
   ///
   /// In en, this message translates to:
-  /// **'SoundCloud: client_id is invalid or expired'**
+  /// **'SoundCloud: client_id expired'**
   String get errScClientId;
 
   /// No description provided for @errYtmNoAudio.
   ///
   /// In en, this message translates to:
-  /// **'YouTube returned no audio stream'**
+  /// **'YouTube gave no audio'**
   String get errYtmNoAudio;
 
   /// No description provided for @errYtmNetwork.
@@ -5561,19 +5555,19 @@ abstract class AppLocalizations {
   /// without .woff/.woff2: Flutter cannot read them
   ///
   /// In en, this message translates to:
-  /// **'Only .ttf and .otf are supported'**
+  /// **'Only .ttf and .otf'**
   String get apFontBadFormat;
 
   /// No description provided for @apFontTooBig.
   ///
   /// In en, this message translates to:
-  /// **'Font file is larger than {mb} MB'**
+  /// **'Font is over {mb} MB'**
   String apFontTooBig(int mb);
 
   /// No description provided for @apFontReadErr.
   ///
   /// In en, this message translates to:
-  /// **'Could not read the font file'**
+  /// **'Couldn’t read the font'**
   String get apFontReadErr;
 
   /// Settings → Integrations row and page title: sync with Bloom on the computer
@@ -5705,7 +5699,7 @@ abstract class AppLocalizations {
   /// No description provided for @pcUnpaired.
   ///
   /// In en, this message translates to:
-  /// **'Computer forgotten. It lists the phone until you disconnect it there too.'**
+  /// **'Forgotten. Disconnect it there too'**
   String get pcUnpaired;
 
   /// No description provided for @pcScanHint.
@@ -5771,7 +5765,7 @@ abstract class AppLocalizations {
   /// No description provided for @pcErrUnreachable.
   ///
   /// In en, this message translates to:
-  /// **'The computer doesn\'t answer — is it on the same network?'**
+  /// **'No answer. Same network?'**
   String get pcErrUnreachable;
 
   /// No description provided for @pcErrWrong.
@@ -5783,13 +5777,13 @@ abstract class AppLocalizations {
   /// No description provided for @pcErrClosed.
   ///
   /// In en, this message translates to:
-  /// **'“Connect a phone” is closed on the computer'**
+  /// **'Closed on the computer'**
   String get pcErrClosed;
 
   /// No description provided for @pcErrTooMany.
   ///
   /// In en, this message translates to:
-  /// **'Too many tries — wait for a new code'**
+  /// **'Too many tries: get a new code'**
   String get pcErrTooMany;
 
   /// No description provided for @pcErrFailed.

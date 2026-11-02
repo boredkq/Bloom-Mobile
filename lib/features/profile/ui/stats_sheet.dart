@@ -473,7 +473,7 @@ class _FootState extends ConsumerState<_Foot> {
       '— Bloom',
     ];
     Clipboard.setData(ClipboardData(text: lines.join('\n')));
-    showToast(context, l.statsCopied, kind: ToastKind.success);
+    toaster.show(l.statsCopied, kind: ToastKind.success);
   }
 
   void _clear() {
@@ -486,7 +486,7 @@ class _FootState extends ConsumerState<_Foot> {
     }
     setState(() => _asking = false);
     ref.read(statsClearProvider.notifier).clear(keepLevel: !_resetLevel);
-    showToast(context, context.l.statsCleared, kind: ToastKind.success);
+    toaster.show(context.l.statsCleared, kind: ToastKind.success);
   }
 
   @override

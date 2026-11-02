@@ -111,15 +111,9 @@ class _BloomShellState extends ConsumerState<BloomShell> {
     _noticeTimer = Timer(after, () {
       if (!mounted) return;
       final l = context.l;
-      final locale = Localizations.localeOf(context).languageCode;
       for (final kind in due) {
-        final data = entries.of(kind)!;
-        ScaffoldMessenger.of(context).toast(
-          [
-            periodTitle(l, kind),
-            periodDatesLabel(data.range, locale),
-            l.wrPlaysN(data.plays),
-          ].join(' · '),
+        toaster.show(
+          periodTitle(l, kind),
           action: ToastAction(
             label: l.wrWatch,
             // Read again on the tap: the day may have turned.
@@ -140,9 +134,9 @@ class _BloomShellState extends ConsumerState<BloomShell> {
     final fresh = ref
         .read(unlockedAchievementsProvider.notifier)
         .sync(ref.read(achievementsProvider));
-    // `ScaffoldMessenger` queues toasts, so they don't overlap.
+    // Toasts queue up, so they don't overlap.
     for (final item in fresh) {
-      ScaffoldMessenger.of(context).toast(
+      toaster.show(
         context.l.achUnlockedToast(
           item.ach.def.name(context.l),
           tierLabel(context.l, item.tier),
@@ -164,9 +158,6 @@ class _BloomShellState extends ConsumerState<BloomShell> {
           : t.bg,
       extendBody: true,
       body: shell,
-      // The bars go in `bottomNavigationBar`, not a column in `body`: only then
-      // does a floating toast land ABOVE the mini player.
-      //
       // The bars have their own glass group: they lie over the list, and with a
       // shared snapshot the rows passing under them wouldn't blur.
       bottomNavigationBar: GlassGroup(

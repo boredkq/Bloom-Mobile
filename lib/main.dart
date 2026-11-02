@@ -275,9 +275,6 @@ class BloomApp extends ConsumerWidget {
       locale: ref.watch(settingsProvider).locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      // My own messenger key: toasts can come with no screen, from playlist
-      // auto-update's timer.
-      scaffoldMessengerKey: bloomMessengerKey,
       scrollBehavior: const _SpringScroll(),
       theme: buildBloomTheme(
         tokens,
@@ -285,10 +282,13 @@ class BloomApp extends ConsumerWidget {
         fontFamily: ref.watch(uiFontProvider),
       ),
       // The background goes under the navigator: one for the whole app, neither
-      // repainted per transition nor moving with a page.
+      // repainted per transition nor moving with a page. Toasts go over it, so
+      // no route covers them.
       builder: (_, child) => Welcome(
         show: firstRun,
-        child: AppBackground(child: child ?? const SizedBox()),
+        child: ToastHost(
+          child: AppBackground(child: child ?? const SizedBox()),
+        ),
       ),
       routerConfig: bloomRouter,
     );

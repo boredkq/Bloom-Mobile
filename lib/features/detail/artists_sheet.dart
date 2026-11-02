@@ -97,7 +97,7 @@ Future<void> openPlayedArtist(
   }
   if (!context.mounted) return;
   if (found == null) {
-    showToast(context, context.l.artistNotFound);
+    toaster.show(context.l.artistNotFound);
     return;
   }
   await openArtist(context, found.id, initial: found);

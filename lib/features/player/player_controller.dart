@@ -912,9 +912,8 @@ class PlaybackController extends Notifier<PlaybackState>
 
     final l = globalL10n;
     if (l != null) {
-      // One toast per chain: `ScaffoldMessenger` shows strictly one at a time
-      // and queues the rest, so half a minute of plates would float by instead
-      // of music.
+      // One toast per chain: they show strictly one at a time and queue up, so
+      // half a minute of plates would float by instead of music.
       final (String, ToastKind)? say = switch ((canSkip, skipped)) {
         (true, 0) => (
           isDrmError(code) ? l.playerSkipDrm : l.playerSkipUnavailable,
@@ -927,7 +926,7 @@ class PlaybackController extends Notifier<PlaybackState>
         (false, _) => (describePlayError(l, code), ToastKind.error),
       };
       if (say != null) {
-        bloomMessengerKey.currentState?.toast(say.$1, kind: say.$2);
+        toaster.show(say.$1, kind: say.$2);
       }
     }
 

@@ -43,12 +43,11 @@ Future<void> showMergeSheet(
   WidgetRef ref,
   UserPlaylist source,
 ) async {
-  final messenger = ScaffoldMessenger.of(context);
   final l10n = context.l;
   // Nothing to merge with: I say so at once rather than an empty sheet.
   final others = _mergeable(ref.read(libraryProvider), source);
   if (others.isEmpty) {
-    messenger.toast(l10n.mgNothingToMerge, kind: ToastKind.info);
+    toaster.show(l10n.mgNothingToMerge, kind: ToastKind.info);
     return;
   }
 
@@ -82,7 +81,7 @@ Future<void> showMergeSheet(
     }
   }
   if (context.mounted) context.go('/library/list/${created.id}');
-  messenger.toast(
+  toaster.show(
     l10n.mgMerged(created.name, l10n.tracksCount(tracks.length)),
     kind: ToastKind.success,
   );
@@ -128,9 +127,7 @@ class _MergeBodyState extends ConsumerState<_MergeBody> {
     // Silently doing nothing won't do: the tick was pressed, so the user
     // expects a result, and I say what's missing.
     if (_picked.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).toast(context.l.mgPickHint, kind: ToastKind.warn);
+      toaster.show(context.l.mgPickHint, kind: ToastKind.warn);
       return;
     }
     if (name.isEmpty) return;

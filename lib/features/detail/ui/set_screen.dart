@@ -363,7 +363,7 @@ class _SetScreenState extends ConsumerState<SetScreen> {
 
   void _toast(String message, [ToastKind kind = ToastKind.info]) {
     if (!mounted) return;
-    showToast(context, message, kind: kind);
+    toaster.show(message, kind: kind);
   }
 }
 

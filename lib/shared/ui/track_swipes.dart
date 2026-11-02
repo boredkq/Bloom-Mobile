@@ -118,7 +118,6 @@ void runSwipeAction(
   int? queueIndex,
   bool fromFlick = false,
 }) {
-  final messenger = ScaffoldMessenger.of(context);
   final l = context.l;
   final player = ref.read(playbackProvider.notifier);
 
@@ -127,14 +126,14 @@ void runSwipeAction(
       return;
     case SwipeAction.like:
       final on = ref.read(libraryProvider.notifier).toggleFav(track);
-      messenger.toast(on ? l.swLiked : l.swUnliked);
+      toaster.show(on ? l.swLiked : l.swUnliked);
     case SwipeAction.queue:
-      messenger.toast(
+      toaster.show(
         player.addToQueue(track) ? l.swAddedToQueue : l.swAlreadyInQueue,
       );
     case SwipeAction.playNext:
       player.playNext(track);
-      messenger.toast(l.swPlaysNext);
+      toaster.show(l.swPlaysNext);
     // `TrackSwap` doesn't animate a change under the finger: the gesture
     // already carried the content off (see `markSwapSilent`). The flag is
     // one-shot, so I set it only on actions that will surely change the track.
@@ -145,14 +144,14 @@ void runSwipeAction(
       if (fromFlick) markSwapSilent();
       unawaited(player.prev());
     case SwipeAction.download:
-      unawaited(toggleTrackOffline(messenger, l, ref, track));
+      unawaited(toggleTrackOffline(l, ref, track));
     case SwipeAction.delete:
       if (queueIndex != null) {
         unawaited(player.removeAt(queueIndex));
         return;
       }
       if (listId != null) {
-        removeTrackFromList(messenger, l, ref, listId, track);
+        removeTrackFromList(l, ref, listId, track);
         return;
       }
       // The player and mini player have no list behind them, so a track can
@@ -170,7 +169,6 @@ void runSwipeAction(
 /// Shared with the actions sheet: its Remove from playlist must behave just
 /// like a swipe.
 void removeTrackFromList(
-  ScaffoldMessengerState messenger,
   AppLocalizations l,
   WidgetRef ref,
   String listId,
@@ -196,7 +194,7 @@ void removeTrackFromList(
   }
 
   final offline = ref.read(offlineProvider.notifier);
-  messenger.toast(
+  toaster.show(
     l.swRemoved,
     action: ToastAction(
       fn: () => lib.restoreSnapshot(before),

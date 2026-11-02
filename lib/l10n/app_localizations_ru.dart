@@ -542,16 +542,14 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String tlPlaylistDeleted(String name) {
-    return 'Плейлист «$name» удалён';
+    return '«$name» удалён';
   }
 
   @override
   String get tlDeletePlaylistWithTracks => 'Удалить плейлист и треки';
 
   @override
-  String tlPlaylistAndTracksDeleted(String name) {
-    return 'Плейлист «$name» удалён вместе с треками';
-  }
+  String get tlPlaylistAndTracksDeleted => 'Удалён с треками';
 
   @override
   String leAddedToFavorites(String tracks) {
@@ -565,15 +563,15 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String leDeleteArm(String tracks) {
-    return 'Ещё раз — $tracks пропадут отовсюду';
+    return 'Ещё раз — удалить $tracks';
   }
 
   @override
-  String get leDiscardArm => 'Ещё раз — правка не сохранится';
+  String get leDiscardArm => 'Ещё раз — без сохранения';
 
   @override
   String cpImported(String title, int count) {
-    return 'Импортировано: $title — $count';
+    return 'Импорт: $title — $count';
   }
 
   @override
@@ -711,13 +709,13 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String paNewTracks(int added, int playlists) {
-    return 'Новых треков: $added (плейлистов: $playlists)';
+  String paNewTracks(int added) {
+    return 'Новых треков: $added';
   }
 
   @override
   String paFailed(int count) {
-    return 'Не удалось обновить плейлистов: $count';
+    return 'Не обновились: $count';
   }
 
   @override
@@ -764,8 +762,7 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get iuOnlySupported =>
-      'Можно вставить только плейлист, альбом или лайки';
+  String get iuOnlySupported => 'Только плейлист, альбом, лайки';
 
   @override
   String get iuNoTracks => 'В этой ссылке нет треков';
@@ -777,7 +774,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get ofRemoved => 'Убрано из офлайна';
 
   @override
-  String get ofSaving => 'Сохранение для офлайна…';
+  String get ofSaving => 'Сохранение офлайн…';
 
   @override
   String ofAvailable(String name) {
@@ -785,7 +782,7 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get ofNothingToSave => 'Здесь нечего сохранять офлайн';
+  String get ofNothingToSave => 'Нечего сохранять офлайн';
 
   @override
   String get ofDownloadingTrack => 'Скачиваю трек…';
@@ -810,18 +807,13 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String ofSavingProgress(int done, int total) {
-    return 'Сохраняю: $done/$total';
-  }
-
-  @override
   String get ofAbort => 'Прервать';
 
   @override
   String get ofNoStorage => 'Нет доступа к хранилищу';
 
   @override
-  String get ofCantSaveTrack => 'Этот трек нельзя сохранить офлайн';
+  String get ofCantSaveTrack => 'Этот трек не сохранить';
 
   @override
   String get ofBusyWithAnother => 'Уже качаю другой список';
@@ -832,29 +824,28 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get ofDownloadedNone => 'Не удалось скачать ни одного трека';
+  String get ofDownloadedNone => 'Ни один трек не скачался';
 
   @override
   String ofDownloadedPartial(int ok, int total, int failed) {
-    return 'Скачано $ok из $total, не вышло: $failed';
+    return 'Скачано $ok/$total, сбой: $failed';
   }
 
   @override
-  String get ofStreamOnly =>
-      'Этот трек отдаётся только потоком — сохранить нельзя';
+  String get ofStreamOnly => 'Только поток, не сохранить';
 
   @override
   String get ofDrm => 'Трек защищён DRM';
 
   @override
-  String get ofNoFileLink => 'Площадка не отдала ссылку на файл';
+  String get ofNoFileLink => 'Площадка не дала ссылку';
 
   @override
   String get ofNoConnection => 'Нет соединения';
 
   @override
   String ofSaveFailed(String message) {
-    return 'Не удалось сохранить: $message';
+    return 'Не сохранилось: $message';
   }
 
   @override
@@ -867,8 +858,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get fdCantDownload => 'Этот трек нельзя скачать';
 
   @override
-  String get fdNeedPermission =>
-      'Нужен доступ к памяти телефона — разрешите и повторите';
+  String get fdNeedPermission => 'Нужен доступ к памяти';
 
   @override
   String get fdSaveFailed => 'Не удалось сохранить файл';
@@ -967,7 +957,7 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get spFailed => 'Площадка не ответила — попробуйте ещё раз';
+  String get spFailed => 'Площадка не ответила';
 
   @override
   String get spUnavailable => 'Эта площадка недоступна';
@@ -1001,7 +991,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get mgDeleteSources => 'Удалить исходные';
 
   @override
-  String get mgNothingToMerge => 'Объединять не с чем: других плейлистов нет';
+  String get mgNothingToMerge => 'Нет других плейлистов';
 
   @override
   String mgMerged(String name, String tracks) {
@@ -1323,7 +1313,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String achUnlockedToast(String name, String tier) {
-    return '🏅 Достижение получено: $name — $tier';
+    return '🏅 $name — $tier';
   }
 
   @override
@@ -2172,11 +2162,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get ymCodeExpired => 'Код истёк — нажми «Подключить» заново.';
 
   @override
-  String get ymErrAuth =>
-      'Токен Яндекс.Музыки недействителен — авторизуйся заново';
+  String get ymErrAuth => 'Войдите в Яндекс заново';
 
   @override
-  String get ymErrNeedPlus => 'Трек недоступен — нужна подписка Яндекс Плюс';
+  String get ymErrNeedPlus => 'Нужна подписка Яндекс Плюс';
 
   @override
   String get ymErrNetwork => 'Яндекс не отвечает';
@@ -2290,7 +2279,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String stCleared(int count) {
-    return 'Офлайн-кеш очищен, удалено файлов: $count';
+    return 'Офлайн-кеш очищен: $count';
   }
 
   @override
@@ -2339,7 +2328,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get stKeepMonth => '1 месяц';
 
   @override
-  String get stCustomCleared => 'Библиотека кастомизации очищена';
+  String get stCustomCleared => 'Библиотека очищена';
 
   @override
   String get stAllCleared => 'Данные очищены';
@@ -2399,11 +2388,10 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get ltNothingAdded =>
-      'Нечего добавить: эти треки уже в библиотеке или формат не поддерживается';
+  String get ltNothingAdded => 'Нечего добавить';
 
   @override
-  String get ltImportFailed => 'Не удалось открыть выбор файлов';
+  String get ltImportFailed => 'Не открылся выбор файлов';
 
   @override
   String get ltFileGone => 'Файл недоступен';
@@ -2421,7 +2409,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get custAdded => 'Добавлено!';
 
   @override
-  String get custBadUrl => 'Введите корректный URL изображения';
+  String get custBadUrl => 'Неверная ссылка на картинку';
 
   @override
   String custFilesAdded(int count) {
@@ -2517,12 +2505,11 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get custPresetNothing =>
-      'Нечего сохранять — сначала поставьте фон, обложку или слайдер';
+  String get custPresetNothing => 'Нечего сохранять';
 
   @override
   String custPresetsFull(int limit) {
-    return 'Больше $limit пресетов не поместится';
+    return 'Больше $limit не поместится';
   }
 
   @override
@@ -2543,7 +2530,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get custPresetExported => 'Пресет сохранён в файл';
 
   @override
-  String get custImportBad => 'Не удалось прочитать файл — неверный формат';
+  String get custImportBad => 'Неверный формат файла';
 
   @override
   String custImported(int count) {
@@ -2649,7 +2636,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get waveUndislike => 'Снять дизлайк';
 
   @override
-  String get waveToastDisliked => 'Дизлайк — больше не предложу в волне';
+  String get waveToastDisliked => 'Больше не предложу в волне';
 
   @override
   String get waveToastUndisliked => 'Дизлайк снят';
@@ -2658,8 +2645,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get waveToastStopped => 'Волна остановлена';
 
   @override
-  String get waveToastNotEnough =>
-      'Не хватает данных для «Моей волны» — послушай немного музыки';
+  String get waveToastNotEnough => 'Мало данных: послушай музыку';
 
   @override
   String get waveToastNoSeed => 'Не нашёл трек для волны';
@@ -2668,18 +2654,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String get waveToastQueueEmpty => 'Очередь пуста';
 
   @override
-  String get waveToastNoSeedsInQueue =>
-      'В очереди нет треков площадок, к которым можно подобрать похожие';
+  String get waveToastNoSeedsInQueue => 'В очереди нет треков площадок';
 
   @override
-  String get waveToastArtistNoSeeds => 'Нет треков этого артиста для волны';
+  String get waveToastArtistNoSeeds => 'Нет треков артиста для волны';
 
   @override
-  String get waveToastNoSimilar => 'Площадка не вернула похожих треков';
+  String get waveToastNoSimilar => 'Похожих треков нет';
 
   @override
-  String get waveToastYmNoAuth =>
-      'Не авторизован в Яндекс.Музыке (Настройки → Площадки)';
+  String get waveToastYmNoAuth => 'Войдите в Яндекс.Музыку';
 
   @override
   String lfmConnectedAs(String user) {
@@ -2900,7 +2884,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get wrShareSave => 'Поделиться';
 
   @override
-  String get wrShareFail => 'Не удалось отправить карточку';
+  String get wrShareFail => 'Не отправилась карточка';
 
   @override
   String get wrCardTime => 'Времени с музыкой';
@@ -3185,20 +3169,19 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sysImportNoPlaylists => 'Плейлисты не найдены';
 
   @override
-  String get sysImportOld => 'Этот формат файла не поддерживается';
+  String get sysImportOld => 'Формат не поддерживается';
 
   @override
-  String get sysImportNewer =>
-      'Файл из более новой версии Bloom — обновите приложение';
+  String get sysImportNewer => 'Файл новее: обновите Bloom';
 
   @override
   String sysImportedFull(int pl, int tr) {
-    return 'Импортировано: $pl пл., $tr тр.';
+    return 'Импорт: $pl пл., $tr тр.';
   }
 
   @override
   String sysImportedPlaylists(int pl) {
-    return 'Импортировано плейлистов: $pl';
+    return 'Импорт плейлистов: $pl';
   }
 
   @override
@@ -3287,7 +3270,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get playerSkipUnavailable => 'Трек недоступен — пропускаем';
 
   @override
-  String get playerNoPlayable => 'Нет доступных треков для воспроизведения';
+  String get playerNoPlayable => 'Нет доступных треков';
 
   @override
   String get errDrm => 'Трек защищён DRM';
@@ -3302,10 +3285,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get errScUnavailable => 'SoundCloud не отвечает';
 
   @override
-  String get errScForbidden => 'SoundCloud: доступ запрещён (401/403)';
+  String get errScForbidden => 'SoundCloud: доступ запрещён';
 
   @override
-  String get errScClientId => 'SoundCloud: client_id недействителен или истёк';
+  String get errScClientId => 'SoundCloud: client_id истёк';
 
   @override
   String get errYtmNoAudio => 'YouTube не вернул аудиопоток';
@@ -3342,7 +3325,7 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get apFontReadErr => 'Не удалось прочитать файл шрифта';
+  String get apFontReadErr => 'Не прочитать файл шрифта';
 
   @override
   String get setPc => 'Компьютер';
@@ -3418,8 +3401,7 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get pcUnpaired =>
-      'Компьютер забыт. В его списке телефон останется, пока не отключишь его и там.';
+  String get pcUnpaired => 'Забыт. Отключи и на компьютере';
 
   @override
   String get pcScanHint => 'Наведи камеру на QR-код на экране компьютера';
@@ -3455,16 +3437,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pcErrNotBloom => 'Это не код Bloom';
 
   @override
-  String get pcErrUnreachable => 'Компьютер не отвечает — он в той же сети?';
+  String get pcErrUnreachable => 'Не отвечает. Та же сеть?';
 
   @override
   String get pcErrWrong => 'Неверный код';
 
   @override
-  String get pcErrClosed => 'На компьютере закрыто окно «Подключить телефон»';
+  String get pcErrClosed => 'Окно на компьютере закрыто';
 
   @override
-  String get pcErrTooMany => 'Слишком много попыток — подожди новый код';
+  String get pcErrTooMany => 'Много попыток, жди новый код';
 
   @override
   String get pcErrFailed => 'Не удалось подключить';

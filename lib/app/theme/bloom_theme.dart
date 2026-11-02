@@ -113,18 +113,6 @@ ThemeData buildBloomTheme(
     ),
     iconTheme: IconThemeData(color: t.iconFg, size: 22),
     dividerTheme: DividerThemeData(color: t.ovlLine, thickness: 1, space: 1),
-    // Fallback for a bare `SnackBar`. My toasts don't use it: `BloomToastCard`
-    // draws them over a transparent snack bar.
-    snackBarTheme: SnackBarThemeData(
-      backgroundColor: t.pill,
-      contentTextStyle: bloomText(size: 14, weight: 500, color: t.text),
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(t.radius),
-        side: BorderSide(color: t.ovlLine),
-      ),
-      insetPadding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-    ),
     listTileTheme: ListTileThemeData(
       iconColor: t.iconFg,
       textColor: t.text,

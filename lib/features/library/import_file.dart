@@ -4,7 +4,6 @@
 /// outcomes, and each entry point handling them would drift in wording.
 library;
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/l10n/l10n.dart';
@@ -19,7 +18,6 @@ import '../settings/data_transfer.dart';
 /// cancel, a toast already told the caller.
 Future<ImportResult?> importPlaylistFile(
   WidgetRef ref,
-  ScaffoldMessengerState messenger,
   AppLocalizations l,
 ) async {
   final content = await openTextFile();
@@ -30,7 +28,7 @@ Future<ImportResult?> importPlaylistFile(
     ref.read(libraryProvider.notifier),
   );
   if (result.failure case final failure?) {
-    messenger.toast(switch (failure) {
+    toaster.show(switch (failure) {
       ImportFailure.bad => l.sysImportInvalid,
       ImportFailure.oldFormat => l.sysImportOld,
       ImportFailure.newer => l.sysImportNewer,
@@ -38,14 +36,14 @@ Future<ImportResult?> importPlaylistFile(
     return null;
   }
   if (result.playlists == 0) {
-    messenger.toast(l.sysImportNoPlaylists, kind: ToastKind.warn);
+    toaster.show(l.sysImportNoPlaylists, kind: ToastKind.warn);
     return null;
   }
   logInfo(
     'transfer',
     'import: ${result.playlists} playlists, ${result.tracks} tracks',
   );
-  messenger.toast(
+  toaster.show(
     result.tracks > 0
         ? l.sysImportedFull(result.playlists, result.tracks)
         : l.sysImportedPlaylists(result.playlists),

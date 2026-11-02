@@ -1,20 +1,24 @@
-/// Bloom's toasts: a kind icon, text, an Undo button and a visible countdown. A
-/// glass capsule, with the countdown as a ring around the icon; the bar stays
-/// only for the progress of long jobs ([ToastHandle.update]), where it shows a
-/// share rather than time.
+/// Bloom's toasts: a one-line capsule at the top centre, always the same height,
+/// with the kind's icon in a circle; the ring around it runs out over the
+/// toast's life. A long text is cut, not wrapped. Messages wait their turn in a
+/// queue (the same text twice in a row shows once). A tap takes it away at once;
+/// held, it stops running out and can be swiped up and away, or springs back.
 ///
-/// On top of `ScaffoldMessenger` because it already queues toasts, handles
-/// swipes, clears with the screen and places them above the bottom bars. I take
-/// only the look: the `SnackBar` itself is transparent and [BloomToastCard]
-/// draws everything. The shell's bars live in `Scaffold.bottomNavigationBar`,
-/// so a floating snack bar lands right above them.
+/// Between messages it shows long jobs ([Toaster.busy]): a spinner in the badge,
+/// the ring filling with the share done, "N/M" and ✕ that stops it. A job stays
+/// until it's over, then shows its result in place. A message comes over the job
+/// for its life.
+///
+/// [ToastHost] draws it above every route, so sheets and the full player don't
+/// cover it, and [toaster] needs no `BuildContext`: a toast may come from a timer
+/// or from a sheet that has already closed.
 library;
 
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme/bloom_theme.dart';
 import '../../app/theme/tokens.dart';
@@ -23,7 +27,7 @@ import 'atoms.dart';
 import 'bloom_icon.dart';
 import 'glass.dart';
 
-/// Toast kind: sets the icon and the bar colour.
+/// Toast kind: sets the icon and the colour.
 enum ToastKind { info, success, warn, error }
 
 /// The button in a toast, usually Undo.
@@ -40,112 +44,84 @@ class ToastAction {
   final VoidCallback? onExpire;
 }
 
-/// How long a toast stays: plain and with a button.
+/// How long a toast stays: plain, with a button, and a long job's result.
 const Duration _plain = Duration(milliseconds: 2000);
 const Duration _withAction = Duration(milliseconds: 5000);
+const Duration _result = Duration(milliseconds: 6000);
 
-/// `ScaffoldMessenger` starts its timer after the toast slides in, so the bar
-/// waits as long, or it runs ahead of the countdown.
-const Duration _enter = Duration(milliseconds: 250);
+/// The next message comes once this one has faded out.
+const Duration _gap = Duration(milliseconds: 300);
 
-/// A long toast lives until `close()`, but `SnackBar` wants a finite duration;
-/// I give it more than any download takes.
-const Duration _openEnded = Duration(minutes: 30);
+/// A job that fell over never says it's done, and the toast mustn't stay for
+/// good; I give it more than any download takes.
+const Duration _jobLimit = Duration(minutes: 30);
 
-/// How long the result stays after `finish()`.
-const Duration _finished = Duration(milliseconds: 2400);
+const double _height = 46;
+const double _pad = 4;
+const double _badge = 38;
+const double _side = 12;
+const double _top = 8;
+const double _maxWidth = 520;
+const double _jobWidth = 400;
 
-/// The app's messenger, for code with no `BuildContext`: playlist auto-update
-/// runs from a timer and still has to report new tracks.
-final GlobalKey<ScaffoldMessengerState> bloomMessengerKey =
-    GlobalKey<ScaffoldMessengerState>();
+/// Hidden, it sits a touch higher and smaller, and springs in.
+const Curve _spring = Cubic(0.34, 1.4, 0.64, 1);
 
-extension BloomToasts on ScaffoldMessengerState {
+/// Fast upward flick that takes the toast away, in px per second.
+const double _flick = 500;
+
+/// Toasts from anywhere; [ToastHost] draws them. With no host, as in store tests,
+/// nothing shows.
+final Toaster toaster = Toaster._();
+
+class Toaster {
+  Toaster._();
+
+  _ToastHostState? _host;
+
+  /// The host's context, for code that has none: it lives as long as the app.
+  BuildContext? get context => _host?.context;
+
   /// Plain toast: text, kind icon and countdown. With [action] it lives longer
   /// and shows a button; unpressed, `action.onExpire` fires.
-  void toast(
+  void show(
     String text, {
     ToastKind kind = ToastKind.info,
     ToastAction? action,
-  }) {
-    final duration = action == null ? _plain : _withAction;
-    var used = false;
-    late ScaffoldFeatureController<SnackBar, SnackBarClosedReason> entry;
+  }) => _host?._request(
+    _Face(
+      ToastView(text: text, kind: kind, busy: false),
+      action: action,
+      life: action == null ? _plain : _withAction,
+    ),
+  );
 
-    entry = _show(
-      this,
-      duration: duration,
-      child: BloomToastCard(
-        text: text,
-        kind: kind,
-        barDuration: duration,
-        // The card fills in the default label: toasts come from timers too,
-        // with no `BuildContext` here.
-        actionLabel: action?.label,
-        hasAction: action != null,
-        onAction: action == null
-            ? null
-            : () {
-                used = true;
-                entry.close();
-                action.fn();
-              },
-      ),
-    );
-
-    if (action?.onExpire != null) {
-      // A swipe also counts as not pressing Undo: the decision stands.
-      unawaited(
-        entry.closed.then((_) {
-          if (!used) action!.onExpire!.call();
-        }),
-      );
-    }
-  }
-
-  /// A toast for work in progress: a spinner instead of the icon, no timer bar,
-  /// lives until [ToastHandle.finish]. One toast that changes in place instead
-  /// of Downloading then Downloaded.
+  /// A toast for a job: lives until [ToastHandle.finish]. One toast that changes
+  /// in place instead of Downloading then Downloaded.
   ///
-  /// [content] replaces the whole card: the batch download toast watches its
-  /// store and updates the count itself.
-  ToastHandle busyToast(
-    String text, {
-    String? actionLabel,
-    VoidCallback? onAction,
-    Widget Function(ValueListenable<ToastView>)? content,
-  }) {
-    final view = ValueNotifier(
-      ToastView(text: text, actionLabel: actionLabel, onAction: onAction),
-    );
-    final entry = _show(
-      this,
-      duration: _openEnded,
-      child: content == null ? _LiveToast(view: view) : content(view),
-    );
-    return ToastHandle._(entry, view);
+  /// [live] makes it a long job watching its store for the view it shows: a fixed
+  /// width with a count and ✕.
+  ToastHandle busy(String text, {ToastLive? live}) {
+    final face = _Face(ToastView(text: text), live: live);
+    _host?._addJob(face);
+    return ToastHandle._(face, long: live != null);
   }
 }
 
-/// Toast from a `BuildContext`, for places that don't need the messenger
-/// separately.
-void showToast(
-  BuildContext context,
-  String text, {
-  ToastKind kind = ToastKind.info,
-  ToastAction? action,
-}) => ScaffoldMessenger.of(context).toast(text, kind: kind, action: action);
+/// What a long job shows now, read from its store.
+typedef ToastLive =
+    ToastView Function(BuildContext context, WidgetRef ref, ToastView view);
 
-/// Live state of a toast: what [ToastHandle] changes on the fly.
+/// What a toast shows.
 class ToastView {
   const ToastView({
     required this.text,
     this.kind = ToastKind.info,
     this.busy = true,
-    this.progress,
-    this.barDuration,
-    this.actionLabel,
-    this.onAction,
+    this.share,
+    this.count,
+    this.onStop,
+    this.stopLabel,
   });
 
   final String text;
@@ -154,214 +130,470 @@ class ToastView {
   /// Spinner instead of the icon.
   final bool busy;
 
-  /// Share 0..1 for the bottom bar; `null` means no progress bar.
-  final double? progress;
+  /// Share 0..1 the ring fills to; `null` means it isn't known.
+  final double? share;
 
-  /// Countdown length; `null` means no countdown.
-  final Duration? barDuration;
+  /// "N/M" by the ✕. It changes all the time, so the capsule's width is fixed.
+  final String? count;
 
-  final String? actionLabel;
-  final VoidCallback? onAction;
+  /// ✕ that stops the job.
+  final VoidCallback? onStop;
+  final String? stopLabel;
 }
 
-/// Handle of a live toast: [update] while working, [finish] at the end.
+/// Handle of a job: [update] while working, [finish] at the end.
 class ToastHandle {
-  ToastHandle._(this._entry, this._view) {
-    unawaited(_entry.closed.then((_) => _closed = true));
+  ToastHandle._(this._face, {required bool long}) : _long = long;
+
+  final _Face _face;
+
+  /// A long job's result stays longer, with a full ring and ✕.
+  bool _long;
+  bool _over = false;
+
+  /// Changes the text or share in place.
+  void update(String text, {double? share}) {
+    if (_over) return;
+    if (share != null) _long = true;
+    _face.view = ToastView(text: text, share: share);
+    toaster._host?._refresh();
   }
 
-  final ScaffoldFeatureController<SnackBar, SnackBarClosedReason> _entry;
-  final ValueNotifier<ToastView> _view;
-  bool _closed = false;
-  Timer? _timer;
-
-  /// Changes the text or progress without rebuilding the toast.
-  void update(String text, {double? progress}) {
-    if (_closed) return;
-    _view.value = ToastView(
-      text: text,
-      progress: progress,
-      actionLabel: _view.value.actionLabel,
-      onAction: _view.value.onAction,
-    );
-  }
-
-  /// Swaps in the result: the spinner gives way to the kind icon and countdown,
-  /// and the toast goes out on its own after 2.4 s.
+  /// Swaps in the result: the spinner gives way to the kind icon.
   void finish(String text, {ToastKind kind = ToastKind.success}) {
-    if (_closed) return;
-    _view.value = ToastView(
-      text: text,
-      kind: kind,
-      busy: false,
-      barDuration: _finished,
+    if (_over) return;
+    _over = true;
+    toaster._host?._finish(
+      _face,
+      _Face(
+        ToastView(text: text, kind: kind, busy: false, share: _long ? 1 : null),
+        life: _long ? _result : _plain,
+        held: _long,
+      ),
     );
-    _timer?.cancel();
-    _timer = Timer(_finished, close);
-  }
-
-  void close() {
-    _timer?.cancel();
-    if (_closed) return;
-    _closed = true;
-    _entry.close();
   }
 }
 
-/// Shows any widget as a snack bar with no look of its own.
-ScaffoldFeatureController<SnackBar, SnackBarClosedReason> _show(
-  ScaffoldMessengerState messenger, {
-  required Widget child,
-  required Duration duration,
-}) => messenger.showSnackBar(
-  SnackBar(
-    content: child,
-    duration: duration,
-    // The card does all the drawing: the snack bar has no background, shadow or
-    // padding.
-    backgroundColor: Colors.transparent,
-    elevation: 0,
-    padding: EdgeInsets.zero,
-    behavior: SnackBarBehavior.floating,
-    margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-    dismissDirection: DismissDirection.horizontal,
-    shape: const RoundedRectangleBorder(),
-  ),
-);
+/// One toast in the host: a message, a job or a job's result.
+class _Face {
+  _Face(this.view, {this.action, this.live, this.life, this.held = false});
 
-class _LiveToast extends StatelessWidget {
-  const _LiveToast({required this.view});
+  ToastView view;
+  final ToastAction? action;
+  final ToastLive? live;
 
-  final ValueListenable<ToastView> view;
+  /// `null` for a job: it lives until it's over.
+  final Duration? life;
+
+  /// A long job's result: the ring stays full, ✕ closes it.
+  final bool held;
+
+  /// The button was pressed, so `onExpire` doesn't fire.
+  bool used = false;
+
+  /// A job's [_jobLimit].
+  Timer? limit;
+}
+
+/// Draws the toasts over [child]: goes right above the navigator.
+class ToastHost extends StatefulWidget {
+  const ToastHost({super.key, required this.child});
+
+  final Widget child;
 
   @override
-  Widget build(BuildContext context) => ValueListenableBuilder(
-    valueListenable: view,
-    builder: (_, v, _) => BloomToastCard(
-      text: v.text,
-      kind: v.kind,
-      busy: v.busy,
-      progress: v.progress,
-      barDuration: v.barDuration,
-      actionLabel: v.actionLabel,
-      onAction: v.onAction,
+  State<ToastHost> createState() => _ToastHostState();
+}
+
+class _ToastHostState extends State<ToastHost> with TickerProviderStateMixin {
+  final List<_Face> _queue = [];
+  final List<_Face> _jobs = [];
+  _Face? _msg;
+
+  /// What was up last: it stays on the plate while it fades out.
+  _Face? _last;
+
+  Timer? _gapTimer;
+  bool _flying = false;
+  bool _pressed = false;
+
+  /// The drag's raw offset: down it gives only a little, see [_onDrag].
+  double _dragRaw = 0;
+
+  late final AnimationController _in = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 300),
+  )..addStatusListener(_onIn);
+
+  late final Animation<double> _sprung = CurvedAnimation(
+    parent: _in,
+    curve: _spring,
+    reverseCurve: _spring.flipped,
+  );
+
+  /// A message's life, 0 → 1. It stands still while held.
+  late final AnimationController _life = AnimationController(vsync: this)
+    ..addStatusListener((s) {
+      if (s == AnimationStatus.completed) _close();
+    });
+
+  /// The swipe's offset; up is negative.
+  late final AnimationController _dragY = AnimationController.unbounded(
+    vsync: this,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    toaster._host = this;
+  }
+
+  @override
+  void dispose() {
+    if (toaster._host == this) toaster._host = null;
+    _gapTimer?.cancel();
+    for (final job in _jobs) {
+      job.limit?.cancel();
+    }
+    _in.dispose();
+    _life.dispose();
+    _dragY.dispose();
+    super.dispose();
+  }
+
+  bool get _busyNow =>
+      _msg != null || _flying || (_gapTimer?.isActive ?? false);
+
+  void _request(_Face face) {
+    // A second Undo undoes something else, so only plain ones merge.
+    if (face.action == null) {
+      final last = _queue.isNotEmpty ? _queue.last : _msg;
+      if (last != null &&
+          last.action == null &&
+          last.view.text == face.view.text &&
+          last.view.kind == face.view.kind) {
+        return;
+      }
+    }
+    _busyNow ? _queue.add(face) : _present(face);
+  }
+
+  void _present(_Face face) {
+    _dragY
+      ..stop()
+      ..value = 0;
+    _msg = face;
+    _life
+      ..duration = face.life
+      ..value = 0;
+    if (!_pressed) unawaited(_life.forward());
+    _refresh();
+  }
+
+  void _addJob(_Face job) {
+    _jobs.add(job);
+    job.limit = Timer(_jobLimit, () {
+      _jobs.remove(job);
+      _refresh();
+    });
+    _refresh();
+  }
+
+  /// A job on top turns into its result in place; otherwise the result waits for
+  /// its turn like any message.
+  void _finish(_Face job, _Face result) {
+    final onTop = _msg == null && !_flying && _jobs.lastOrNull == job;
+    job.limit?.cancel();
+    _jobs.remove(job);
+    onTop || !_busyNow ? _present(result) : _queue.add(result);
+    _refresh();
+  }
+
+  /// [fly]: swiped away, it leaves upwards from where it was let go.
+  void _close({bool fly = false}) {
+    if (_msg == null || _flying) return;
+    _life.stop();
+    if (!fly) {
+      _gone();
+      return;
+    }
+    _flying = true;
+    final out = _top + MediaQuery.paddingOf(context).top + _height + 8;
+    unawaited(
+      _dragY
+          .animateTo(
+            -out,
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+          )
+          .then((_) => _gone()),
+    );
+  }
+
+  void _gone() {
+    final face = _msg;
+    _msg = null;
+    _flying = false;
+    if (face != null && !face.used) face.action?.onExpire?.call();
+    // The job is under it: it comes back down.
+    if (_jobs.isNotEmpty) _springBack();
+    _refresh();
+    _gapTimer?.cancel();
+    _gapTimer = Timer(_gap, () {
+      if (_msg == null && _queue.isNotEmpty) _present(_queue.removeAt(0));
+    });
+  }
+
+  void _springBack() => unawaited(
+    _dragY.animateTo(
+      0,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutBack,
+    ),
+  );
+
+  void _refresh() {
+    if (!mounted) return;
+    setState(() {});
+    final shown = _msg != null || _jobs.isNotEmpty;
+    if (shown && _in.status != AnimationStatus.forward && !_in.isCompleted) {
+      unawaited(_in.forward());
+    } else if (!shown && _in.status != AnimationStatus.reverse) {
+      unawaited(_in.reverse());
+    }
+  }
+
+  void _onIn(AnimationStatus status) {
+    if (status != AnimationStatus.dismissed) return;
+    _dragY.value = 0;
+    setState(() => _last = null);
+  }
+
+  /// Only a message or a result can be touched: a running job stays put.
+  bool get _touchable => _msg != null && !_flying;
+
+  void _onPress(bool pressed) {
+    if (pressed && !_touchable) return;
+    setState(() => _pressed = pressed);
+    if (pressed) {
+      _life.stop();
+      _dragY.stop();
+    } else if (_touchable) {
+      unawaited(_life.forward());
+    }
+  }
+
+  void _onDrag(DragUpdateDetails d) {
+    _dragRaw += d.delta.dy;
+    _dragY.value = _dragRaw < 0 ? _dragRaw : _dragRaw / 4;
+  }
+
+  void _onDragEnd(DragEndDetails d) {
+    if (_dragY.value < -_height / 2 || (d.primaryVelocity ?? 0) < -_flick) {
+      _close(fly: true);
+    } else {
+      _springBack();
+    }
+  }
+
+  void _press(_Face face) {
+    face.used = true;
+    _close();
+    face.action!.fn();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // The job begun last: what the user just asked for shows at once.
+    final face = _msg ?? _jobs.lastOrNull ?? _last;
+    _last = face;
+    return Stack(
+      fit: StackFit.passthrough,
+      children: [
+        widget.child,
+        if (face != null && !_in.isDismissed)
+          Positioned(
+            top: MediaQuery.paddingOf(context).top + _top,
+            left: _side,
+            right: _side,
+            child: Align(
+              alignment: Alignment.topCenter,
+              heightFactor: 1,
+              child: _frame(face),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _frame(_Face face) => AnimatedBuilder(
+    animation: Listenable.merge([_in, _dragY]),
+    builder: (_, child) {
+      final t = _sprung.value;
+      // It fades as it's swiped up.
+      final swiped = 1 - (-_dragY.value / (2 * _height)).clamp(0.0, 1.0);
+      return Opacity(
+        opacity: (_in.value * swiped).clamp(0.0, 1.0),
+        child: Transform.translate(
+          offset: Offset(0, _dragY.value - 10 * (1 - t)),
+          child: Transform.scale(scale: 0.94 + 0.06 * t, child: child),
+        ),
+      );
+    },
+    child: Listener(
+      onPointerDown: (_) => _onPress(true),
+      onPointerUp: (_) => _onPress(false),
+      onPointerCancel: (_) => _onPress(false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _touchable ? _close : null,
+        onVerticalDragStart: _touchable ? (_) => _dragRaw = _dragY.value : null,
+        onVerticalDragUpdate: _touchable ? _onDrag : null,
+        onVerticalDragEnd: _touchable ? _onDragEnd : null,
+        onVerticalDragCancel: _touchable ? _springBack : null,
+        // Held, it gives a little.
+        child: AnimatedScale(
+          scale: _pressed ? 0.97 : 1,
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeOutCubic,
+          child: Semantics(
+            container: true,
+            liveRegion: true,
+            child: Consumer(
+              builder: (context, ref, _) {
+                final live = face.live;
+                return ToastCard(
+                  view: live == null
+                      ? face.view
+                      : live(context, ref, face.view),
+                  countdown: face.life == null || face.held ? null : _life,
+                  action: face.action,
+                  onAction: face.action == null ? null : () => _press(face),
+                  onClose: face.held ? _close : null,
+                );
+              },
+            ),
+          ),
+        ),
+      ),
     ),
   );
 }
 
-/// The plate: a glass capsule, a kind icon with its countdown ring, text, a
-/// pill button and, for long jobs only, a progress bar along the bottom.
-class BloomToastCard extends StatelessWidget {
-  const BloomToastCard({
+/// The plate: a capsule with the kind's badge, one line of text, and a button
+/// or, for a long job, the count and ✕.
+class ToastCard extends StatelessWidget {
+  const ToastCard({
     super.key,
-    required this.text,
-    this.kind = ToastKind.info,
-    this.busy = false,
-    this.progress,
-    this.barDuration,
-    this.actionLabel,
-    this.hasAction = false,
+    required this.view,
+    this.countdown,
+    this.action,
     this.onAction,
+    this.onClose,
   });
 
-  final String text;
-  final ToastKind kind;
-  final bool busy;
-  final double? progress;
-  final Duration? barDuration;
-  final String? actionLabel;
+  final ToastView view;
 
-  /// There is a button but no label of its own, so it says Undo.
-  final bool hasAction;
+  /// The toast's life running 0 → 1; `null` means the ring doesn't run out.
+  final Animation<double>? countdown;
+  final ToastAction? action;
   final VoidCallback? onAction;
+
+  /// ✕ of a long job's result.
+  final VoidCallback? onClose;
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final color = kindColor(kind, t);
-    final label = actionLabel ?? (hasAction ? context.l.commonUndo : null);
-    final action = label != null && onAction != null;
+    final color = kindColor(view.kind, t);
+    final count = view.count;
+    final stop = view.onStop ?? onClose;
+    final button = action != null && onAction != null;
+    final screen = MediaQuery.sizeOf(context).width - 2 * _side;
 
-    return _Pop(
-      child: Align(
-        // Width follows the content: a short message has no reason to span the
-        // screen. The cap keeps the capsule from sprawling on a tablet.
-        alignment: Alignment.center,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 460),
-          // Own group: the toast floats above the page and its bars and can't
-          // join their backdrop snapshot.
-          child: GlassGroup(
-            child: GlassBox(
-              // A floating surface: the glass of sheets and menus, not of page
-              // blocks.
-              overlay: true,
-              // `pill`, not `card`: on the dark theme `card` equals the
-              // background and only the border would show.
-              color: t.pill,
-              shape: StadiumBorder(
-                side: BorderSide(color: t.ovlLine2, width: 1),
+    final row = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _Badge(
+          color: color,
+          kind: view.kind,
+          busy: view.busy,
+          share: view.share,
+          countdown: countdown,
+        ),
+        const SizedBox(width: 10),
+        Flexible(
+          fit: stop == null ? FlexFit.loose : FlexFit.tight,
+          child: Text(
+            view.text,
+            style: bloomText(size: 15, weight: 500, color: t.text),
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        if (button) ...[
+          const SizedBox(width: 8),
+          BloomTag(
+            text: action!.label ?? context.l.commonUndo,
+            color: t.accent,
+            size: 14,
+            vertical: 8,
+            onTap: onAction,
+          ),
+        ],
+        if (count != null) ...[
+          const SizedBox(width: 8),
+          Text(
+            count,
+            style: bloomText(
+              size: 14,
+              weight: 400,
+              color: t.text2,
+            ).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+          ),
+        ],
+        if (stop != null) ...[
+          const SizedBox(width: 4),
+          CircleIconButton(
+            icon: Bi.close,
+            size: _badge,
+            iconSize: 17,
+            background: Colors.transparent,
+            color: t.text2,
+            label: view.stopLabel ?? context.l.commonClose,
+            onTap: stop,
+          ),
+        ],
+      ],
+    );
+
+    // Own group: the toast floats above everything and can't join their
+    // backdrop snapshot.
+    return GlassGroup(
+      child: GlassBox(
+        overlay: true,
+        color: t.pill,
+        shape: const StadiumBorder(),
+        child: AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          child: SizedBox(
+            height: _height,
+            // A long job's width is fixed: the changing count would make it jump.
+            width: stop == null ? null : math.min(_jobWidth, screen),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: math.min(_maxWidth, screen),
               ),
-              child: Stack(
-                children: [
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      8,
-                      8,
-                      action ? 8 : 18,
-                      // Room for the progress bar only when there is one.
-                      progress == null ? 8 : 12,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _Badge(
-                          color: color,
-                          kind: kind,
-                          busy: busy,
-                          duration: barDuration,
-                        ),
-                        const SizedBox(width: 11),
-                        Flexible(
-                          child: Text(
-                            text,
-                            style: bloomText(
-                              size: 13.5,
-                              weight: 500,
-                              color: t.text,
-                              height: 1.3,
-                            ),
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (action) ...[
-                          const SizedBox(width: 10),
-                          BloomTag(
-                            text: label,
-                            color: t.accent,
-                            onTap: onAction!,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  if (progress != null)
-                    Positioned(
-                      // Margins are a must: the capsule's rounding narrows the
-                      // bottom and would clip a full-width bar.
-                      left: 18,
-                      right: 18,
-                      bottom: 5,
-                      child: BloomBar(
-                        value: progress!,
-                        color: color,
-                        track: color.withValues(alpha: 0.14),
-                        height: 3,
-                        animated: const Duration(milliseconds: 250),
-                      ),
-                    ),
-                ],
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  _pad,
+                  _pad,
+                  button || stop != null ? _pad : 18,
+                  _pad,
+                ),
+                child: row,
               ),
             ),
           ),
@@ -369,44 +601,6 @@ class BloomToastCard extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Entrance: the toast fades in and grows a little from the bottom edge. A
-/// separate stateful widget because `_LiveToast` rebuilds the card on every
-/// text update and this must not replay.
-class _Pop extends StatefulWidget {
-  const _Pop({required this.child});
-
-  final Widget child;
-
-  @override
-  State<_Pop> createState() => _PopState();
-}
-
-class _PopState extends State<_Pop> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 320),
-  )..forward();
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => FadeTransition(
-    opacity: CurvedAnimation(parent: _c, curve: Curves.easeOutCubic),
-    child: ScaleTransition(
-      scale: Tween(
-        begin: 0.92,
-        end: 1.0,
-      ).animate(CurvedAnimation(parent: _c, curve: Curves.easeOutBack)),
-      alignment: Alignment.bottomCenter,
-      child: widget.child,
-    ),
-  );
 }
 
 /// `info` takes the theme's accent, and `error` the shared danger red, so the
@@ -418,47 +612,66 @@ Color kindColor(ToastKind kind, BloomTokens t) => switch (kind) {
   ToastKind.error => t.danger,
 };
 
-/// Kind icon in a circle of its colour, with the countdown ring around it.
+/// Kind icon in a circle of its colour, with the ring around it: time left, or
+/// a job's share done.
 class _Badge extends StatelessWidget {
   const _Badge({
     required this.color,
     required this.kind,
     required this.busy,
-    this.duration,
+    this.share,
+    this.countdown,
   });
 
   final Color color;
   final ToastKind kind;
   final bool busy;
-
-  /// Time left to live; `null` means no ring (work in progress, or held until
-  /// `close()`).
-  final Duration? duration;
+  final double? share;
+  final Animation<double>? countdown;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    width: 34,
-    height: 34,
-    child: Stack(
-      alignment: Alignment.center,
-      children: [
-        if (duration != null)
+  Widget build(BuildContext context) {
+    final life = countdown;
+    return SizedBox.square(
+      dimension: _badge,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
           Positioned.fill(
-            child: _Ring(color: color, duration: duration!),
+            child: life != null
+                ? AnimatedBuilder(
+                    animation: life,
+                    builder: (_, _) => _ring(1 - life.value),
+                  )
+                : TweenAnimationBuilder<double>(
+                    tween: Tween(end: share ?? 0),
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOutQuad,
+                    builder: (_, value, _) => _ring(value),
+                  ),
           ),
-        TintCircle(
-          size: 27,
-          color: color.withValues(alpha: 0.16),
-          child: busy
-              ? BloomSpinner(size: 15, color: color)
-              // A bare tick for success: the icon already sits in a circle, and
-              // a circle in a circle reads as a target.
-              : kind == ToastKind.success
-              ? BloomIcon(Bi.check, size: 18, color: color)
-              : BloomIcon(_glyph(kind), size: 17, color: color),
-        ),
-      ],
-    ),
+          TintCircle(
+            size: 29,
+            color: color.withValues(alpha: 0.16),
+            child: busy
+                ? BloomSpinner(
+                    size: 16,
+                    color: color,
+                    trackColor: color.withValues(alpha: 0.22),
+                  )
+                : BloomIcon(
+                    _glyph(kind),
+                    size: kind == ToastKind.success ? 20 : 19,
+                    color: color,
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _ring(double filled) => CustomPaint(
+    painter: _RingPainter(color: color, filled: filled),
   );
 
   static BloomGlyph _glyph(ToastKind kind) => switch (kind) {
@@ -469,70 +682,15 @@ class _Badge extends StatelessWidget {
   };
 }
 
-/// Countdown ring: the arc drains clockwise over the toast's life. The start
-/// waits for the entrance because the snack bar's timer does too.
-class _Ring extends StatefulWidget {
-  const _Ring({required this.color, required this.duration});
-
-  final Color color;
-  final Duration duration;
-
-  @override
-  State<_Ring> createState() => _RingState();
-}
-
-class _RingState extends State<_Ring> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this);
-  Timer? _delay;
-
-  @override
-  void initState() {
-    super.initState();
-    _run();
-  }
-
-  @override
-  void didUpdateWidget(_Ring old) {
-    super.didUpdateWidget(old);
-    // A result replaced the content, so the countdown restarts.
-    if (widget.duration != old.duration) _run();
-  }
-
-  void _run() {
-    _delay?.cancel();
-    _c
-      ..duration = widget.duration
-      ..value = 0;
-    _delay = Timer(_enter, () {
-      if (mounted) _c.forward(from: 0);
-    });
-  }
-
-  @override
-  void dispose() {
-    _delay?.cancel();
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: _c,
-    builder: (_, _) => CustomPaint(
-      painter: _RingPainter(color: widget.color, left: 1 - _c.value),
-    ),
-  );
-}
-
 class _RingPainter extends CustomPainter {
-  const _RingPainter({required this.color, required this.left});
+  const _RingPainter({required this.color, required this.filled});
 
   final Color color;
 
-  /// Share of time left, 1 → 0.
-  final double left;
+  /// Share of the ring drawn, 0..1.
+  final double filled;
 
-  static const double _width = 2.5;
+  static const double _width = 2.8;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -544,8 +702,6 @@ class _RingPainter extends CustomPainter {
       ..strokeWidth = _width
       ..strokeCap = StrokeCap.round;
 
-    // Ring track: the same colour, barely visible, shows how much time has
-    // gone.
     canvas.drawCircle(
       center,
       radius,
@@ -554,7 +710,7 @@ class _RingPainter extends CustomPainter {
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       -math.pi / 2,
-      2 * math.pi * left.clamp(0, 1),
+      2 * math.pi * filled.clamp(0, 1),
       false,
       paint..color = color,
     );
@@ -562,5 +718,5 @@ class _RingPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_RingPainter old) =>
-      old.left != left || old.color != color;
+      old.filled != filled || old.color != color;
 }

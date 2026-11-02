@@ -219,7 +219,7 @@ class OfflineController extends Notifier<OfflineState> {
   /// Downloads all a list's downloadable tracks. Links resolve one at a time
   /// right before each track: a signed CDN URL lives minutes, and a batch of
   /// links taken ahead goes stale by the list's end. Returns a count for the
-  /// final snack bar; `null` if there's nothing to download. `busy`: another
+  /// final toast; `null` if there's nothing to download. `busy`: another
   /// batch is running.
   Future<BatchResult?> downloadAll(String sourceId, List<Track> tracks) async {
     final pending = tracks

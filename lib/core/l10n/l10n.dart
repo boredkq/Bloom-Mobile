@@ -16,18 +16,12 @@ extension BloomL10n on BuildContext {
 }
 
 /// Translations for code with no `BuildContext`: background toasts and
-/// utilities. The context comes from the global messenger, which lives as long
-/// as `MaterialApp`, so a string is found even for a toast from a timer.
+/// utilities. The context comes from the toast host, which lives as long as
+/// `MaterialApp`, so a string is found even for a toast from a timer.
 ///
-/// `null` is possible only before the first frame, when nobody's there to show
-/// it. `GlobalKey.currentContext` THROWS if the widget binding isn't up, as in
-/// store unit tests with no tree; that's the same no-language case, so I catch
-/// it and return null.
+/// `null` is possible only before the first frame or with no tree, as in store
+/// unit tests: nobody's there to show it.
 AppLocalizations? get globalL10n {
-  try {
-    final context = bloomMessengerKey.currentContext;
-    return context == null ? null : AppLocalizations.of(context);
-  } on FlutterError {
-    return null;
-  }
+  final context = toaster.context;
+  return context == null ? null : AppLocalizations.of(context);
 }

@@ -75,7 +75,6 @@ void removeDups(
   List<Track> extra,
 ) {
   if (extra.isEmpty) return;
-  final messenger = ScaffoldMessenger.of(context);
   final l = context.l;
   final lib = ref.read(libraryProvider.notifier);
   final before = lib.snapshot();
@@ -83,7 +82,7 @@ void removeDups(
   for (final track in extra) {
     lib.removeTrackFromPlaylist(listId, track.id);
   }
-  messenger.toast(
+  toaster.show(
     l.dupsRemoved(extra.length),
     action: ToastAction(fn: () => lib.restoreSnapshot(before)),
   );

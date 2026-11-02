@@ -186,7 +186,6 @@ Future<void> _openCacheSheet(
   CacheKind kind,
 ) async {
   final l = context.l;
-  final messenger = ScaffoldMessenger.of(context);
 
   final yes = await showBloomSheetChild<bool>(
     context: context,
@@ -216,7 +215,7 @@ Future<void> _openCacheSheet(
   if (yes != true) return;
 
   final deleted = await clearCache(ref, kind);
-  messenger.toast(_cleared(l, kind, deleted), kind: ToastKind.success);
+  toaster.show(_cleared(l, kind, deleted), kind: ToastKind.success);
 }
 
 Future<void> _openClearAllSheet(
@@ -225,7 +224,6 @@ Future<void> _openClearAllSheet(
   StorageStats? stats,
 ) async {
   final l = context.l;
-  final messenger = ScaffoldMessenger.of(context);
 
   final yes = await showBloomSheetChild<bool>(
     context: context,
@@ -245,7 +243,7 @@ Future<void> _openClearAllSheet(
   for (final kind in CacheKind.values) {
     await clearCache(ref, kind);
   }
-  messenger.toast(l.stAllCleared, kind: ToastKind.success);
+  toaster.show(l.stAllCleared, kind: ToastKind.success);
 }
 
 /// Two choices with a hint: there's no hovering here, so the text stands in the
@@ -458,7 +456,7 @@ class _LyricsKeeping extends ConsumerWidget {
                 final gone = ctrl.setKeep(keep);
                 ref.invalidate(storageStatsProvider);
                 if (gone > 0) {
-                  ScaffoldMessenger.of(context).toast(l.stStaleRemoved(gone));
+                  toaster.show(l.stStaleRemoved(gone));
                 }
               },
             ),
@@ -486,11 +484,10 @@ class _CoversKeeping extends ConsumerWidget {
         _KeepTiles(
           value: ref.watch(coverKeepProvider),
           onPick: (keep) async {
-            final messenger = ScaffoldMessenger.of(context);
             final gone = await ctrl.set(keep);
             if (!context.mounted) return;
             ref.invalidate(storageStatsProvider);
-            if (gone > 0) messenger.toast(l.stStaleRemoved(gone));
+            if (gone > 0) toaster.show(l.stStaleRemoved(gone));
           },
         ),
       ],

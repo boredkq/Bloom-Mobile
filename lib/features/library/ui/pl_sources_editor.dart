@@ -96,7 +96,7 @@ class _PlSourcesEditorState extends ConsumerState<PlSourcesEditor> {
     if (url.isEmpty || _busy) return;
     // The same link is a duplicate with no network.
     if (widget.sources.any((s) => s.url == url)) {
-      showToast(context, context.l.psDuplicate, kind: ToastKind.warn);
+      toaster.show(context.l.psDuplicate, kind: ToastKind.warn);
       return;
     }
     setState(() => _busy = true);
@@ -106,7 +106,7 @@ class _PlSourcesEditorState extends ConsumerState<PlSourcesEditor> {
       setState(() => _busy = false);
       // Another link to the same collection is a duplicate too, checked by id.
       if (widget.sources.any((s) => s.id == found.source.id)) {
-        showToast(context, context.l.psDuplicate, kind: ToastKind.warn);
+        toaster.show(context.l.psDuplicate, kind: ToastKind.warn);
         return;
       }
       _url.clear();
@@ -114,15 +114,14 @@ class _PlSourcesEditorState extends ConsumerState<PlSourcesEditor> {
     } on ImportException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
-      showToast(
-        context,
+      toaster.show(
         describeImportFailure(context.l, e.reason),
         kind: ToastKind.warn,
       );
     } catch (_) {
       if (!mounted) return;
       setState(() => _busy = false);
-      showToast(context, context.l.cpSourceNoAnswer, kind: ToastKind.error);
+      toaster.show(context.l.cpSourceNoAnswer, kind: ToastKind.error);
     }
   }
 

@@ -72,7 +72,6 @@ Future<void> showCreatePlaylistSheet(
   BuildContext context,
   WidgetRef ref,
 ) async {
-  final messenger = ScaffoldMessenger.of(context);
   final l10n = context.l;
   final outcome = await showBloomSheetChild<_Outcome>(
     context: context,
@@ -85,7 +84,7 @@ Future<void> showCreatePlaylistSheet(
       final playlist = ref.read(libraryProvider.notifier).createPlaylist(name);
       if (context.mounted) context.go('/library/list/${playlist.id}');
     case _Imported(:final result):
-      messenger.toast(
+      toaster.show(
         importResultText(l10n, result),
         kind: result.added == 0 ? ToastKind.info : ToastKind.success,
       );
@@ -97,7 +96,7 @@ Future<void> showCreatePlaylistSheet(
     case _FileRequested():
       // Going nowhere: a file may hold any number of playlists, and opening one
       // at random makes no sense. The flow shows the toast.
-      await importPlaylistFile(ref, messenger, l10n);
+      await importPlaylistFile(ref, l10n);
   }
 }
 
@@ -141,15 +140,14 @@ class _AddBodyState extends ConsumerState<_AddBody> {
     } on ImportException catch (e) {
       if (!mounted) return;
       setState(() => _busy = false);
-      ScaffoldMessenger.of(
-        context,
-      ).toast(describeImportFailure(context.l, e.reason), kind: ToastKind.warn);
+      toaster.show(
+        describeImportFailure(context.l, e.reason),
+        kind: ToastKind.warn,
+      );
     } catch (_) {
       if (!mounted) return;
       setState(() => _busy = false);
-      ScaffoldMessenger.of(
-        context,
-      ).toast(context.l.cpSourceNoAnswer, kind: ToastKind.error);
+      toaster.show(context.l.cpSourceNoAnswer, kind: ToastKind.error);
     }
   }
 

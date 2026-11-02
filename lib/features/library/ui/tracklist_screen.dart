@@ -258,7 +258,7 @@ class _TracklistScreenState extends ConsumerState<TracklistScreen> {
                 _desc = false;
               }),
             ),
-            // Batch download progress lives in a toast (`BatchToastBody`),
+            // Batch download progress lives in a toast (`batchToastView`),
             // visible from any screen.
             //
             // Find duplicates replaces ONLY the list: the header stays. The
@@ -618,9 +618,8 @@ class _AddLocalButtonState extends ConsumerState<_AddLocalButton> {
   Future<void> _add() async {
     if (_busy) return;
     setState(() => _busy = true);
-    // Messenger and translations come before the dialog: it's the system's, the
+    // Translations come before the dialog: it's the system's, the
     // screen may leave meanwhile, and `context` won't do after await.
-    final messenger = ScaffoldMessenger.of(context);
     final l10n = context.l;
     final result = await importLocalTracks(ref, l10n);
     if (mounted) setState(() => _busy = false);
@@ -628,11 +627,11 @@ class _AddLocalButtonState extends ConsumerState<_AddLocalButton> {
       case LocalImportStatus.cancelled:
         break; // the dialog was just closed, so quietly
       case LocalImportStatus.nothing:
-        messenger.toast(l10n.ltNothingAdded);
+        toaster.show(l10n.ltNothingAdded);
       case LocalImportStatus.added:
-        messenger.toast(l10n.ltAdded(result.added), kind: ToastKind.success);
+        toaster.show(l10n.ltAdded(result.added), kind: ToastKind.success);
       case LocalImportStatus.failed:
-        messenger.toast(l10n.ltImportFailed, kind: ToastKind.error);
+        toaster.show(l10n.ltImportFailed, kind: ToastKind.error);
     }
   }
 
@@ -783,7 +782,6 @@ Future<void> showPlaylistMenu(
     ref.read(offlineProvider.notifier),
     tracks,
   );
-  final messenger = ScaffoldMessenger.of(context);
   final l10n = context.l;
 
   await showBloomSheet(
@@ -842,22 +840,15 @@ Future<void> showPlaylistMenu(
                   ),
             subtitle: offlineStatus.all ? null : context.l.tlOfflineHint,
             onTap: () => offlineStatus.all
-                ? removeListOffline(messenger, l10n, ref, tracks)
-                : downloadListOffline(
-                    messenger,
-                    l10n,
-                    ref,
-                    playlist.id,
-                    tracks,
-                  ),
+                ? removeListOffline(l10n, ref, tracks)
+                : downloadListOffline(l10n, ref, playlist.id, tracks),
           ),
           if (canSaveFiles)
             SheetAction(
               icon: Bi.downloadMinimalistic,
               label: context.l.tlDownloadFiles(offlineStatus.total),
               subtitle: context.l.tlFilesHint,
-              onTap: () =>
-                  saveListFiles(messenger, l10n, ref, playlist.id, tracks),
+              onTap: () => saveListFiles(l10n, ref, playlist.id, tracks),
             ),
         ],
         // The same Refresh tracks as the header button: the sheet also opens
@@ -867,7 +858,7 @@ Future<void> showPlaylistMenu(
             icon: Bi.refresh,
             label: context.l.tlRefreshTracks,
             subtitle: context.l.tlRefreshHint,
-            onTap: () => refreshOnePlaylist(messenger, l10n, ref, playlist),
+            onTap: () => refreshOnePlaylist(l10n, ref, playlist),
           ),
         SheetAction(
           icon: Bi.pin,
@@ -910,7 +901,7 @@ Future<void> showPlaylistMenu(
           icon: Bi.export,
           label: context.l.tlExportPlaylist,
           subtitle: context.l.tlExportHint,
-          onTap: () => _exportPlaylist(messenger, l10n, ref, playlist),
+          onTap: () => _exportPlaylist(l10n, ref, playlist),
         ),
         // Name and cover edit only in edit mode: they show at once on the
         // header there, and the same ✕ undoes them.
@@ -926,7 +917,7 @@ Future<void> showPlaylistMenu(
             final lib = ref.read(libraryProvider.notifier);
             lib.deletePlaylist(playlist.id);
             context.go('/library');
-            messenger.toast(
+            toaster.show(
               l10n.tlPlaylistDeleted(playlist.name),
               action: ToastAction(
                 fn: () => lib.restorePlaylist(playlist),
@@ -948,7 +939,7 @@ Future<void> showPlaylistMenu(
             danger: true,
             onTap: () {
               context.go('/library');
-              _deletePlaylistWithTracks(messenger, l10n, ref, playlist, tracks);
+              _deletePlaylistWithTracks(l10n, ref, playlist, tracks);
             },
           ),
       ],
@@ -959,7 +950,6 @@ Future<void> showPlaylistMenu(
 /// Exports one playlist as a `.bloomplaylist` file. Cancelling the system
 /// dialog is quiet.
 Future<void> _exportPlaylist(
-  ScaffoldMessengerState messenger,
   AppLocalizations l10n,
   WidgetRef ref,
   UserPlaylist playlist,
@@ -968,7 +958,7 @@ Future<void> _exportPlaylist(
     playlistFileName(playlist.name),
     await buildExportBundle(playlist, ref.read(libraryProvider)),
   );
-  if (ok) messenger.toast(l10n.sysExported, kind: ToastKind.success);
+  if (ok) toaster.show(l10n.sysExported, kind: ToastKind.success);
 }
 
 /// Deletes a playlist WITH its tracks, throughout: they leave the library,
@@ -979,7 +969,6 @@ Future<void> _exportPlaylist(
 /// Files (offline copies, local tracks, the playlist's cover) go only when it's
 /// too late to undo.
 void _deletePlaylistWithTracks(
-  ScaffoldMessengerState messenger,
   AppLocalizations l10n,
   WidgetRef ref,
   UserPlaylist playlist,
@@ -997,8 +986,8 @@ void _deletePlaylistWithTracks(
   }
   lib.deletePlaylist(playlist.id);
 
-  messenger.toast(
-    l10n.tlPlaylistAndTracksDeleted(playlist.name),
+  toaster.show(
+    l10n.tlPlaylistAndTracksDeleted,
     action: ToastAction(
       fn: () => lib.restoreSnapshot(before),
       onExpire: () {

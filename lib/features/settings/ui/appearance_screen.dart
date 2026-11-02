@@ -867,7 +867,7 @@ Future<void> _addFonts(BuildContext context, WidgetRef ref) async {
     picked = await FilePicker.pickFiles();
   } catch (e) {
     if (context.mounted) {
-      showToast(context, context.l.apFontReadErr, kind: ToastKind.error);
+      toaster.show(context.l.apFontReadErr, kind: ToastKind.error);
     }
     return;
   }
@@ -878,19 +878,18 @@ Future<void> _addFonts(BuildContext context, WidgetRef ref) async {
   ]);
   if (!context.mounted) return;
   final l = context.l;
-  if (res.added > 1) showToast(context, l.apFontAdded(res.added));
+  if (res.added > 1) toaster.show(l.apFontAdded(res.added));
   if (res.errors.contains(FontAddError.format)) {
-    showToast(context, l.apFontBadFormat, kind: ToastKind.warn);
+    toaster.show(l.apFontBadFormat, kind: ToastKind.warn);
   }
   if (res.errors.contains(FontAddError.size)) {
-    showToast(
-      context,
+    toaster.show(
       l.apFontTooBig(kMaxFontBytes ~/ (1024 * 1024)),
       kind: ToastKind.warn,
     );
   }
   if (res.errors.contains(FontAddError.read)) {
-    showToast(context, l.apFontReadErr, kind: ToastKind.error);
+    toaster.show(l.apFontReadErr, kind: ToastKind.error);
   }
 }
 
@@ -1100,7 +1099,7 @@ Future<void> _pickTheme(BuildContext context, WidgetRef ref) async {
 /// Asks with a second press on the cross itself.
 void _deleteTheme(BuildContext context, WidgetRef ref, ThemePreset preset) {
   ref.read(settingsProvider.notifier).deleteCustomTheme(preset.id);
-  showToast(context, context.l.thDeleted);
+  toaster.show(context.l.thDeleted);
 }
 
 /// Name, three colours, random and save. A new theme applies at once and the
@@ -1131,7 +1130,7 @@ Future<void> _createTheme(BuildContext context, WidgetRef ref) async {
         blockColor: draft.blockColor,
         accent: draft.accent,
       );
-  showToast(context, context.l.thCreated(created.name));
+  toaster.show(context.l.thCreated(created.name));
 }
 
 /// What the creator closes with.

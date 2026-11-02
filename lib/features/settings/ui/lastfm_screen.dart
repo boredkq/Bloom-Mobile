@@ -73,8 +73,7 @@ class _LastfmSettingsScreenState extends ConsumerState<LastfmSettingsScreen>
         .finishOAuth(silent: silent);
     if (!ok || !mounted) return;
     setState(() => _keysOpen = false);
-    showToast(
-      context,
+    toaster.show(
       context.l.lfmToastConnected(ref.read(lastfmProvider).user),
       kind: ToastKind.success,
     );
@@ -85,13 +84,13 @@ class _LastfmSettingsScreenState extends ConsumerState<LastfmSettingsScreen>
         .read(lastfmProvider.notifier)
         .saveKeys(_key.text, _secret.text);
     if (!ok) return;
-    showToast(context, context.l.lfmToastKeysSaved);
+    toaster.show(context.l.lfmToastKeysSaved);
     setState(() {});
   }
 
   void _logout() {
     ref.read(lastfmProvider.notifier).logout();
-    showToast(context, context.l.lfmToastDisconnected);
+    toaster.show(context.l.lfmToastDisconnected);
     setState(() => _keysOpen = false);
   }
 

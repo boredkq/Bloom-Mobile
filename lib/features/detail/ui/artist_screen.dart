@@ -453,15 +453,14 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
       cover: artist.avatar,
     );
     if (target == null || !mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
     final l10n = context.l;
     var tracks = _main;
     if (likes != null) {
-      messenger.toast(l10n.artistLikesLoading);
+      toaster.show(l10n.artistLikesLoading);
       final provider = ref.read(registryProvider).forEntity(likes.id);
       tracks = (await provider?.getPlaylist(likes.id))?.tracks ?? tracks;
     } else if (_cursor != null) {
-      messenger.toast(l10n.artistImportLoading);
+      toaster.show(l10n.artistImportLoading);
       while (mounted && _cursor != null && !_failed) {
         await _more();
       }
@@ -478,15 +477,12 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
         cover: artist.avatar,
         source: likes == null ? null : PlSourceRef.of(likes),
       );
-      messenger.toast(
+      toaster.show(
         importResultText(l10n, result),
         kind: result.added == 0 ? ToastKind.info : ToastKind.success,
       );
     } on ImportException catch (e) {
-      messenger.toast(
-        describeImportFailure(l10n, e.reason),
-        kind: ToastKind.warn,
-      );
+      toaster.show(describeImportFailure(l10n, e.reason), kind: ToastKind.warn);
     }
   }
 }
@@ -514,8 +510,7 @@ class _FollowButton extends ConsumerWidget {
 /// Follows or unfollows, with its toast.
 void toggleFollow(BuildContext context, WidgetRef ref, Artist artist) {
   final on = ref.read(libraryProvider.notifier).toggleFollow(artist);
-  showToast(
-    context,
+  toaster.show(
     on ? context.l.followedToast(artist.name) : context.l.unfollowedToast,
   );
 }

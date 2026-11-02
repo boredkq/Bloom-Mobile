@@ -36,12 +36,11 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
   Future<void> _copy() async {
     await Clipboard.setData(ClipboardData(text: BloomLog.instance.text()));
     if (!mounted) return;
-    showToast(context, context.l.logsCopied, kind: ToastKind.success);
+    toaster.show(context.l.logsCopied, kind: ToastKind.success);
   }
 
   Future<void> _save() async {
     final l = context.l;
-    final messenger = ScaffoldMessenger.of(context);
     final now = DateTime.now();
     String two(int v) => v.toString().padLeft(2, '0');
     final name = 'bloom-${now.year}-${two(now.month)}-${two(now.day)}.log';
@@ -53,15 +52,14 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
       mime: 'text/plain',
     );
     if (!ok) return; // the dialog was closed: silence
-    messenger.toast(l.logsSaved, kind: ToastKind.success);
+    toaster.show(l.logsSaved, kind: ToastKind.success);
   }
 
   Future<void> _clear() async {
     final l = context.l;
-    final messenger = ScaffoldMessenger.of(context);
     await BloomLog.instance.clear();
     _reload();
-    messenger.toast(l.logsCleared, kind: ToastKind.success);
+    toaster.show(l.logsCleared, kind: ToastKind.success);
   }
 
   @override

@@ -146,7 +146,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   void _copyNick(BuildContext context, String name) {
     Clipboard.setData(ClipboardData(text: name));
-    showToast(context, context.l.profileNickCopied, kind: ToastKind.success);
+    toaster.show(context.l.profileNickCopied, kind: ToastKind.success);
   }
 }
 

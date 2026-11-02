@@ -67,7 +67,7 @@ class _WrappedPosterCardState extends State<WrappedPosterCard> {
     }
     if (!mounted) return;
     setState(() => _busy = false);
-    if (!ok) showToast(context, l.wrShareFail);
+    if (!ok) toaster.show(l.wrShareFail);
   }
 
   Future<void> _precacheCovers() async {

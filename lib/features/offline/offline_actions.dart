@@ -1,10 +1,11 @@
 /// Offline actions with feedback: the store silently returns a result, and
-/// telling the user happens here. The messenger comes from outside rather than
+/// telling the user happens here. Translations come from outside rather than
 /// `context`: the actions sheet closes BEFORE the handler runs, and by the
-/// snack bar its `context` has left the tree.
+/// toast its `context` has left the tree.
 library;
 
-import 'package:flutter/foundation.dart';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -14,10 +15,8 @@ import '../../shared/ui/bloom_toast.dart';
 import 'file_download.dart';
 import 'offline_store.dart';
 
-/// Downloads a track or removes its copy. Translations come beside the
-/// messenger for the same reason: the sheet closes before the result arrives.
+/// Downloads a track or removes its copy.
 Future<void> toggleTrackOffline(
-  ScaffoldMessengerState messenger,
   AppLocalizations l,
   WidgetRef ref,
   Track track,
@@ -25,12 +24,12 @@ Future<void> toggleTrackOffline(
   final offline = ref.read(offlineProvider.notifier);
   if (offline.has(track.id)) {
     await offline.remove(track.id);
-    messenger.toast(l.ofRemoved);
+    toaster.show(l.ofRemoved);
     return;
   }
   // One toast for the whole operation: the spinner turns into a tick in place
   // rather than two toasts in a row.
-  final toast = messenger.busyToast(l.ofSaving);
+  final toast = toaster.busy(l.ofSaving);
   final error = await offline.download(track);
   toast.finish(
     error == null
@@ -43,16 +42,12 @@ Future<void> toggleTrackOffline(
 /// Downloads a whole list. [sourceId] is the list's id, telling the batch
 /// indicator whose page to show on.
 Future<void> downloadListOffline(
-  ScaffoldMessengerState messenger,
   AppLocalizations l,
   WidgetRef ref,
   String sourceId,
   List<Track> tracks,
 ) async {
-  final toast = messenger.busyToast(
-    l.ofSaving,
-    content: (view) => BatchToastBody(view: view),
-  );
+  final toast = toaster.busy(l.ofSaving, live: batchToastView);
   final result = await ref
       .read(offlineProvider.notifier)
       .downloadAll(sourceId, tracks);
@@ -66,12 +61,11 @@ Future<void> downloadListOffline(
 /// Saves a file where it's seen outside Bloom (shared Music/Bloom on Android,
 /// the app's folder in Files on iOS).
 Future<void> saveTrackFile(
-  ScaffoldMessengerState messenger,
   AppLocalizations l,
   WidgetRef ref,
   Track track,
 ) async {
-  final toast = messenger.busyToast(l.ofDownloadingTrack);
+  final toast = toaster.busy(l.ofDownloadingTrack);
   try {
     final path = await saveTrackAsFile(ref, track);
     toast.finish(l.ofSaved(path ?? saveTargetLabel(l)));
@@ -84,12 +78,8 @@ Future<void> saveTrackFile(
 }
 
 /// Save the cover as a picture.
-Future<void> saveCoverFile(
-  ScaffoldMessengerState messenger,
-  AppLocalizations l,
-  Track track,
-) async {
-  final toast = messenger.busyToast(l.fdDownloadingCover);
+Future<void> saveCoverFile(AppLocalizations l, Track track) async {
+  final toast = toaster.busy(l.fdDownloadingCover);
   try {
     final path = await saveCoverAsFile(track);
     toast.finish(
@@ -106,7 +96,6 @@ Future<void> saveCoverFile(
 
 /// Saves a whole list as files.
 Future<void> saveListFiles(
-  ScaffoldMessengerState messenger,
   AppLocalizations l,
   WidgetRef ref,
   String sourceId,
@@ -114,10 +103,7 @@ Future<void> saveListFiles(
 ) async {
   // The same batch indicator as offline copies (see `beginBatch`), so the same
   // toast.
-  final toast = messenger.busyToast(
-    l.ofDownloadingFiles,
-    content: (view) => BatchToastBody(view: view),
-  );
+  final toast = toaster.busy(l.ofDownloadingFiles, live: batchToastView);
   final result = await saveListAsFiles(ref, sourceId, tracks);
   toast.finish(
     result.total == 0
@@ -136,13 +122,12 @@ Future<void> saveListFiles(
 
 /// Removes offline copies of all the list's tracks.
 Future<void> removeListOffline(
-  ScaffoldMessengerState messenger,
   AppLocalizations l,
   WidgetRef ref,
   List<Track> tracks,
 ) async {
   final n = await ref.read(offlineProvider.notifier).removeAll(tracks);
-  messenger.toast(
+  toaster.show(
     n == 0 ? l.ofNoCopies : l.ofRemovedCount(n),
     kind: n == 0 ? ToastKind.warn : ToastKind.info,
   );
@@ -167,41 +152,20 @@ Future<void> removeListOffline(
   );
 }
 
-/// Batch download toast body: an N/M count, a progress bar below instead of a
-/// countdown, and Stop. A toast, so progress shows from any screen. The store
-/// has one batch per app, so there's no `sourceId` to check: a running batch is
-/// ours.
-class BatchToastBody extends ConsumerWidget {
-  const BatchToastBody({super.key, required this.view});
-
-  /// Toast state from [ToastHandle]: before `finish()` work is under way, after
-  /// it the result, and the batch count no longer matters.
-  final ValueListenable<ToastView> view;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final batch = ref.watch(offlineProvider.select((s) => s.batch));
-
-    return ValueListenableBuilder(
-      valueListenable: view,
-      builder: (_, v, _) {
-        final live = v.busy && batch != null;
-        return BloomToastCard(
-          text: live
-              ? context.l.ofSavingProgress(batch.done, batch.total)
-              : v.text,
-          kind: v.kind,
-          busy: v.busy,
-          progress: live && batch.total > 0 ? batch.done / batch.total : null,
-          barDuration: v.barDuration,
-          actionLabel: live ? context.l.ofAbort : null,
-          onAction: live
-              ? () => ref.read(offlineProvider.notifier).cancelBatch()
-              : null,
-        );
-      },
-    );
-  }
+/// Batch download toast: the ring fills with the share done, then N/M and ✕.
+/// A toast, so progress shows from any screen. The store has one batch per app,
+/// so there's no `sourceId` to check: a running batch is ours.
+ToastView batchToastView(BuildContext context, WidgetRef ref, ToastView view) {
+  final batch = ref.watch(offlineProvider.select((s) => s.batch));
+  if (batch == null) return view;
+  return ToastView(
+    text: view.text,
+    share: batch.total > 0 ? batch.done / batch.total : null,
+    // The one in work, not the ones already done.
+    count: '${math.min(batch.done + 1, batch.total)}/${batch.total}',
+    stopLabel: context.l.ofAbort,
+    onStop: () => ref.read(offlineProvider.notifier).cancelBatch(),
+  );
 }
 
 /// A refusal's reason as a phrase. Here rather than in the store: only the UI

@@ -67,10 +67,6 @@ String trackCopyText(Track track) {
 /// So layout always counts on the FULL screen, however much shows, or it would
 /// squeeze mid-expansion and jump at the end. And it closes with
 /// [collapsePlayerSheet], not `pop`.
-///
-/// `Scaffold` is here for toasts: `ScaffoldMessenger` shows them on the last
-/// built `Scaffold`, and with no own one they'd come out on the shell, UNDER
-/// the panel.
 class FullPlayerBody extends ConsumerStatefulWidget {
   const FullPlayerBody({super.key});
 
@@ -524,11 +520,11 @@ class _TitleBlock extends ConsumerWidget {
     try {
       await Clipboard.setData(ClipboardData(text: trackCopyText(track)));
       if (context.mounted) {
-        showToast(context, l.playerCopied, kind: ToastKind.success);
+        toaster.show(l.playerCopied, kind: ToastKind.success);
       }
     } catch (_) {
       if (context.mounted) {
-        showToast(context, l.playerCopyError, kind: ToastKind.error);
+        toaster.show(l.playerCopyError, kind: ToastKind.error);
       }
     }
   }

@@ -156,7 +156,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     // Former own pictures are no longer needed.
     if (_draft.avatar != _saved.avatar) unawaited(deleteCover(_saved.avatar));
     if (_draft.banner != _saved.banner) unawaited(deleteCover(_saved.banner));
-    showToast(context, context.l.profileSaved, kind: ToastKind.success);
+    toaster.show(context.l.profileSaved, kind: ToastKind.success);
     context.go(kProfileLocation);
   }
 

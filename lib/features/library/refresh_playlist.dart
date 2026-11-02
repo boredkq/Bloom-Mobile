@@ -7,7 +7,6 @@
 /// on the first update.
 library;
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
@@ -49,15 +48,14 @@ Future<int?> refreshPlaylistFromSource(
 }
 
 /// Refresh tracks for one playlist, from a button in its header. A toast shows
-/// the result. A messenger rather than `BuildContext`: from a sheet the item
+/// the result. Translations rather than `BuildContext`: from a sheet the item
 /// runs after it closes, too late to look up ancestors.
 Future<void> refreshOnePlaylist(
-  ScaffoldMessengerState messenger,
   AppLocalizations l,
   WidgetRef ref,
   UserPlaylist playlist,
 ) async {
-  final toast = messenger.busyToast(l.rpBusy(playlist.name));
+  final toast = toaster.busy(l.rpBusy(playlist.name));
   final added = await refreshPlaylistFromSource(
     ref.read(registryProvider),
     ref.read(libraryProvider.notifier),

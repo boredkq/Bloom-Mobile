@@ -66,7 +66,7 @@ class PcSettingsScreen extends ConsumerWidget {
               if (!context.mounted) return;
               final now = ref.read(pcProvider).status;
               if (now == PcStatus.ok) {
-                showToast(context, l.pcSynced, kind: ToastKind.success);
+                toaster.show(l.pcSynced, kind: ToastKind.success);
               }
             },
           ),
@@ -83,7 +83,7 @@ class PcSettingsScreen extends ConsumerWidget {
               );
               if (!yes || !context.mounted) return;
               pc.unpair();
-              showToast(context, l.pcUnpaired);
+              toaster.show(l.pcUnpaired);
             },
           ),
       ],
@@ -197,7 +197,7 @@ class _PcScanScreenState extends ConsumerState<PcScanScreen> {
     final l = context.l;
     if (PairOffer.parse(text) == null) {
       _rejected = text;
-      showToast(context, l.pcErrNotBloom, kind: ToastKind.warn);
+      toaster.show(l.pcErrNotBloom, kind: ToastKind.warn);
       return;
     }
     setState(() => _busy = true);
@@ -205,8 +205,7 @@ class _PcScanScreenState extends ConsumerState<PcScanScreen> {
     final r = await ref.read(pcProvider.notifier).pairQr(text);
     if (!mounted) return;
     final name = ref.read(pcProvider).link?.name ?? '';
-    showToast(
-      context,
+    toaster.show(
       pairMessage(l, r, name),
       kind: r == PairResult.ok ? ToastKind.success : ToastKind.error,
     );
@@ -340,8 +339,7 @@ class _CodeSheetState extends ConsumerState<_CodeSheet> {
     final r = await ref.read(pcProvider.notifier).pairCode(pc, code);
     if (!mounted) return;
     if (r == PairResult.ok) {
-      showToast(
-        context,
+      toaster.show(
         pairMessage(l, r, ref.read(pcProvider).link?.name ?? pc.name),
         kind: ToastKind.success,
       );

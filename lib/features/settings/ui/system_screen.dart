@@ -112,7 +112,6 @@ class SystemSettingsScreen extends ConsumerWidget {
 /// All playlists to a file. A cancelled dialog stays silent.
 Future<void> _exportAll(BuildContext context, WidgetRef ref) async {
   final l = context.l;
-  final messenger = ScaffoldMessenger.of(context);
   final lib = ref.read(libraryProvider);
   final ok = await saveTextFile(
     l.sysExportFilename,
@@ -120,12 +119,12 @@ Future<void> _exportAll(BuildContext context, WidgetRef ref) async {
   );
   if (!ok) return;
   logInfo('transfer', 'playlists exported: ${lib.playlists.length}');
-  messenger.toast(l.sysExported, kind: ToastKind.success);
+  toaster.show(l.sysExported, kind: ToastKind.success);
 }
 
 /// The same flow as "From file" in the library's plus.
 Future<void> _import(BuildContext context, WidgetRef ref) =>
-    importPlaylistFile(ref, ScaffoldMessenger.of(context), context.l);
+    importPlaylistFile(ref, context.l);
 
 /// [hard] is "Reset everything".
 Future<void> _confirmReset(
@@ -134,7 +133,6 @@ Future<void> _confirmReset(
   required bool hard,
 }) async {
   final l = context.l;
-  final messenger = ScaffoldMessenger.of(context);
 
   final yes = await confirmDanger(
     context,
@@ -147,9 +145,9 @@ Future<void> _confirmReset(
 
   if (hard) {
     await hardReset(ref);
-    messenger.toast(l.sysHardResetDone, kind: ToastKind.success);
+    toaster.show(l.sysHardResetDone, kind: ToastKind.success);
   } else {
     await resetSettings(ref);
-    messenger.toast(l.sysResetDone, kind: ToastKind.success);
+    toaster.show(l.sysResetDone, kind: ToastKind.success);
   }
 }

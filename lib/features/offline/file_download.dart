@@ -32,7 +32,7 @@ const MethodChannel _channel = MethodChannel('bloom/downloads');
 /// Whether this platform has anywhere outside to save a file.
 bool get canSaveFiles => Platform.isAndroid || Platform.isIOS;
 
-/// Where, in plain words, for the snack bar and captions.
+/// Where, in plain words, for the toast and captions.
 String saveTargetLabel(AppLocalizations l) =>
     Platform.isIOS ? l.fdPathIos : l.fdPathAndroid;
 

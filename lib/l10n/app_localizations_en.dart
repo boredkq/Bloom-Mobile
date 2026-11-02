@@ -346,7 +346,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get artistImport => 'Import';
 
   @override
-  String get artistImportLoading => 'Loading all of the artist\'s tracks…';
+  String get artistImportLoading => 'Loading the artist’s tracks…';
 
   @override
   String get artistLikesLoading => 'Loading all of the likes…';
@@ -534,16 +534,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String tlPlaylistDeleted(String name) {
-    return 'Playlist “$name” deleted';
+    return '“$name” deleted';
   }
 
   @override
   String get tlDeletePlaylistWithTracks => 'Delete playlist and tracks';
 
   @override
-  String tlPlaylistAndTracksDeleted(String name) {
-    return 'Playlist “$name” and its tracks deleted';
-  }
+  String get tlPlaylistAndTracksDeleted => 'Deleted with tracks';
 
   @override
   String leAddedToFavorites(String tracks) {
@@ -557,11 +555,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String leDeleteArm(String tracks) {
-    return 'Tap again — $tracks will be gone everywhere';
+    return 'Tap again: delete $tracks';
   }
 
   @override
-  String get leDiscardArm => 'Tap again to discard your changes';
+  String get leDiscardArm => 'Tap again to discard';
 
   @override
   String cpImported(String title, int count) {
@@ -569,7 +567,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get cpAllAlreadyIn => 'All of it is already in your library';
+  String get cpAllAlreadyIn => 'Already in your library';
 
   @override
   String cpAdded(int count) {
@@ -702,13 +700,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String paNewTracks(int added, int playlists) {
-    return 'New tracks: $added (playlists: $playlists)';
+  String paNewTracks(int added) {
+    return 'New tracks: $added';
   }
 
   @override
   String paFailed(int count) {
-    return 'Couldn’t refresh playlists: $count';
+    return 'Not refreshed: $count';
   }
 
   @override
@@ -744,7 +742,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get psRemove => 'Unlink';
 
   @override
-  String get psDuplicate => 'This source is already linked';
+  String get psDuplicate => 'Source already linked';
 
   @override
   String get iuUnrecognized => 'Couldn’t make sense of that link';
@@ -755,8 +753,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get iuOnlySupported =>
-      'Only a playlist, an album or likes can be pasted';
+  String get iuOnlySupported => 'Only playlist, album or likes';
 
   @override
   String get iuNoTracks => 'That link has no tracks';
@@ -776,7 +773,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get ofNothingToSave => 'Nothing here to save offline';
+  String get ofNothingToSave => 'Nothing to save offline';
 
   @override
   String get ofDownloadingTrack => 'Downloading track…';
@@ -801,21 +798,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String ofSavingProgress(int done, int total) {
-    return 'Saving: $done/$total';
-  }
-
-  @override
   String get ofAbort => 'Stop';
 
   @override
   String get ofNoStorage => 'No access to storage';
 
   @override
-  String get ofCantSaveTrack => 'This track can’t be saved offline';
+  String get ofCantSaveTrack => 'This track can’t be saved';
 
   @override
-  String get ofBusyWithAnother => 'Already downloading another list';
+  String get ofBusyWithAnother => 'Already downloading a list';
 
   @override
   String ofDownloadedAll(int count) {
@@ -823,21 +815,21 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get ofDownloadedNone => 'Couldn’t download a single track';
+  String get ofDownloadedNone => 'Nothing downloaded';
 
   @override
   String ofDownloadedPartial(int ok, int total, int failed) {
-    return 'Downloaded $ok of $total, failed: $failed';
+    return 'Got $ok/$total, failed: $failed';
   }
 
   @override
-  String get ofStreamOnly => 'This track is stream-only — it can’t be saved';
+  String get ofStreamOnly => 'Stream-only, can’t be saved';
 
   @override
   String get ofDrm => 'The track is DRM-protected';
 
   @override
-  String get ofNoFileLink => 'The source didn’t return a file link';
+  String get ofNoFileLink => 'No file link from the source';
 
   @override
   String get ofNoConnection => 'No connection';
@@ -854,11 +846,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fdPathAndroid => 'Music/Bloom';
 
   @override
-  String get fdCantDownload => 'This track can’t be downloaded';
+  String get fdCantDownload => 'Can’t download this track';
 
   @override
-  String get fdNeedPermission =>
-      'Storage access is required — allow it and try again';
+  String get fdNeedPermission => 'Storage access needed';
 
   @override
   String get fdSaveFailed => 'Couldn’t save the file';
@@ -955,7 +946,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get spFailed => 'The source didn’t answer — try again';
+  String get spFailed => 'The source didn’t answer';
 
   @override
   String get spUnavailable => 'This source is unavailable';
@@ -989,7 +980,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mgDeleteSources => 'Delete the originals';
 
   @override
-  String get mgNothingToMerge => 'There is no other playlist to merge with';
+  String get mgNothingToMerge => 'No other playlists';
 
   @override
   String mgMerged(String name, String tracks) {
@@ -1294,7 +1285,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String achUnlockedToast(String name, String tier) {
-    return '🏅 Achievement unlocked: $name — $tier';
+    return '🏅 $name — $tier';
   }
 
   @override
@@ -2142,11 +2133,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ymCodeExpired => 'Code expired — press “Connect” again.';
 
   @override
-  String get ymErrAuth => 'Yandex Music token is invalid — sign in again';
+  String get ymErrAuth => 'Sign in to Yandex again';
 
   @override
-  String get ymErrNeedPlus =>
-      'Track unavailable — Yandex Plus subscription required';
+  String get ymErrNeedPlus => 'Yandex Plus required';
 
   @override
   String get ymErrNetwork => 'Yandex is not responding';
@@ -2258,7 +2248,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String stCleared(int count) {
-    return 'Offline cache cleared, files deleted: $count';
+    return 'Offline cache cleared: $count';
   }
 
   @override
@@ -2285,7 +2275,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String stStaleRemoved(int count) {
-    return 'Stale entries removed: $count';
+    return 'Stale removed: $count';
   }
 
   @override
@@ -2307,7 +2297,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stKeepMonth => '1 month';
 
   @override
-  String get stCustomCleared => 'Customization library cleared';
+  String get stCustomCleared => 'Library cleared';
 
   @override
   String get stAllCleared => 'App data cleared';
@@ -2365,11 +2355,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get ltNothingAdded =>
-      'Nothing to add: these tracks are already in the library, or the format is unsupported';
+  String get ltNothingAdded => 'Nothing to add';
 
   @override
-  String get ltImportFailed => 'Could not open the file picker';
+  String get ltImportFailed => 'File picker failed';
 
   @override
   String get ltFileGone => 'File is not available';
@@ -2387,7 +2376,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get custAdded => 'Added!';
 
   @override
-  String get custBadUrl => 'Enter a valid image URL';
+  String get custBadUrl => 'Invalid image URL';
 
   @override
   String custFilesAdded(int count) {
@@ -2481,12 +2470,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get custPresetNothing =>
-      'Nothing is applied — set a background, cover or slider first';
+  String get custPresetNothing => 'Nothing to save';
 
   @override
   String custPresetsFull(int limit) {
-    return 'No room for more presets — the limit is $limit';
+    return 'No room past $limit';
   }
 
   @override
@@ -2507,7 +2495,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get custPresetExported => 'Preset saved to file';
 
   @override
-  String get custImportBad => 'Could not read file — invalid format';
+  String get custImportBad => 'Invalid file format';
 
   @override
   String custImported(int count) {
@@ -2611,8 +2599,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get waveUndislike => 'Remove dislike';
 
   @override
-  String get waveToastDisliked =>
-      'Disliked — won’t suggest it in the wave again';
+  String get waveToastDisliked => 'Won’t suggest it again';
 
   @override
   String get waveToastUndisliked => 'Dislike removed';
@@ -2621,29 +2608,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get waveToastStopped => 'Wave stopped';
 
   @override
-  String get waveToastNotEnough =>
-      'Not enough data for My Wave — listen to some music first';
+  String get waveToastNotEnough => 'Too little data: play some music';
 
   @override
-  String get waveToastNoSeed => 'Couldn’t find a track for the wave';
+  String get waveToastNoSeed => 'No track for a wave';
 
   @override
   String get waveToastQueueEmpty => 'Queue is empty';
 
   @override
-  String get waveToastNoSeedsInQueue =>
-      'No platform tracks in the queue to find similar ones';
+  String get waveToastNoSeedsInQueue => 'No platform tracks in the queue';
 
   @override
-  String get waveToastArtistNoSeeds =>
-      'No tracks of this artist to build a wave from';
+  String get waveToastArtistNoSeeds => 'No artist tracks for a wave';
 
   @override
-  String get waveToastNoSimilar => 'The platform returned no similar tracks';
+  String get waveToastNoSimilar => 'No similar tracks';
 
   @override
-  String get waveToastYmNoAuth =>
-      'Not signed in to Yandex Music (Settings → Platforms)';
+  String get waveToastYmNoAuth => 'Sign in to Yandex Music';
 
   @override
   String lfmConnectedAs(String user) {
@@ -3120,10 +3103,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sysImportNoPlaylists => 'No playlists found';
 
   @override
-  String get sysImportOld => 'This file format isn’t supported';
+  String get sysImportOld => 'Format not supported';
 
   @override
-  String get sysImportNewer => 'A file from a newer Bloom — update the app';
+  String get sysImportNewer => 'Newer file: update Bloom';
 
   @override
   String sysImportedFull(int pl, int tr) {
@@ -3219,7 +3202,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get playerSkipUnavailable => 'Track unavailable — skipping';
 
   @override
-  String get playerNoPlayable => 'No tracks available to play';
+  String get playerNoPlayable => 'No tracks to play';
 
   @override
   String get errDrm => 'Track is DRM-protected';
@@ -3234,13 +3217,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errScUnavailable => 'SoundCloud is not responding';
 
   @override
-  String get errScForbidden => 'SoundCloud: access denied (401/403)';
+  String get errScForbidden => 'SoundCloud: access denied';
 
   @override
-  String get errScClientId => 'SoundCloud: client_id is invalid or expired';
+  String get errScClientId => 'SoundCloud: client_id expired';
 
   @override
-  String get errYtmNoAudio => 'YouTube returned no audio stream';
+  String get errYtmNoAudio => 'YouTube gave no audio';
 
   @override
   String get errYtmNetwork => 'YouTube is not responding';
@@ -3266,15 +3249,15 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get apFontBadFormat => 'Only .ttf and .otf are supported';
+  String get apFontBadFormat => 'Only .ttf and .otf';
 
   @override
   String apFontTooBig(int mb) {
-    return 'Font file is larger than $mb MB';
+    return 'Font is over $mb MB';
   }
 
   @override
-  String get apFontReadErr => 'Could not read the font file';
+  String get apFontReadErr => 'Couldn’t read the font';
 
   @override
   String get setPc => 'Computer';
@@ -3351,8 +3334,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get pcUnpaired =>
-      'Computer forgotten. It lists the phone until you disconnect it there too.';
+  String get pcUnpaired => 'Forgotten. Disconnect it there too';
 
   @override
   String get pcScanHint =>
@@ -3389,17 +3371,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pcErrNotBloom => 'That\'s not a Bloom code';
 
   @override
-  String get pcErrUnreachable =>
-      'The computer doesn\'t answer — is it on the same network?';
+  String get pcErrUnreachable => 'No answer. Same network?';
 
   @override
   String get pcErrWrong => 'Wrong code';
 
   @override
-  String get pcErrClosed => '“Connect a phone” is closed on the computer';
+  String get pcErrClosed => 'Closed on the computer';
 
   @override
-  String get pcErrTooMany => 'Too many tries — wait for a new code';
+  String get pcErrTooMany => 'Too many tries: get a new code';
 
   @override
   String get pcErrFailed => 'Couldn\'t connect';

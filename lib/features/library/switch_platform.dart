@@ -9,7 +9,6 @@
 /// again from the new platform.
 library;
 
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
@@ -43,7 +42,6 @@ bool canSwitchPlatform(LibraryState lib, WidgetRef ref, Track track) =>
 
 /// Finds the track on [target] and replaces the library entry with it.
 Future<void> switchTrackPlatform(
-  ScaffoldMessengerState messenger,
   AppLocalizations l10n,
   WidgetRef ref,
   Track track,
@@ -52,13 +50,13 @@ Future<void> switchTrackPlatform(
   if (track.source == target) return;
   final provider = ref.read(registryProvider).byId(target.id);
   if (provider == null) {
-    messenger.toast(l10n.spUnavailable, kind: ToastKind.warn);
+    toaster.show(l10n.spUnavailable, kind: ToastKind.warn);
     return;
   }
 
   // Search takes seconds, so I say so at once, or a press looks like nothing
   // happened.
-  messenger.toast(l10n.spSearching(target.label10n(l10n)));
+  toaster.show(l10n.spSearching(target.label10n(l10n)));
 
   List<Track> found;
   try {
@@ -68,7 +66,7 @@ Future<void> switchTrackPlatform(
     found = results.tracks;
   } catch (e) {
     logWarn('library', 'platform switch: search on ${target.id} failed: $e');
-    messenger.toast(l10n.spFailed, kind: ToastKind.error);
+    toaster.show(l10n.spFailed, kind: ToastKind.error);
     return;
   }
 
@@ -84,10 +82,7 @@ Future<void> switchTrackPlatform(
     min: kMinMatchScore,
   ).firstOrNull;
   if (best == null) {
-    messenger.toast(
-      l10n.spNotFound(target.label10n(l10n)),
-      kind: ToastKind.warn,
-    );
+    toaster.show(l10n.spNotFound(target.label10n(l10n)), kind: ToastKind.warn);
     return;
   }
 
@@ -101,5 +96,5 @@ Future<void> switchTrackPlatform(
   // than the track now has, and nothing can refer to it.
   await ref.read(offlineProvider.notifier).remove(track.id);
 
-  messenger.toast(l10n.spNow(target.label10n(l10n)), kind: ToastKind.success);
+  toaster.show(l10n.spNow(target.label10n(l10n)), kind: ToastKind.success);
 }

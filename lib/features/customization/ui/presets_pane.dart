@@ -40,7 +40,6 @@ class PresetsPane extends ConsumerWidget {
 /// bottom.
 Future<void> showAddPresetSheet(BuildContext context, WidgetRef ref) async {
   final l10n = context.l;
-  final messenger = ScaffoldMessenger.of(context);
   final picked = await showBloomSheetChild<Object>(
     context: context,
     child: const _PresetAddForm(),
@@ -60,7 +59,7 @@ Future<void> showAddPresetSheet(BuildContext context, WidgetRef ref) async {
     final failure = ref.read(presetsProvider).length >= kPresetsLimit
         ? l10n.custPresetsFull(kPresetsLimit)
         : l10n.custPresetNothing;
-    messenger.toast(
+    toaster.show(
       saved == null ? failure : l10n.custPresetSaved(saved.name),
       kind: saved == null ? ToastKind.warn : ToastKind.success,
     );
@@ -69,7 +68,7 @@ Future<void> showAddPresetSheet(BuildContext context, WidgetRef ref) async {
   final content = await openTextFile();
   if (content == null) return;
   final added = await importPresets(ref.read, content);
-  messenger.toast(
+  toaster.show(
     added == 0 ? l10n.custImportBad : l10n.custImported(added),
     kind: added == 0 ? ToastKind.warn : ToastKind.success,
   );
@@ -235,7 +234,6 @@ class _PresetCard extends ConsumerWidget {
     List<String> srcs,
   ) {
     final l10n = context.l;
-    final messenger = ScaffoldMessenger.of(context);
     final name = preset.name.isEmpty ? l10n.custPresetUntitled : preset.name;
 
     /// An item closes the sheet before acting, like sheet menu items.
@@ -270,7 +268,7 @@ class _PresetCard extends ConsumerWidget {
                   label: l10n.custPresetApply,
                   onTap: close(sheet, () {
                     ref.read(presetsProvider.notifier).apply(preset.id);
-                    messenger.toast(
+                    toaster.show(
                       l10n.custPresetApplied(preset.name),
                       kind: ToastKind.success,
                     );
@@ -291,7 +289,7 @@ class _PresetCard extends ConsumerWidget {
                     // A cancelled dialog is no reason for a toast: the user
                     // closed it.
                     if (ok) {
-                      messenger.toast(
+                      toaster.show(
                         l10n.custPresetExported,
                         kind: ToastKind.success,
                       );

@@ -68,10 +68,6 @@ ProviderContainer _container(_FakeSoundCloud provider, JsonStore store) {
 }
 
 void main() {
-  // The pass looks for the app's messenger to announce new tracks; it lives in
-  // the widget tree, and without a binding the lookup crashes.
-  TestWidgetsFlutterBinding.ensureInitialized();
-
   test('candidates are only playlists with a source', () {
     final c = _container(_FakeSoundCloud(const {}), JsonStore.memory());
     final lib = c.read(libraryProvider.notifier);

@@ -807,7 +807,6 @@ Future<void> _showArtistMenu(
 ) {
   final artist = followed.artist;
   final pinned = followed.pinned;
-  final messenger = ScaffoldMessenger.of(context);
   final l10n = context.l;
 
   return showBloomSheet(
@@ -835,7 +834,7 @@ Future<void> _showArtistMenu(
           danger: true,
           onTap: () {
             ref.read(libraryProvider.notifier).toggleFollow(artist);
-            messenger.toast(l10n.unfollowedToast);
+            toaster.show(l10n.unfollowedToast);
           },
         ),
       ],

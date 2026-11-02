@@ -79,33 +79,30 @@ Future<void> shakeWave(BuildContext context, WidgetRef ref) =>
 /// Stops the wave: the queue plays out, but loads no more.
 void stopWave(BuildContext context, WidgetRef ref) {
   ref.read(waveProvider.notifier).stop();
-  showToast(context, context.l.waveToastStopped);
+  toaster.show(context.l.waveToastStopped);
 }
 
 /// Sets or clears a dislike. A disliked playing track gets skipped by the wave
 /// at once; see [WaveController.toggleDislike].
 void toggleWaveDislike(BuildContext context, WidgetRef ref, Track track) {
   final l10n = context.l;
-  final messenger = ScaffoldMessenger.of(context);
   final on = ref.read(waveProvider.notifier).toggleDislike(track);
-  messenger.toast(on ? l10n.waveToastDisliked : l10n.waveToastUndisliked);
+  toaster.show(on ? l10n.waveToastDisliked : l10n.waveToastUndisliked);
 }
 
 bool isWaveDisliked(WidgetRef ref, String trackId) =>
     ref.watch(waveStoreProvider).isDisliked(trackId);
 
-/// Shared path: picks hit the network, so messenger and translations come
-/// BEFORE waiting: the screen that started the wave has closed by then.
+/// Shared path: picks hit the network, so translations come BEFORE waiting: the screen that started the wave has closed by then.
 Future<void> _run(
   BuildContext context,
   WidgetRef ref,
   Future<WaveStartResult> Function(WaveController) start,
 ) async {
-  final messenger = ScaffoldMessenger.of(context);
   final l10n = context.l;
   final result = await start(ref.read(waveProvider.notifier));
   if (result == WaveStartResult.ok || result == WaveStartResult.busy) return;
-  messenger.toast(waveResultMessage(l10n, result), kind: ToastKind.warn);
+  toaster.show(waveResultMessage(l10n, result), kind: ToastKind.warn);
 }
 
 /// Text of a failed start.

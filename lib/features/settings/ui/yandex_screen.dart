@@ -241,7 +241,7 @@ class _CodeCard extends StatelessWidget {
             GestureDetector(
               onTap: () {
                 Clipboard.setData(ClipboardData(text: code));
-                showToast(context, l.ymCodeCopied);
+                toaster.show(l.ymCodeCopied);
               },
               child: Text(
                 code,

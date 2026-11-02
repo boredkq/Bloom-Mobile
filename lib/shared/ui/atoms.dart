@@ -212,12 +212,16 @@ class BloomTag extends StatelessWidget {
     this.active = true,
     this.color,
     this.onTap,
+    this.size = 13,
+    this.vertical = 6,
   });
 
   final String text;
   final bool active;
   final Color? color;
   final VoidCallback? onTap;
+  final double size;
+  final double vertical;
 
   @override
   Widget build(BuildContext context) {
@@ -226,7 +230,7 @@ class BloomTag extends StatelessWidget {
     return Pressable(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: vertical),
         decoration: BoxDecoration(
           color: active ? c.withValues(alpha: 0.14) : t.ovlBg,
           borderRadius: BorderRadius.circular(999),
@@ -235,7 +239,11 @@ class BloomTag extends StatelessWidget {
           text,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: bloomText(size: 13, weight: 700, color: active ? c : t.text2),
+          style: bloomText(
+            size: size,
+            weight: 700,
+            color: active ? c : t.text2,
+          ),
         ),
       ),
     );

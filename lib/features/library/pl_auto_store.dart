@@ -231,13 +231,12 @@ class PlAutoController extends Notifier<PlAutoState> {
     final targets = this.targets();
     if (targets.isEmpty) return const PlAutoSweep(skipped: true);
 
-    final messenger = bloomMessengerKey.currentState;
     // A scheduled pass speaks from a timer with no screen of its own, so the
-    // language comes from the global messenger (see `globalL10n`).
+    // language comes from `globalL10n`.
     final l10n = globalL10n;
     final toast = silent || l10n == null
         ? null
-        : messenger?.busyToast(l10n.paBusy(targets.length));
+        : toaster.busy(l10n.paBusy(targets.length));
 
     state = state.copyWith(busy: '');
     final registry = ref.read(registryProvider);
@@ -252,7 +251,7 @@ class PlAutoController extends Notifier<PlAutoState> {
         state = state.copyWith(busy: pl.id);
         toast?.update(
           l10n!.paProgress(i + 1, targets.length),
-          progress: i / targets.length,
+          share: i / targets.length,
         );
         final got = await refreshPlaylistFromSource(registry, library, pl);
         record(pl.id, got);
@@ -271,14 +270,14 @@ class PlAutoController extends Notifier<PlAutoState> {
     final result = PlAutoSweep(added: added, changed: changed, failed: failed);
     if (l10n == null) return result;
     if (added > 0) {
-      final text = l10n.paNewTracks(added, changed);
+      final text = l10n.paNewTracks(added);
       toast == null
-          ? messenger?.toast(text, kind: ToastKind.success)
+          ? toaster.show(text, kind: ToastKind.success)
           : toast.finish(text);
     } else if (failed > 0) {
       final text = l10n.paFailed(failed);
       toast == null
-          ? messenger?.toast(text, kind: ToastKind.warn)
+          ? toaster.show(text, kind: ToastKind.warn)
           : toast.finish(text, kind: ToastKind.warn);
     } else {
       toast?.finish(l10n.paNoNewTracks, kind: ToastKind.info);
