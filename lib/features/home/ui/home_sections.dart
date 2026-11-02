@@ -52,7 +52,7 @@ class DiscoverSection extends ConsumerWidget {
                 ).push(detailPageRoute<void>((_) => page)),
         ),
         switch (block) {
-          // A row plays its own track; the chart page plays the whole list.
+          // A row plays its own track; on the chart page it starts the list.
           DiscoverTracks(:final tracks) when charts => Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Column(

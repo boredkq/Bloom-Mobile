@@ -133,7 +133,6 @@ class SubPage extends StatelessWidget {
     required this.onBack,
     this.children = const [],
     this.child,
-    this.actions = const [],
   });
 
   final String title;
@@ -145,9 +144,6 @@ class SubPage extends StatelessWidget {
   /// Instead of [children]: what scrolls itself.
   final Widget? child;
 
-  /// Round buttons next to the title.
-  final List<Widget> actions;
-
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -156,17 +152,7 @@ class SubPage extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: SubPageHeader(title: title, onBack: onBack),
-                ),
-                for (final action in actions) ...[
-                  const SizedBox(width: 8),
-                  action,
-                ],
-              ],
-            ),
+            child: SubPageHeader(title: title, onBack: onBack),
           ),
           // A strut, not list padding: content cuts off this far below the
           // pill, not along its very edge.
