@@ -235,7 +235,7 @@ void applyCloudPreset(WidgetRef ref, CloudPreset preset) {
 
   // 3. Set UI font
   try {
-    ref.read(uiFontProvider.notifier).setFont(preset.fontFamily);
+    settings.setFontFamily(preset.fontFamily);
   } catch (_) {}
 }
 
