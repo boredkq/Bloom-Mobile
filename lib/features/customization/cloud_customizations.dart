@@ -280,8 +280,10 @@ class _CloudPaneList extends ConsumerWidget {
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final p = presets[index];
-        final isActive = currentStyle == p.playerStyle &&
-            (settings.themeId == 'cloud_${p.id}' || settings.preset.name == p.name);
+        final isActive =
+            currentStyle == p.playerStyle &&
+            (settings.themeId == 'cloud_${p.id}' ||
+                settings.preset.name == p.name);
 
         return Container(
           padding: const EdgeInsets.all(16),
@@ -350,8 +352,9 @@ class _CloudPaneList extends ConsumerWidget {
                   ),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          isActive ? t.text.withValues(alpha: 0.12) : p.accent,
+                      backgroundColor: isActive
+                          ? t.text.withValues(alpha: 0.12)
+                          : p.accent,
                       foregroundColor: isActive ? t.text : Colors.black,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -395,9 +398,21 @@ class _CloudPaneList extends ConsumerWidget {
                 spacing: 6,
                 runSpacing: 4,
                 children: [
-                  _CloudBadge(label: p.category.toUpperCase(), bg: t.ovlLine, color: t.text2),
-                  _CloudBadge(label: 'Дека: ${p.playerStyle.name}', bg: t.ovlLine, color: p.accent),
-                  _CloudBadge(label: 'Шрифт: ${p.fontFamily}', bg: t.ovlLine, color: t.text2),
+                  _CloudBadge(
+                    label: p.category.toUpperCase(),
+                    bg: t.ovlLine,
+                    color: t.text2,
+                  ),
+                  _CloudBadge(
+                    label: 'Дека: ${p.playerStyle.name}',
+                    bg: t.ovlLine,
+                    color: p.accent,
+                  ),
+                  _CloudBadge(
+                    label: 'Шрифт: ${p.fontFamily}',
+                    bg: t.ovlLine,
+                    color: t.text2,
+                  ),
                 ],
               ),
             ],
@@ -409,7 +424,11 @@ class _CloudPaneList extends ConsumerWidget {
 }
 
 class _CloudBadge extends StatelessWidget {
-  const _CloudBadge({required this.label, required this.bg, required this.color});
+  const _CloudBadge({
+    required this.label,
+    required this.bg,
+    required this.color,
+  });
 
   final String label;
   final Color bg;
