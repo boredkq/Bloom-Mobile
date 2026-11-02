@@ -17,6 +17,7 @@ import '../../features/library/import_url.dart';
 import '../../features/library/local_tracks.dart';
 import '../../features/library/switch_platform.dart';
 import '../../features/offline/file_download.dart';
+import '../../features/lyrics/lyrics_store.dart';
 import '../../features/offline/offline_actions.dart';
 import '../../features/offline/offline_store.dart';
 import '../../features/player/play_source.dart';
@@ -137,6 +138,14 @@ Future<void> showTrackActions(
             subtitle: track.source.label10n(context.l),
             onTap: () => _showSwitchPlatformSheet(context, ref, track),
           ),
+        SheetAction(
+          icon: Bi.lyrics,
+          label: context.l.pvGroupLyrics,
+          onTap: () {
+            ref.read(lyricsOpenProvider.notifier).state = true;
+            ref.read(lyricsProvider.notifier).load(track);
+          },
+        ),
         SheetAction(
           icon: Bi.infoCircle,
           label: context.l.tiTitle,

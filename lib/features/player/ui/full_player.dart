@@ -334,7 +334,17 @@ class _Cover extends ConsumerWidget {
             : (ivory ? 8.0 : (aura ? 24.0 : _coverRadius));
         final double scale = (aura && !spinning) ? 0.88 : 1.0;
 
-        return Stack(
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            final next = !lyricsOpen;
+            ref.read(lyricsOpenProvider.notifier).state = next;
+            if (next &&
+                ref.read(lyricsProvider).status != LyricsStatus.ready) {
+              ref.read(lyricsProvider.notifier).load(track);
+            }
+          },
+          child: Stack(
           children: [
             AnimatedScale(
               scale: scale,
@@ -444,7 +454,8 @@ class _Cover extends ConsumerWidget {
               ),
             ),
           ],
-        );
+        ),
+      );
       },
     );
   }
@@ -1057,9 +1068,6 @@ class _Tools extends ConsumerWidget {
     // Speed: at 1× a plain speedometer; otherwise the value in its place.
     final rate = ref.watch(speedProvider).rate;
     final lyricsOpen = ref.watch(lyricsOpenProvider);
-    // No lyrics button until lyrics are found. It survives an open panel in any
-    // case, or there'd be nothing to close it with.
-    final lyricsFound = ref.watch(lyricsProvider).status == LyricsStatus.ready;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1077,14 +1085,23 @@ class _Tools extends ConsumerWidget {
               size: 25,
               onTap: () => showAddToPlaylistSheet(context, ref, track),
             ),
-            if (lyricsFound || lyricsOpen)
-              _FlatIcon(
-                icon: Bi.text,
+            Semantics(
+              button: true,
+              label: context.l.pvGroupLyrics,
+              child: _FlatIcon(
+                icon: Bi.lyrics,
                 size: 25,
                 active: lyricsOpen,
-                onTap: () =>
-                    ref.read(lyricsOpenProvider.notifier).state = !lyricsOpen,
+                onTap: () {
+                  final next = !lyricsOpen;
+                  ref.read(lyricsOpenProvider.notifier).state = next;
+                  if (next &&
+                      ref.read(lyricsProvider).status != LyricsStatus.ready) {
+                    ref.read(lyricsProvider.notifier).load(track);
+                  }
+                },
               ),
+            ),
           ],
         ),
         _ToolPill(
