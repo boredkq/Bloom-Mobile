@@ -1075,10 +1075,7 @@ class _SourceChip extends StatelessWidget {
           Container(
             width: 7,
             height: 7,
-            decoration: BoxDecoration(
-              color: dotColor,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
           ),
           const SizedBox(width: 6),
           Text(
@@ -1113,9 +1110,27 @@ class _DecksVisual extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _DeckBadge(title: 'Aura', subtitle: 'Glow', icon: Bi.magicStick, t: t, active: true),
-          _DeckBadge(title: 'Vinyl', subtitle: 'Analog', icon: Bi.album, t: t, active: false),
-          _DeckBadge(title: 'Ivory', subtitle: 'Editorial', icon: Bi.soundwave, t: t, active: false),
+          _DeckBadge(
+            title: 'Aura',
+            subtitle: 'Glow',
+            icon: Bi.magicStick,
+            t: t,
+            active: true,
+          ),
+          _DeckBadge(
+            title: 'Vinyl',
+            subtitle: 'Analog',
+            icon: Bi.album,
+            t: t,
+            active: false,
+          ),
+          _DeckBadge(
+            title: 'Ivory',
+            subtitle: 'Editorial',
+            icon: Bi.soundwave,
+            t: t,
+            active: false,
+          ),
         ],
       ),
     );
@@ -1151,11 +1166,7 @@ class _DeckBadge extends StatelessWidget {
       ),
       child: Column(
         children: [
-          BloomIcon(
-            icon,
-            size: 20,
-            color: active ? t.accent : t.text2,
-          ),
+          BloomIcon(icon, size: 20, color: active ? t.accent : t.text2),
           const SizedBox(height: 6),
           Text(
             title,
@@ -1265,11 +1276,7 @@ class _CloudVisual extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: const Center(
-              child: BloomIcon(
-                Bi.send,
-                size: 20,
-                color: Color(0xFF2AABEE),
-              ),
+              child: BloomIcon(Bi.send, size: 20, color: Color(0xFF2AABEE)),
             ),
           ),
           const SizedBox(width: 12),
@@ -1299,10 +1306,7 @@ class _CloudVisual extends StatelessWidget {
                     const SizedBox(width: 5),
                     Text(
                       'Vercel Cloud Sync',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: t.text2,
-                      ),
+                      style: TextStyle(fontSize: 11, color: t.text2),
                     ),
                   ],
                 ),

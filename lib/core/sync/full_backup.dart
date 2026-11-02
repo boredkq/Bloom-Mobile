@@ -52,13 +52,16 @@ Map<String, dynamic> buildFullBackup(BloomDb db) {
   final playlists = <Map<String, dynamic>>[];
   for (final l in listRows) {
     final listId = l['id'] as String;
-    final trackRows = db.select('''
+    final trackRows = db.select(
+      '''
       SELECT t.id, t.provider, t.title, t.artist, t.album, t.cover, t.duration, t.extra, t.updated_at, lt.pos
       FROM list_tracks lt
       JOIN tracks t ON t.id = lt.track_id
       WHERE lt.list_id = ?
       ORDER BY lt.pos
-    ''', [listId]);
+    ''',
+      [listId],
+    );
 
     playlists.add({
       'id': listId,
@@ -153,10 +156,13 @@ bool applyFullBackup(BloomDb db, Map<String, dynamic> data) {
       if (data['favorites'] case final List favs) {
         final now = DateTime.now().millisecondsSinceEpoch;
         // Ensure 'fav' list exists
-        db.exec('''
+        db.exec(
+          '''
           INSERT OR IGNORE INTO lists (id, kind, name, description, cover, sources, auto_refresh, created_at, updated_at)
           VALUES ('fav', 'fav', 'Избранное', '', '', '[]', 0, ?, ?)
-        ''', [now, now]);
+        ''',
+          [now, now],
+        );
 
         for (var i = 0; i < favs.length; i++) {
           final t = favs[i];
@@ -165,26 +171,32 @@ bool applyFullBackup(BloomDb db, Map<String, dynamic> data) {
           if (id.isEmpty) continue;
 
           // Insert or update track
-          db.exec('''
+          db.exec(
+            '''
             INSERT OR REPLACE INTO tracks (id, provider, title, artist, album, cover, duration, extra, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-          ''', [
-            id,
-            t['provider'] ?? 'sc',
-            t['title'] ?? '',
-            t['artist'] ?? '',
-            t['album'] ?? '',
-            t['cover'] ?? '',
-            t['duration'] ?? 0,
-            t['extra'] is Map ? jsonEncode(t['extra']) : (t['extra'] ?? '{}'),
-            t['updated_at'] ?? now,
-          ]);
+          ''',
+            [
+              id,
+              t['provider'] ?? 'sc',
+              t['title'] ?? '',
+              t['artist'] ?? '',
+              t['album'] ?? '',
+              t['cover'] ?? '',
+              t['duration'] ?? 0,
+              t['extra'] is Map ? jsonEncode(t['extra']) : (t['extra'] ?? '{}'),
+              t['updated_at'] ?? now,
+            ],
+          );
 
           // Link to 'fav' list
-          db.exec('''
+          db.exec(
+            '''
             INSERT OR REPLACE INTO list_tracks (list_id, track_id, pos, added_at)
             VALUES ('fav', ?, ?, ?)
-          ''', [id, t['pos'] ?? i, t['updated_at'] ?? now]);
+          ''',
+            [id, t['pos'] ?? i, t['updated_at'] ?? now],
+          );
         }
       }
 
@@ -196,20 +208,25 @@ bool applyFullBackup(BloomDb db, Map<String, dynamic> data) {
           final listId = l['id'] as String? ?? '';
           if (listId.isEmpty) continue;
 
-          db.exec('''
+          db.exec(
+            '''
             INSERT OR REPLACE INTO lists (id, kind, name, description, cover, sources, auto_refresh, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-          ''', [
-            listId,
-            l['kind'] ?? 'custom',
-            l['name'] ?? 'Плейлист',
-            l['description'] ?? '',
-            l['cover'] ?? '',
-            l['sources'] is List ? jsonEncode(l['sources']) : (l['sources'] ?? '[]'),
-            l['auto_refresh'] ?? 0,
-            l['created_at'] ?? now,
-            l['updated_at'] ?? now,
-          ]);
+          ''',
+            [
+              listId,
+              l['kind'] ?? 'custom',
+              l['name'] ?? 'Плейлист',
+              l['description'] ?? '',
+              l['cover'] ?? '',
+              l['sources'] is List
+                  ? jsonEncode(l['sources'])
+                  : (l['sources'] ?? '[]'),
+              l['auto_refresh'] ?? 0,
+              l['created_at'] ?? now,
+              l['updated_at'] ?? now,
+            ],
+          );
 
           if (l['tracks'] case final List tracks) {
             for (var i = 0; i < tracks.length; i++) {
@@ -218,25 +235,33 @@ bool applyFullBackup(BloomDb db, Map<String, dynamic> data) {
               final tid = t['id'] as String? ?? '';
               if (tid.isEmpty) continue;
 
-              db.exec('''
+              db.exec(
+                '''
                 INSERT OR REPLACE INTO tracks (id, provider, title, artist, album, cover, duration, extra, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-              ''', [
-                tid,
-                t['provider'] ?? 'sc',
-                t['title'] ?? '',
-                t['artist'] ?? '',
-                t['album'] ?? '',
-                t['cover'] ?? '',
-                t['duration'] ?? 0,
-                t['extra'] is Map ? jsonEncode(t['extra']) : (t['extra'] ?? '{}'),
-                t['updated_at'] ?? now,
-              ]);
+              ''',
+                [
+                  tid,
+                  t['provider'] ?? 'sc',
+                  t['title'] ?? '',
+                  t['artist'] ?? '',
+                  t['album'] ?? '',
+                  t['cover'] ?? '',
+                  t['duration'] ?? 0,
+                  t['extra'] is Map
+                      ? jsonEncode(t['extra'])
+                      : (t['extra'] ?? '{}'),
+                  t['updated_at'] ?? now,
+                ],
+              );
 
-              db.exec('''
+              db.exec(
+                '''
                 INSERT OR REPLACE INTO list_tracks (list_id, track_id, pos, added_at)
                 VALUES (?, ?, ?, ?)
-              ''', [listId, tid, t['pos'] ?? i, t['updated_at'] ?? now]);
+              ''',
+                [listId, tid, t['pos'] ?? i, t['updated_at'] ?? now],
+              );
             }
           }
         }
@@ -248,17 +273,20 @@ bool applyFullBackup(BloomDb db, Map<String, dynamic> data) {
           if (f is! Map) continue;
           final id = f['id'] as String? ?? '';
           if (id.isEmpty) continue;
-          db.exec('''
+          db.exec(
+            '''
             INSERT OR REPLACE INTO follows (id, provider, name, avatar, extra, at)
             VALUES (?, ?, ?, ?, ?, ?)
-          ''', [
-            id,
-            f['provider'] ?? '',
-            f['name'] ?? '',
-            f['avatar'] ?? '',
-            f['extra'] is Map ? jsonEncode(f['extra']) : (f['extra'] ?? '{}'),
-            f['at'] ?? DateTime.now().millisecondsSinceEpoch,
-          ]);
+          ''',
+            [
+              id,
+              f['provider'] ?? '',
+              f['name'] ?? '',
+              f['avatar'] ?? '',
+              f['extra'] is Map ? jsonEncode(f['extra']) : (f['extra'] ?? '{}'),
+              f['at'] ?? DateTime.now().millisecondsSinceEpoch,
+            ],
+          );
         }
       }
 
@@ -268,10 +296,13 @@ bool applyFullBackup(BloomDb db, Map<String, dynamic> data) {
           if (d is! Map) continue;
           final tid = d['track_id'] as String? ?? '';
           if (tid.isEmpty) continue;
-          db.exec('''
+          db.exec(
+            '''
             INSERT OR REPLACE INTO dislikes (track_id, at)
             VALUES (?, ?)
-          ''', [tid, d['at'] ?? DateTime.now().millisecondsSinceEpoch]);
+          ''',
+            [tid, d['at'] ?? DateTime.now().millisecondsSinceEpoch],
+          );
         }
       }
 
@@ -302,17 +333,13 @@ Future<bool> pushBackupToVercel({
     final uri = Uri.parse('$cleanUrl/api/user/sync');
     final backup = buildFullBackup(db);
 
-    final res = await http.post(
-      uri,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-User-Id': userId,
-      },
-      body: jsonEncode({
-        'userId': userId,
-        ...backup,
-      }),
-    ).timeout(const Duration(seconds: 15));
+    final res = await http
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json', 'X-User-Id': userId},
+          body: jsonEncode({'userId': userId, ...backup}),
+        )
+        .timeout(const Duration(seconds: 15));
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
       logInfo('sync', 'Cloud sync push success: ${res.body}');
@@ -334,20 +361,22 @@ Future<bool> pullBackupFromVercel({
 }) async {
   try {
     final cleanUrl = serverUrl.replaceAll(RegExp(r'/+$'), '');
-    final uri = Uri.parse('$cleanUrl/api/user/sync?userId=${Uri.encodeComponent(userId)}');
+    final uri = Uri.parse(
+      '$cleanUrl/api/user/sync?userId=${Uri.encodeComponent(userId)}',
+    );
 
-    final res = await http.get(
-      uri,
-      headers: {
-        'Accept': 'application/json',
-        'X-User-Id': userId,
-      },
-    ).timeout(const Duration(seconds: 15));
+    final res = await http
+        .get(uri, headers: {'Accept': 'application/json', 'X-User-Id': userId})
+        .timeout(const Duration(seconds: 15));
 
     if (res.statusCode == 200) {
       final json = jsonDecode(res.body);
-      if (json is Map<String, dynamic> && json['data'] is Map<String, dynamic>) {
-        final applied = applyFullBackup(db, json['data'] as Map<String, dynamic>);
+      if (json is Map<String, dynamic> &&
+          json['data'] is Map<String, dynamic>) {
+        final applied = applyFullBackup(
+          db,
+          json['data'] as Map<String, dynamic>,
+        );
         return applied;
       }
     }

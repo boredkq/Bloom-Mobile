@@ -383,14 +383,18 @@ Future<void> _openTelegramSettings(BuildContext context, WidgetRef ref) async {
               icon: BloomIcon(Bi.refresh, size: 18, color: t.accent),
               label: const Text('Синхронизировать с облаком'),
               onPressed: () async {
-                final ok = await ref.read(telegramAuthProvider.notifier).pushBackup();
+                final ok = await ref
+                    .read(telegramAuthProvider.notifier)
+                    .pushBackup();
                 if (context.mounted) {
                   Navigator.of(context).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(ok
-                          ? 'Медиатека, уровень и плейлисты сохранены в облаке!'
-                          : 'Ошибка сохранения в облако'),
+                      content: Text(
+                        ok
+                            ? 'Медиатека, уровень и плейлисты сохранены в облаке!'
+                            : 'Ошибка сохранения в облако',
+                      ),
                     ),
                   );
                 }
@@ -406,17 +410,25 @@ Future<void> _openTelegramSettings(BuildContext context, WidgetRef ref) async {
                 ),
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
-              icon: BloomIcon(Bi.downloadMinimalistic, size: 18, color: t.text2),
+              icon: BloomIcon(
+                Bi.downloadMinimalistic,
+                size: 18,
+                color: t.text2,
+              ),
               label: const Text('Восстановить из облака'),
               onPressed: () async {
-                final ok = await ref.read(telegramAuthProvider.notifier).pullBackup();
+                final ok = await ref
+                    .read(telegramAuthProvider.notifier)
+                    .pullBackup();
                 if (context.mounted) {
                   Navigator.of(context).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(ok
-                          ? 'Данные успешно восстановлены из облака!'
-                          : 'Облачная копия не найдена'),
+                      content: Text(
+                        ok
+                            ? 'Данные успешно восстановлены из облака!'
+                            : 'Облачная копия не найдена',
+                      ),
                     ),
                   );
                 }
