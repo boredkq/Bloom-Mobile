@@ -746,9 +746,7 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
               onPressed: () async {
                 final token = tokenController.text.trim();
                 if (token.isNotEmpty) {
-                  await ref
-                      .read(ymAuthProvider.notifier)
-                      .loginWithToken(token);
+                  await ref.read(ymAuthProvider.notifier).loginWithToken(token);
                   if (context.mounted) {
                     Navigator.of(context).pop();
                   }
