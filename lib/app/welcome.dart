@@ -2,16 +2,13 @@
 /// Telegram authentication, Yandex Music connect, and smooth entry to the app.
 library;
 
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../core/db/db.dart';
 import '../core/l10n/l10n.dart';
 import '../features/telegram/telegram_store.dart';
 import '../providers/yandex/ym_auth.dart';
-import '../shared/ui/atoms.dart';
 import '../shared/ui/bloom_icon.dart';
 import '../shared/ui/bloom_sheet.dart';
 import 'theme/bloom_theme.dart';
@@ -185,7 +182,7 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
                     padding: const EdgeInsets.all(7),
                     child: Image.asset(
                       'assets/brand/bloom_mark.png',
-                      errorBuilder: (_, __, ___) =>
+                      errorBuilder: (_, _, _) =>
                           BloomIcon(Bi.soundwave, color: t.accent),
                     ),
                   ),
@@ -749,7 +746,7 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
               onPressed: () async {
                 final token = tokenController.text.trim();
                 if (token.isNotEmpty) {
-                  final ok = await ref
+                  await ref
                       .read(ymAuthProvider.notifier)
                       .loginWithToken(token);
                   if (context.mounted) {

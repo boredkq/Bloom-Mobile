@@ -120,7 +120,7 @@ class TelegramAuthController extends Notifier<TelegramAuthState> {
         final db = ref.read(dbProvider);
         final profile = db.getMap('profile');
         if (profile['name'] == null || profile['name'] == 'Слушатель') {
-          db.setMap('profile', {
+          db.set('profile', {
             ...profile,
             'name': user.displayName,
             if (user.photoUrl != null && profile['avatar'] == null)
