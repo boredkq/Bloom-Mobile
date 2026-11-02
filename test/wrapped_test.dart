@@ -80,14 +80,14 @@ void main() {
   // there's no tree here, so I init the dates myself.
   setUpAll(() => initializeDateFormatting('ru'));
 
-  group('периоды', () {
-    test('месяц — прошлый целиком', () {
+  group('periods', () {
+    test('the month is the last one whole', () {
       final r = periodRange(PeriodKind.month, _now);
       expect(r.from, DateTime(2026, 7, 1));
       expect(r.to, DateTime(2026, 8, 1));
     });
 
-    test('«показывать всегда» берёт у месяца идущий месяц', () {
+    test('always show takes the current month for the month', () {
       // Otherwise there'd be nothing to check: the journal starts collecting at
       // the update, and a past month often has zero events.
       final r = periodRange(PeriodKind.month, _now, true);
@@ -95,13 +95,13 @@ void main() {
       expect(r.to, _now);
     });
 
-    test('год — с 1 января по сейчас', () {
+    test('the year runs from January 1 to now', () {
       final r = periodRange(PeriodKind.year, _now);
       expect(r.from, DateTime(2026, 1, 1));
       expect(r.to, _now);
     });
 
-    test('окно года — 21–31 декабря', () {
+    test('the year window is December 21–31', () {
       expect(inYearWindow(_now), isFalse);
       expect(inYearWindow(DateTime(2026, 12, 20)), isFalse);
       expect(inYearWindow(DateTime(2026, 12, 22)), isTrue);
@@ -110,14 +110,14 @@ void main() {
       expect(inYearWindow(_now, force: true), isTrue);
     });
 
-    test('неделя подсказки — 1–7 число', () {
+    test('the hint week is the 1st to the 7th', () {
       expect(inMonthHintWindow(DateTime(2026, 8, 1)), isTrue);
       expect(inMonthHintWindow(DateTime(2026, 8, 7, 23)), isTrue);
       expect(inMonthHintWindow(DateTime(2026, 8, 8)), isFalse);
       expect(inMonthHintWindow(DateTime(2026, 8, 20), force: true), isTrue);
     });
 
-    test('напоминать уместно 1-го числа и в декабрьском окне', () {
+    test('a reminder fits on the 1st and in the December window', () {
       expect(scheduledPeriods(_now), isEmpty);
       expect(scheduledPeriods(DateTime(2026, 8, 1)), [PeriodKind.month]);
       expect(scheduledPeriods(DateTime(2026, 12, 22)), [PeriodKind.year]);
@@ -130,7 +130,7 @@ void main() {
       ]);
     });
 
-    test('ключ периода стабилен и различает виды', () {
+    test('a period key is stable and tells kinds apart', () {
       expect(periodKey(periodRange(PeriodKind.year, _now)), '2026');
       expect(periodKey(periodRange(PeriodKind.month, _now)), '2026-07');
       // The same period asked at another hour gives the same key.
@@ -140,7 +140,7 @@ void main() {
       );
     });
 
-    test('подпись периода — месяц с заглавной, год числом', () {
+    test('a period label: a capitalized month, a year as a number', () {
       expect(
         periodDatesLabel(periodRange(PeriodKind.month, _now), 'ru'),
         'Июль 2026',
@@ -152,10 +152,10 @@ void main() {
     });
   });
 
-  group('расчёт', () {
+  group('calculation', () {
     final month = periodRange(PeriodKind.month, _now);
 
-    test('считает только события периода', () {
+    test("counts only the period's events", () {
       final inside = _track('sc:1');
       final before = _track('sc:2');
       final after = _track('sc:3');
@@ -174,7 +174,7 @@ void main() {
       expect(data.topTracks.single.track.id, 'sc:1');
     });
 
-    test('топ треков по числу прослушиваний', () {
+    test('the track top by play count', () {
       final one = _track('sc:1', name: 'Один');
       final two = _track('sc:2', name: 'Два');
       final data = buildWrapped(
@@ -189,7 +189,7 @@ void main() {
       expect(data.topTracks.first.plays, 2);
     });
 
-    test('артисты группируются без учёта регистра и пробелов', () {
+    test('artists group ignoring case and spaces', () {
       final data = buildWrapped(
         _log([
           (DateTime(2026, 7, 27, 9), _track('sc:1', artist: 'Boards')),
@@ -201,7 +201,7 @@ void main() {
       expect(data.topArtists.single.plays, 2);
     });
 
-    test('мультиартистная строка считается по каждому участнику', () {
+    test('a multi-artist row counts for each participant', () {
       final duo = _track('sc:1', artist: 'reidenshi, Øneheart', cover: 'a.jpg');
       final solo = _track('sc:2', artist: 'Øneheart');
       final data = buildWrapped(
@@ -218,7 +218,7 @@ void main() {
       expect(data.topArtists.map((a) => a.cover), ['a.jpg', 'a.jpg']);
     });
 
-    test('площадка артиста — та, где его слушали чаще', () {
+    test("an artist's platform is where they were heard most", () {
       // The avatar and page come from that platform: an account with the same
       // name on another one belongs to someone else.
       final data = buildWrapped(
@@ -232,7 +232,7 @@ void main() {
       expect(data.topArtists.single.source, MusicSource.yandex);
     });
 
-    test('свои файлы не отбирают у артиста площадку', () {
+    test("own files don't take an artist's platform away", () {
       // A local artist has no page, and searching where they were heard at
       // least once is the only way to one.
       final data = buildWrapped(
@@ -246,7 +246,7 @@ void main() {
       expect(data.topArtists.single.source, MusicSource.soundcloud);
     });
 
-    test('открытия — только те, кого не было ДО периода', () {
+    test('discoveries are only those absent before the period', () {
       final old = _track('sc:1', artist: 'Старый');
       final fresh = _track('sc:2', artist: 'Новый');
       final data = buildWrapped(
@@ -262,7 +262,7 @@ void main() {
       expect(data.newTracksCount, 1);
     });
 
-    test('совместный трек ДО периода закрывает открытие обоим', () {
+    test('a shared track before the period closes the discovery for both', () {
       // The "before the period" row gets parsed too: otherwise both
       // participants would stay "discoveries" forever, since the joined name
       // can't identify them.
@@ -280,7 +280,7 @@ void main() {
       expect(data.newArtists, isEmpty);
     });
 
-    test('площадки разбираются по префиксу id', () {
+    test('platforms split by id prefix', () {
       final data = buildWrapped(
         _log([
           (DateTime(2026, 7, 27, 9), _track('sc:1')),
@@ -294,7 +294,7 @@ void main() {
       expect(data.sources.last.source, MusicSource.soundcloud);
     });
 
-    test('рекорд дня, серия и активные дни', () {
+    test("the day's record, the streak and active days", () {
       final t = _track('sc:1');
       final data = buildWrapped(
         _log([
@@ -313,7 +313,7 @@ void main() {
       expect(data.streak, 2);
     });
 
-    test('часы, пик и доля ночи', () {
+    test("hours, the peak and the night's share", () {
       final t = _track('sc:1');
       final data = buildWrapped(
         _log([
@@ -329,14 +329,14 @@ void main() {
       expect(data.nightShare, closeTo(2 / 3, 0.001));
     });
 
-    test('пустой период — пустые итоги', () {
+    test('an empty period gives an empty recap', () {
       final data = buildWrapped(const PlayLog(), month);
       expect(data.isEmpty, isTrue);
       expect(data.recordDay, isNull);
       expect(data.nightShare, 0);
     });
 
-    test('при равном числе прослушиваний выше трек длиннее', () {
+    test('with equal plays the longer track ranks higher', () {
       final short = _track('sc:1', name: 'Короткий', seconds: 100);
       final long = _track('sc:2', name: 'Длинный', seconds: 300);
       final data = buildWrapped(
@@ -349,7 +349,7 @@ void main() {
       expect(data.topTracks.map((t) => t.track.name), ['Длинный', 'Короткий']);
     });
 
-    test('лучший трек артиста знает его страницу, только если он один', () {
+    test("an artist's best track knows their page only if it's alone", () {
       final solo = Track(
         id: 'sc:1',
         name: 'Соло',
@@ -376,7 +376,7 @@ void main() {
       expect(canada.cover, 'b.jpg');
     });
 
-    test('серия считается по календарю, а не по суткам в 24 часа', () {
+    test('a streak goes by the calendar, not 24-hour days', () {
       final t = _track('sc:1');
       final data = buildWrapped(
         _log([
@@ -389,7 +389,7 @@ void main() {
       expect(data.streak, 3);
     });
 
-    test('событие без снимка трека считается, но в топ не идёт', () {
+    test('an event with no track snapshot counts but stays out of the top', () {
       final data = buildWrapped(
         PlayLog(
           events: [
@@ -406,8 +406,8 @@ void main() {
     });
   });
 
-  group('журнал', () {
-    test('пишет событие и снимок, читает обратно из базы', () {
+  group('journal', () {
+    test('writes an event and a snapshot, reads back from the database', () {
       final db = BloomDb.memory();
       final c = _container(db: db);
       c
@@ -422,7 +422,7 @@ void main() {
       expect(log.tracks['sc:1']!.duration.inSeconds, 200);
     });
 
-    test('события всегда по возрастанию времени', () {
+    test('events always ascend by time', () {
       final db = BloomDb.memory();
       var at = DateTime(2026, 7, 2);
       final c = _container(db: db, clock: () => at);
@@ -434,7 +434,7 @@ void main() {
       expect(log.events.map((e) => e.id), ['sc:1', 'sc:2']);
     });
 
-    test('очистка обнуляет и базу', () {
+    test('clearing zeroes the database too', () {
       final db = BloomDb.memory();
       final c = _container(db: db);
       c.read(playLogProvider.notifier)
@@ -445,7 +445,7 @@ void main() {
     });
   });
 
-  group('что показывать', () {
+  group('what to show', () {
     ProviderContainer withPlays(
       List<(DateTime, Track)> events, {
       DateTime? now,
@@ -463,7 +463,7 @@ void main() {
       return seed;
     }
 
-    test('месяц доступен всегда, год — только в декабре', () {
+    test('the month is always available, the year only in December', () {
       final c = withPlays([
         (DateTime(2026, 7, 28, 9), _track('sc:1')),
         (DateTime(2026, 7, 29, 9), _track('sc:2')),
@@ -476,7 +476,7 @@ void main() {
       expect(entries.year, isNull);
     });
 
-    test('в декабрьском окне появляется и год', () {
+    test('in the December window the year shows too', () {
       final c = withPlays([
         (DateTime(2026, 12, 5, 9), _track('sc:1')),
       ], now: DateTime(2026, 12, 22, 12));
@@ -487,13 +487,13 @@ void main() {
       expect(entries.month, isNull);
     });
 
-    test('пустой период — входа нет', () {
+    test('an empty period has no entry', () {
       // Heard before July: nothing to recap for the month.
       final c = withPlays([(DateTime(2026, 6, 1, 9), _track('sc:1'))]);
       expect(c.read(wrappedEntriesProvider).month, isNull);
     });
 
-    test('проверочный запуск открывает год и берёт идущий месяц', () {
+    test('a test run opens the year and takes the current month', () {
       final events = [(DateTime(2026, 8, 2, 9), _track('sc:1'))];
       // An event in August: the past month (July) is empty, the year window is
       // closed.
@@ -507,7 +507,7 @@ void main() {
       expect(entries.month!.range.from, DateTime(2026, 8, 1));
     });
 
-    test('отметки проверочного запуска не трогают настоящие', () {
+    test("a test run's marks leave the real ones alone", () {
       final db = BloomDb.memory();
       final events = [(DateTime(2026, 8, 2, 9), _track('sc:1'))];
       final forced = withPlays(events, db: db, force: true);
@@ -517,7 +517,7 @@ void main() {
       expect(db.getMap('wrapped.seen'), isEmpty);
     });
 
-    test('про период напоминаем один раз — и после перезапуска тоже', () {
+    test('a period is reminded of once, after a restart too', () {
       final db = BloomDb.memory();
       final c = withPlays([(DateTime(2026, 7, 28, 9), _track('sc:1'))], db: db);
       final marks = c.read(wrappedMarksProvider.notifier);
@@ -538,7 +538,7 @@ void main() {
       expect(again.read(wrappedEntriesProvider).monthUnseen, isTrue);
     });
 
-    test('просмотр снимает подмену и переживает перезапуск', () {
+    test('viewing removes the swap and survives a restart', () {
       final db = BloomDb.memory();
       final c = withPlays([(DateTime(2026, 7, 28, 9), _track('sc:1'))], db: db);
       final range = c.read(wrappedEntriesProvider).month!.range;
@@ -551,7 +551,7 @@ void main() {
       expect(db.getMap('wrapped.seen'), {'month': '2026-07'});
     });
 
-    test('подсказка «Итоги месяца» — первую неделю и после просмотра', () {
+    test('the month recap hint: the first week and after viewing', () {
       final c = withPlays([(DateTime(2026, 7, 28, 9), _track('sc:1'))]);
       expect(c.read(wrappedEntriesProvider).monthHint, isTrue);
       final range = c.read(wrappedEntriesProvider).month!.range;
@@ -565,8 +565,8 @@ void main() {
     });
   });
 
-  group('формат', () {
-    testWidgets('время прослушивания по-русски', (tester) async {
+  group('format', () {
+    testWidgets('listening time in Russian', (tester) async {
       late AppLocalizations l;
       await tester.pumpWidget(
         MaterialApp(
@@ -599,10 +599,8 @@ void main() {
     });
   });
 
-  group('постер', () {
-    testWidgets('полный топ из пяти строк влезает в карточку 3:4', (
-      tester,
-    ) async {
+  group('poster', () {
+    testWidgets('a full top of five rows fits a 3:4 card', (tester) async {
       final month = periodRange(PeriodKind.month, _now);
       final data = buildWrapped(
         _log([
@@ -651,7 +649,7 @@ void main() {
     });
   });
 
-  group('входы и шторка', () {
+  group('entries and the sheet', () {
     /// Month data from a couple of plays, enough for all the entries.
     WrappedData monthData() => buildWrapped(
       _log([
@@ -674,9 +672,7 @@ void main() {
       ),
     );
 
-    testWidgets('шторка открывается на своём периоде и листается', (
-      tester,
-    ) async {
+    testWidgets('the sheet opens on its period and flips', (tester) async {
       late BuildContext ctx;
       await pump(
         tester,

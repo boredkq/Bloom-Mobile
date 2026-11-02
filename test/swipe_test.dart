@@ -69,8 +69,8 @@ Future<void> _pumpRow(
 );
 
 void main() {
-  group('настройка', () {
-    test('умолчания — те, что на скриншотах', () {
+  group('setting', () {
+    test('the defaults', () {
       final c = _container(JsonStore.memory());
       final s = c.read(swipeProvider);
 
@@ -84,7 +84,7 @@ void main() {
       expect(s.of(SwipeZone.player).right, SwipeAction.prev);
     });
 
-    test('выбор переживает перезапуск, соседнее место не трогается', () {
+    test('the choice survives a restart, the other side stays', () {
       final store = JsonStore.memory();
       _container(store)
           .read(swipeProvider.notifier)
@@ -97,7 +97,7 @@ void main() {
       expect(fresh.of(SwipeZone.queue).left, SwipeAction.delete);
     });
 
-    test('битая запись в файле откатывается к умолчанию', () {
+    test('a broken file entry falls back to the default', () {
       final store = JsonStore.memory();
       store.write('swipes', {
         'library': {'left': 'выдумка', 'right': 'like'},
@@ -111,8 +111,8 @@ void main() {
     });
   });
 
-  group('«Следующим»', () {
-    test('новый трек встаёт сразу за играющим', () {
+  group('Play next', () {
+    test('a new track lands right after the playing one', () {
       final queue = [_track('a'), _track('b'), _track('c')];
       final (next, index) = queueWithNext(queue, 0, _track('x'));
 
@@ -120,7 +120,7 @@ void main() {
       expect(next[index].id, 'a');
     });
 
-    test('трек из хвоста переезжает, а не дублируется', () {
+    test('a track from the tail moves rather than doubles', () {
       final queue = [_track('a'), _track('b'), _track('c')];
       final (next, index) = queueWithNext(queue, 0, _track('c'));
 
@@ -128,7 +128,7 @@ void main() {
       expect(next[index].id, 'a');
     });
 
-    test('трек сверху уносит номер играющего вверх', () {
+    test('a track from above carries the playing number up', () {
       final queue = [_track('a'), _track('b'), _track('c')];
       final (next, index) = queueWithNext(queue, 2, _track('a'));
 
@@ -137,7 +137,7 @@ void main() {
       expect(next[index].id, 'c');
     });
 
-    test('играющий сам себе следующим — очередь не трогается', () {
+    test('the playing track next to itself leaves the queue alone', () {
       final queue = [_track('a'), _track('b')];
       final (next, index) = queueWithNext(queue, 1, _track('b'));
 
@@ -146,8 +146,8 @@ void main() {
     });
   });
 
-  group('«Играть следующими» пачкой', () {
-    test('пачка встаёт за играющим в своём порядке', () {
+  group('Play next as a batch', () {
+    test('a batch lands after the playing track in its order', () {
       final queue = [_track('a'), _track('b')];
       final (next, index) = queueWithNextAll(queue, 0, [
         _track('x'),
@@ -158,7 +158,7 @@ void main() {
       expect(next[index].id, 'a');
     });
 
-    test('повторы внутри пачки и в очереди не задваиваются', () {
+    test("repeats in the batch and the queue don't double", () {
       final queue = [_track('a'), _track('b'), _track('c')];
       final (next, index) = queueWithNextAll(queue, 0, [
         _track('c'),
@@ -170,19 +170,22 @@ void main() {
       expect(next[index].id, 'a');
     });
 
-    test('играющий из пачки выпадает, остальные встают за ним', () {
-      final queue = [_track('a'), _track('b'), _track('c')];
-      final (next, index) = queueWithNextAll(queue, 1, [
-        _track('b'),
-        _track('c'),
-      ]);
+    test(
+      'the playing track drops out of the batch, the rest land after it',
+      () {
+        final queue = [_track('a'), _track('b'), _track('c')];
+        final (next, index) = queueWithNextAll(queue, 1, [
+          _track('b'),
+          _track('c'),
+        ]);
 
-      // "b" plays and stays, "c" moves right next to it.
-      expect(next.map((t) => t.id).toList(), ['a', 'b', 'c']);
-      expect(next[index].id, 'b');
-    });
+        // "b" plays and stays, "c" moves right next to it.
+        expect(next.map((t) => t.id).toList(), ['a', 'b', 'c']);
+        expect(next[index].id, 'b');
+      },
+    );
 
-    test('пачка из одного играющего ничего не меняет', () {
+    test('a batch of just the playing track changes nothing', () {
       final queue = [_track('a'), _track('b')];
       final (next, index) = queueWithNextAll(queue, 1, [_track('b')]);
 
@@ -190,7 +193,7 @@ void main() {
       expect(index, 1);
     });
 
-    test('пачка сверху уносит номер играющего вверх', () {
+    test('a batch from above carries the playing number up', () {
       final queue = [_track('a'), _track('b'), _track('c'), _track('d')];
       final (next, index) = queueWithNextAll(queue, 3, [
         _track('a'),
@@ -202,8 +205,8 @@ void main() {
     });
   });
 
-  group('строка', () {
-    testWidgets('короткий свайп ничего не делает и возвращает строку', (
+  group('row', () {
+    testWidgets('a short swipe does nothing and returns the row', (
       tester,
     ) async {
       final log = <String>[];
@@ -223,7 +226,7 @@ void main() {
       expect(tester.getCenter(find.byKey(_rowKey)).dx, 400);
     });
 
-    testWidgets('за порогом действие срабатывает', (tester) async {
+    testWidgets('past the threshold the action fires', (tester) async {
       final log = <String>[];
       await _pumpRow(
         tester,
@@ -243,7 +246,7 @@ void main() {
       expect(log, ['fire']);
     });
 
-    testWidgets('не удаляющее действие возвращает строку на место', (
+    testWidgets('a non-removing action returns the row to its place', (
       tester,
     ) async {
       final log = <String>[];
@@ -260,7 +263,9 @@ void main() {
       expect(tester.getCenter(find.byKey(_rowKey)).dx, 400);
     });
 
-    testWidgets('в сторону без действия строка не двигается', (tester) async {
+    testWidgets("the row doesn't move toward a side with no action", (
+      tester,
+    ) async {
       final log = <String>[];
       await _pumpRow(
         tester,
@@ -284,9 +289,7 @@ void main() {
       expect(log, isEmpty);
     });
 
-    testWidgets('плашка растёт ровно на столько, на сколько утянули', (
-      tester,
-    ) async {
+    testWidgets('the plate grows exactly as far as dragged', (tester) async {
       final log = <String>[];
       await _pumpRow(
         tester,

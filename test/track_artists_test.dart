@@ -121,7 +121,7 @@ bool _enabled(WidgetTester tester, String name) {
 }
 
 void main() {
-  testWidgets('несколько артистов — шторка с аватарками', (tester) async {
+  testWidgets('several artists: a sheet with avatars', (tester) async {
     final sc = _FakeSoundCloud({
       'Kanye West': [_artist('Kanye West', avatar: 'https://cdn/ye.jpg')],
       'Ty Dolla Sign': [_artist('Ty Dolla Sign', avatar: 'https://cdn/ty.jpg')],
@@ -142,7 +142,9 @@ void main() {
     expect(find.textContaining('подписч'), findsNothing);
   });
 
-  testWidgets('к незнакомому площадке артисту ходить некуда', (tester) async {
+  testWidgets("an artist the platform doesn't know has nowhere to go", (
+    tester,
+  ) async {
     final sc = _FakeSoundCloud({
       'Boards of Canada': [_artist('Boards of Canada')],
     });
@@ -156,9 +158,7 @@ void main() {
     expect(_enabled(tester, 'Boards of Canada'), isTrue);
   });
 
-  testWidgets('выбранный в шторке артист открывает свою страницу', (
-    tester,
-  ) async {
+  testWidgets('an artist picked in the sheet opens their page', (tester) async {
     final sc = _FakeSoundCloud({
       'Aphex Twin': [_artist('Aphex Twin')],
       'Squarepusher': [_artist('Squarepusher')],
@@ -173,7 +173,7 @@ void main() {
     expect(find.byType(ArtistScreen), findsOneWidget);
   });
 
-  testWidgets('один артист без точного id — тапать нечего', (tester) async {
+  testWidgets('one artist with no exact id: nothing to tap', (tester) async {
     final sc = _FakeSoundCloud(const {});
     final track = Track(
       id: 'sc:2',

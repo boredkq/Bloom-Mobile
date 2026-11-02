@@ -58,7 +58,7 @@ Future<void> _pump(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('на покое видна одна вкладка, вторая убрана со сцены', (
+  testWidgets('at rest one tab shows and the other is off stage', (
     tester,
   ) async {
     await _pump(tester);
@@ -67,7 +67,7 @@ void main() {
     expect(_opacity(tester, 'Библиотека'), isNull);
   });
 
-  testWidgets('во время перехода видны обе: одна гаснет, вторая проявляется', (
+  testWidgets('during a transition both show: one fades out, the other in', (
     tester,
   ) async {
     await _pump(tester);
@@ -92,7 +92,7 @@ void main() {
     expect(_opacity(tester, 'Библиотека'), 1);
   });
 
-  testWidgets('уходящая вкладка не ловит тапы уже с первого кадра', (
+  testWidgets('the leaving tab catches no taps from the first frame', (
     tester,
   ) async {
     var tapped = false;

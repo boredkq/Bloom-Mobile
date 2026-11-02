@@ -46,22 +46,22 @@ ProviderContainer _container(JsonStore store) {
 }
 
 void main() {
-  group('кто следующий', () {
-    test('посреди очереди — соседний трек', () {
+  group("who's next", () {
+    test('mid-queue: the adjacent track', () {
       expect(_state(index: 0).nextTrack?.id, '1');
       expect(_state(index: 1).nextTrack?.id, '2');
     });
 
-    test('последний без повтора — никого', () {
+    test('last with no repeat: nobody', () {
       expect(_state(index: 2).nextTrack, isNull);
       expect(_state(index: 2, repeat: PlayerRepeat.one).nextTrack, isNull);
     });
 
-    test('последний с повтором очереди — первый трек', () {
+    test('last with queue repeat: the first track', () {
       expect(_state(index: 2, repeat: PlayerRepeat.all).nextTrack?.id, '0');
     });
 
-    test('очередь из одного трека молчит даже с повтором', () {
+    test('a one-track queue stays silent even with repeat', () {
       expect(_state(length: 1, index: 0).nextTrack, isNull);
       expect(
         _state(length: 1, index: 0, repeat: PlayerRepeat.all).nextTrack,
@@ -69,18 +69,18 @@ void main() {
       );
     });
 
-    test('пустая очередь и снимок без играющего — никого', () {
+    test('an empty queue and a snapshot with nothing playing: nobody', () {
       expect(const PlaybackState().nextTrack, isNull);
       expect(_state(index: -1).nextTrack, isNull);
     });
   });
 
-  group('настройка', () {
-    test('по умолчанию плашка включена', () {
+  group('setting', () {
+    test('the pill is on by default', () {
       expect(_container(JsonStore.memory()).read(nextUpProvider), isTrue);
     });
 
-    test('выключенная читается с диска', () {
+    test('turned off is read from disk', () {
       final c = _container(
         JsonStore.memory({
           'playerView': {'nextUp': false},
@@ -89,7 +89,7 @@ void main() {
       expect(c.read(nextUpProvider), isFalse);
     });
 
-    test('незнакомая запись — это умолчание, а не падение', () {
+    test('an unknown entry means the default, not a crash', () {
       final c = _container(
         JsonStore.memory({
           'playerView': {'nextUp': 'yes'},
@@ -98,7 +98,7 @@ void main() {
       expect(c.read(nextUpProvider), isTrue);
     });
 
-    test('выбор уезжает на диск и не сносит соседнюю настройку', () {
+    test('the choice reaches the disk and keeps the neighboring setting', () {
       final store = JsonStore.memory({
         'playerView': {'titleAlign': 'left'},
       });

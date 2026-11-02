@@ -57,7 +57,9 @@ Future<ScaffoldMessengerState> _pumpHost(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('обычный тост показывает текст и гаснет сам', (tester) async {
+  testWidgets('a plain toast shows its text and fades by itself', (
+    tester,
+  ) async {
     final messenger = await _pumpHost(tester);
     messenger.toast('Трек удалён');
     await tester.pump();
@@ -70,9 +72,7 @@ void main() {
     expect(find.text('Трек удалён'), findsNothing);
   });
 
-  testWidgets('«Отменить» зовёт fn и не даёт сработать onExpire', (
-    tester,
-  ) async {
+  testWidgets('Undo calls fn and keeps onExpire from firing', (tester) async {
     final messenger = await _pumpHost(tester);
     var undone = false;
     var expired = false;
@@ -90,10 +90,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(undone, isTrue);
-    expect(expired, isFalse, reason: 'отменили — удалять уже нечего');
+    expect(expired, isFalse, reason: 'undone, nothing left to delete');
   });
 
-  testWidgets('тост с действием догорел — срабатывает onExpire', (
+  testWidgets('a toast with an action burned out: onExpire fires', (
     tester,
   ) async {
     final messenger = await _pumpHost(tester);
@@ -111,11 +111,11 @@ void main() {
     await tester.pump(const Duration(seconds: 6));
     await tester.pumpAndSettle();
 
-    expect(expired, isTrue, reason: 'решение осталось в силе');
+    expect(expired, isTrue, reason: 'the decision stood');
     expect(undone, isFalse);
   });
 
-  testWidgets('живой тост меняется на месте, а не вторым тостом', (
+  testWidgets('a live toast changes in place, not as a second toast', (
     tester,
   ) async {
     final messenger = await _pumpHost(tester);
@@ -141,7 +141,7 @@ void main() {
     expect(find.text('Доступно офлайн: Song'), findsNothing);
   });
 
-  testWidgets('тосты становятся в очередь, а не наезжают друг на друга', (
+  testWidgets('toasts queue up rather than run over each other', (
     tester,
   ) async {
     final messenger = await _pumpHost(tester);

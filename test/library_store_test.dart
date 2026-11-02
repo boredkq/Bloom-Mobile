@@ -32,7 +32,7 @@ ProviderContainer _container(JsonStore store) {
 }
 
 void main() {
-  test('лайк кладёт трек в библиотеку целиком, снятие его не выбрасывает', () {
+  test("a like stores the whole track, removing it doesn't drop the track", () {
     final c = _container(JsonStore.memory());
     final lib = c.read(libraryProvider.notifier);
     final track = _track('sc:1');
@@ -51,7 +51,7 @@ void main() {
     expect(c.read(libraryProvider).tracks.containsKey('sc:1'), isTrue);
   });
 
-  test('любимые отсортированы свежими вверх', () async {
+  test('favorites are sorted freshest first', () async {
     final c = _container(JsonStore.memory());
     final lib = c.read(libraryProvider.notifier);
     lib.toggleFav(_track('sc:1', name: 'Первый'));
@@ -65,7 +65,7 @@ void main() {
   });
 
   test(
-    'в библиотеку добавляют явно, свежие сверху, дубли не двигают порядок',
+    "tracks are added explicitly, freshest first, duplicates don't move the order",
     () {
       final c = _container(JsonStore.memory());
       final lib = c.read(libraryProvider.notifier);
@@ -81,7 +81,7 @@ void main() {
     },
   );
 
-  test('удаление трека вычищает его отовсюду', () {
+  test('removing a track clears it everywhere', () {
     final c = _container(JsonStore.memory());
     final lib = c.read(libraryProvider.notifier);
     final track = _track('sc:1');
@@ -102,7 +102,7 @@ void main() {
     ]);
   });
 
-  test('трек без истории удаление выносит и из хранилища', () {
+  test('removing a track with no history takes it out of the store too', () {
     final c = _container(JsonStore.memory());
     final lib = c.read(libraryProvider.notifier);
     lib.addToLibrary([_track('sc:1')]);
@@ -112,7 +112,7 @@ void main() {
     expect(c.read(libraryProvider).tracks.containsKey('sc:1'), isFalse);
   });
 
-  test('смена площадки переставляет все ссылки на новый id', () {
+  test('switching platform moves all references to the new id', () {
     final c = _container(JsonStore.memory());
     final lib = c.read(libraryProvider.notifier);
     final old = _track('sc:1', name: 'Ночь');
@@ -144,7 +144,7 @@ void main() {
     expect(after.inLib['ytm:1'], addedAt);
   });
 
-  test('замена на тот же id ничего не трогает', () {
+  test('replacing with the same id changes nothing', () {
     final c = _container(JsonStore.memory());
     final lib = c.read(libraryProvider.notifier);
     lib.toggleFav(_track('sc:1', name: 'Ночь'));
@@ -154,7 +154,7 @@ void main() {
     expect(c.read(libraryProvider).tracks['sc:1']?.name, 'Ночь');
   });
 
-  test('перетаскивание лайков не трогает время лайка', () async {
+  test('dragging likes keeps the like time', () async {
     final c = _container(JsonStore.memory());
     final lib = c.read(libraryProvider.notifier);
     lib.toggleFav(_track('sc:1', name: 'Первый'));
@@ -172,7 +172,7 @@ void main() {
     expect(c.read(libraryProvider).favs, at);
   });
 
-  test('трек, исправленный руками на ПК, площадка не переписывает', () {
+  test("a platform doesn't overwrite a track fixed by hand", () {
     final c = _container(JsonStore.memory());
     final db = c.read(dbProvider);
     c.read(libraryProvider.notifier).addToLibrary([_track('sc:1', name: 'A')]);
@@ -188,7 +188,7 @@ void main() {
     expect(TrackStore(db).getOne('sc:1')?.name, 'Своё');
   });
 
-  test('формат трека — как на ПК, туда и обратно без потерь', () {
+  test('the track format round-trips without loss', () {
     final t = Track(
       id: 'sc:5',
       name: 'Песня',
@@ -215,7 +215,7 @@ void main() {
     expect(back.sourceData, t.sourceData);
   });
 
-  test('плейлист: новый трек наверх, дубли игнорируются', () {
+  test('playlist: a new track goes on top, duplicates are ignored', () {
     final c = _container(JsonStore.memory());
     final lib = c.read(libraryProvider.notifier);
     final pl = lib.createPlaylist('Мой');
@@ -232,7 +232,7 @@ void main() {
     );
   });
 
-  test('правка плейлиста: новый состав и порядок разом', () {
+  test('editing a playlist: new contents and order at once', () {
     final c = _container(JsonStore.memory());
     final lib = c.read(libraryProvider.notifier);
     final pl = lib.createPlaylist(
@@ -254,7 +254,7 @@ void main() {
   });
 
   test(
-    'правка «Всех треков»: порядок сохраняется, убранное уходит насквозь',
+    "editing All tracks: the order is kept, what's removed goes everywhere",
     () {
       final c = _container(JsonStore.memory());
       final lib = c.read(libraryProvider.notifier);
@@ -283,7 +283,7 @@ void main() {
     },
   );
 
-  test('правка «Любимых»: снятый лайк не выкидывает трек из библиотеки', () {
+  test('editing Favorites: a removed like keeps the track in the library', () {
     final c = _container(JsonStore.memory());
     final lib = c.read(libraryProvider.notifier);
     lib.toggleFav(_track('sc:1', name: 'A'));
@@ -296,7 +296,7 @@ void main() {
     expect(after.isInLib('sc:1'), isTrue);
   });
 
-  test('пачка в плейлист: порядок внутри сохраняется, дубли пропускаются', () {
+  test('a batch into a playlist: inner order kept, duplicates skipped', () {
     final c = _container(JsonStore.memory());
     final lib = c.read(libraryProvider.notifier);
     final pl = lib.createPlaylist('Мой', tracks: [_track('sc:1', name: 'A')]);
@@ -314,7 +314,7 @@ void main() {
     ]);
   });
 
-  test('пустое имя плейлиста не создаёт безымянный', () {
+  test("an empty playlist name doesn't create a nameless one", () {
     final c = _container(JsonStore.memory());
     final pl = c.read(libraryProvider.notifier).createPlaylist('   ');
     // With no widget tree there's no interface language, `globalL10n` is null,
@@ -322,7 +322,7 @@ void main() {
     expect(pl.name, 'New playlist');
   });
 
-  test('всё переживает перезапуск', () {
+  test('everything survives a restart', () {
     final store = JsonStore.memory();
     final first = _container(store);
     final lib = first.read(libraryProvider.notifier);

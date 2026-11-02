@@ -94,8 +94,8 @@ Color _fillOf(WidgetTester tester) => tester
     .color!;
 
 void main() {
-  group('формулы', () {
-    test('яркость стекла — те же три точки, что на ПК', () {
+  group('formulas', () {
+    test('glass brightness: the three expected points', () {
       // 0 → 0.4 (dark), 50 → 1.0 (neutral), 100 → 1.8 (light).
       expect(const Transparency(glassStr: 0).brightness, closeTo(0.4, 1e-9));
       expect(const Transparency(glassStr: 25).brightness, closeTo(0.7, 1e-9));
@@ -104,21 +104,21 @@ void main() {
       expect(const Transparency(glassStr: 100).brightness, closeTo(1.8, 1e-9));
     });
 
-    test('«уровень прозрачности» — обратная непрозрачность', () {
+    test('the transparency level is the inverse of opacity', () {
       expect(const Transparency(blockOpacity: 60).transparencyPercent, 40);
       expect(const Transparency(blockOpacity: 100).transparencyPercent, 0);
       expect(const Transparency(blockOpacity: 0).transparencyPercent, 100);
     });
 
-    test('оверлеи не включаются без основной прозрачности', () {
+    test("overlays don't turn on without the main transparency", () {
       const off = Transparency(overlayGlass: true);
       expect(off.overlaysOn, isFalse);
       expect(off.copyWith(on: true).overlaysOn, isTrue);
     });
   });
 
-  group('стор', () {
-    test('умолчания: выключено, 60/50/12', () {
+  group('store', () {
+    test('defaults: off, 60/50/12', () {
       final tr = _container(JsonStore.memory()).read(transparencyProvider);
       expect(tr.on, isFalse);
       expect(tr.overlayGlass, isFalse);
@@ -127,7 +127,7 @@ void main() {
       expect(tr.glassBlur, kTrBlurDefault);
     });
 
-    test('ползунок уровня пишет в хранилище непрозрачность', () {
+    test('the level slider writes opacity to the store', () {
       final store = JsonStore.memory();
       _container(store).read(transparencyProvider.notifier)
         ..setOn(true)
@@ -139,7 +139,7 @@ void main() {
       expect(tr.transparencyPercent, 40);
     });
 
-    test('значения переживают перезапуск', () {
+    test('values survive a restart', () {
       final store = JsonStore.memory();
       _container(store).read(transparencyProvider.notifier)
         ..setOn(true)
@@ -154,7 +154,7 @@ void main() {
     });
 
     test(
-      'битая запись читается умолчанием, а слишком большая — подрезается',
+      'a broken entry reads as the default, a too large one gets trimmed',
       () {
         final store = JsonStore.memory({
           'transparency': {
@@ -173,15 +173,15 @@ void main() {
     );
   });
 
-  group('стекло', () {
-    test('выключено — стекла нет ни у блоков, ни у оверлеев', () {
+  group('glass', () {
+    test('off: no glass on blocks or overlays', () {
       final c = _container(JsonStore.memory());
       c.read(transparencyProvider.notifier).setOverlayGlass(true);
       expect(c.read(glassProvider), isNull);
       expect(c.read(overlayGlassProvider), isNull);
     });
 
-    test('включено — блоки стеклянные, оверлеи ждут своего тумблера', () {
+    test('on: blocks are glass, overlays wait for their switch', () {
       final c = _container(JsonStore.memory());
       c.read(transparencyProvider.notifier).setOn(true);
       expect(c.read(glassProvider), isNotNull);
@@ -190,7 +190,7 @@ void main() {
       expect(c.read(overlayGlassProvider), isNotNull);
     });
 
-    test('нейтральное стекло без размытия обходится без фильтра', () {
+    test('neutral glass with no blur needs no filter', () {
       final c = _container(JsonStore.memory());
       c.read(transparencyProvider.notifier)
         ..setOn(true)
@@ -204,7 +204,7 @@ void main() {
   });
 
   group('GlassBox', () {
-    testWidgets('выключено — сплошная плашка без фильтра', (tester) async {
+    testWidgets('off: a solid plate with no filter', (tester) async {
       final c = _container(JsonStore.memory());
       await _pumpBox(tester, c);
 
@@ -212,9 +212,7 @@ void main() {
       expect(find.byType(BackdropFilter), findsNothing);
     });
 
-    testWidgets('включено — заливка редеет и появляется фильтр', (
-      tester,
-    ) async {
+    testWidgets('on: the fill thins and a filter appears', (tester) async {
       final c = _container(JsonStore.memory());
       c.read(transparencyProvider.notifier)
         ..setOn(true)
@@ -229,9 +227,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
     });
 
-    testWidgets('размытие 0 и нейтральная яркость — фильтра нет', (
-      tester,
-    ) async {
+    testWidgets('zero blur and neutral brightness: no filter', (tester) async {
       final c = _container(JsonStore.memory());
       c.read(transparencyProvider.notifier)
         ..setOn(true)
@@ -246,8 +242,8 @@ void main() {
     });
   });
 
-  group('шторки', () {
-    testWidgets('стекло оверлеев доходит и до шторки, и до затемнения', (
+  group('sheets', () {
+    testWidgets('overlay glass reaches both the sheet and the dimming', (
       tester,
     ) async {
       final c = _container(JsonStore.memory());
@@ -261,7 +257,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
     });
 
-    testWidgets('без тумблера оверлеев шторка остаётся сплошной', (
+    testWidgets('without the overlays switch a sheet stays solid', (
       tester,
     ) async {
       final c = _container(JsonStore.memory());

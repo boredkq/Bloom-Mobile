@@ -32,7 +32,7 @@ Track _track(String id) => Track(
 );
 
 void main() {
-  test('новый запрос встаёт наверх', () {
+  test('a new query goes on top', () {
     final c = _container(JsonStore.memory());
     final notifier = c.read(recentSearchesProvider.notifier);
     notifier.push('daft punk');
@@ -40,7 +40,7 @@ void main() {
     expect(c.read(recentSearchesProvider), ['radiohead', 'daft punk']);
   });
 
-  test('повтор не двоится и поднимается, оставляя последнее написание', () {
+  test("a repeat doesn't double and rises, keeping the last spelling", () {
     final c = _container(JsonStore.memory());
     final notifier = c.read(recentSearchesProvider.notifier);
     notifier.push('daft punk');
@@ -49,25 +49,28 @@ void main() {
     expect(c.read(recentSearchesProvider), ['Daft Punk', 'radiohead']);
   });
 
-  test('пустой запрос не запоминается', () {
+  test("an empty query isn't remembered", () {
     final c = _container(JsonStore.memory());
     c.read(recentSearchesProvider.notifier).push('   ');
     expect(c.read(recentSearchesProvider), isEmpty);
   });
 
-  test('дальше потолка список не растёт, лишнее уходит снизу', () {
-    final c = _container(JsonStore.memory());
-    final notifier = c.read(recentSearchesProvider.notifier);
-    for (var i = 0; i <= kRecentSearchMax; i++) {
-      notifier.push('q$i');
-    }
-    final state = c.read(recentSearchesProvider);
-    expect(state, hasLength(kRecentSearchMax));
-    expect(state.first, 'q$kRecentSearchMax');
-    expect(state, isNot(contains('q0')));
-  });
+  test(
+    'the list stops growing at the ceiling, extras leave from the bottom',
+    () {
+      final c = _container(JsonStore.memory());
+      final notifier = c.read(recentSearchesProvider.notifier);
+      for (var i = 0; i <= kRecentSearchMax; i++) {
+        notifier.push('q$i');
+      }
+      final state = c.read(recentSearchesProvider);
+      expect(state, hasLength(kRecentSearchMax));
+      expect(state.first, 'q$kRecentSearchMax');
+      expect(state, isNot(contains('q0')));
+    },
+  );
 
-  test('удаление и очистка', () {
+  test('removing and clearing', () {
     final c = _container(JsonStore.memory());
     final notifier = c.read(recentSearchesProvider.notifier);
     notifier.push('a');
@@ -78,21 +81,21 @@ void main() {
     expect(c.read(recentSearchesProvider), isEmpty);
   });
 
-  test('список переживает перезапуск: пишется и читается из хранилища', () {
+  test('the list survives a restart: written to and read from the store', () {
     final store = JsonStore.memory();
     _container(store).read(recentSearchesProvider.notifier).push('kavinsky');
     // A second container means a new app launch with the same file.
     expect(_container(store).read(recentSearchesProvider), ['kavinsky']);
   });
 
-  test('чужое содержимое ключа не роняет чтение', () {
+  test("foreign contents under the key don't crash reading", () {
     final store = JsonStore.memory({
       'recentSearches': ['ok', 42, null],
     });
     expect(_container(store).read(recentSearchesProvider), ['ok']);
   });
 
-  test('открытое: наверх, без дублей по типу и id', () {
+  test('opened items: on top, no duplicates by type and id', () {
     final c = _container(JsonStore.memory());
     final notifier = c.read(recentItemsProvider.notifier);
     notifier.push(RecentTrack(_track('sc:1')));
@@ -108,7 +111,7 @@ void main() {
     expect(state.first, isA<RecentTrack>());
   });
 
-  test('трек и сет с одинаковым id — разные записи', () {
+  test('a track and a set with one id are separate entries', () {
     final c = _container(JsonStore.memory());
     final notifier = c.read(recentItemsProvider.notifier);
     notifier.push(RecentTrack(_track('sc:1')));
@@ -120,7 +123,7 @@ void main() {
     expect(c.read(recentItemsProvider), hasLength(2));
   });
 
-  test('дальше потолка список открытых не растёт', () {
+  test('the opened list stops growing at the ceiling', () {
     final c = _container(JsonStore.memory());
     final notifier = c.read(recentItemsProvider.notifier);
     for (var i = 0; i <= kRecentItemMax; i++) {
@@ -129,7 +132,7 @@ void main() {
     expect(c.read(recentItemsProvider), hasLength(kRecentItemMax));
   });
 
-  test('открытое переживает перезапуск целой сущностью', () {
+  test('opened items survive a restart as whole entities', () {
     final store = JsonStore.memory();
     _container(store).read(recentItemsProvider.notifier)
       ..push(RecentTrack(_track('sc:1')))
@@ -159,7 +162,7 @@ void main() {
     expect(track.cover, 'https://cdn/nightcall.jpg');
   });
 
-  test('удаление и очистка открытых', () {
+  test('removing and clearing opened items', () {
     final c = _container(JsonStore.memory());
     final notifier = c.read(recentItemsProvider.notifier);
     final track = RecentTrack(_track('sc:1'));
@@ -173,7 +176,7 @@ void main() {
     expect(c.read(recentItemsProvider), isEmpty);
   });
 
-  test('битая запись открытого пропускается, остальные читаются', () {
+  test('a broken opened entry is skipped, the others are read', () {
     final store = JsonStore.memory({
       'recentItems': [
         {'kind': 'track', 'data': null},

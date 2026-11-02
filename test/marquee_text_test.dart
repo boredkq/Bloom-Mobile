@@ -41,9 +41,7 @@ List<double> _offsets(WidgetTester tester) {
 }
 
 void main() {
-  testWidgets('короткое название не раздваивается и не катится', (
-    tester,
-  ) async {
+  testWidgets("a short title doesn't split or roll", (tester) async {
     await _pump(tester, 'Трек', 400);
     await tester.pump(const Duration(seconds: 1));
 
@@ -53,7 +51,7 @@ void main() {
     expect(tester.hasRunningAnimations, isFalse);
   });
 
-  testWidgets('длинное название едет влево на «текст + зазор»', (tester) async {
+  testWidgets('a long title moves left by "text + gap"', (tester) async {
     const text = 'ААААААААААААААААААААААААААААААААААААААААА';
     await _pump(tester, text, 200);
     await tester.pump();
@@ -79,7 +77,7 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('чуть переросшее название крутится не быстрее 4 s', (
+  testWidgets('a barely overflowing title rolls no faster than 4 s', (
     tester,
   ) async {
     const text = 'ААААА';

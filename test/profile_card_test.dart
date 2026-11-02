@@ -37,7 +37,7 @@ Track _track(String id, {String? cover}) => Track(
 );
 
 void main() {
-  test('пустой профиль — «Авто», цвета ПК по умолчанию', () {
+  test('an empty profile: Auto and the default colors', () {
     final p = _container(BloomDb.memory()).read(profileProvider);
     expect(p.bannerMode, BannerColorMode.auto);
     expect(p.toJson(), {
@@ -53,7 +53,7 @@ void main() {
     });
   });
 
-  test('сохраняется в kv базы видом ПК и читается после перезапуска', () {
+  test("saved to the database's kv and read back after a restart", () {
     final db = BloomDb.memory();
     _container(db)
         .read(profileProvider.notifier)
@@ -82,7 +82,7 @@ void main() {
     expect(again.banner, isNull);
   });
 
-  test('чужая карточка приводится, как normalized ПК', () {
+  test('a foreign card gets normalized', () {
     final p = UserProfile.fromJson({
       'name': '  ${'н' * 40}  ',
       'bio': 'б' * 400,
@@ -101,14 +101,14 @@ void main() {
     expect(p.bannerAngle, 315);
   });
 
-  test('«С нами с» ставится один раз и переживает перезапуск', () {
+  test('the since date is set once and survives a restart', () {
     final db = BloomDb.memory();
     final first = _container(db).read(profileSinceProvider);
     expect(db.get('profile.since'), first.millisecondsSinceEpoch);
     expect(_container(db).read(profileSinceProvider), first);
   });
 
-  test('обложка для «Авто» — самого слушаемого трека с обложкой', () {
+  test('the Auto cover is the most played track with a cover', () {
     final c = _container(BloomDb.memory());
     final log = c.read(playLogProvider.notifier);
     // The most heard one has no cover, so it doesn't count.

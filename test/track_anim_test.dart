@@ -54,8 +54,8 @@ double _shiftOf(WidgetTester tester, String text) {
 void main() {
   setUp(resetSwapDirForTest);
 
-  group('направление перехода', () {
-    test('дальше по очереди — вперёд, назад — назад', () {
+  group('transition direction', () {
+    test('onward in the queue is forward, back is back', () {
       final queue = ['a', 'b', 'c'];
       commitSwapDir(queue, 0);
       commitSwapDir(queue, 1);
@@ -64,7 +64,7 @@ void main() {
       expect(swapDir, -1);
     });
 
-    test('явное направление сильнее номеров: закольцовка', () {
+    test('an explicit direction beats numbers: looping', () {
       final queue = ['a', 'b', 'c'];
       commitSwapDir(queue, 2);
       // "Next" from last to first is "back" by numbers.
@@ -73,7 +73,7 @@ void main() {
       expect(swapDir, 1);
     });
 
-    test('явное направление одноразовое', () {
+    test('an explicit direction works once', () {
       final queue = ['a', 'b', 'c'];
       commitSwapDir(queue, 2);
       markSwapDir(-1);
@@ -84,13 +84,13 @@ void main() {
       expect(swapDir, 1);
     });
 
-    test('другая очередь — всегда вперёд: номера несравнимы', () {
+    test("another queue is always forward: numbers can't be compared", () {
       commitSwapDir(['a', 'b', 'c'], 2);
       commitSwapDir(['x', 'y'], 0);
       expect(swapDir, 1);
     });
 
-    test('«не анимировать» держится ровно до ближайшей смены', () {
+    test('no-animate holds until the nearest change only', () {
       final queue = ['a', 'b'];
       commitSwapDir(queue, 0);
       markSwapSilent();
@@ -100,7 +100,7 @@ void main() {
       expect(swapSilent, isFalse);
     });
 
-    test('несостоявшийся жест флаг за собой убирает', () {
+    test("a gesture that didn't happen removes its flag", () {
       final queue = ['a', 'b'];
       commitSwapDir(queue, 0);
       // "Back" mid-track rewinds it to the start instead of flipping.
@@ -111,35 +111,37 @@ void main() {
     });
   });
 
-  group('слои', () {
-    testWidgets('первый трек за сессию не анимируется — уезжать нечему', (
-      tester,
-    ) async {
-      await _pumpSwap(tester, 'первый');
-      expect(find.text('первый'), findsOneWidget);
-      expect(_shiftOf(tester, 'первый'), 0);
-    });
+  group('layers', () {
+    testWidgets(
+      "the session's first track isn't animated: nothing to slide out",
+      (tester) async {
+        await _pumpSwap(tester, 'первый');
+        expect(find.text('первый'), findsOneWidget);
+        expect(_shiftOf(tester, 'первый'), 0);
+      },
+    );
 
-    testWidgets('слайд: старый уезжает, новый приезжает и слой снимается', (
-      tester,
-    ) async {
-      await _pumpSwap(tester, 'первый');
-      await _pumpSwap(tester, 'второй');
-      await tester.pump();
+    testWidgets(
+      'slide: the old leaves, the new arrives and the layer is removed',
+      (tester) async {
+        await _pumpSwap(tester, 'первый');
+        await _pumpSwap(tester, 'второй');
+        await tester.pump();
 
-      // Both layers are in the tree and part the same way: the new one comes
-      // from the right to zero, the old one leaves left.
-      await tester.pump(const Duration(milliseconds: 60));
-      expect(find.text('первый'), findsOneWidget);
-      expect(_shiftOf(tester, 'второй'), greaterThan(0));
-      expect(_shiftOf(tester, 'первый'), lessThan(0));
+        // Both layers are in the tree and part the same way: the new one comes
+        // from the right to zero, the old one leaves left.
+        await tester.pump(const Duration(milliseconds: 60));
+        expect(find.text('первый'), findsOneWidget);
+        expect(_shiftOf(tester, 'второй'), greaterThan(0));
+        expect(_shiftOf(tester, 'первый'), lessThan(0));
 
-      await tester.pumpAndSettle();
-      expect(find.text('первый'), findsNothing);
-      expect(_shiftOf(tester, 'второй'), 0);
-    });
+        await tester.pumpAndSettle();
+        expect(find.text('первый'), findsNothing);
+        expect(_shiftOf(tester, 'второй'), 0);
+      },
+    );
 
-    testWidgets('назад — зеркально', (tester) async {
+    testWidgets('back is mirrored', (tester) async {
       await _pumpSwap(tester, 'первый');
       markSwapDir(-1);
       commitSwapDir(['первый', 'второй'], 0);
@@ -151,7 +153,7 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    testWidgets('уезжающий слой режется по своей коробке', (tester) async {
+    testWidgets('a leaving layer is clipped by its box', (tester) async {
       await _pumpSwap(tester, 'первый');
       await _pumpSwap(tester, 'второй');
       await tester.pump(const Duration(milliseconds: 60));
@@ -172,7 +174,7 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    testWidgets('затухание не двигает слои', (tester) async {
+    testWidgets("a fade doesn't move the layers", (tester) async {
       await _pumpSwap(tester, 'первый', fade: true);
       await _pumpSwap(tester, 'второй', fade: true);
       await tester.pump(const Duration(milliseconds: 60));
@@ -183,7 +185,9 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    testWidgets('сосед под пальцем меняется без второго слоя', (tester) async {
+    testWidgets('a neighbor under the finger changes with no second layer', (
+      tester,
+    ) async {
       await _pumpSwap(tester, 'первый', animated: false);
       await _pumpSwap(tester, 'второй', animated: false);
       await tester.pump(const Duration(milliseconds: 60));
@@ -192,7 +196,7 @@ void main() {
       expect(find.text('второй'), findsOneWidget);
     });
 
-    testWidgets('смену под пальцем слои не рисуют', (tester) async {
+    testWidgets('a change under the finger draws no layers', (tester) async {
       await _pumpSwap(tester, 'первый');
       markSwapSilent();
       commitSwapDir(['первый', 'второй'], 1);

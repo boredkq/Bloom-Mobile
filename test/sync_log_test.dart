@@ -108,7 +108,7 @@ int _sync(_Device pc, _Device phone, {int limit = 2000, Set<String>? touched}) {
 }
 
 void main() {
-  test('правки слушателя отмечаются, служебные — нет', () {
+  test("listener edits are marked, service ones aren't", () {
     final d = _Device();
     final pl = d.lib.createPlaylist(
       'P',
@@ -137,7 +137,7 @@ void main() {
     expect(d.log.device(), d.id);
   });
 
-  test('«Сбросить всё» не отмечает стёртое удалениями', () {
+  test("Reset all doesn't mark what it erased as deletions", () {
     final d = _Device();
     d.lib.toggleFav(_track('sc:1'));
     d.db.set('profile', {'nick': 'a'});
@@ -145,7 +145,7 @@ void main() {
     expect(d.count('SELECT count(*) FROM changes'), 0);
   });
 
-  test('телефон и ПК сходятся', () {
+  test('phone and computer converge', () {
     final pc = _Device(), phone = _Device();
     final pl = pc.lib.createPlaylist(
       'Road',
@@ -197,77 +197,86 @@ void main() {
     expect(touched, isEmpty); // nothing new, nothing taken
   });
 
-  test('удаления, позднее изменение, перенос, теги и очистка доезжают', () async {
-    final pc = _Device(), phone = _Device();
-    final pl = pc.lib.createPlaylist(
-      'P',
-      tracks: [_track('sc:1'), _track('sc:2'), _track('sc:3')],
-    );
-    pc.lib.toggleFav(_track('sc:1'));
-    _sync(pc, phone);
+  test(
+    'deletions, a later change, a move, tags and a clear get across',
+    () async {
+      final pc = _Device(), phone = _Device();
+      final pl = pc.lib.createPlaylist(
+        'P',
+        tracks: [_track('sc:1'), _track('sc:2'), _track('sc:3')],
+      );
+      pc.lib.toggleFav(_track('sc:1'));
+      _sync(pc, phone);
 
-    phone.lib.removeTrackFromPlaylist(pl.id, 'sc:2');
-    _sync(pc, phone);
-    expect(pc.ids(pl.id), {'sc:1', 'sc:3'});
+      phone.lib.removeTrackFromPlaylist(pl.id, 'sc:2');
+      _sync(pc, phone);
+      expect(pc.ids(pl.id), {'sc:1', 'sc:3'});
 
-    // Renamed on both: the later one stays everywhere.
-    pc.lib.renamePlaylist(pl.id, 'A');
-    await Future<void>.delayed(const Duration(milliseconds: 5));
-    phone.lib.renamePlaylist(pl.id, 'B');
-    _sync(pc, phone);
-    for (final d in [pc, phone]) {
-      expect(d.db.value('SELECT name FROM lists WHERE id = ?', [pl.id]), 'B');
-    }
+      // Renamed on both: the later one stays everywhere.
+      pc.lib.renamePlaylist(pl.id, 'A');
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      phone.lib.renamePlaylist(pl.id, 'B');
+      _sync(pc, phone);
+      for (final d in [pc, phone]) {
+        expect(d.db.value('SELECT name FROM lists WHERE id = ?', [pl.id]), 'B');
+      }
 
-    // A removed like doesn't come back from the side that still had it.
-    phone.lib.toggleFav(_track('sc:1'));
-    _sync(pc, phone);
-    _sync(pc, phone);
-    for (final d in [pc, phone]) {
-      expect(d.ids(kFavList), isEmpty);
-    }
+      // A removed like doesn't come back from the side that still had it.
+      phone.lib.toggleFav(_track('sc:1'));
+      _sync(pc, phone);
+      _sync(pc, phone);
+      for (final d in [pc, phone]) {
+        expect(d.ids(kFavList), isEmpty);
+      }
 
-    // The track moved to another platform, and its plays follow there too.
-    phone.play('sc:1', 1000);
-    pc.lib.replaceTrack('sc:1', _track('ytm:1'));
-    _sync(pc, phone);
-    for (final d in [pc, phone]) {
-      expect(d.ids(kLibList).contains('ytm:1'), isTrue);
-      expect(d.ids(kLibList).contains('sc:1'), isFalse);
-      expect(d.ordered(pl.id).first, 'ytm:1');
-      expect(d.count("SELECT count(*) FROM plays WHERE track_id = 'ytm:1'"), 1);
-    }
+      // The track moved to another platform, and its plays follow there too.
+      phone.play('sc:1', 1000);
+      pc.lib.replaceTrack('sc:1', _track('ytm:1'));
+      _sync(pc, phone);
+      for (final d in [pc, phone]) {
+        expect(d.ids(kLibList).contains('ytm:1'), isTrue);
+        expect(d.ids(kLibList).contains('sc:1'), isFalse);
+        expect(d.ordered(pl.id).first, 'ytm:1');
+        expect(
+          d.count("SELECT count(*) FROM plays WHERE track_id = 'ytm:1'"),
+          1,
+        );
+      }
 
-    // Tags fixed by hand get across; a refresh from the platform leaves them
-    // alone.
-    pc.db.exec(
-      "UPDATE tracks SET title = 'Mine', extra = json_set(extra, '\$.edited', json('true')) WHERE id = 'sc:3'",
-    );
-    _sync(pc, phone);
-    TrackStore(phone.db).put([_track('sc:3', name: 'Platform')]);
-    expect(TrackStore(phone.db).getOne('sc:3')!.name, 'Mine');
+      // Tags fixed by hand get across; a refresh from the platform leaves them
+      // alone.
+      pc.db.exec(
+        "UPDATE tracks SET title = 'Mine', extra = json_set(extra, '\$.edited', json('true')) WHERE id = 'sc:3'",
+      );
+      _sync(pc, phone);
+      TrackStore(phone.db).put([_track('sc:3', name: 'Platform')]);
+      expect(TrackStore(phone.db).getOne('sc:3')!.name, 'Mine');
 
-    // Clearing stats: plays before it go everywhere, level XP stays.
-    pc.play('sc:3', 2000);
-    pc.db.exec("INSERT INTO days (day, app_ms) VALUES ('2020-01-01', 100)");
-    _sync(pc, phone);
-    expect(phone.plays, 2);
-    pc.db.tx(() {
-      pc.db.exec('DELETE FROM plays');
-      pc.db.exec('DELETE FROM days');
-      pc.log.markCleared(123);
-    });
-    await Future<void>.delayed(const Duration(milliseconds: 5));
-    phone.play('sc:3', BloomDb.now()); // after the clear, so it stays
-    _sync(pc, phone);
-    for (final d in [pc, phone]) {
-      expect(d.plays, 1);
-      expect(d.count("SELECT count(*) FROM days WHERE day = '2020-01-01'"), 0);
-    }
-    expect(phone.db.get('level.banked'), 123);
-  });
+      // Clearing stats: plays before it go everywhere, level XP stays.
+      pc.play('sc:3', 2000);
+      pc.db.exec("INSERT INTO days (day, app_ms) VALUES ('2020-01-01', 100)");
+      _sync(pc, phone);
+      expect(phone.plays, 2);
+      pc.db.tx(() {
+        pc.db.exec('DELETE FROM plays');
+        pc.db.exec('DELETE FROM days');
+        pc.log.markCleared(123);
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      phone.play('sc:3', BloomDb.now()); // after the clear, so it stays
+      _sync(pc, phone);
+      for (final d in [pc, phone]) {
+        expect(d.plays, 1);
+        expect(
+          d.count("SELECT count(*) FROM days WHERE day = '2020-01-01'"),
+          0,
+        );
+      }
+      expect(phone.db.get('level.banked'), 123);
+    },
+  );
 
-  test('мелкие круги и второй телефон через ПК', () {
+  test('small rounds and a second phone through the computer', () {
     final pc = _Device(), a = _Device(), b = _Device();
     pc.lib.addToLibrary([for (var i = 0; i < 30; i++) _track('sc:$i')]);
     for (var i = 0; i < 25; i++) {
@@ -293,7 +302,7 @@ void main() {
     expect(a.count('SELECT count(*) FROM plays WHERE device = ?', [a.id]), 0);
   });
 
-  test('посылка кода ПК принимается, своя уходит коду ПК', () {
+  test("the computer's packet is accepted, mine goes to the computer", () {
     final payload =
         jsonDecode(File('test/fixtures/sync_from_pc.json').readAsStringSync())
             as Map<String, Object?>;

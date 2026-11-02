@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('largeCoverUrl', () {
-    test('Яндекс: 400x400 → 1000x1000', () {
+    test('Yandex: 400x400 → 1000x1000', () {
       expect(
         largeCoverUrl(
           'https://avatars.yandex.net/get-music-content/123/abc/400x400',
@@ -26,7 +26,7 @@ void main() {
       );
     });
 
-    test('чужая ссылка не меняется', () {
+    test('a foreign link stays unchanged', () {
       const url = 'https://example.com/cover.jpg';
       expect(largeCoverUrl(url), url);
     });

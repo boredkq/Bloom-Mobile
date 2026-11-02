@@ -14,21 +14,21 @@ Track _track({required String name, required String artist}) => Track(
 );
 
 void main() {
-  test('название и артист через тире', () {
+  test('title and artist with a dash', () {
     expect(
       trackCopyText(_track(name: 'Runaway', artist: 'Kanye West')),
       'Runaway — Kanye West',
     );
   });
 
-  test('несколько артистов идут строкой как есть', () {
+  test('several artists go as a string as they are', () {
     expect(
       trackCopyText(_track(name: 'Песня', artist: 'Kanye West & Ty Dolla')),
       'Песня — Kanye West & Ty Dolla',
     );
   });
 
-  test('артиста нет — одно название, без висящего тире', () {
+  test('no artist: just the title, with no hanging dash', () {
     expect(trackCopyText(_track(name: 'Песня', artist: '   ')), 'Песня');
   });
 }

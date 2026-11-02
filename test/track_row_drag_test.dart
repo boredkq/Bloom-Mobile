@@ -77,7 +77,7 @@ Finder get _cover => find.byType(Cover);
 Finder get _title => find.text('sleep mode');
 
 void main() {
-  testWidgets('зажатие обложки не открывает меню трека', (tester) async {
+  testWidgets("holding the cover doesn't open the track menu", (tester) async {
     await _pumpRow(tester, dragIndex: 0);
 
     await tester.longPress(_cover);
@@ -86,7 +86,7 @@ void main() {
     expect(_log, isEmpty);
   });
 
-  testWidgets('меню открывается долгим тапом по остальной строке', (
+  testWidgets('the menu opens by a long tap on the rest of the row', (
     tester,
   ) async {
     await _pumpRow(tester, dragIndex: 0);
@@ -97,7 +97,7 @@ void main() {
     expect(_log, ['menu']);
   });
 
-  testWidgets('тап по обложке остаётся тапом строки', (tester) async {
+  testWidgets("a tap on the cover stays the row's tap", (tester) async {
     await _pumpRow(tester, dragIndex: 0);
 
     await tester.tap(_cover);
@@ -106,7 +106,9 @@ void main() {
     expect(_log, ['tap']);
   });
 
-  testWidgets('без тянучки меню открывается и с обложки', (tester) async {
+  testWidgets('with no drag handle the menu opens from the cover too', (
+    tester,
+  ) async {
     await _pumpRow(tester);
 
     await tester.longPress(_cover);

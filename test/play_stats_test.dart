@@ -55,7 +55,7 @@ class _Env {
 }
 
 void main() {
-  test('топ за окно не берёт то, что слушали раньше окна', () {
+  test('the windowed top ignores plays before the window', () {
     final now = DateTime(2026, 9, 1);
     final day = 24 * 60 * _min;
     final base = now.millisecondsSinceEpoch;
@@ -73,8 +73,8 @@ void main() {
     expect(stats.topPlayed(sinceDays: 90, now: now).map((t) => t.id), ['sc:b']);
   });
 
-  group('«История»', () {
-    test('лимита нет', () {
+  group('History', () {
+    test('no limit', () {
       final env = _Env();
       for (var i = 0; i < 250; i++) {
         env.listen(_track('sc:$i'));
@@ -83,7 +83,7 @@ void main() {
       expect(env.history.first.track.id, 'sc:249'); // freshest on top
     });
 
-    test('прослушивание не кладёт трек в библиотеку, но строка есть', () {
+    test("a play doesn't add the track to the library, but the row exists", () {
       final env = _Env();
       env.listen(_track('sc:1', name: 'A'));
 
@@ -95,7 +95,7 @@ void main() {
       expect(track.source, MusicSource.soundcloud);
     });
 
-    test('свой файл в истории тоже виден — как на ПК', () {
+    test('an own file shows in history too', () {
       final env = _Env();
       env.listen(_track('lf:1', source: MusicSource.local));
       env.listen(_track('sc:1'));
@@ -103,7 +103,7 @@ void main() {
       expect(env.history.map((h) => h.row.id), ['sc:1', 'lf:1']);
     });
 
-    test('трек из библиотеки берётся целиком, а не из снимка', () {
+    test('a library track is taken whole, not from the snapshot', () {
       final env = _Env();
       final full = Track(
         id: 'sc:1',
@@ -119,7 +119,7 @@ void main() {
       expect(env.history.single.track.sourceData, isNotNull);
     });
 
-    test('строка живёт и после удаления трека из библиотеки', () {
+    test('the row lives on after the track leaves the library', () {
       final env = _Env();
       final t = _track('sc:1', name: 'Ушедший');
       env.c.read(libraryProvider.notifier).addToLibrary([t]);
@@ -130,7 +130,7 @@ void main() {
     });
   });
 
-  test('журнал переживает перезапуск', () {
+  test('the journal survives a restart', () {
     final first = _Env();
     first.listen(_track('sc:1'));
     first.listen(_track('sc:1'));
@@ -140,7 +140,7 @@ void main() {
     expect(again.history.single.track.name, 'Song');
   });
 
-  test('смена площадки переносит прослушивания на новый id', () {
+  test('switching platform moves plays to the new id', () {
     final env = _Env();
     final old = _track('sc:1', name: 'Ночь');
     env.c.read(libraryProvider.notifier).addToLibrary([old]);
@@ -160,7 +160,7 @@ void main() {
     expect(env.stats.tracks['ytm:1']?.name, 'Ночь');
   });
 
-  test('очистка стирает журнал и снимки без ссылок', () {
+  test('clearing erases the journal and unreferenced snapshots', () {
     final env = _Env();
     env.listen(_track('sc:1'));
     env.c.read(playLogProvider.notifier).clear();

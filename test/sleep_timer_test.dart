@@ -86,13 +86,13 @@ void main() {
   setUp(() => _now = DateTime(2026, 8, 15, 23, 30));
 
   group('sleepLabel', () {
-    test('мм:сс до часа', () {
+    test('mm:ss under an hour', () {
       expect(sleepLabel(const Duration(minutes: 23, seconds: 14)), '23:14');
       expect(sleepLabel(const Duration(minutes: 5)), '5:00');
       expect(sleepLabel(const Duration(seconds: 9)), '0:09');
     });
 
-    test('ч:мм от часа и дальше', () {
+    test('h:mm from an hour on', () {
       expect(sleepLabel(const Duration(hours: 1)), '1:00');
       expect(sleepLabel(const Duration(minutes: 90)), '1:30');
       expect(sleepLabel(const Duration(minutes: 120)), '2:00');
@@ -105,7 +105,7 @@ void main() {
       );
     });
 
-    test('секунды округляются вверх: пока звук идёт, ноля быть не может', () {
+    test("seconds round up: while sound plays there can't be a zero", () {
       expect(sleepLabel(const Duration(milliseconds: 200)), '0:01');
       expect(
         sleepLabel(const Duration(seconds: 44, milliseconds: 200)),
@@ -116,8 +116,8 @@ void main() {
     });
   });
 
-  group('стор', () {
-    test('умолчание: таймера нет, затухание включено', () {
+  group('store', () {
+    test('the default: no timer, fade on', () {
       final sleep = _container(JsonStore.memory()).read(sleepTimerProvider);
       expect(sleep.mode, SleepMode.off);
       expect(sleep.active, isFalse);
@@ -126,7 +126,7 @@ void main() {
       expect(sleep.choice, const Duration(minutes: 30));
     });
 
-    test('start назначает срок по стенным часам', () {
+    test('start sets the deadline by the wall clock', () {
       final c = _container(JsonStore.memory());
       c.read(sleepTimerProvider.notifier).start(const Duration(minutes: 15));
 
@@ -138,7 +138,7 @@ void main() {
       c.read(sleepTimerProvider.notifier).cancel();
     });
 
-    test('«+5 минут» считается от срока, а не от «сейчас»', () {
+    test('+5 minutes counts from the deadline, not from now', () {
       final c = _container(JsonStore.memory());
       final ctrl = c.read(sleepTimerProvider.notifier);
       final started = _now;
@@ -157,14 +157,14 @@ void main() {
       ctrl.cancel();
     });
 
-    test('«+5 минут» без таймера ничего не делает', () {
+    test('+5 minutes with no timer does nothing', () {
       final c = _container(JsonStore.memory());
       c.read(sleepTimerProvider.notifier).extend();
       expect(c.read(sleepTimerProvider).mode, SleepMode.off);
       expect(c.read(sleepTimerProvider).endsAt, isNull);
     });
 
-    test('«до конца трека» — режим без срока', () {
+    test('until the track ends is a mode with no deadline', () {
       final c = _container(JsonStore.memory());
       final ctrl = c.read(sleepTimerProvider.notifier);
       ctrl.start(const Duration(minutes: 45));
@@ -179,7 +179,7 @@ void main() {
       expect(sleep.expired, isFalse);
     });
 
-    test('cancel снимает и режим, и срок', () {
+    test('cancel removes both the mode and the deadline', () {
       final c = _container(JsonStore.memory());
       final ctrl = c.read(sleepTimerProvider.notifier);
       ctrl.start(const Duration(minutes: 15));
@@ -191,7 +191,7 @@ void main() {
       expect(sleep.remaining, Duration.zero);
     });
 
-    test('на диск уходят настройки, а не идущий таймер', () {
+    test("settings reach the disk, a running timer doesn't", () {
       final store = JsonStore.memory();
       final first = _container(store);
       first.read(sleepTimerProvider.notifier)
@@ -207,26 +207,29 @@ void main() {
       expect(second.endsAt, isNull);
     });
 
-    test('битая запись читается умолчаниями, время — в границах полосы', () {
-      final broken = JsonStore.memory({
-        'sleep': {'minutes': 'скоро', 'fade': 'ага'},
-      });
-      final sleep = _container(broken).read(sleepTimerProvider);
-      expect(sleep.choice, const Duration(minutes: 30));
-      expect(sleep.fade, isTrue);
+    test(
+      "a broken entry reads as defaults, the time within the bar's bounds",
+      () {
+        final broken = JsonStore.memory({
+          'sleep': {'minutes': 'скоро', 'fade': 'ага'},
+        });
+        final sleep = _container(broken).read(sleepTimerProvider);
+        expect(sleep.choice, const Duration(minutes: 30));
+        expect(sleep.fade, isTrue);
 
-      final huge = JsonStore.memory({
-        'sleep': {'minutes': 9000},
-      });
-      expect(
-        _container(huge).read(sleepTimerProvider).choice,
-        const Duration(minutes: kSleepMaxMinutes),
-      );
-    });
+        final huge = JsonStore.memory({
+          'sleep': {'minutes': 9000},
+        });
+        expect(
+          _container(huge).read(sleepTimerProvider).choice,
+          const Duration(minutes: kSleepMaxMinutes),
+        );
+      },
+    );
   });
 
-  group('тик', () {
-    testWidgets('остаток уменьшается и упирается в ноль', (tester) async {
+  group('tick', () {
+    testWidgets("what's left shrinks and stops at zero", (tester) async {
       final store = JsonStore.memory();
       await _pumpSheet(tester, store);
 
@@ -251,8 +254,8 @@ void main() {
     });
   });
 
-  group('шторка', () {
-    testWidgets('пресет заводит таймер, повторный тап — снимает', (
+  group('sheet', () {
+    testWidgets('a preset starts the timer, a second tap removes it', (
       tester,
     ) async {
       final store = JsonStore.memory();
@@ -266,7 +269,7 @@ void main() {
       expect(_stateOf(tester).mode, SleepMode.off);
     });
 
-    testWidgets('«до конца трека» переключается тапом', (tester) async {
+    testWidgets('until the track ends toggles by a tap', (tester) async {
       final store = JsonStore.memory();
       await _pumpSheet(tester, store);
 
@@ -277,7 +280,7 @@ void main() {
       expect(_stateOf(tester).mode, SleepMode.off);
     });
 
-    testWidgets('«+5 минут» и «Выключить» появляются только у таймера', (
+    testWidgets('+5 minutes and Turn off show only with a timer', (
       tester,
     ) async {
       final store = JsonStore.memory();
@@ -301,7 +304,7 @@ void main() {
       _stop(tester);
     });
 
-    testWidgets('остаток виден в шапке', (tester) async {
+    testWidgets("what's left shows in the header", (tester) async {
       final store = JsonStore.memory();
       await _pumpSheet(tester, store);
 
@@ -310,7 +313,7 @@ void main() {
       _stop(tester);
     });
 
-    testWidgets('тумблер затухания переключается тапом по всей строке', (
+    testWidgets('the fade switch toggles by a tap on the whole row', (
       tester,
     ) async {
       final store = JsonStore.memory();
@@ -327,7 +330,7 @@ void main() {
       expect(_stateOf(tester).fade, isTrue);
     });
 
-    testWidgets('полоса переставляет срок под пальцем', (tester) async {
+    testWidgets('the bar moves the deadline under the finger', (tester) async {
       final store = JsonStore.memory();
       await _pumpSheet(tester, store);
 

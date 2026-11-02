@@ -17,30 +17,30 @@ String _after(List<String> queue, int current, int from, int target) {
 void main() {
   const queue = ['a', 'b', 'c', 'd', 'e'];
 
-  test('перетащили сам играющий трек — номер идёт за ним', () {
+  test('dragged the playing track itself: the number follows it', () {
     expect(indexAfterReorder(2, 2, 0), 0);
     expect(_after(queue, 2, 2, 0), 'c');
     expect(_after(queue, 2, 2, 4), 'c');
   });
 
-  test('строку перенесли сверху вниз через играющий — он поднялся', () {
+  test('a row moved top to bottom past the playing one: it went up', () {
     expect(indexAfterReorder(2, 0, 4), 1);
     expect(_after(queue, 2, 0, 4), 'c');
   });
 
-  test('строку перенесли снизу вверх через играющий — он опустился', () {
+  test('a row moved bottom to top past the playing one: it went down', () {
     expect(indexAfterReorder(2, 4, 0), 3);
     expect(_after(queue, 2, 4, 0), 'c');
   });
 
-  test('перенос по одну сторону от играющего его не трогает', () {
+  test('a move on one side of the playing track leaves it alone', () {
     expect(indexAfterReorder(4, 0, 2), 4);
     expect(_after(queue, 4, 0, 2), 'e');
     expect(indexAfterReorder(0, 3, 1), 0);
     expect(_after(queue, 0, 3, 1), 'a');
   });
 
-  test('пустой плеер: играющего нет — номер остаётся -1', () {
+  test('an empty player: nothing playing, the number stays -1', () {
     expect(indexAfterReorder(-1, 1, 3), -1);
   });
 }

@@ -86,15 +86,15 @@ void main() {
     openLastfmPage = defaultOpenLastfmPage;
   });
 
-  group('подпись', () {
-    test('ключи сортируются, секрет в хвосте', () {
+  group('signature', () {
+    test('keys are sorted, the secret goes last', () {
       expect(
         lastfmSign({'b': '2', 'a': '1'}, 'sec'),
         '35ba30f61c05c14be609e84509030ec5', // md5('a1b2sec')
       );
     });
 
-    test('кириллица подписывается по UTF-8, а не по кодам символов', () {
+    test('Cyrillic is signed by UTF-8, not by character codes', () {
       expect(
         lastfmSign({'method': 'track.scrobble', 'artist': 'Алиса'}, 'SECRET'),
         'a5565c8c8b4dad0ff8751db161a9e0a9',
@@ -102,7 +102,7 @@ void main() {
     });
 
     test(
-      'запрос уезжает с подписью и форматом, но подпись считается без них',
+      'a request goes with signature and format, but the signature excludes them',
       () {
         lastfmPost(
           {'method': 'track.love'},
@@ -118,14 +118,14 @@ void main() {
       },
     );
 
-    test('без ключей приложения в сеть не ходим вовсе', () {
+    test('no app keys, no network at all', () {
       lastfmPost({'method': 'track.scrobble'}, apiKey: '', apiSecret: '');
       expect(sent, isEmpty);
     });
   });
 
-  group('вход', () {
-    test('сохранённая сессия поднимается при старте', () {
+  group('sign-in', () {
+    test('a saved session comes up at start', () {
       final c = _container(_connected());
       final s = c.read(lastfmProvider);
       expect(s.connected, isTrue);
@@ -133,7 +133,7 @@ void main() {
       expect(s.scrobbleEnabled, isTrue);
     });
 
-    test('пустые ключи не сохраняются и объясняют причину', () {
+    test("empty keys aren't saved and explain why", () {
       final store = JsonStore.memory();
       final c = _container(store);
       expect(c.read(lastfmProvider.notifier).saveKeys('KEY', '  '), isFalse);
@@ -142,14 +142,14 @@ void main() {
       expect(store.readMap('lastfm')['apiKey'], isNull);
     });
 
-    test('вход без ключей не начинается', () async {
+    test("sign-in doesn't start without keys", () async {
       final c = _container(JsonStore.memory());
       await c.read(lastfmProvider.notifier).startOAuth();
       expect(sent, isEmpty);
       expect(c.read(lastfmProvider).note?.kind, LfmNoteKind.needKeys);
     });
 
-    test('getToken открывает браузер и включает «Готово»', () async {
+    test('getToken opens the browser and enables Done', () async {
       final c = _container(
         JsonStore.memory({
           'lastfm': {'apiKey': 'KEY', 'apiSecret': 'SECRET'},
@@ -169,7 +169,7 @@ void main() {
       expect(s.note?.kind, LfmNoteKind.confirmAccess);
     });
 
-    test('getSession сохраняет ключ и включает оба тумблера', () async {
+    test('getSession saves the key and turns both switches on', () async {
       final store = JsonStore.memory({
         'lastfm': {'apiKey': 'KEY', 'apiSecret': 'SECRET'},
       });
@@ -193,7 +193,7 @@ void main() {
     });
 
     test(
-      'тихая проверка при возврате из браузера молчит о неподтверждённом',
+      'the quiet check on return from the browser says nothing about unconfirmed',
       () async {
         final c = _container(
           JsonStore.memory({
@@ -219,13 +219,13 @@ void main() {
       },
     );
 
-    test('«Готово» без начатого входа объясняет, что делать', () async {
+    test('Done with no sign-in started explains what to do', () async {
       final c = _container(_connected());
       expect(await c.read(lastfmProvider.notifier).finishOAuth(), isFalse);
       expect(c.read(lastfmProvider).note?.kind, LfmNoteKind.loginFirst);
     });
 
-    test('выход стирает ключ сессии и ник, ключи приложения оставляет', () {
+    test('signing out erases the session key and nick, keeps the app keys', () {
       final store = _connected();
       final c = _container(store);
       c.read(lastfmProvider.notifier).logout();
@@ -238,8 +238,8 @@ void main() {
     });
   });
 
-  group('скробблинг', () {
-    test('старт трека шлёт «сейчас играет» с альбомом', () {
+  group('scrobbling', () {
+    test("a track's start sends now playing with the album", () {
       final c = _container(_connected());
       c.read(lastfmProvider.notifier).onTrackStart(_track('Song', album: 'LP'));
 
@@ -250,7 +250,7 @@ void main() {
       expect(form?['sk'], 'SESSION');
     });
 
-    test('выключённый Now Playing молчит, но отсчёт для скроббла идёт', () {
+    test('Now Playing off stays silent, but the scrobble count runs', () {
       final store = _connected();
       store.write('lastfm', {...store.readMap('lastfm'), 'nowPlaying': false});
       final c = _container(store);
@@ -266,49 +266,44 @@ void main() {
       expect(_methodCall('track.scrobble'), isNotNull);
     });
 
-    test('порог зачёта: 30 секунд И (половина ИЛИ 240 секунд)', () {
+    test('the threshold: 30 seconds AND (half OR 240 seconds)', () {
       final c = _container(_connected());
       final lfm = c.read(lastfmProvider.notifier);
 
       lfm.onTrackStart(_track('Song'));
       lfm.onProgress(const Duration(seconds: 29), const Duration(seconds: 40));
-      expect(_methodCall('track.scrobble'), isNull, reason: 'меньше 30 с');
+      expect(_methodCall('track.scrobble'), isNull, reason: 'under 30 s');
 
       lfm.onProgress(
         const Duration(seconds: 100),
         const Duration(seconds: 300),
       );
-      expect(_methodCall('track.scrobble'), isNull, reason: 'треть трека');
+      expect(
+        _methodCall('track.scrobble'),
+        isNull,
+        reason: 'a third of the track',
+      );
 
       lfm.onProgress(
         const Duration(seconds: 150),
         const Duration(seconds: 300),
       );
-      expect(_methodCall('track.scrobble'), isNotNull, reason: 'половина');
+      expect(_methodCall('track.scrobble'), isNotNull, reason: 'half');
     });
 
-    test(
-      'длинный трек засчитывается по 240 секундам, не дожидаясь половины',
-      () {
-        final c = _container(_connected());
-        final lfm = c.read(lastfmProvider.notifier);
+    test('a long track counts at 240 seconds without waiting for half', () {
+      final c = _container(_connected());
+      final lfm = c.read(lastfmProvider.notifier);
 
-        lfm.onTrackStart(_track('Long', duration: const Duration(minutes: 30)));
-        lfm.onProgress(
-          const Duration(seconds: 239),
-          const Duration(minutes: 30),
-        );
-        expect(_methodCall('track.scrobble'), isNull);
+      lfm.onTrackStart(_track('Long', duration: const Duration(minutes: 30)));
+      lfm.onProgress(const Duration(seconds: 239), const Duration(minutes: 30));
+      expect(_methodCall('track.scrobble'), isNull);
 
-        lfm.onProgress(
-          const Duration(seconds: 240),
-          const Duration(minutes: 30),
-        );
-        expect(_methodCall('track.scrobble'), isNotNull);
-      },
-    );
+      lfm.onProgress(const Duration(seconds: 240), const Duration(minutes: 30));
+      expect(_methodCall('track.scrobble'), isNotNull);
+    });
 
-    test('трек засчитывается один раз, следующий — заново', () async {
+    test('a track counts once, the next one anew', () async {
       final now = DateTime.fromMillisecondsSinceEpoch(1700000000000);
       final c = _container(_connected(), now: now);
       final lfm = c.read(lastfmProvider.notifier);
@@ -325,7 +320,7 @@ void main() {
       expect(
         sent.where((r) => r['method'] == 'track.scrobble'),
         hasLength(1),
-        reason: 'второй тик того же трека',
+        reason: 'a second tick of the same track',
       );
       // The timestamp is the track's start, as Last.fm requires.
       expect(_methodCall('track.scrobble')?['timestamp[0]'], '1700000000');
@@ -449,7 +444,7 @@ void main() {
       });
     });
 
-    test('неизвестная длительность трек не засчитывает', () {
+    test("an unknown duration doesn't count", () {
       final c = _container(_connected());
       final lfm = c.read(lastfmProvider.notifier);
       lfm.onTrackStart(_track('Song'));
@@ -457,7 +452,7 @@ void main() {
       expect(_methodCall('track.scrobble'), isNull);
     });
 
-    test('без подключения не шлём ничего', () {
+    test('not connected, nothing sent', () {
       final c = _container(
         JsonStore.memory({
           'lastfm': {'apiKey': 'KEY', 'apiSecret': 'SECRET', 'scrobble': true},
@@ -472,7 +467,7 @@ void main() {
       expect(sent, isEmpty);
     });
 
-    test('выключённый скробблинг не шлёт, но «сейчас играет» продолжает', () {
+    test('scrobbling off sends none, but now playing continues', () {
       final store = _connected();
       store.write('lastfm', {...store.readMap('lastfm'), 'scrobble': false});
       final c = _container(store);

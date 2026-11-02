@@ -26,8 +26,8 @@ ProviderContainer _container([JsonStore? store]) {
 }
 
 void main() {
-  group('поверхность из обложки', () {
-    test('светлота десктопная — 0.075, обложка сюда входит оттенком', () {
+  group('surface from the cover', () {
+    test('lightness is 0.075, the cover only adds its hue', () {
       final hsl = HSLColor.fromColor(
         autoThemeSurfaceFromHsl(const CoverHsl(210, 0.9, 0.7)),
       );
@@ -37,24 +37,21 @@ void main() {
       expect(hsl.hue, closeTo(210, 3));
     });
 
-    test(
-      'насыщенность подрезана: цветного пятна вместо интерфейса не выйдет',
-      () {
-        final hsl = HSLColor.fromColor(
-          autoThemeSurfaceFromHsl(const CoverHsl(120, 1, 0.5)),
-        );
-        expect(hsl.saturation, lessThanOrEqualTo(0.5));
-      },
-    );
+    test('saturation is trimmed: no colored blob instead of an interface', () {
+      final hsl = HSLColor.fromColor(
+        autoThemeSurfaceFromHsl(const CoverHsl(120, 1, 0.5)),
+      );
+      expect(hsl.saturation, lessThanOrEqualTo(0.5));
+    });
 
-    test('серая обложка остаётся серой', () {
+    test('a gray cover stays gray', () {
       final hsl = HSLColor.fromColor(
         autoThemeSurfaceFromHsl(const CoverHsl(0, 0, 0.5)),
       );
       expect(hsl.saturation, 0);
     });
 
-    test('темнее миниплеерного тона той же обложки', () {
+    test('darker than the mini player tone of the same cover', () {
       // The surface is the whole app's background, so it has to be the quietest
       // of the fills computed from a cover.
       const cover = CoverHsl(350, 0.8, 0.45);
@@ -65,7 +62,7 @@ void main() {
     });
   });
 
-  group('переключение', () {
+  group('switching', () {
     test('a theme that is gone falls back to Dark, a custom one stays', () {
       final gone = _container(
         JsonStore.memory({
@@ -93,7 +90,7 @@ void main() {
       expect(kept.read(settingsProvider).themeId, 'custom_1');
     });
 
-    test('включение затравливает тему текущими цветами', () {
+    test('turning on seeds the theme with the current colors', () {
       final c = _container();
       final settings = c.read(settingsProvider.notifier);
       settings.setTheme('light');
@@ -108,7 +105,7 @@ void main() {
       expect(state.tokens.accent, before.accent);
     });
 
-    test('авто-акцент гаснет: два режима за один акцент не спорят', () {
+    test("auto accent goes off: two modes don't fight over one accent", () {
       final c = _container();
       final settings = c.read(settingsProvider.notifier);
       settings.setAutoAccent(true);
@@ -116,7 +113,7 @@ void main() {
       expect(c.read(settingsProvider).autoAccent, isFalse);
     });
 
-    test('включённый авто-акцент уводит с авто-темы', () {
+    test('turning auto accent on leaves the auto theme', () {
       final c = _container();
       final settings = c.read(settingsProvider.notifier);
       settings.setTheme(kAutoThemeId);
@@ -131,7 +128,7 @@ void main() {
       expect(state.tokens.accent, kThemePresets.first.accent);
     });
 
-    test('обложка красит фон, блоки и акцент разом', () {
+    test('the cover paints the background, blocks and accent at once', () {
       final c = _container();
       final settings = c.read(settingsProvider.notifier);
       settings.setTheme(kAutoThemeId);
@@ -143,7 +140,7 @@ void main() {
       expect(tokens.accent, const Color(0xFF9B5DE5));
     });
 
-    test('опоздавший скан на другую тему не действует', () {
+    test("a late scan doesn't affect another theme", () {
       final c = _container();
       final settings = c.read(settingsProvider.notifier);
       settings.setTheme(kAutoThemeId);
@@ -155,7 +152,7 @@ void main() {
       expect(state.tokens.accent, const Color(0xFF000000));
     });
 
-    test('уход на пресет сбрасывает акцент обложки', () {
+    test('moving to a preset resets the cover accent', () {
       final c = _container();
       final settings = c.read(settingsProvider.notifier);
       settings.setTheme(kAutoThemeId);
@@ -166,8 +163,8 @@ void main() {
     });
   });
 
-  group('хранилище', () {
-    test('режим и снятый цвет переживают перезапуск', () {
+  group('storage', () {
+    test('the mode and the taken color survive a restart', () {
       final store = JsonStore.memory();
       final c = _container(store);
       c.read(settingsProvider.notifier).setTheme(kAutoThemeId);

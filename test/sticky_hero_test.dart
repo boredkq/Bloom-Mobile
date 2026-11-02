@@ -80,7 +80,7 @@ Future<void> _scroll(WidgetTester tester, double dy) async {
 }
 
 void main() {
-  testWidgets('шапка сжимается, но ряд кнопок остаётся наверху', (
+  testWidgets('the header collapses, the button row stays on top', (
     tester,
   ) async {
     await _pumpList(tester);
@@ -101,7 +101,9 @@ void main() {
     );
   });
 
-  testWidgets('дальше сжатой шапки прокрутка её не трогает', (tester) async {
+  testWidgets('past the collapsed header scrolling leaves it alone', (
+    tester,
+  ) async {
     await _pumpList(tester);
     await _scroll(tester, -2000);
 
@@ -112,12 +114,12 @@ void main() {
     expect(find.text('строка 0'), findsNothing);
   });
 
-  testWidgets('погасший ряд действий не ловит тапы под кнопками', (
+  testWidgets('the faded action row catches no taps under the buttons', (
     tester,
   ) async {
     await _pumpList(tester);
     await tester.tap(find.text('играть'));
-    expect(_played, isTrue, reason: 'в раскрытой шапке кнопка работает');
+    expect(_played, isTrue, reason: 'in the open header the button works');
 
     _played = false;
     await _scroll(tester, -2000);

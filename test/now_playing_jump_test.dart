@@ -57,7 +57,7 @@ class _FakePlayback extends PlaybackController {
 }
 
 void main() {
-  group('направление', () {
+  group('direction', () {
     int dir(double rowTop, double offset) => nowPlayingJumpDir(
       rowTop: rowTop,
       offset: offset,
@@ -66,34 +66,37 @@ void main() {
       bottomInset: _bars,
     );
 
-    test('строка на виду — пилюли нет', () {
+    test('the row is in view: no pill', () {
       // The list isn't scrolled, and the row sits right under the header.
       expect(dir(_rowTop(0), 0), 0);
     });
 
-    test('уехала вниз — стрелка вниз', () {
+    test('gone below: arrow down', () {
       // The last visible row ends at 640 − 130 = 510.
       expect(dir(_rowTop(20), 0), 1);
     });
 
-    test('уехала вверх — стрелка вверх', () {
+    test('gone above: arrow up', () {
       expect(dir(_rowTop(0), 2000), -1);
     });
 
-    test('запас в полторы строки не даёт пилюле мигать на границе', () {
-      // The row went under the mini player, but only by one row: not gone yet.
-      final bottom = _viewport - _bars;
-      expect(dir(bottom + kTrackRowHeight, 0), 0);
-      expect(dir(bottom + kJumpShowGap + 1, 0), 1);
-    });
+    test(
+      'a margin of a row and a half keeps the pill from flickering at the edge',
+      () {
+        // The row went under the mini player, but only by one row: not gone yet.
+        final bottom = _viewport - _bars;
+        expect(dir(bottom + kTrackRowHeight, 0), 0);
+        expect(dir(bottom + kJumpShowGap + 1, 0), 1);
+      },
+    );
 
-    test('строка под прилипшей шапкой считается уехавшей вверх', () {
+    test('a row under the stuck header counts as gone above', () {
       // The visible part starts not at 0 but at the collapsed header's lower
       // edge: a row hidden under it isn't visible, whatever the layout says.
       expect(dir(0, _collapsed + kJumpShowGap + 1), -1);
     });
 
-    test('трека в списке нет — пилюли нет', () {
+    test("the track isn't in the list: no pill", () {
       expect(
         nowPlayingJumpDir(
           rowTop: null,
@@ -106,7 +109,7 @@ void main() {
       );
     });
 
-    test('до раскладки вьюпорта нет — молчим, а не показываем', () {
+    test('no viewport before layout: stays silent rather than showing', () {
       expect(
         nowPlayingJumpDir(
           rowTop: _rowTop(30),
@@ -120,8 +123,8 @@ void main() {
     });
   });
 
-  group('цель прокрутки', () {
-    test('строка встаёт под шапкой, с просветом над собой', () {
+  group('scroll target', () {
+    test('the row lands under the header, with a gap above it', () {
       expect(
         nowPlayingJumpTarget(
           rowTop: _rowTop(30),
@@ -133,7 +136,7 @@ void main() {
       );
     });
 
-    test('выше начала списка не уезжаем', () {
+    test("doesn't go above the list's start", () {
       // Header above collapsed plus the gap: the very first rows can't subtract
       // that much, and the target would go negative.
       expect(
@@ -147,7 +150,7 @@ void main() {
       );
     });
 
-    test('за конец списка не уезжаем', () {
+    test("doesn't go past the list's end", () {
       expect(
         nowPlayingJumpTarget(
           rowTop: _rowTop(300),
@@ -160,7 +163,7 @@ void main() {
     });
   });
 
-  group('пилюля', () {
+  group('pill', () {
     late ScrollController scroll;
 
     /// A 60-row list with the header and the pill on top; [playingIndex] plays,
@@ -250,14 +253,16 @@ void main() {
         tester.widget<AnimatedOpacity>(find.byType(AnimatedOpacity)).opacity ==
         1;
 
-    testWidgets('всплывает, когда играющий трек уехал за край', (tester) async {
+    testWidgets('shows when the playing track goes past the edge', (
+      tester,
+    ) async {
       await pump(tester);
       expect(visible(tester), isTrue);
       expect(find.text('Сейчас играет'), findsOneWidget);
       expect(findGlyph(Bi.arrowDown), findsOneWidget);
     });
 
-    testWidgets('тап возвращает список к строке', (tester) async {
+    testWidgets('a tap brings the list back to the row', (tester) async {
       await pump(tester);
       await tester.tap(find.text('Сейчас играет'));
       await tester.pump();
@@ -274,9 +279,7 @@ void main() {
       expect(visible(tester), isFalse);
     });
 
-    testWidgets('прокрутили ниже трека — стрелка разворачивается', (
-      tester,
-    ) async {
+    testWidgets('scrolled below the track: the arrow flips', (tester) async {
       await pump(tester);
       scroll.jumpTo(scroll.position.maxScrollExtent);
       await tester.pump();
@@ -285,7 +288,9 @@ void main() {
       expect(findGlyph(Bi.arrowUp), findsOneWidget);
     });
 
-    testWidgets('играет трек не из этого списка — пилюли нет', (tester) async {
+    testWidgets('a track from outside this list plays: no pill', (
+      tester,
+    ) async {
       await pump(tester, playingIndex: null);
       expect(visible(tester), isFalse);
     });

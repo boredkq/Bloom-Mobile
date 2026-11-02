@@ -66,29 +66,29 @@ ProviderContainer _container(JsonStore store) {
 }
 
 void main() {
-  group('настройка', () {
-    test('по умолчанию фона нет', () {
+  group('setting', () {
+    test('no background by default', () {
       final c = _container(JsonStore.memory());
       expect(c.read(playerBgProvider), PlayerBg.none);
       expect(c.read(playerBgProvider).isNone, isTrue);
     });
 
-    test('выбранный режим читается с диска', () {
+    test('the chosen mode is read from disk', () {
       final c = _container(JsonStore.memory({'playerBg': 'cover'}));
       expect(c.read(playerBgProvider), PlayerBg.cover);
     });
 
-    test('незнакомая запись — это «Нет»', () {
+    test('an unknown entry means None', () {
       final c = _container(JsonStore.memory({'playerBg': 'wallpaper'}));
       expect(c.read(playerBgProvider), PlayerBg.none);
     });
 
-    test('«Фон приложения» читается с диска', () {
+    test('App background is read from disk', () {
       final c = _container(JsonStore.memory({'playerBg': 'app'}));
       expect(c.read(playerBgProvider), PlayerBg.app);
     });
 
-    test('выбор уезжает на диск', () {
+    test('the choice reaches the disk', () {
       final store = JsonStore.memory();
       final c = _container(store);
       c.read(playerBgProvider.notifier).set(PlayerBg.color);
@@ -100,23 +100,23 @@ void main() {
     });
   });
 
-  group('эффект фона обложки', () {
-    test('по умолчанию размытие — как было до настройки', () {
+  group('cover background effect', () {
+    test('blur by default', () {
       final c = _container(JsonStore.memory());
       expect(c.read(coverBgFxProvider), CoverBgFx.blur);
     });
 
-    test('выбранный эффект читается с диска', () {
+    test('the chosen effect is read from disk', () {
       final c = _container(JsonStore.memory({'playerBgCoverFx': 'original'}));
       expect(c.read(coverBgFxProvider), CoverBgFx.original);
     });
 
-    test('незнакомая запись — это размытие', () {
+    test('an unknown entry means blur', () {
       final c = _container(JsonStore.memory({'playerBgCoverFx': 'sepia'}));
       expect(c.read(coverBgFxProvider), CoverBgFx.blur);
     });
 
-    test('выбор уезжает на диск', () {
+    test('the choice reaches the disk', () {
       final store = JsonStore.memory();
       final c = _container(store);
       c.read(coverBgFxProvider.notifier).set(CoverBgFx.dim);
@@ -124,7 +124,7 @@ void main() {
     });
   });
 
-  group('фон приложения', () {
+  group('app background', () {
     /// A one-picture library; `assigned` says whether it's the background.
     JsonStore withWallpaper({required bool assigned}) => JsonStore.memory({
       'media': [
@@ -139,7 +139,7 @@ void main() {
       if (assigned) 'custom': {'bg': 'w1'},
     });
 
-    test('берётся та самая картинка с её же размытием и затемнением', () {
+    test('takes that very picture with its own blur and dim', () {
       // The numbers are the picture's: the player must repeat the app
       // background exactly.
       final item = _container(
@@ -150,72 +150,81 @@ void main() {
       expect(item?.dim, 40);
     });
 
-    test('картинка есть в библиотеке, но не стоит фоном — вариант пуст', () {
-      // This is what greys out the row in the sheet: nothing to take into the
-      // player.
-      expect(
-        _container(withWallpaper(assigned: false)).read(playerAppBgProvider),
-        isNull,
-      );
-    });
+    test(
+      "the picture is in the library but isn't the background: the option is empty",
+      () {
+        // This is what greys out the row in the sheet: nothing to take into the
+        // player.
+        expect(
+          _container(withWallpaper(assigned: false)).read(playerAppBgProvider),
+          isNull,
+        );
+      },
+    );
 
-    test('фон сняли — вариант пуст, но настройку это не трогает', () {
-      final store = withWallpaper(assigned: true);
-      final c = _container(store);
-      c.read(playerBgProvider.notifier).set(PlayerBg.app);
-      c.read(customProvider.notifier).set(CustomCtx.bg, null);
-      expect(c.read(playerAppBgProvider), isNull);
-      expect(c.read(playerBgProvider), PlayerBg.app);
-    });
+    test(
+      'the background was removed: the option is empty, the setting stays',
+      () {
+        final store = withWallpaper(assigned: true);
+        final c = _container(store);
+        c.read(playerBgProvider.notifier).set(PlayerBg.app);
+        c.read(customProvider.notifier).set(CustomCtx.bg, null);
+        expect(c.read(playerAppBgProvider), isNull);
+        expect(c.read(playerBgProvider), PlayerBg.app);
+      },
+    );
   });
 
-  group('цвет из обложки', () {
-    test('почти чёрная обложка всё равно даёт видимый цвет', () {
+  group('color from the cover', () {
+    test('an almost black cover still gives a visible color', () {
       final hsl = HSLColor.fromColor(
         playerBgFromHsl(const CoverHsl(0, 0.9, 0)),
       );
       expect(hsl.lightness, closeTo(0.16, 0.01));
     });
 
-    test('светлая обложка притемняется', () {
+    test('a light cover gets darkened', () {
       final hsl = HSLColor.fromColor(
         playerBgFromHsl(const CoverHsl(210, 0.9, 0.95)),
       );
       expect(hsl.lightness, lessThanOrEqualTo(0.35));
     });
 
-    test('кислотная насыщенность подрезана', () {
+    test('acid saturation is trimmed', () {
       final hsl = HSLColor.fromColor(
         playerBgFromHsl(const CoverHsl(120, 1, 0.4)),
       );
       expect(hsl.saturation, closeTo(0.72, 0.02));
     });
 
-    test('серая обложка остаётся серой', () {
+    test('a gray cover stays gray', () {
       final hsl = HSLColor.fromColor(
         playerBgFromHsl(const CoverHsl(0, 0, 0.5)),
       );
       expect(hsl.saturation, 0);
     });
 
-    test('заметно живее тона миниплеера: та же обложка — светлее и сочнее', () {
-      const cover = CoverHsl(350, 0.8, 0.45);
-      final player = HSLColor.fromColor(playerBgFromHsl(cover));
-      final mini = HSLColor.fromColor(miniBgFromHsl(cover));
-      expect(player.lightness, greaterThan(mini.lightness));
-      expect(player.saturation, greaterThan(mini.saturation));
-    });
+    test(
+      'noticeably livelier than the mini player tone: lighter and richer from the same cover',
+      () {
+        const cover = CoverHsl(350, 0.8, 0.45);
+        final player = HSLColor.fromColor(playerBgFromHsl(cover));
+        final mini = HSLColor.fromColor(miniBgFromHsl(cover));
+        expect(player.lightness, greaterThan(mini.lightness));
+        expect(player.saturation, greaterThan(mini.saturation));
+      },
+    );
   });
 
-  group('градиент', () {
+  group('gradient', () {
     const bg = Color(0xFF0A0A0A);
     const color = Color(0xFF7A1220);
 
-    test('сверху — сам цвет обложки', () {
+    test("the cover's own color on top", () {
       expect(playerBgGradient(color, bg).first, color);
     });
 
-    test('снизу темнее, но не цвет темы', () {
+    test("darker at the bottom, but not the theme's color", () {
       final colors = playerBgGradient(color, bg);
       expect(colors.last, isNot(bg));
       // The bottom point is closer to the theme than the middle, or the
@@ -225,14 +234,14 @@ void main() {
       expect(distance(colors.last, bg), lessThan(distance(colors[1], bg)));
     });
 
-    test('границы цветов совпадают по числу с самими цветами', () {
+    test('color stops match the colors in number', () {
       // `LinearGradient` needs exactly as many stops, or it asserts at paint
       // time, not in the test.
       expect(playerBgGradient(color, bg).length, kPlayerBgStops.length);
       expect(kPlayerBgDim.length, 3);
     });
 
-    test('под чёткой обложкой плёнка плотнее, но не в чёрный', () {
+    test('under a sharp cover the film is denser, but not black', () {
       // Both sets go into the same gradient, so their lengths must match.
       expect(kPlayerBgDimSharp.length, kPlayerBgDim.length);
       for (var i = 0; i < kPlayerBgDim.length; i++) {
@@ -242,7 +251,7 @@ void main() {
     });
   });
 
-  testWidgets('размытая обложка занимает ВЕСЬ отведённый прямоугольник', (
+  testWidgets('a blurred cover fills the whole given rectangle', (
     tester,
   ) async {
     final image = _solidImage(8);
@@ -270,7 +279,7 @@ void main() {
     expect(tester.getSize(find.byType(Image)), const Size(300, 600));
   });
 
-  testWidgets('«Оригинал» — та же картинка, но без размытия и цветокоррекции', (
+  testWidgets('Original is the same picture with no blur or color correction', (
     tester,
   ) async {
     final image = _solidImage(8);
@@ -299,7 +308,7 @@ void main() {
     expect(tester.getSize(find.byType(Image)), const Size(300, 600));
   });
 
-  group('шапка на фоне', () {
+  group('header on a background', () {
     Future<GlassBox> pumpButton(WidgetTester tester, {bool? glass}) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -324,20 +333,20 @@ void main() {
       return tester.widget<GlassBox>(find.byType(GlassBox));
     }
 
-    testWidgets('плёнка поверхности стекло НЕ гасит', (tester) async {
+    testWidgets("the surface film doesn't turn glass off", (tester) async {
       // The player's header on a background is painted with the block film, a
       // theme surface: with Transparency on it gets glass.
       expect((await pumpButton(tester, glass: true)).enabled, isTrue);
     });
 
-    testWidgets('своя заливка без просьбы стекло гасит', (tester) async {
+    testWidgets('an own fill not asked for turns glass off', (tester) async {
       // The default holds: the accent under play and the mini player's clear
       // circle are states and don't turn to glass.
       expect((await pumpButton(tester)).enabled, isFalse);
     });
   });
 
-  testWidgets('в режиме «Нет» слоя нет вовсе', (tester) async {
+  testWidgets('None has no layer at all', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [

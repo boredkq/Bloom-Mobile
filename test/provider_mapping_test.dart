@@ -11,7 +11,7 @@ import 'package:bloom/providers/soundcloud/soundcloud.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('источник по префиксу id', () {
+  test('source by id prefix', () {
     expect(MusicSource.fromId('sc:123'), MusicSource.soundcloud);
     expect(MusicSource.fromId('sc:artist:123'), MusicSource.soundcloud);
     expect(MusicSource.fromId('ym:456'), MusicSource.yandex);
@@ -19,7 +19,7 @@ void main() {
     expect(MusicSource.fromId('local-file'), MusicSource.local);
   });
 
-  test('числовой id вытаскивается из сквозного', () {
+  test('a numeric id comes out of a composite one', () {
     expect(scNumericId(scTrackId(88335161)), 88335161);
     expect(scNumericId(scArtistId(42)), 42);
     expect(scNumericId(scSetId(7)), 7);
@@ -27,7 +27,7 @@ void main() {
     expect(scNumericId('sc:artist:нечисло'), 0);
   });
 
-  test('трек: длительность, пустые строки в null, сырьё для стрима', () {
+  test('track: duration, empty strings to null, raw data for the stream', () {
     final raw = mapRawTrack({
       'id': 10,
       'title': 'Song',
@@ -56,7 +56,7 @@ void main() {
     expect(track.sourceData, isNotNull);
   });
 
-  test('альбом: счётчик 0 у SC значит «неизвестно», а не ноль треков', () {
+  test('album: a SoundCloud count of 0 means unknown, not zero tracks', () {
     final withCount = setFromSc(
       mapRawPlaylist({'id': 1, 'title': 'A', 'track_count': 14}),
       isAlbum: true,
@@ -76,7 +76,7 @@ void main() {
     expect(noCount.id, 'sc:set:2');
   });
 
-  test('артист: username в name, full_name в fullName', () {
+  test('artist: username to name, full_name to fullName', () {
     final artist = artistFromSc(
       mapRawArtist({
         'id': 3,
@@ -90,7 +90,7 @@ void main() {
     expect(artist.fullName, 'Sonny Moore');
   });
 
-  test('пустой ScPage не ломает маппинг', () {
+  test("an empty ScPage doesn't break mapping", () {
     const page = ScPage<ScRawTrack>(items: [], hasMore: false);
     expect(page.items.map(trackFromSc).toList(), isEmpty);
   });

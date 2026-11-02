@@ -16,7 +16,7 @@ Track _track(String id) => Track(
 List<Track> _list(List<String> ids) => [for (final id in ids) _track(id)];
 
 void main() {
-  test('исходный плейлист идёт первым, остальные — в порядке выбора', () {
+  test('the source playlist comes first, the others in the picked order', () {
     final merged = mergeTracks([
       _list(['a', 'b']),
       _list(['c']),
@@ -26,7 +26,7 @@ void main() {
     expect(merged.map((t) => t.id), ['a', 'b', 'c', 'd']);
   });
 
-  test('повтор остаётся на первом своём месте', () {
+  test('a repeat stays at its first place', () {
     final merged = mergeTracks([
       _list(['a', 'b']),
       _list(['b', 'c']),
@@ -35,7 +35,7 @@ void main() {
     expect(merged.map((t) => t.id), ['a', 'b', 'c']);
   });
 
-  test('без схлопывания трек ложится столько раз, сколько встретился', () {
+  test('without collapsing a track lands as many times as it occurs', () {
     final merged = mergeTracks([
       _list(['a']),
       _list(['a']),
@@ -44,7 +44,7 @@ void main() {
     expect(merged.map((t) => t.id), ['a', 'a']);
   });
 
-  test('счётчик повторов считает то, что уберётся', () {
+  test('the repeat count counts what gets removed', () {
     final lists = [
       _list(['a', 'b']),
       _list(['b', 'c']),
@@ -55,7 +55,7 @@ void main() {
     expect(mergeTracks(lists, dedup: true).length, 3);
   });
 
-  test('пустые списки ничего не ломают', () {
+  test('empty lists break nothing', () {
     expect(mergeTracks([], dedup: true), isEmpty);
     expect(mergeDupCount([]), 0);
   });

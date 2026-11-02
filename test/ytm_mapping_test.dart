@@ -4,6 +4,7 @@
 /// link parsing.
 library;
 
+import 'package:bloom/core/providers/provider_text.dart';
 import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/providers/ytmusic/models.dart';
 import 'package:bloom/providers/ytmusic/ytm_provider.dart';
@@ -121,8 +122,8 @@ Map<String, dynamic> _response(List<Object> rows) => {
 };
 
 void main() {
-  group('строки выдачи', () {
-    test('трек: артист из ссылок, длительность и обложка из col1', () {
+  group('result rows', () {
+    test('track: artist from links, duration and cover from col1', () {
       final t = parseTrack(
         _row(
           videoId: 'vid1',
@@ -156,33 +157,30 @@ void main() {
       expect(t.cover, 'https://lh3.googleusercontent.com/aaa=w544-h544-l90-rj');
     });
 
-    test(
-      'трек альбома: длительность из fixedColumns, артиста в строке нет',
-      () {
-        final t = parseTrack(
-          _row(
-            videoId: 'vid2',
-            columns: [
-              _col([
-                {'text': 'Второй трек'},
-              ]),
-              _col([
-                {'text': '1.2M plays'},
-              ]),
-            ],
-            fixedRuns: [
-              {'text': '4:02'},
-            ],
-          )['musicResponsiveListItemRenderer'],
-        )!;
+    test('album track: duration from fixedColumns, no artist in the row', () {
+      final t = parseTrack(
+        _row(
+          videoId: 'vid2',
+          columns: [
+            _col([
+              {'text': 'Второй трек'},
+            ]),
+            _col([
+              {'text': '1.2M plays'},
+            ]),
+          ],
+          fixedRuns: [
+            {'text': '4:02'},
+          ],
+        )['musicResponsiveListItemRenderer'],
+      )!;
 
-        expect(t.duration, const Duration(minutes: 4, seconds: 2));
-        // The artist isn't repeated in an album's rows; the page fills it in.
-        expect(t.artist, '1.2M plays');
-      },
-    );
+      expect(t.duration, const Duration(minutes: 4, seconds: 2));
+      // The artist isn't repeated in an album's rows; the page fills it in.
+      expect(t.artist, '1.2M plays');
+    });
 
-    test('трек чарт-плейлиста: артист в НУЛЕВОМ run подписи', () {
+    test("chart playlist track: the artist in the label's zeroth run", () {
       // Skipping the zeroth run unconditionally would leave a chart with no
       // artists: there the label is one run with the channel.
       final t = parseTrack(
@@ -201,7 +199,7 @@ void main() {
       expect(t.artist, 'Артист Чарта');
     });
 
-    test('без videoId и без заголовка строка треком не считается', () {
+    test("no videoId and no title: the row isn't a track", () {
       expect(
         parseTrack(
           _row(
@@ -225,7 +223,7 @@ void main() {
       );
     });
 
-    test('плейлист: счётчик только когда YTM его дал', () {
+    test('playlist: a count only when the platform gave one', () {
       final withCount = parsePlaylist(
         _row(
           browseId: 'VLPL1',
@@ -269,7 +267,7 @@ void main() {
       expect(playlistFromYtm(userPl).trackCount, isNull);
     });
 
-    test('альбом: год из col1, артист первым run', () {
+    test('album: year from col1, artist as the first run', () {
       final a = parseAlbum(
         _row(
           browseId: 'MPREb_1',
@@ -290,7 +288,7 @@ void main() {
       expect(a.artist, 'Артист');
     });
 
-    test('альбом: метка типа в начале — тип, а не артист', () {
+    test('album: a type label at the start is the type, not the artist', () {
       final a = parseAlbum(
         _row(
           browseId: 'MPREb_2',
@@ -315,88 +313,91 @@ void main() {
     });
   });
 
-  group('сборка выдачи', () {
-    test('разделы по pageType, вкладка артистов вытесняет общую выдачу', () {
-      final general = _response([
-        _row(
-          videoId: 'v1',
-          columns: [
-            _col([
-              {'text': 'Трек'},
-            ]),
-            _col([
-              {'text': 'Song'},
-              {'text': ' • '},
-              _artistRun('Кто-то', 'UC9'),
-            ]),
-          ],
-        ),
-        _row(
-          browseId: 'UCwrong',
-          pageType: 'MUSIC_PAGE_TYPE_ARTIST',
-          columns: [
-            _col([
-              {'text': 'Похожий артист'},
-            ]),
-          ],
-        ),
-        _row(
-          browseId: 'MPREb_x',
-          pageType: 'MUSIC_PAGE_TYPE_ALBUM',
-          columns: [
-            _col([
-              {'text': 'Альбом из общей'},
-            ]),
-            _col([
-              {'text': 'Кто-то'},
-            ]),
-          ],
-        ),
-      ]);
-      final artistsTab = _response([
-        _row(
-          browseId: 'UCright',
-          pageType: 'MUSIC_PAGE_TYPE_ARTIST',
-          columns: [
-            _col([
-              {'text': 'Тот самый'},
-            ]),
-          ],
-        ),
-      ]);
-      final albumsTab = _response([
-        _row(
-          browseId: 'MPREb_y',
-          pageType: 'MUSIC_PAGE_TYPE_ALBUM',
-          columns: [
-            _col([
-              {'text': 'Альбом из вкладки'},
-            ]),
-            _col([
-              {'text': 'Кто-то'},
-            ]),
-          ],
-        ),
-      ]);
+  group('building results', () {
+    test(
+      'sections by pageType, the artists tab replaces the general results',
+      () {
+        final general = _response([
+          _row(
+            videoId: 'v1',
+            columns: [
+              _col([
+                {'text': 'Трек'},
+              ]),
+              _col([
+                {'text': 'Song'},
+                {'text': ' • '},
+                _artistRun('Кто-то', 'UC9'),
+              ]),
+            ],
+          ),
+          _row(
+            browseId: 'UCwrong',
+            pageType: 'MUSIC_PAGE_TYPE_ARTIST',
+            columns: [
+              _col([
+                {'text': 'Похожий артист'},
+              ]),
+            ],
+          ),
+          _row(
+            browseId: 'MPREb_x',
+            pageType: 'MUSIC_PAGE_TYPE_ALBUM',
+            columns: [
+              _col([
+                {'text': 'Альбом из общей'},
+              ]),
+              _col([
+                {'text': 'Кто-то'},
+              ]),
+            ],
+          ),
+        ]);
+        final artistsTab = _response([
+          _row(
+            browseId: 'UCright',
+            pageType: 'MUSIC_PAGE_TYPE_ARTIST',
+            columns: [
+              _col([
+                {'text': 'Тот самый'},
+              ]),
+            ],
+          ),
+        ]);
+        final albumsTab = _response([
+          _row(
+            browseId: 'MPREb_y',
+            pageType: 'MUSIC_PAGE_TYPE_ALBUM',
+            columns: [
+              _col([
+                {'text': 'Альбом из вкладки'},
+              ]),
+              _col([
+                {'text': 'Кто-то'},
+              ]),
+            ],
+          ),
+        ]);
 
-      final d = parseSearch(
-        general,
-        query: 'кто-то',
-        artistsOnly: artistsTab,
-        albumsOnly: albumsTab,
-      );
+        final d = parseSearch(
+          general,
+          query: 'кто-то',
+          artistsOnly: artistsTab,
+          albumsOnly: albumsTab,
+        );
 
-      expect(d.tracks.single.id, 'v1');
-      // The general results lie about artists, so the tab replaces them.
-      expect(d.artists.map((a) => a.id), ['UCright']);
-      // The tab's albums only add: the general results can hold official
-      // playlists with a count that the tab doesn't have.
-      expect(d.albums.map((a) => a.id), ['MPREb_x', 'MPREb_y']);
-      // Without a Songs tab there's nothing to page, so no token was kept.
-      expect(d.tracksHasMore, isFalse);
-    });
+        expect(d.tracks.single.id, 'v1');
+        // The general results lie about artists, so the tab replaces them.
+        expect(d.artists.map((a) => a.id), ['UCright']);
+        // The tab's albums only add: the general results can hold official
+        // playlists with a count that the tab doesn't have.
+        expect(d.albums.map((a) => a.id), ['MPREb_x', 'MPREb_y']);
+        // Without a Songs tab there's nothing to page, so no token was kept.
+        expect(d.tracksHasMore, isFalse);
+      },
+    );
 
-    test('топ-результат встаёт первым в своём разделе, дублей не даёт', () {
+    test('the top result comes first in its section with no duplicates', () {
       final general = {
         'contents': [
           {
@@ -461,8 +462,8 @@ void main() {
     });
   });
 
-  group('страницы', () {
-    test('альбом: строкам достаётся артист и обложка из шапки', () {
+  group('pages', () {
+    test('album: rows get the artist and cover from the header', () {
       final page = {
         'header': {
           'musicResponsiveHeaderRenderer': {
@@ -530,70 +531,73 @@ void main() {
       expect(e.tracks.single.cover, endsWith('cov=w544-h544'));
     });
 
-    test('карусели артиста: MPRE — релиз, UC — похожий, прочее мимо', () {
-      final page = {
-        'header': {
-          'musicImmersiveHeaderRenderer': {
-            'title': {
-              'runs': [
-                {'text': 'Артист'},
-              ],
-            },
-            'description': {'simpleText': 'Биография'},
-            'subscriptionButton': {
-              'subscribeButtonRenderer': {
-                'subscriberCountText': {'simpleText': '39.9M subscribers'},
+    test(
+      'artist carousels: MPRE is a release, UC is similar, the rest passes',
+      () {
+        final page = {
+          'header': {
+            'musicImmersiveHeaderRenderer': {
+              'title': {
+                'runs': [
+                  {'text': 'Артист'},
+                ],
+              },
+              'description': {'simpleText': 'Биография'},
+              'subscriptionButton': {
+                'subscribeButtonRenderer': {
+                  'subscriberCountText': {'simpleText': '39.9M subscribers'},
+                },
+              },
+              'thumbnail': {
+                'thumbnails': [
+                  {'url': 'https://lh3.googleusercontent.com/ava=w120-h120'},
+                ],
               },
             },
-            'thumbnail': {
-              'thumbnails': [
-                {'url': 'https://lh3.googleusercontent.com/ava=w120-h120'},
-              ],
-            },
           },
-        },
-        'contents': [
-          _twoRow(
-            browseId: 'MPREb_rel',
-            title: 'Сингл',
-            subtitleRuns: [
-              {'text': 'Single'},
-              {'text': ' • '},
-              {'text': '2024'},
-            ],
-          ),
-          _twoRow(browseId: 'UCsim', title: 'Похожий'),
-          _twoRow(browseId: 'VLPLvideo', title: 'Карусель видео'),
-          _row(
-            videoId: 'pv1',
-            columns: [
-              _col([
-                {'text': 'Популярный трек'},
-              ]),
-              _col([
-                {'text': 'Song'},
+          'contents': [
+            _twoRow(
+              browseId: 'MPREb_rel',
+              title: 'Сингл',
+              subtitleRuns: [
+                {'text': 'Single'},
                 {'text': ' • '},
-                _artistRun('Артист', 'UCme'),
-                {'text': ' • '},
-                {'text': '3:00'},
-              ]),
-            ],
-          ),
-        ],
-      };
+                {'text': '2024'},
+              ],
+            ),
+            _twoRow(browseId: 'UCsim', title: 'Похожий'),
+            _twoRow(browseId: 'VLPLvideo', title: 'Карусель видео'),
+            _row(
+              videoId: 'pv1',
+              columns: [
+                _col([
+                  {'text': 'Популярный трек'},
+                ]),
+                _col([
+                  {'text': 'Song'},
+                  {'text': ' • '},
+                  _artistRun('Артист', 'UCme'),
+                  {'text': ' • '},
+                  {'text': '3:00'},
+                ]),
+              ],
+            ),
+          ],
+        };
 
-      final e = parseArtistPage(page);
-      expect(e.description, 'Биография');
-      expect(e.albums.map((a) => a.id), ['MPREb_rel']);
-      // The type label stays out of its field, and the year is apart from the
-      // artist.
-      expect(e.albums.single.year, '2024');
-      expect(e.albums.single.artist, '');
-      expect(e.similarArtists.map((a) => a.id), ['UCsim']);
-      expect(e.popularTracks.single.id, 'pv1');
-    });
+        final e = parseArtistPage(page);
+        expect(e.description, 'Биография');
+        expect(e.albums.map((a) => a.id), ['MPREb_rel']);
+        // The type label stays out of its field, and the year is apart from the
+        // artist.
+        expect(e.albums.single.year, '2024');
+        expect(e.albums.single.artist, '');
+        expect(e.similarArtists.map((a) => a.id), ['UCsim']);
+        expect(e.popularTracks.single.id, 'pv1');
+      },
+    );
 
-    test('кнопка «ещё» ищется по заголовку секции рекурсивно', () {
+    test('the more button is found by section title recursively', () {
       final page = {
         'contents': [
           {
@@ -642,8 +646,8 @@ void main() {
     });
   });
 
-  group('мелочи разбора', () {
-    test('апскейл обложки не портит ссылку без размеров', () {
+  group('parsing details', () {
+    test("the cover upscale doesn't spoil a link with no size", () {
       expect(
         upscaleThumb('https://i.ytimg.com/vi/x/hq.jpg'),
         'https://i.ytimg.com/vi/x/hq.jpg',
@@ -651,7 +655,7 @@ void main() {
       expect(upscaleThumb('https://lh3/a=w60-h60'), 'https://lh3/a=w544-h544');
     });
 
-    test('часы', () {
+    test('hours', () {
       expect(parseClock('3:45'), 225);
       expect(parseClock('1:02:03'), 3723);
       expect(parseClock('нет'), isNull);
@@ -659,9 +663,9 @@ void main() {
     });
   });
 
-  group('ссылки и id', () {
+  group('links and ids', () {
     test(
-      'видео важнее плейлиста, browse-префиксы разбираются без сети',
+      'video beats playlist, browse prefixes parse with no network',
       () async {
         expect(
           (await resolve(
@@ -689,7 +693,7 @@ void main() {
       },
     );
 
-    test('сквозные id: трек не путается с альбомом и плейлистом', () {
+    test("composite ids: a track isn't mixed up with an album or playlist", () {
       expect(parseYtmTrackId(ytmTrackId('vid')), 'vid');
       expect(parseYtmTrackId(ytmAlbumId('MPRE1')), isNull);
       expect(parseYtmTrackId(ytmArtistId('UC1')), isNull);
@@ -700,14 +704,14 @@ void main() {
       expect(MusicSource.fromId(ytmTrackId('vid')), MusicSource.ytmusic);
     });
 
-    test('id внутри HTML берётся целиком', () {
+    test('an id inside HTML is taken whole', () {
       expect(findId('junk MPREb_abc-123"', 'MPRE'), 'MPREb_abc-123');
       expect(findId('нет', 'UC'), isNull);
     });
   });
 
-  group('маппинг в общие сущности', () {
-    test('трек: ссылка на watch, артист по умолчанию', () {
+  group('mapping to common entities', () {
+    test('track: a watch link, the default artist', () {
       final t = trackFromYtm(
         const YtmRawTrack(
           id: 'vid',
@@ -719,15 +723,15 @@ void main() {
         ),
       );
       expect(t.id, 'ytm:vid');
-      expect(t.name, kYtmUntitled);
-      expect(t.artist, kYtmUnknownArtist);
+      expect(t.name, providerText.untitled);
+      expect(t.artist, providerText.unknownArtist);
       expect(t.cover, isNull);
       expect(t.artistId, isNull);
       expect(t.url, 'https://music.youtube.com/watch?v=vid');
       expect(t.source, MusicSource.ytmusic);
     });
 
-    test('плейлист: ссылка на list без служебного VL', () {
+    test('playlist: a list link without the service VL', () {
       final p = playlistFromYtm(
         const YtmRawPlaylist(
           id: 'VLPL42',

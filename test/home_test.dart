@@ -71,8 +71,8 @@ ProviderContainer _container(MusicProvider provider) {
 void main() {
   setUp(resetDiscoverCache);
 
-  group('витрина', () {
-    test('чарт берётся у площадки и кешируется', () async {
+  group('shelf', () {
+    test('the chart comes from the platform and is cached', () async {
       final provider = _FakeProvider(charts: [_track('a')]);
       final c = _container(provider);
 
@@ -90,7 +90,7 @@ void main() {
       expect(provider.chartCalls, 1);
     });
 
-    test('пустой ответ не кешируется, провайдер повторяет запрос', () async {
+    test("an empty answer isn't cached and the provider retries", () async {
       final provider = _FakeProvider(charts: [_track('a')], failFirst: 1);
       final c = _container(provider);
 
@@ -101,7 +101,7 @@ void main() {
       expect(provider.chartCalls, 2);
     });
 
-    test('площадка молчит совсем — блока нет', () async {
+    test('a fully silent platform gives no block', () async {
       final provider = _FakeProvider(charts: [_track('a')], failFirst: 99);
       final c = _container(provider);
       expect(
@@ -112,7 +112,7 @@ void main() {
       expect(provider.chartCalls, kDiscoverRetries.length + 1);
     });
 
-    test('новинки альбомами разбираются как альбомы', () async {
+    test('releases as albums parse as albums', () async {
       final album = Playlist(
         id: 'ym:1',
         title: 'Альбом',
@@ -126,7 +126,7 @@ void main() {
       expect((result!.block as DiscoverAlbums).albums.single.id, 'ym:1');
     });
 
-    test('новинки треками разбираются как треки', () async {
+    test('releases as tracks parse as tracks', () async {
       final c = _container(_FakeProvider(releases: NewTracks([_track('n')])));
       final result = await c.read(
         discoverProvider(DiscoverMode.newReleases).future,

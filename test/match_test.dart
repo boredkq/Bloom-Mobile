@@ -19,29 +19,29 @@ Track _track(
 );
 
 void main() {
-  group('счёт', () {
-    test('тот же трек с другим оформлением названия совпадает уверенно', () {
+  group('score', () {
+    test('the same track with another title style matches confidently', () {
       final src = _track('Ночь', source: MusicSource.soundcloud);
       final cand = _track('НОЧЬ (Official Audio)');
 
       expect(matchScore(cand, src), greaterThanOrEqualTo(kAutoMatchScore));
     });
 
-    test('лишний артист в списке не штрафуется', () {
+    test("an extra artist in the list isn't penalized", () {
       final src = _track('Ночь', artist: 'Один');
       final cand = _track('Ночь', artist: 'Один, Другой');
 
       expect(matchScore(cand, src), greaterThanOrEqualTo(kAutoMatchScore));
     });
 
-    test('артист, склеенный с названием, всё равно узнаётся', () {
+    test('an artist glued to the title is still recognized', () {
       final src = _track('Ночь', artist: 'Один');
       final cand = _track('Один - Ночь', artist: '');
 
       expect(matchScore(cand, src), greaterThan(kMinMatchScore));
     });
 
-    test('часовая версия того же названия отбраковывается длительностью', () {
+    test('an hour-long version of the same title is rejected by duration', () {
       final src = _track('Ночь', seconds: 200);
       final hour = _track('Ночь', seconds: 3600);
 
@@ -49,14 +49,14 @@ void main() {
       expect(matchScore(hour, src), lessThan(matchScore(_track('Ночь'), src)));
     });
 
-    test('другой трек того же артиста в достоверные не проходит', () {
+    test("another track by the same artist doesn't pass as reliable", () {
       final src = _track('Ночь', artist: 'Один');
       final other = _track('Утро', artist: 'Один');
 
       expect(matchScore(other, src), lessThan(kAutoMatchScore));
     });
 
-    test('несколько секунд разницы совпадению не мешают', () {
+    test("a few seconds of difference don't hurt a match", () {
       final src = _track('Ночь', seconds: 200);
       final cand = _track('Ночь', seconds: 203);
 
@@ -64,8 +64,8 @@ void main() {
     });
   });
 
-  group('ранжирование', () {
-    test('лучший идёт первым, слабые отсекаются порогом', () {
+  group('ranking', () {
+    test('the best comes first, weak ones are cut by the threshold', () {
       final src = _track('Ночь', artist: 'Один', seconds: 200);
       final ranked = rankMatches(
         [
@@ -82,7 +82,7 @@ void main() {
       expect(ranked.length, 2);
     });
 
-    test('лимит — не больше, чем просили', () {
+    test('the limit: no more than asked', () {
       final src = _track('Ночь');
       final ranked = rankMatches(
         [
@@ -97,7 +97,7 @@ void main() {
       expect(ranked.length, 1);
     });
 
-    test('пустая выдача — пустой список, а не падение', () {
+    test('empty results give an empty list, not a crash', () {
       expect(rankMatches([], _track('Ночь')), isEmpty);
     });
   });

@@ -34,7 +34,7 @@ ProviderContainer _container(JsonStore store) {
 }
 
 void main() {
-  test('дизлайк переживает перезапуск вместе с самим треком', () {
+  test('a dislike survives a restart along with the track', () {
     final store = JsonStore.memory();
     _container(
       store,
@@ -47,7 +47,7 @@ void main() {
     expect(state.dislikes.single.name, 'Song');
   });
 
-  test('список дизлайков — новые сверху', () async {
+  test('the dislikes list: new on top', () async {
     final c = _container(JsonStore.memory());
     final wave = c.read(waveStoreProvider.notifier);
     wave.toggleDislike(_track('sc:1'));
@@ -59,7 +59,7 @@ void main() {
     ]);
   });
 
-  test('смена площадки трека уносит дизлайк с собой', () {
+  test("switching a track's platform carries the dislike along", () {
     final c = _container(JsonStore.memory());
     c.read(waveStoreProvider.notifier).toggleDislike(_track('sc:1'));
     c.read(libraryProvider.notifier).replaceTrack('sc:1', _track('ytm:a'));
@@ -69,7 +69,7 @@ void main() {
     expect(state.isDisliked('ytm:a'), isTrue);
   });
 
-  test('«очистить» и повторный дизлайк снимают метки', () {
+  test('clearing and a repeat dislike remove marks', () {
     final c = _container(JsonStore.memory());
     final wave = c.read(waveStoreProvider.notifier);
     expect(wave.toggleDislike(_track('sc:1')), isTrue);
@@ -81,40 +81,46 @@ void main() {
     expect(c.read(waveStoreProvider).dislikes, isEmpty);
   });
 
-  test('показанное волной помнится, старше двух недель — забывается', () {
-    final store = JsonStore.memory();
-    final c = _container(store);
-    final wave = c.read(waveStoreProvider.notifier);
-    wave.markShown(['sc:1', 'sc:2']);
-    expect(wave.shownIds(), {'sc:1', 'sc:2'});
+  test(
+    'what the wave showed is remembered, older than two weeks is forgotten',
+    () {
+      final store = JsonStore.memory();
+      final c = _container(store);
+      final wave = c.read(waveStoreProvider.notifier);
+      wave.markShown(['sc:1', 'sc:2']);
+      expect(wave.shownIds(), {'sc:1', 'sc:2'});
 
-    final db = c.read(dbProvider);
-    db.exec('INSERT INTO wave_shown (track_id, at) VALUES (?, ?)', [
-      'sc:3',
-      BloomDb.now() - (kWaveShownDays + 1) * 24 * 3600 * 1000,
-    ]);
-    expect(wave.shownIds(), isNot(contains('sc:3')));
-    _container(store).read(waveStoreProvider);
-    expect(db.value('SELECT count(*) FROM wave_shown'), 2);
-  });
+      final db = c.read(dbProvider);
+      db.exec('INSERT INTO wave_shown (track_id, at) VALUES (?, ?)', [
+        'sc:3',
+        BloomDb.now() - (kWaveShownDays + 1) * 24 * 3600 * 1000,
+      ]);
+      expect(wave.shownIds(), isNot(contains('sc:3')));
+      _container(store).read(waveStoreProvider);
+      expect(db.value('SELECT count(*) FROM wave_shown'), 2);
+    },
+  );
 
-  test('курсор станции — в kv базы ключом ПК и переживает перезапуск', () {
-    final store = JsonStore.memory();
-    const seed = WaveSeed('sc', 'track:42');
-    final c = _container(store);
-    final wave = c.read(waveStoreProvider.notifier);
-    expect(wave.cursorOf(seed), '');
-    wave.saveCursors({seed: '20'});
+  test(
+    "a station cursor is in the database's kv under its shared key and survives a restart",
+    () {
+      final store = JsonStore.memory();
+      const seed = WaveSeed('sc', 'track:42');
+      final c = _container(store);
+      final wave = c.read(waveStoreProvider.notifier);
+      expect(wave.cursorOf(seed), '');
+      wave.saveCursors({seed: '20'});
 
-    final cursors = c.read(dbProvider).getMap('wave.cursors');
-    expect((cursors['sc|track:42'] as Map)['c'], '20');
-    expect(
-      _container(store).read(waveStoreProvider.notifier).cursorOf(seed),
-      '20',
-    );
-  });
+      final cursors = c.read(dbProvider).getMap('wave.cursors');
+      expect((cursors['sc|track:42'] as Map)['c'], '20');
+      expect(
+        _container(store).read(waveStoreProvider.notifier).cursorOf(seed),
+        '20',
+      );
+    },
+  );
 
-  test('курсоров не больше трёхсот — старые уходят первыми', () async {
+  test('at most three hundred cursors, old ones go first', () async {
     final wave = _container(
       JsonStore.memory(),
     ).read(waveStoreProvider.notifier);
@@ -127,7 +133,7 @@ void main() {
     expect(wave.cursorOf(const WaveSeed('sc', 'track:0')), '20');
   });
 
-  test('сдвиг сидов растёт с каждой «Моей волной»', () {
+  test('the seed shift grows with each My Wave', () {
     final store = JsonStore.memory();
     final wave = _container(store).read(waveStoreProvider.notifier);
     expect(wave.takeRotation(), 0);
@@ -135,7 +141,7 @@ void main() {
     expect(_container(store).read(waveStoreProvider.notifier).rotation, 2);
   });
 
-  test('идущая волна возвращается после перезапуска, конец её стирает', () {
+  test('a running wave returns after a restart, its end erases it', () {
     final store = JsonStore.memory();
     _container(store)
         .read(waveStoreProvider.notifier)
@@ -159,23 +165,26 @@ void main() {
     expect(_container(store).read(waveStoreProvider.notifier).savedRun, isNull);
   });
 
-  test('выбранная площадка запоминается кодом ПК, и YouTube Music тоже', () {
-    final store = JsonStore.memory();
-    expect(
-      _container(store).read(waveStoreProvider).source,
-      MusicSource.soundcloud,
-    );
-    _container(
-      store,
-    ).read(waveStoreProvider.notifier).setSource(MusicSource.ytmusic);
-    expect(store.readMap(kWaveKey)['source'], 'ytm');
-    expect(
-      _container(store).read(waveStoreProvider).source,
-      MusicSource.ytmusic,
-    );
-  });
+  test(
+    'the chosen platform is remembered by its shared code, YouTube Music too',
+    () {
+      final store = JsonStore.memory();
+      expect(
+        _container(store).read(waveStoreProvider).source,
+        MusicSource.soundcloud,
+      );
+      _container(
+        store,
+      ).read(waveStoreProvider.notifier).setSource(MusicSource.ytmusic);
+      expect(store.readMap(kWaveKey)['source'], 'ytm');
+      expect(
+        _container(store).read(waveStoreProvider).source,
+        MusicSource.ytmusic,
+      );
+    },
+  );
 
-  test('выбран Яндекс, но входа нет — волна идёт с SoundCloud', () {
+  test('Yandex is chosen but not signed in: the wave goes from SoundCloud', () {
     final c = _container(JsonStore.memory());
     c.read(waveStoreProvider.notifier).setSource(MusicSource.yandex);
 

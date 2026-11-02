@@ -1,4 +1,4 @@
-/// The interface font: the catalog, recognizing a saved choice (a CSS stack
+/// The interface font: the catalog, recognizing a saved choice (a font stack
 /// included) and storing it in settings.
 library;
 
@@ -24,7 +24,7 @@ ProviderContainer _container(JsonStore store) {
 
 void main() {
   group('normalizeFont', () {
-    test('десктопный CSS-стек узнаётся по первому семейству', () {
+    test('a font stack is recognized by its first family', () {
       expect(
         normalizeFont("'Minecraft Rus',monospace", const []),
         'Minecraft Rus',
@@ -32,17 +32,17 @@ void main() {
       expect(normalizeFont('Inter, system-ui, sans-serif', const []), 'Inter');
     });
 
-    test('Monocraft переезжает на Minecraft Rus', () {
+    test('Monocraft moves to Minecraft Rus', () {
       expect(normalizeFont("'Monocraft',monospace", const []), 'Minecraft Rus');
     });
 
-    test('Comic Sans, мусор и пустота — Inter', () {
+    test('Comic Sans, junk and empty give Inter', () {
       expect(normalizeFont("'Comic Sans MS',cursive", const []), kDefaultFont);
       expect(normalizeFont(42, const []), kDefaultFont);
       expect(normalizeFont(null, const []), kDefaultFont);
     });
 
-    test('свой шрифт узнаётся, пока он есть в списке', () {
+    test("an own font is recognized while it's in the list", () {
       expect(
         normalizeFont('bloomfont-uf1', const ['bloomfont-uf1']),
         'bloomfont-uf1',
@@ -51,20 +51,20 @@ void main() {
     });
   });
 
-  test('сигнатура файла шрифта', () {
+  test('font file signature', () {
     expect(looksLikeFont([0, 1, 0, 0, ...List.filled(8, 0)]), isTrue);
     expect(looksLikeFont('OTTO'.codeUnits + List.filled(8, 0)), isTrue);
     expect(looksLikeFont('PK'.codeUnits + List.filled(8, 0)), isFalse);
     expect(looksLikeFont([0, 1, 0, 0]), isFalse);
   });
 
-  test('имя плитки — имя файла без расширения, не длиннее 40', () {
+  test("the tile's name is the file name without extension, at most 40", () {
     expect(fontNameFromFile('JetBrainsMono-Bold.ttf'), 'JetBrainsMono-Bold');
     expect(fontNameFromFile('.ttf'), '.ttf');
     expect(fontNameFromFile('${'a' * 50}.otf').length, 40);
   });
 
-  test('выбор шрифта сохраняется и переживает перезапуск', () {
+  test('the font choice is saved and survives a restart', () {
     final store = JsonStore.memory();
     final c = _container(store);
     expect(c.read(uiFontProvider), kDefaultFont);
@@ -75,14 +75,14 @@ void main() {
     expect(again.read(settingsProvider).fontFamily, 'Minecraft Rus');
   });
 
-  test('выбранный свой шрифт без записи в сторе рисуется Inter', () {
+  test('a chosen own font with no store entry draws as Inter', () {
     final store = JsonStore.memory();
     final c = _container(store);
     c.read(settingsProvider.notifier).setFontFamily('bloomfont-gone');
     expect(c.read(uiFontProvider), kDefaultFont);
   });
 
-  test('неподходящие файлы отсеиваются до чтения', () async {
+  test('unsuitable files are dropped before reading', () async {
     final c = _container(JsonStore.memory());
     var reads = 0;
     final res = await c.read(userFontsProvider.notifier).addFiles([

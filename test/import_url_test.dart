@@ -98,41 +98,44 @@ Future<ImportResult> _import(
 );
 
 void main() {
-  test('цель «Создать» делает плейлист с источником и всеми треками', () async {
-    final env = _setup(
-      _FakeSoundCloud(
-        sets: {
-          'https://sc/one': [_track('sc:1'), _track('sc:2')],
-        },
-      ),
-    );
+  test(
+    'the Create target makes a playlist with a source and all tracks',
+    () async {
+      final env = _setup(
+        _FakeSoundCloud(
+          sets: {
+            'https://sc/one': [_track('sc:1'), _track('sc:2')],
+          },
+        ),
+      );
 
-    final result = await _import(
-      env,
-      'https://sc/one',
-      const ImportTarget.create(),
-    );
+      final result = await _import(
+        env,
+        'https://sc/one',
+        const ImportTarget.create(),
+      );
 
-    expect(result.added, 2);
-    final playlist = env.container.read(libraryProvider).playlists.single;
-    expect(playlist.id, result.createdId);
-    expect(playlist.trackIds, ['sc:1', 'sc:2']);
-    // The source is remembered, or the playlist would have nothing to refresh
-    // from. The refresh goes by collection id on its platform.
-    final source = playlist.sources.single;
-    expect(source.toJson(), {
-      'url': 'https://sc/one',
-      'title': 'Сет',
-      'owner': 'Владелец',
-      'provider': 'sc',
-      'id': 'sc:set:one',
-      'kind': 'playlist',
-      'cover': '',
-    });
-    expect(PlSourceRef.fromJson(source.toJson())?.toJson(), source.toJson());
-  });
+      expect(result.added, 2);
+      final playlist = env.container.read(libraryProvider).playlists.single;
+      expect(playlist.id, result.createdId);
+      expect(playlist.trackIds, ['sc:1', 'sc:2']);
+      // The source is remembered, or the playlist would have nothing to refresh
+      // from. The refresh goes by collection id on its platform.
+      final source = playlist.sources.single;
+      expect(source.toJson(), {
+        'url': 'https://sc/one',
+        'title': 'Сет',
+        'owner': 'Владелец',
+        'provider': 'sc',
+        'id': 'sc:set:one',
+        'kind': 'playlist',
+        'cover': '',
+      });
+      expect(PlSourceRef.fromJson(source.toJson())?.toJson(), source.toJson());
+    },
+  );
 
-  test('источник без id или площадки не читается', () {
+  test("a source with no id or platform isn't read", () {
     expect(PlSourceRef.fromJson({'url': 'https://sc/one'}), isNull);
     expect(PlSourceRef.fromJson({'id': 'sc:set:1'}), isNull);
     expect(
@@ -141,30 +144,35 @@ void main() {
     );
   });
 
-  test('цель «Все треки» не создаёт плейлист и не считает дубли', () async {
-    final env = _setup(
-      _FakeSoundCloud(
-        sets: {
-          'https://sc/one': [_track('sc:1'), _track('sc:2')],
-        },
-      ),
-    );
-    env.container.read(libraryProvider.notifier).addToLibrary([_track('sc:1')]);
+  test(
+    'the All tracks target makes no playlist and counts no duplicates',
+    () async {
+      final env = _setup(
+        _FakeSoundCloud(
+          sets: {
+            'https://sc/one': [_track('sc:1'), _track('sc:2')],
+          },
+        ),
+      );
+      env.container.read(libraryProvider.notifier).addToLibrary([
+        _track('sc:1'),
+      ]);
 
-    final result = await _import(
-      env,
-      'https://sc/one',
-      const ImportTarget(ImportTargetKind.library),
-    );
+      final result = await _import(
+        env,
+        'https://sc/one',
+        const ImportTarget(ImportTargetKind.library),
+      );
 
-    expect(result.added, 1);
-    expect(result.total, 2);
-    expect(result.createdId, isNull);
-    expect(env.container.read(libraryProvider).playlists, isEmpty);
-    expect(env.container.read(libraryProvider).inLib.length, 2);
-  });
+      expect(result.added, 1);
+      expect(result.total, 2);
+      expect(result.createdId, isNull);
+      expect(env.container.read(libraryProvider).playlists, isEmpty);
+      expect(env.container.read(libraryProvider).inLib.length, 2);
+    },
+  );
 
-  test('цель «Любимые» лайкает только ещё не залайканное', () async {
+  test("the Favorites target likes only what isn't liked yet", () async {
     final env = _setup(
       _FakeSoundCloud(
         sets: {
@@ -184,7 +192,7 @@ void main() {
     expect(env.container.read(libraryProvider).favs.length, 2);
   });
 
-  test('импорт в существующий плейлист привязывает источник', () async {
+  test('importing into an existing playlist binds the source', () async {
     final env = _setup(
       _FakeSoundCloud(
         sets: {
@@ -222,7 +230,7 @@ void main() {
     );
   });
 
-  test('ссылка на одиночный трек отклоняется', () async {
+  test('a single track link is rejected', () async {
     final env = _setup(
       _FakeSoundCloud(singles: {'https://sc/track': _track('sc:1')}),
     );
@@ -233,7 +241,7 @@ void main() {
     );
   });
 
-  test('неизвестная ссылка отклоняется', () async {
+  test('an unknown link is rejected', () async {
     final env = _setup(_FakeSoundCloud());
     expect(
       () => _import(env, 'https://example.com/x', const ImportTarget.create()),

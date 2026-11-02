@@ -73,7 +73,7 @@ Future<void> _pump(
 );
 
 void main() {
-  group('сцена волны на главной', () {
+  group('the wave scene on home', () {
     // The circle runs on a ticker for good: no `pumpAndSettle`, frames by hand.
     Future<void> settle(WidgetTester tester) async {
       await tester.pump();
@@ -93,7 +93,7 @@ void main() {
       );
     }
 
-    testWidgets('плеер пуст — «Моя волна», ряда волн без данных нет', (
+    testWidgets('an empty player: My Wave, no wave row with no data', (
       tester,
     ) async {
       await hero(tester, _container());
@@ -104,9 +104,7 @@ void main() {
       expect(find.text('Встряхнуть Мою волну'), findsNothing);
     });
 
-    testWidgets('долгое нажатие по «Моей волне» открывает настройку', (
-      tester,
-    ) async {
+    testWidgets('a long press on My Wave opens its setup', (tester) async {
       await hero(tester, _container());
       await settle(tester);
 
@@ -118,7 +116,7 @@ void main() {
       expect(find.text('Яндекс.Музыка'), findsOneWidget);
     });
 
-    testWidgets('что-то играет — артист и название вместо «Моей волны»', (
+    testWidgets('something plays: artist and title instead of My Wave', (
       tester,
     ) async {
       await hero(tester, _container(playing: _track('sc:1')));
@@ -132,8 +130,8 @@ void main() {
     });
   });
 
-  group('шторка дизлайков', () {
-    testWidgets('пустой список объясняет себя словами', (tester) async {
+  group('dislikes sheet', () {
+    testWidgets('an empty list explains itself', (tester) async {
       final container = _container();
       await _pump(
         tester,
@@ -151,7 +149,7 @@ void main() {
       expect(find.text('Дизлайков пока нет'), findsOneWidget);
     });
 
-    testWidgets('строка показывает трек, крестик снимает метку', (
+    testWidgets('a row shows the track, the cross removes the mark', (
       tester,
     ) async {
       final container = _container();

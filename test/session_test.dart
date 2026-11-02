@@ -68,7 +68,7 @@ void _save(
 }
 
 void main() {
-  test('очередь, порядок до перемешки и режимы переживают перезапуск', () {
+  test('the queue, the order before shuffle and modes survive a restart', () {
     final (open, _) = _app();
     final queue = [_track('c'), _track('a'), _track('b')];
     _save(
@@ -92,7 +92,7 @@ void main() {
     expect(back.cleared, isFalse);
   });
 
-  test('kv session — вид ПК', () {
+  test('kv session format', () {
     final (open, db) = _app();
     _save(
       open(),
@@ -118,7 +118,7 @@ void main() {
     );
   });
 
-  test('длинная очередь пишется целиком', () {
+  test('a long queue is written whole', () {
     final (open, _) = _app();
     _save(open(), [for (var i = 0; i < 500; i++) _track('t$i')], index: 400);
     final back = open().read(sessionProvider)!;
@@ -126,24 +126,27 @@ void main() {
     expect(back.track.id, 'sc:t400');
   });
 
-  test('трек ищется по id; пропал — место остаётся, позиция нет', () {
-    final (open, db) = _app();
-    _save(
-      open(),
-      [_track('a'), _track('b')],
-      index: 1,
-      position: const Duration(seconds: 30),
-    );
-    db.set(kSessionKey, {...db.getMap(kSessionKey), 'index': 0});
-    expect(open().read(sessionProvider)!.track.id, 'sc:b');
+  test(
+    "a track is found by id; if gone its place stays, the position doesn't",
+    () {
+      final (open, db) = _app();
+      _save(
+        open(),
+        [_track('a'), _track('b')],
+        index: 1,
+        position: const Duration(seconds: 30),
+      );
+      db.set(kSessionKey, {...db.getMap(kSessionKey), 'index': 0});
+      expect(open().read(sessionProvider)!.track.id, 'sc:b');
 
-    db.set(kSessionKey, {...db.getMap(kSessionKey), 'id': 'sc:gone'});
-    final lost = open().read(sessionProvider)!;
-    expect(lost.index, 0);
-    expect(lost.position, Duration.zero);
-  });
+      db.set(kSessionKey, {...db.getMap(kSessionKey), 'id': 'sc:gone'});
+      final lost = open().read(sessionProvider)!;
+      expect(lost.index, 0);
+      expect(lost.position, Duration.zero);
+    },
+  );
 
-  test('пустая очередь строки не трогает; очистка помечает сессию', () {
+  test('an empty queue leaves the rows alone; clearing marks the session', () {
     final (open, _) = _app();
     final c = open();
     _save(c, [_track('a'), _track('b')], index: 1);
@@ -154,30 +157,33 @@ void main() {
     expect(back.queue.map((t) => t.id), ['sc:a', 'sc:b']);
   });
 
-  test('«Продолжить» поднимает очередь до очистки на том же треке', () {
-    final (open, _) = _app();
-    _save(
-      open(),
-      [_track('b')],
-      position: const Duration(seconds: 30),
-      full: [_track('a'), _track('b'), _track('c')],
-      repeat: PlayerRepeat.all,
-    );
-    final data = open().read(sessionProvider)!;
-    final cont = data.forContinue();
-    expect(cont.queue.length, 3);
-    expect(cont.track.id, 'sc:b');
-    expect(cont.position, const Duration(seconds: 30));
-    expect(cont.repeat, PlayerRepeat.all);
-    expect(cont.full, isEmpty);
+  test(
+    'Continue brings the queue back to before the clear, on the same track',
+    () {
+      final (open, _) = _app();
+      _save(
+        open(),
+        [_track('b')],
+        position: const Duration(seconds: 30),
+        full: [_track('a'), _track('b'), _track('c')],
+        repeat: PlayerRepeat.all,
+      );
+      final data = open().read(sessionProvider)!;
+      final cont = data.forContinue();
+      expect(cont.queue.length, 3);
+      expect(cont.track.id, 'sc:b');
+      expect(cont.position, const Duration(seconds: 30));
+      expect(cont.repeat, PlayerRepeat.all);
+      expect(cont.full, isEmpty);
 
-    final (open2, _) = _app();
-    _save(open2(), [_track('a'), _track('b')], index: 1);
-    final plain = open2().read(sessionProvider)!;
-    expect(identical(plain.forContinue(), plain), isTrue);
-  });
+      final (open2, _) = _app();
+      _save(open2(), [_track('a'), _track('b')], index: 1);
+      final plain = open2().read(sessionProvider)!;
+      expect(identical(plain.forContinue(), plain), isTrue);
+    },
+  );
 
-  test('свой плейлист называется в карте именем с карточки', () {
+  test('an own playlist is named in the map from its card', () {
     final (open, db) = _app();
     final c = open();
     final pl = c
@@ -190,10 +196,10 @@ void main() {
     expect(src['name'], 'Вечер');
   });
 
-  group('источник — карта ПК', () {
+  group('the source is a map', () {
     PlaySource? back(PlaySource s) => PlaySource.fromJson(s.toJson());
 
-    test('свои вида переживают запись', () {
+    test('own kinds survive writing', () {
       expect((back(const LibSource('all')) as LibSource).listId, 'all');
       expect((back(const LibSource('history')) as LibSource).listId, 'history');
       final set =
@@ -233,7 +239,7 @@ void main() {
       expect(single.label, 'a');
     });
 
-    test('карты, записанные ПК, читаются', () {
+    test('maps written by the computer are read', () {
       expect(
         (PlaySource.fromJson({'kind': 'playlist', 'id': 'lib'}) as LibSource)
             .listId,

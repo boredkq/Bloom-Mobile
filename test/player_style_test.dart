@@ -23,24 +23,24 @@ ProviderContainer _container(JsonStore store) {
 }
 
 void main() {
-  test('по умолчанию — обычный плеер', () {
+  test('the regular player by default', () {
     final c = _container(JsonStore.memory());
     expect(c.read(playerStyleProvider), PlayerStyle.standard);
     expect(c.read(playerStyleProvider).isVinyl, isFalse);
   });
 
-  test('выбранный стиль читается с диска', () {
+  test('the chosen style is read from disk', () {
     final c = _container(JsonStore.memory({'playerStyle': 'vinyl'}));
     expect(c.read(playerStyleProvider), PlayerStyle.vinyl);
     expect(c.read(playerStyleProvider).isVinyl, isTrue);
   });
 
-  test('десктопный стиль, которого у нас нет, — это обычный плеер', () {
+  test("a style I don't have means the regular player", () {
     final c = _container(JsonStore.memory({'playerStyle': 'cinema'}));
     expect(c.read(playerStyleProvider), PlayerStyle.standard);
   });
 
-  test('выбор уезжает на диск', () {
+  test('the choice reaches the disk', () {
     final store = JsonStore.memory();
     final c = _container(store);
     c.read(playerStyleProvider.notifier).setStyle(PlayerStyle.vinyl);

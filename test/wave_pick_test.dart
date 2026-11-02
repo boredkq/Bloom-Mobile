@@ -71,8 +71,8 @@ List<Track> _page(int n, {int from = 0}) => [
 ];
 
 void main() {
-  group('что отсеивается', () {
-    test('играющий, стоящий в очереди и уже услышанный в волне', () {
+  group('what gets dropped', () {
+    test('the playing, the queued and what the wave already played', () {
       final out = pickBatch(
         [_page(4)],
         _ctx(
@@ -84,7 +84,7 @@ void main() {
       expect(_ids(out), ['sc:2']);
     });
 
-    test('дизлайк — про сам трек, соседей того же артиста не трогает', () {
+    test('a dislike is about the track itself, same-artist neighbors stay', () {
       final out = pickBatch([
         [
           _t('sc:1', artist: 'A'),
@@ -96,21 +96,21 @@ void main() {
       expect(_ids(out), isNot(contains('sc:1')));
     });
 
-    test('находка, которая уже в библиотеке, находкой не считается', () {
+    test("a find already in the library isn't a find", () {
       final out = pickBatch([
         _page(3),
       ], _ctx(library: [_t('sc:1', artist: 'A1')]));
       expect(_ids(out), isNot(contains('sc:1')));
     });
 
-    test('слушанное за неделю и показанное за две не повторяем', () {
+    test('no repeats of what was heard this week or shown in two weeks', () {
       final out = pickBatch([
         _page(4),
       ], _ctx(recent: {'sc:0'}, shown: {'sc:1'}));
       expect(_ids(out)..sort(), ['sc:2', 'sc:3']);
     });
 
-    test('отсеялось всё — лучше повтор, чем тишина, но не дизлайк', () {
+    test('all dropped: better a repeat than silence, but not a dislike', () {
       final out = pickBatch([
         _page(3),
       ], _ctx(recent: {'sc:0'}, shown: {'sc:1'}, disliked: {'sc:2'}));
@@ -118,26 +118,26 @@ void main() {
     });
   });
 
-  group('порядок', () {
-    test('верх станции идёт выше хвоста', () {
+  group('order', () {
+    test("the station's top goes above its tail", () {
       final out = pickBatch([_page(10)], _ctx());
       expect(out.first.id, 'sc:0');
       expect(out.last.id, 'sc:9');
     });
 
-    test('лайк поднимает', () {
+    test('a like lifts', () {
       // Without a like the sixth (sc:5) stays sixth; +8 is four places.
       final out = pickBatch([_page(10)], _ctx(favs: {'sc:5'}));
       expect(_ids(out).indexOf('sc:5'), lessThan(3));
     });
 
-    test('артист, которого дослушивали в этой волне, поднимается', () {
+    test('an artist heard through in this wave rises', () {
       // Ranks 0/5/10/15: the last, with +12, passes the second and third.
       final out = pickBatch([_page(4)], _ctx(run: _run(bonus: {'a3': 12})));
       expect(_ids(out).indexOf('sc:3'), 1);
     });
 
-    test('бонус артиста не больше 12, а пролистанный уходит вниз', () {
+    test('the artist bonus is at most 12, and a skipped one goes down', () {
       // Without a cap 100 points would pull the last one to first place.
       final up = pickBatch([_page(10)], _ctx(run: _run(bonus: {'a9': 100})));
       expect(_ids(up).indexOf('sc:9'), greaterThan(2));
@@ -145,7 +145,7 @@ void main() {
       expect(down.first.id, isNot('sc:0'));
     });
 
-    test('бонус считается по каждому имени трека', () {
+    test('the bonus goes by each name on a track', () {
       final page = [
         _t('sc:0', artist: 'X0'),
         _t('sc:9', artist: 'Other feat. Liked'),
@@ -155,8 +155,8 @@ void main() {
     });
   });
 
-  group('артисты в пачке', () {
-    test('больше двух треков артиста — только в хвост короткой пачки', () {
+  group('artists in a batch', () {
+    test('more than two by an artist only in the tail of a short batch', () {
       final page = [
         for (var i = 0; i < 4; i++) _t('sc:$i', artist: 'Same'),
         for (var i = 10; i < 14; i++) _t('sc:$i', artist: 'B$i'),
@@ -168,21 +168,24 @@ void main() {
       expect(all.length, 8);
     });
 
-    test('потолок — по каждому имени: «A feat. B» занимает место и A, и B', () {
-      final page = [
-        _t('sc:1', artist: 'A'),
-        _t('sc:2', artist: 'C'),
-        _t('sc:3', artist: 'A feat. B'),
-        _t('sc:4', artist: 'D'),
-        _t('sc:5', artist: 'B, A'),
-        _t('sc:6', artist: 'E'),
-      ];
-      final out = pickBatch([page], _ctx(), take: 5);
-      // A's third track didn't get in, though its line is its own.
-      expect(_ids(out), isNot(contains('sc:5')));
-    });
+    test(
+      'the cap goes by each name: "A feat. B" takes a place for both A and B',
+      () {
+        final page = [
+          _t('sc:1', artist: 'A'),
+          _t('sc:2', artist: 'C'),
+          _t('sc:3', artist: 'A feat. B'),
+          _t('sc:4', artist: 'D'),
+          _t('sc:5', artist: 'B, A'),
+          _t('sc:6', artist: 'E'),
+        ];
+        final out = pickBatch([page], _ctx(), take: 5);
+        // A's third track didn't get in, though its line is its own.
+        expect(_ids(out), isNot(contains('sc:5')));
+      },
+    );
 
-    test('один артист дважды подряд не стоит, даже среди соавторов', () {
+    test('one artist never twice in a row, even among co-authors', () {
       final page = [
         _t('sc:1', artist: 'A'),
         _t('sc:2', artist: 'A & B'),
@@ -198,8 +201,8 @@ void main() {
     });
   });
 
-  group('«Моя волна»', () {
-    test('свой трек — через каждые четыре новых', () {
+  group('My Wave', () {
+    test('an own track after every four new ones', () {
       final lib = [for (var i = 100; i < 110; i++) _t('sc:$i', artist: 'L$i')];
       final out = pickBatch(
         [_page(16)],
@@ -214,7 +217,7 @@ void main() {
       expect(out.take(4).any((t) => own.contains(t.id)), isFalse);
     });
 
-    test('свои, слышанные на днях или с дизлайком, не подмешиваются', () {
+    test("own ones heard lately or disliked aren't mixed in", () {
       final lib = [
         _t('sc:100', artist: 'L0'),
         _t('sc:101', artist: 'L1'),
@@ -234,7 +237,7 @@ void main() {
       expect(_ids(out), isNot(contains('sc:101')));
     });
 
-    test('в других волнах своих треков нет', () {
+    test('other waves have no own tracks', () {
       final out = pickBatch([
         _page(8),
       ], _ctx(library: [_t('sc:100', artist: 'L')]));
@@ -242,30 +245,33 @@ void main() {
     });
   });
 
-  test('станция Яндекса: свой порядок, уходит только очередь и дизлайки', () {
-    final page = [
-      _t('ym:1', artist: 'A', source: MusicSource.yandex),
-      _t('ym:2', artist: 'A', source: MusicSource.yandex),
-      _t('ym:3', artist: 'A', source: MusicSource.yandex),
-      _t('ym:4', artist: 'B', source: MusicSource.yandex),
-      _t('ym:5', artist: 'C', source: MusicSource.yandex),
-    ];
-    final out = pickBatch(
-      [page],
-      _ctx(
-        run: _run(native: true),
-        queue: [page[4]],
-        disliked: {'ym:2'},
-        // The station handles what's heard and own by itself.
-        recent: {'ym:3'},
-        library: [page[0]],
-      ),
-    );
-    expect(_ids(out), ['ym:1', 'ym:3', 'ym:4']);
-  });
+  test(
+    'the Yandex station: its own order, only the queue and dislikes drop out',
+    () {
+      final page = [
+        _t('ym:1', artist: 'A', source: MusicSource.yandex),
+        _t('ym:2', artist: 'A', source: MusicSource.yandex),
+        _t('ym:3', artist: 'A', source: MusicSource.yandex),
+        _t('ym:4', artist: 'B', source: MusicSource.yandex),
+        _t('ym:5', artist: 'C', source: MusicSource.yandex),
+      ];
+      final out = pickBatch(
+        [page],
+        _ctx(
+          run: _run(native: true),
+          queue: [page[4]],
+          disliked: {'ym:2'},
+          // The station handles what's heard and own by itself.
+          recent: {'ym:3'},
+          library: [page[0]],
+        ),
+      );
+      expect(_ids(out), ['ym:1', 'ym:3', 'ym:4']);
+    },
+  );
 
-  group('перезаливы', () {
-    test('внутри пачки выпадает, остаётся тот, что выше', () {
+  group('reuploads', () {
+    test('dropped inside a batch, the higher one stays', () {
       final out = pickBatch([
         [
           _t('sc:1', name: 'целоваться', artist: 'lightprey', seconds: 200),
@@ -283,7 +289,7 @@ void main() {
       expect(_ids(out), ['sc:1', 'sc:2']);
     });
 
-    test('уже стоящий в очереди выпадает и под другим id', () {
+    test('one already queued drops out under another id too', () {
       final out = pickBatch(
         [
           [
@@ -307,15 +313,15 @@ void main() {
   group('completionStep', () {
     const total = Duration(minutes: 3);
 
-    test('ушёл в первые секунды — пролистнул', () {
+    test('left in the first seconds: skipped', () {
       expect(completionStep(const Duration(seconds: 5), total), -2);
     });
 
-    test('дослушал — понравилось', () {
+    test('heard through: liked', () {
       expect(completionStep(const Duration(seconds: 170), total), 3);
     });
 
-    test('половина, минута длинного микса, нет длительности — сигнала нет', () {
+    test('half, a minute of a long mix, no duration: no signal', () {
       expect(completionStep(const Duration(seconds: 90), total), 0);
       expect(
         completionStep(
@@ -329,7 +335,7 @@ void main() {
   });
 
   group('spreadSeeds', () {
-    test('до восьми — все, длинный список — десять поровну', () {
+    test('up to eight all go, a long list gives ten evenly', () {
       expect(spreadSeeds([1, 2, 3]), [1, 2, 3]);
       final twenty = [for (var i = 0; i < 20; i++) i];
       expect(spreadSeeds(twenty), [for (var i = 0; i < 20; i += 2) i]);
@@ -337,7 +343,7 @@ void main() {
     });
   });
 
-  test('сеанс сохраняется видом ПК и читается обратно', () {
+  test('the session is saved in its format and reads back', () {
     final run = WaveRun(
       mode: WaveMode.artist,
       seeds: const [WaveSeed('ytm', 'track:abc')],

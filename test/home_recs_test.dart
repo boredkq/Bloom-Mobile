@@ -123,30 +123,33 @@ List<String> _ids(SimilarTo res) => [
 ];
 
 void main() {
-  group('реаплоады', () {
-    test('имя автора, переехавшее в заголовок, не делает трек другим', () {
-      final a = TrackFingerprint(name: 'целоваться', artist: 'lightprey');
-      final b = TrackFingerprint(
-        name: 'lightprey - целоваться',
-        artist: 'クリソライト',
-      );
-      expect(sameTrack(a, b), isTrue);
-    });
+  group('reuploads', () {
+    test(
+      "an author's name moved into the title doesn't make another track",
+      () {
+        final a = TrackFingerprint(name: 'целоваться', artist: 'lightprey');
+        final b = TrackFingerprint(
+          name: 'lightprey - целоваться',
+          artist: 'クリソライト',
+        );
+        expect(sameTrack(a, b), isTrue);
+      },
+    );
 
-    test('разные треки одного артиста — не дубли', () {
+    test("different tracks by one artist aren't duplicates", () {
       final a = TrackFingerprint(name: 'Ночь', artist: 'Artist', seconds: 200);
       final b = TrackFingerprint(name: 'День', artist: 'Artist', seconds: 202);
       expect(sameTrack(a, b), isFalse);
     });
 
-    test('короткое общее название сверяется по длительности', () {
+    test('a short shared title is checked by duration', () {
       TrackFingerprint fp(String artist, int sec) =>
           TrackFingerprint(name: 'sleep mode', artist: artist, seconds: sec);
       expect(sameTrack(fp('a', 180), fp('b', 195)), isTrue);
       expect(sameTrack(fp('a', 180), fp('b', 300)), isFalse);
     });
 
-    test('накопитель пропускает повтор, а новое принимает', () {
+    test('the accumulator skips a repeat and accepts a new one', () {
       final guard = DupGuard()
         ..add(_t('sc:1', name: 'целоваться', artist: 'Artist'));
       expect(
@@ -156,7 +159,7 @@ void main() {
       expect(guard.accept(_t('sc:3', name: 'другое')), isTrue);
     });
 
-    test('снимок из журнала ловит перезалив, как и трек', () {
+    test('a journal snapshot catches a reupload like a track does', () {
       final guard = DupGuard()
         ..addPrint(TrackFingerprint(name: 'Ночь', artist: 'X', seconds: 200));
       expect(
@@ -172,8 +175,8 @@ void main() {
     });
   });
 
-  group('«Для вас»: сиды', () {
-    test('самое слушаемое за окно — с площадок, где есть радио', () {
+  group('For you: seeds', () {
+    test('the most played in the window, from platforms with a radio', () {
       final input = _input(
         // No Yandex (not signed in), and own files have nobody to ask.
         providers: [
@@ -185,7 +188,7 @@ void main() {
       expect(pickForYouSeeds(input), ['ytm:4', 'sc:1', 'sc:3']);
     });
 
-    test('сначала по одному на артиста, потом добор', () {
+    test('one per artist first, then the rest', () {
       final input = _input(
         providers: [_Fake()],
         plays: {'sc:1': 5, 'sc:2': 4, 'sc:3': 3},
@@ -198,7 +201,7 @@ void main() {
       expect(pickForYouSeeds(input), ['sc:1', 'sc:3', 'sc:2']);
     });
 
-    test('за окном мало — считаем за всё время', () {
+    test('too few in the window: counts all time', () {
       final input = _input(
         providers: [_Fake()],
         plays: {'sc:old': 6, 'sc:new': 2},
@@ -208,7 +211,7 @@ void main() {
       expect(pickForYouSeeds(input), ['sc:old', 'sc:new']);
     });
 
-    test('дизлайкнутое сидом не становится, лайки добивают', () {
+    test("a disliked track doesn't become a seed, likes fill in", () {
       final input = _input(
         providers: [_Fake()],
         plays: {'sc:1': 5, 'sc:2': 4},
@@ -220,9 +223,9 @@ void main() {
     });
   });
 
-  group('«Для вас»: полоса', () {
+  group('For you: the strip', () {
     test(
-      'по кругу, без знакомого, не больше двух от артиста, без дублей',
+      'round robin, nothing familiar, at most two per artist, no duplicates',
       () async {
         final provider = _Fake(
           similar: {
@@ -249,7 +252,7 @@ void main() {
       },
     );
 
-    test('потолок артиста — по каждому имени трека', () async {
+    test('the artist cap applies to each name on a track', () async {
       final provider = _Fake(
         similar: {
           'sc:1': [
@@ -268,32 +271,35 @@ void main() {
       ]);
     });
 
-    test('перезалив слышанного, но не сохранённого, не встаёт', () async {
-      final provider = _Fake(
-        similar: {
-          'sc:1': [
-            _t('sc:30', name: 'lightprey - целоваться', artist: 'クリソライト'),
-            _t('sc:31', name: 'Другое', artist: 'D'),
-          ],
-        },
-      );
-      final input = _input(
-        providers: [provider],
-        // Not a seed (no YouTube Music here), only heard.
-        plays: {'sc:1': 3, 'ytm:9': 1},
-        heard: [_t('ytm:9', name: 'целоваться', artist: 'lightprey')],
-      );
-      expect((await buildForYou(input)).map((t) => t.id), ['sc:31']);
-    });
+    test(
+      "a reupload of something heard but not saved doesn't get in",
+      () async {
+        final provider = _Fake(
+          similar: {
+            'sc:1': [
+              _t('sc:30', name: 'lightprey - целоваться', artist: 'クリソライト'),
+              _t('sc:31', name: 'Другое', artist: 'D'),
+            ],
+          },
+        );
+        final input = _input(
+          providers: [provider],
+          // Not a seed (no YouTube Music here), only heard.
+          plays: {'sc:1': 3, 'ytm:9': 1},
+          heard: [_t('ytm:9', name: 'целоваться', artist: 'lightprey')],
+        );
+        expect((await buildForYou(input)).map((t) => t.id), ['sc:31']);
+      },
+    );
 
-    test('площадка без похожих — полосы нет', () async {
+    test('a platform with no similar tracks gives no strip', () async {
       final input = _input(providers: [_Fake()], plays: {'sc:1': 3});
       expect(await buildForYou(input), isEmpty);
     });
   });
 
-  group('«Похожие на»', () {
-    test('смесь: артист на каждой третьей, артистов не больше половины', () {
+  group('Similar to', () {
+    test('the mix: an artist every third, artists at most half', () {
       final tracks = [for (var i = 0; i < 3; i++) _t('sc:$i')];
       final artists = [
         for (var i = 0; i < 5; i++)
@@ -318,7 +324,7 @@ void main() {
       return d;
     }
 
-    test('нечётный день — трек-сид с похожими треками', () async {
+    test('an odd day: a track seed with similar tracks', () async {
       final seed = _t('sc:1', name: 'Сид');
       final provider = _Fake(
         similar: {
@@ -341,7 +347,7 @@ void main() {
     });
 
     test(
-      'трек-сид: свои артисты не лезут — и аккаунт целиком, и имена',
+      'a track seed: own artists stay out, both the account and the names',
       () async {
         final seed = _t(
           'sc:1',
@@ -371,50 +377,47 @@ void main() {
       },
     );
 
-    test(
-      'треков меньше четырёх — витрины нет, сколько бы ни было артистов',
-      () async {
-        final seed = _t(
-          'sc:1',
-          name: 'Сид',
-          artist: 'Сам',
-          artistId: 'sc:artist:7',
-        );
-        final provider = _Fake(
-          similar: {
-            'sc:1': [for (var i = 0; i < 3; i++) _t('sc:5$i', artist: 'Y$i')],
-          },
-          pages: {
-            'sc:artist:7': ArtistPageData(
-              artist: const Artist(
-                id: 'sc:artist:7',
-                name: 'Сам',
-                source: MusicSource.soundcloud,
-              ),
-              similarArtists: [
-                for (var i = 0; i < 6; i++)
-                  Artist(
-                    id: 'sc:artist:8$i',
-                    name: 'Сосед $i',
-                    avatar: 'https://a/$i.jpg',
-                    source: MusicSource.soundcloud,
-                  ),
-              ],
+    test('fewer than four tracks: no shelf, however many artists', () async {
+      final seed = _t(
+        'sc:1',
+        name: 'Сид',
+        artist: 'Сам',
+        artistId: 'sc:artist:7',
+      );
+      final provider = _Fake(
+        similar: {
+          'sc:1': [for (var i = 0; i < 3; i++) _t('sc:5$i', artist: 'Y$i')],
+        },
+        pages: {
+          'sc:artist:7': ArtistPageData(
+            artist: const Artist(
+              id: 'sc:artist:7',
+              name: 'Сам',
+              source: MusicSource.soundcloud,
             ),
-          },
-        );
-        final input = _input(
-          providers: [provider],
-          plays: {'sc:1': 4},
-          tracks: [seed],
-          now: dayWith(even: false),
-        );
-        expect(await buildSimilarTo(input), isNull);
-      },
-    );
+            similarArtists: [
+              for (var i = 0; i < 6; i++)
+                Artist(
+                  id: 'sc:artist:8$i',
+                  name: 'Сосед $i',
+                  avatar: 'https://a/$i.jpg',
+                  source: MusicSource.soundcloud,
+                ),
+            ],
+          ),
+        },
+      );
+      final input = _input(
+        providers: [provider],
+        plays: {'sc:1': 4},
+        tracks: [seed],
+        now: dayWith(even: false),
+      );
+      expect(await buildSimilarTo(input), isNull);
+    });
 
     test(
-      'жидкий ответ добирается похожими на лучший трек чужого артиста',
+      "a thin answer is topped up with tracks similar to another artist's best",
       () async {
         final seed = _t('sc:1', name: 'Сид', artist: 'Сам');
         final provider = _Fake(
@@ -439,7 +442,7 @@ void main() {
       },
     );
 
-    test('без перезаливов «Для вас» и слышанного', () async {
+    test('no reuploads of For you or heard tracks', () async {
       final provider = _Fake(
         similar: {
           'sc:1': [
@@ -466,7 +469,7 @@ void main() {
       expect(ids, contains('sc:50'));
     });
 
-    test('мало своих — держимся только от первых карточек «Для вас»', () async {
+    test('too few own ones: only avoid the first For you cards', () async {
       final forYou = [for (var i = 0; i < 8; i++) _t('sc:8$i', artist: 'F$i')];
       final provider = _Fake(
         similar: {
@@ -490,7 +493,7 @@ void main() {
       expect(_ids(res!), ['sc:86', 'sc:87', 'sc:50', 'sc:51']);
     });
 
-    test('чётный день — артист-сид, его собственные треки не лезут', () async {
+    test('an even day: an artist seed, its own tracks stay out', () async {
       final mine = _t('sc:1', artist: 'Хозяин', artistId: 'sc:artist:7');
       final provider = _Fake(
         similar: {
@@ -535,7 +538,7 @@ void main() {
       expect(ids, containsAll(['sc:60', 'sc:artist:80']));
     });
 
-    test('сид и элементы переживают кэш', () {
+    test('the seed and items survive the cache', () {
       const artist = Artist(
         id: 'sc:artist:1',
         name: 'A',
@@ -559,8 +562,8 @@ void main() {
     });
   });
 
-  group('волны для ряда «Моей волны»', () {
-    test('артист и трек по очереди, треки не тех же артистов', () {
+  group('waves for the My Wave row', () {
+    test('artist and track take turns, tracks not by those artists', () {
       final input = _input(
         providers: [_Fake()],
         plays: {'sc:a1': 9, 'sc:a2': 8, 'sc:b1': 7, 'sc:c1': 2},
@@ -593,7 +596,7 @@ void main() {
       expect(picks[0].about, 'artist:a');
     });
 
-    test('дизлайкнутое и то, о чём не спросить, в ряд не идёт', () {
+    test('disliked ones and those with nothing to ask stay out of the row', () {
       final input = _input(
         providers: [_Fake()],
         tracks: [

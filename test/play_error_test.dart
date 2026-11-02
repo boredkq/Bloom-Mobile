@@ -18,39 +18,39 @@ void main() {
     ru = await AppLocalizations.delegate.load(const Locale('ru'));
   });
 
-  group('код из исключения', () {
-    test('«Bad state:» от StateError до словаря не доезжает', () {
+  group('code from an exception', () {
+    test('StateError\'s "Bad state:" doesn\'t reach the dictionary', () {
       expect(
         playErrorCode(StateError('search.err.noStream')),
         'search.err.noStream',
       );
     });
 
-    test('своё исключение площадки отдаёт голый код', () {
+    test("a platform's own exception gives the bare code", () {
       expect(playErrorCode(const _Code('search.err.drm')), 'search.err.drm');
     });
   });
 
   group('DRM', () {
-    test('коды площадок разные, признак один', () {
+    test('platform codes differ, the flag is one', () {
       expect(isDrmError('search.err.drm'), isTrue);
       expect(isDrmError('sc.err.drm'), isTrue);
       expect(isDrmError('search.err.noStream'), isFalse);
     });
   });
 
-  group('фраза', () {
-    test('знакомый код разворачивается', () {
+  group('phrase', () {
+    test('a known code expands', () {
       expect(describePlayError(ru, 'search.err.drm'), ru.errDrm);
       expect(describePlayError(ru, 'sc.err.drm'), ru.errDrm);
       expect(describePlayError(ru, 'ytm.err.noAudio'), ru.errYtmNoAudio);
     });
 
-    test('коды Яндекса идут в свой словарь, а не мимо', () {
+    test('Yandex codes go to their dictionary', () {
       expect(describePlayError(ru, 'ym.err.needPlus'), ru.ymErrNeedPlus);
     });
 
-    test('незнакомое — текст самой площадки, показываем как есть', () {
+    test("anything unknown is the platform's own text, shown as is", () {
       expect(describePlayError(ru, 'SC API error'), 'SC API error');
     });
   });

@@ -20,8 +20,8 @@ Track _track(
 );
 
 void main() {
-  group('группировка', () {
-    test('регистр и лишние пробелы не делают трек другим', () {
+  group('grouping', () {
+    test("case and extra spaces don't make another track", () {
       final groups = dupGroups([
         _track('a', name: 'Song'),
         _track('b', name: '  SONG  '),
@@ -31,7 +31,7 @@ void main() {
       expect(groups.single.length, 2);
     });
 
-    test('разные артисты — разные треки', () {
+    test('different artists are different tracks', () {
       final groups = dupGroups([
         _track('a', artist: 'Один'),
         _track('b', artist: 'Другой'),
@@ -40,7 +40,7 @@ void main() {
       expect(groups, isEmpty);
     });
 
-    test('одиночки в группы не попадают', () {
+    test("singles don't form groups", () {
       final groups = dupGroups([
         _track('a', name: 'Первая'),
         _track('b', name: 'Вторая'),
@@ -52,8 +52,8 @@ void main() {
     });
   });
 
-  group('кого оставить', () {
-    test('копия с обложкой обходит копию без неё', () {
+  group('which one to keep', () {
+    test('a copy with a cover beats a copy without', () {
       final groups = dupGroups([
         _track('нет обложки'),
         _track('с обложкой', cover: 'cover.jpg'),
@@ -62,7 +62,7 @@ void main() {
       expect(groups.single.first.id, 'с обложкой');
     });
 
-    test('при равных обложках выигрывает тот, кого чаще слушали сами', () {
+    test('with equal covers the more played one wins', () {
       const plays = {'редкий': 2, 'частый': 40};
       final groups = dupGroups([
         _track('редкий', cover: 'a.jpg'),
@@ -72,7 +72,7 @@ void main() {
       expect(groups.single.first.id, 'частый');
     });
 
-    test('иначе остаётся добавленный раньше', () {
+    test('otherwise the one added earlier stays', () {
       final groups = dupGroups(
         [_track('поздний'), _track('ранний')],
         addedAt: {'поздний': 200, 'ранний': 100},
@@ -82,7 +82,7 @@ void main() {
     });
   });
 
-  test('лишние — всё, кроме первого в каждой группе', () {
+  test('the extras are all but the first in each group', () {
     final groups = dupGroups([
       _track('a', name: 'Первая', cover: 'a.jpg'),
       _track('b', name: 'Первая'),

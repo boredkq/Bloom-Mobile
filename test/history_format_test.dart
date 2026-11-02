@@ -34,7 +34,7 @@ Future<String> _label(
 }
 
 void main() {
-  testWidgets('сегодня — весь календарный день, а не последние сутки', (
+  testWidgets('today is the whole calendar day, not the last 24 hours', (
     tester,
   ) async {
     final now = DateTime(2026, 3, 15, 9, 0);
@@ -42,13 +42,13 @@ void main() {
     expect(await _label(tester, DateTime(2026, 3, 15, 8, 59), now), 'Сегодня');
   });
 
-  testWidgets('вчера — предыдущий календарный день целиком', (tester) async {
+  testWidgets('yesterday is the whole previous calendar day', (tester) async {
     final now = DateTime(2026, 3, 15, 9, 0);
     expect(await _label(tester, DateTime(2026, 3, 14, 23, 50), now), 'Вчера');
     expect(await _label(tester, DateTime(2026, 3, 14, 0, 1), now), 'Вчера');
   });
 
-  testWidgets('дни до недели — с русскими формами', (tester) async {
+  testWidgets('days up to a week use Russian word forms', (tester) async {
     final now = DateTime(2026, 3, 15, 9, 0);
     expect(await _label(tester, DateTime(2026, 3, 13, 12), now), '2 дня назад');
     expect(
@@ -57,14 +57,14 @@ void main() {
     );
   });
 
-  testWidgets('неделя и дальше — «Неделю назад», потом дата', (tester) async {
+  testWidgets('a week and beyond: "A week ago", then a date', (tester) async {
     final now = DateTime(2026, 3, 15, 9, 0);
     expect(await _label(tester, DateTime(2026, 3, 8, 12), now), 'Неделю назад');
     // Past two weeks: day and month, no year.
     expect(await _label(tester, DateTime(2026, 2, 20, 12), now), '20 февраля');
   });
 
-  testWidgets('английская локаль', (tester) async {
+  testWidgets('English locale', (tester) async {
     final now = DateTime(2026, 3, 15, 9, 0);
     const en = Locale('en');
     expect(

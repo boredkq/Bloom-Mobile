@@ -36,8 +36,8 @@ String _add(ProviderContainer c, String url) {
 }
 
 void main() {
-  group('библиотека', () {
-    test('ссылку принимаем, мусор — нет', () {
+  group('library', () {
+    test('takes a link, rejects junk', () {
       final c = _container();
       final lib = c.read(mediaLibProvider.notifier);
       expect(lib.addUrl('https://example.com/a.gif'), isTrue);
@@ -47,12 +47,12 @@ void main() {
       expect(c.read(mediaLibProvider).single.name, 'a.gif');
     });
 
-    test('имя из ссылки не тащит параметры запроса', () {
+    test('a name from a link drops the query parameters', () {
       expect(urlName('https://e.com/pic.png?w=1&h=2'), 'pic.png');
       expect(urlName('https://e.com/'), 'image');
     });
 
-    test('размытие и затемнение живут у картинки и переживают перезапуск', () {
+    test('blur and dim live on the picture and survive a restart', () {
       final store = JsonStore.memory();
       final c = _container(store);
       final id = _add(c, 'https://e.com/a.jpg');
@@ -64,7 +64,7 @@ void main() {
       expect(item.dim, kBgDimMax);
     });
 
-    test('битую запись из файла молча пропускаем', () {
+    test('a broken file entry is skipped silently', () {
       final store = JsonStore.memory({
         'media': [
           {'id': 'ml1', 'src': 'https://e.com/a.jpg'},
@@ -76,8 +76,8 @@ void main() {
     });
   });
 
-  group('контексты', () {
-    test('контекст держит одну картинку', () {
+  group('contexts', () {
+    test('a context holds one picture', () {
       final c = _container();
       final a = _add(c, 'https://e.com/a.jpg');
       final b = _add(c, 'https://e.com/b.jpg');
@@ -92,7 +92,7 @@ void main() {
       expect(c.read(customProvider).bg, isNull);
     });
 
-    test('одна картинка может стоять сразу в двух контекстах', () {
+    test('one picture can sit in two contexts at once', () {
       final c = _container();
       final a = _add(c, 'https://e.com/a.jpg');
       c.read(customProvider.notifier).toggle(CustomCtx.bg, a, true);
@@ -105,7 +105,7 @@ void main() {
       expect(c.read(customSrcProvider(CustomCtx.cover)), isNull);
     });
 
-    test('значки на плитке показывают занятые контексты по порядку', () {
+    test('tile badges show the taken contexts in order', () {
       final c = _container();
       final a = _add(c, 'https://e.com/a.jpg');
       final b = _add(c, 'https://e.com/b.jpg');
@@ -124,7 +124,7 @@ void main() {
       expect(c.read(mediaUsageProvider(b)), [CustomCtx.bg]);
     });
 
-    test('удаление картинки чистит контексты и пресеты', () {
+    test('removing a picture clears contexts and presets', () {
       final c = _container();
       final a = _add(c, 'https://e.com/a.jpg');
       final b = _add(c, 'https://e.com/b.jpg');
@@ -148,14 +148,14 @@ void main() {
     });
   });
 
-  group('пресеты', () {
-    test('пустые контексты сохранять нечего', () {
+  group('presets', () {
+    test('nothing to save from empty contexts', () {
       final c = _container();
       expect(c.read(presetsProvider.notifier).save('пусто'), isNull);
       expect(c.read(presetsProvider), isEmpty);
     });
 
-    test('применение ставит заданные контексты и не трогает пустые', () {
+    test('applying sets the given contexts and leaves empty ones', () {
       final c = _container();
       final a = _add(c, 'https://e.com/a.jpg');
       final b = _add(c, 'https://e.com/b.jpg');
@@ -171,7 +171,7 @@ void main() {
       expect(c.read(customProvider).cover, b);
     });
 
-    test('размытие, затемнение и режим обложки снимаются в пресет', () {
+    test('blur, dim and cover mode go into the preset', () {
       final c = _container();
       final a = _add(c, 'https://e.com/a.jpg');
       final b = _add(c, 'https://e.com/b.jpg');
@@ -195,7 +195,7 @@ void main() {
       expect(c.read(coverModeProvider), CoverMode.fallback);
     });
 
-    test('тема, прозрачность и шрифт — только по тумблерам', () {
+    test('theme, transparency and font only by their switches', () {
       final store = JsonStore.memory();
       final c = _container(store);
       final a = _add(c, 'https://e.com/a.jpg');
@@ -227,7 +227,7 @@ void main() {
       expect(fresh.read(transparencyProvider).on, isTrue);
     });
 
-    test('своя тема из пресета возвращается, даже если её удалили', () {
+    test("a preset's own theme comes back even if it was deleted", () {
       final c = _container();
       final a = _add(c, 'https://e.com/a.jpg');
       c.read(customProvider.notifier).toggle(CustomCtx.bg, a, true);
@@ -250,7 +250,7 @@ void main() {
       expect(state.customThemes.where((t) => t.id == mine.id), hasLength(1));
     });
 
-    test('пресет с видом переживает удаление всех картинок', () {
+    test('a preset with a look survives removing all pictures', () {
       final c = _container();
       final a = _add(c, 'https://e.com/a.jpg');
       c.read(customProvider.notifier).toggle(CustomCtx.bg, a, true);
@@ -262,7 +262,7 @@ void main() {
       expect(left.font, isNotNull);
     });
 
-    test('лимит пресетов', () {
+    test('preset limit', () {
       final c = _container();
       final a = _add(c, 'https://e.com/a.jpg');
       c.read(customProvider.notifier).toggle(CustomCtx.bg, a, true);
@@ -274,9 +274,9 @@ void main() {
     });
   });
 
-  group('файл пресетов', () {
+  group('presets file', () {
     test(
-      'круг выгрузка → загрузка сохраняет картинки и не плодит дубли',
+      'export and import keep the pictures and make no duplicates',
       () async {
         final source = _container();
         final a = _add(source, 'https://e.com/a.jpg');
@@ -313,7 +313,7 @@ void main() {
       },
     );
 
-    test('чужой и битый файл не проходят', () async {
+    test("a foreign or broken file doesn't pass", () async {
       final c = _container();
       expect(decodePresets('не json'), isEmpty);
       expect(decodePresets('{"kind":"чужое"}'), isEmpty);
@@ -322,7 +322,7 @@ void main() {
       expect(await importPresets(c.read, 'не json'), 0);
     });
 
-    test('голый массив пресетов тоже читаем', () {
+    test('a bare preset array is read too', () {
       final parsed = decodePresets(
         '[{"name":"a","bg":"https://e.com/a.jpg","dim":50}]',
       );
@@ -331,7 +331,7 @@ void main() {
     });
 
     test(
-      'вид пресета из файла ПК: #rrggbb, trMode, шрифт CSS-строкой',
+      'a preset look from a shared file: #rrggbb, trMode, font as a stack string',
       () async {
         final c = _container();
         final added = await importPresets(c.read, '''
@@ -360,15 +360,15 @@ void main() {
       },
     );
 
-    test('имя файла чистится от запрещённых символов', () {
+    test('the file name is cleaned of forbidden characters', () {
       // Spaces stay: they're legal in file names.
       expect(presetFileName('лето/2026: ночь'), 'лето_2026_ ночь.bloompresets');
       expect(presetFileName('   '), 'preset.bloompresets');
     });
   });
 
-  group('фон', () {
-    test('своя картинка важнее обложки трека', () {
+  group('background', () {
+    test('an own picture beats the track cover', () {
       final c = _container();
       final a = _add(c, 'https://e.com/a.jpg');
       c.read(settingsProvider.notifier).setCoverAsBg(true);
@@ -380,13 +380,13 @@ void main() {
       expect(bg.dim, 30);
     });
 
-    test('«обложка как фон» переживает перезапуск', () {
+    test('cover as background survives a restart', () {
       final store = JsonStore.memory();
       _container(store).read(settingsProvider.notifier).setCoverAsBg(true);
       expect(_container(store).read(settingsProvider).coverAsBg, isTrue);
     });
 
-    test('размытие и затемнение обложки: умолчания, границы, перезапуск', () {
+    test('cover blur and dim: defaults, bounds, restart', () {
       final store = JsonStore.memory();
       final fx = _container(store).read(coverAsBgFxProvider.notifier);
       // Before the first edit it's the built-in default.

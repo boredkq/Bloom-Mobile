@@ -71,7 +71,7 @@ SpeedSettings _speedOf(WidgetTester tester) => ProviderScope.containerOf(
 
 void main() {
   group('clampRate', () {
-    test('садится на шаг 0.05 и режет хвосты double', () {
+    test('lands on a 0.05 step and cuts double tails', () {
       expect(clampRate(1.33), 1.35);
       expect(clampRate(1.32), 1.3);
       expect(clampRate(0.7 + 0.05), 0.75);
@@ -79,14 +79,14 @@ void main() {
       expect(clampRate(1.1500000000000001), 1.15);
     });
 
-    test('держится в границах', () {
+    test('stays within bounds', () {
       expect(clampRate(0.1), kSpeedMin);
       expect(clampRate(5), kSpeedMax);
       expect(clampRate(kSpeedMin), kSpeedMin);
       expect(clampRate(kSpeedMax), kSpeedMax);
     });
 
-    test('мусор — это 1×', () {
+    test('junk means 1×', () {
       expect(clampRate(double.nan), 1);
       expect(clampRate(double.infinity), 1);
       expect(clampRate(double.negativeInfinity), 1);
@@ -94,7 +94,7 @@ void main() {
   });
 
   group('speedLabel', () {
-    test('без хвостовых нулей', () {
+    test('no trailing zeros', () {
       expect(speedLabel(1), '1×');
       expect(speedLabel(2), '2×');
       expect(speedLabel(1.5), '1.5×');
@@ -103,22 +103,22 @@ void main() {
     });
   });
 
-  group('стор', () {
-    test('умолчание — 1× без nightcore, питч не трогаем', () {
+  group('store', () {
+    test('the default: 1× with no nightcore, pitch untouched', () {
       final speed = _container(JsonStore.memory()).read(speedProvider);
       expect(speed.rate, 1);
       expect(speed.nightcore, isFalse);
       expect(speed.pitch, 1);
     });
 
-    test('nightcore ведёт питч за темпом', () {
+    test('nightcore makes pitch follow tempo', () {
       const off = SpeedSettings(rate: 1.25);
       const on = SpeedSettings(rate: 1.25, nightcore: true);
       expect(off.pitch, 1);
       expect(on.pitch, 1.25);
     });
 
-    test('значение переживает перезапуск', () {
+    test('the value survives a restart', () {
       final store = JsonStore.memory();
       final first = _container(store);
       first.read(speedProvider.notifier)
@@ -130,7 +130,7 @@ void main() {
       expect(second.nightcore, isTrue);
     });
 
-    test('битая запись читается как 1×', () {
+    test('a broken entry reads as 1×', () {
       final store = JsonStore.memory({
         'speed': {'rate': 'быстро', 'nightcore': 'ага'},
       });
@@ -139,7 +139,7 @@ void main() {
       expect(speed.nightcore, isFalse);
     });
 
-    test('запись за границами подрезается на чтении', () {
+    test('an out-of-bounds entry is trimmed on read', () {
       final store = JsonStore.memory({
         'speed': {'rate': 9},
       });
@@ -147,8 +147,8 @@ void main() {
     });
   });
 
-  group('шторка', () {
-    testWidgets('пресет ставит скорость', (tester) async {
+  group('sheet', () {
+    testWidgets('a preset sets the speed', (tester) async {
       final store = JsonStore.memory();
       await _pumpSheet(tester, store);
 
@@ -156,7 +156,7 @@ void main() {
       expect(_speedOf(tester).rate, 1.25);
     });
 
-    testWidgets('пилюля значения сбрасывает на 1×', (tester) async {
+    testWidgets('the value pill resets to 1×', (tester) async {
       final store = JsonStore.memory({
         'speed': {'rate': 1.35},
       });
@@ -168,7 +168,7 @@ void main() {
       expect(_speedOf(tester).rate, 1);
     });
 
-    testWidgets('тумблер nightcore переключается тапом по всей строке', (
+    testWidgets('the nightcore switch toggles by a tap on the whole row', (
       tester,
     ) async {
       final store = JsonStore.memory();
@@ -185,7 +185,9 @@ void main() {
       expect(_speedOf(tester).pitch, 1);
     });
 
-    testWidgets('полоса ставит своё значение, кратное шагу', (tester) async {
+    testWidgets('the bar sets its own value, a multiple of the step', (
+      tester,
+    ) async {
       final store = JsonStore.memory();
       await _pumpSheet(tester, store);
 

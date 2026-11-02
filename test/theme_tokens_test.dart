@@ -42,7 +42,7 @@ void main() {
     // lighten).
     expect(_hex(t.accentText), '#000000');
     expect(_hex(t.accentHover), '#e0e0e0');
-    // mix(border, ovl 20%) from the unrounded border, as CSS color-mix.
+    // mix(border, ovl 20%) from the unrounded border.
     expect(_hex(t.borderFocus), '#555555');
     // Pills and round header buttons are exactly #1a1a1a, as a solid color: a
     // film of the same 6% gives 24.7 and lands at #181818 on a device.
@@ -53,7 +53,7 @@ void main() {
     expect(t.track.a, closeTo(0.04, 0.001));
   });
 
-  test('Light: плёнка переворачивается в чёрную, текст темнеет', () {
+  test('Light: the film flips to black, text darkens', () {
     final t = BloomThemes.light;
 
     expect(t.isLight, isTrue);
@@ -68,7 +68,7 @@ void main() {
     expect(t.track.a, closeTo(0.07, 0.001));
   });
 
-  test('Акцентная тема: glow и folderTint идут от акцента', () {
+  test('An accent theme: glow and folderTint come from the accent', () {
     final t = const ThemePreset(
       id: 'blue',
       name: 'Blue',

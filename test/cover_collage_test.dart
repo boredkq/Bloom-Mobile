@@ -39,7 +39,7 @@ Future<int> _images(WidgetTester tester, List<String?> covers) async {
 
 void main() {
   group('pickCollageCovers', () {
-    test('берёт первые четыре разных, пустые пропускает', () {
+    test('takes the first four different ones, skips empty', () {
       expect(pickCollageCovers(['a', null, '', 'b', 'c', 'd', 'e']), [
         'a',
         'b',
@@ -48,27 +48,27 @@ void main() {
       ]);
     });
 
-    test('повторы не считаются — у альбома одна обложка на все треки', () {
+    test("repeats don't count: an album has one cover for all tracks", () {
       expect(pickCollageCovers(['a', 'a', 'a', 'b']), ['a', 'b']);
     });
 
-    test('обложек нет — пусто', () {
+    test('no covers, nothing', () {
       expect(pickCollageCovers([null, '', null]), isEmpty);
     });
   });
 
   group('CoverCollage', () {
-    testWidgets('одна обложка — одна картинка на всю площадь', (tester) async {
+    testWidgets('one cover is one picture over the whole area', (tester) async {
       expect(await _images(tester, ['a', 'a']), 1);
     });
 
-    testWidgets('две, три, четыре — столько же плиток', (tester) async {
+    testWidgets('two, three, four give as many tiles', (tester) async {
       expect(await _images(tester, ['a', 'b']), 2);
       expect(await _images(tester, ['a', 'b', 'c']), 3);
       expect(await _images(tester, ['a', 'b', 'c', 'd', 'e']), 4);
     });
 
-    testWidgets('обложек нет — остаётся заглушка', (tester) async {
+    testWidgets('no covers leaves the placeholder', (tester) async {
       expect(await _images(tester, [null, '']), 0);
       expect(_fallbacks, findsOneWidget);
     });
@@ -76,18 +76,20 @@ void main() {
     // `local:` without a loaded covers folder gives no picture, like a network
     // one that failed. A section placeholder with its icon doesn't fit a cell:
     // four of them would make a grid of four icons instead of a collage.
-    testWidgets('ячейка без картинки не повторяет заглушку раздела', (
-      tester,
-    ) async {
-      expect(await _images(tester, ['local:a', 'local:b', 'local:c']), 0);
-      expect(_fallbacks, findsNothing);
-    });
+    testWidgets(
+      "a cell with no picture doesn't repeat the section placeholder",
+      (tester) async {
+        expect(await _images(tester, ['local:a', 'local:b', 'local:c']), 0);
+        expect(_fallbacks, findsNothing);
+      },
+    );
 
-    testWidgets('одна обложка не загрузилась — заглушка на всю площадь', (
-      tester,
-    ) async {
-      expect(await _images(tester, ['local:a']), 0);
-      expect(_fallbacks, findsOneWidget);
-    });
+    testWidgets(
+      'one cover failed to load: the placeholder over the whole area',
+      (tester) async {
+        expect(await _images(tester, ['local:a']), 0);
+        expect(_fallbacks, findsOneWidget);
+      },
+    );
   });
 }

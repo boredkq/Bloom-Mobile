@@ -57,15 +57,15 @@ ProviderContainer _container(JsonStore store) {
 }
 
 void main() {
-  group('настройка', () {
-    test('по умолчанию соседей нет', () {
+  group('setting', () {
+    test('no neighbors by default', () {
       expect(
         _container(JsonStore.memory()).read(miniStyleProvider).neighbors,
         isFalse,
       );
     });
 
-    test('включённые читаются с диска', () {
+    test('turned on is read from disk', () {
       final c = _container(
         JsonStore.memory({
           'miniStyle': {'neighbors': true},
@@ -74,7 +74,7 @@ void main() {
       expect(c.read(miniStyleProvider).neighbors, isTrue);
     });
 
-    test('битая запись — это «выключено», а не падение', () {
+    test('a broken entry means off, not a crash', () {
       final c = _container(
         JsonStore.memory({
           'miniStyle': {'neighbors': 'yes'},
@@ -83,7 +83,7 @@ void main() {
       expect(c.read(miniStyleProvider).neighbors, isFalse);
     });
 
-    test('выбор уезжает на диск и не сносит соседние настройки', () {
+    test('the choice reaches the disk and keeps other settings', () {
       final store = JsonStore.memory();
       final c = _container(store);
       c.read(miniStyleProvider.notifier).setRadius(MiniRadius.pill);
@@ -95,18 +95,18 @@ void main() {
     });
   });
 
-  group('геометрия', () {
+  group('geometry', () {
     const screen = Size(360, 800);
 
     Rect card({required bool neighbors}) =>
         miniCardRect(screen: screen, navInset: 58, neighbors: neighbors);
 
-    test('без соседей карточка стоит как стояла — поля по 8', () {
+    test('without neighbors the card stays as it was, margins of 8', () {
       expect(card(neighbors: false).left, kFloatGap);
       expect(card(neighbors: false).width, screen.width - kFloatGap * 2);
     });
 
-    test('полоска соседа упирается в край экрана', () {
+    test("a neighbor's strip reaches the screen's edge", () {
       final rect = card(neighbors: true);
       // The left neighbor's right edge: it stands one step left of the card.
       // The neighbor layer starts at the screen's edge, so this is a screen
@@ -117,7 +117,7 @@ void main() {
       expect(rect.left - edge, kFloatGap);
     });
 
-    test('шаг карусели ставит соседа ровно на место карточки', () {
+    test("a carousel step puts the neighbor exactly in the card's place", () {
       final rect = card(neighbors: true);
       final stride = miniStride(rect.width);
       expect(rect.left - stride + stride, rect.left);
@@ -125,7 +125,7 @@ void main() {
       expect(stride - rect.width, kFloatGap);
     });
 
-    test('карточка ужимается ровно на две полоски', () {
+    test('the card shrinks by exactly two strips', () {
       // The gap between the strip and the card comes from the normal margin, so
       // the card loses nothing beyond the strips themselves.
       expect(
@@ -135,7 +135,7 @@ void main() {
     });
   });
 
-  group('строка соседа', () {
+  group('neighbor row', () {
     /// The playing row isn't built here at all: its indicators and play button
     /// reach for a live player tests don't have. That also keeps the
     /// no-foreign-progress check honest: a progress line, on by default, would
@@ -177,13 +177,13 @@ void main() {
       await tester.pump();
     }
 
-    testWidgets('показывает СВОЙ трек, а не играющий', (tester) async {
+    testWidgets('shows its own track, not the playing one', (tester) async {
       await pump(tester, neighbor: true);
       expect(find.text('Трек b'), findsOneWidget);
       expect(find.text('Трек a'), findsNothing);
     });
 
-    testWidgets('кнопки стоят, но не нажимаются', (tester) async {
+    testWidgets("buttons are there but don't press", (tester) async {
       await pump(tester, neighbor: true);
       // The default is the skip trio: a neighbor has the same layout, or the
       // label would jump on the way in. Play is a separate [PlayButton], skip
@@ -206,7 +206,7 @@ void main() {
     });
   });
 
-  group('жест карусели', () {
+  group('carousel gesture', () {
     Future<double> flick(
       WidgetTester tester, {
       required bool carousel,
@@ -242,7 +242,7 @@ void main() {
       return shift.value;
     }
 
-    testWidgets('перелистнули — карточка стоит на месте, без въезда', (
+    testWidgets('flipped: the card stays put, with no slide-in', (
       tester,
     ) async {
       // The neighbor already arrived in the middle: nothing to bring in from
@@ -250,11 +250,11 @@ void main() {
       expect(await flick(tester, carousel: true, dx: -200), 0);
     });
 
-    testWidgets('не дотянули — сдвиг возвращается', (tester) async {
+    testWidgets('not far enough: the shift returns', (tester) async {
       expect(await flick(tester, carousel: true, dx: -20), 0);
     });
 
-    testWidgets('чужой сдвиг живёт дольше жеста', (tester) async {
+    testWidgets('an outside shift outlives the gesture', (tester) async {
       // The carousel moves its neighbors with it too: `TrackFlick` must not
       // dispose it, or the neighbor layer would listen to a dead
       // `ValueNotifier`.

@@ -64,8 +64,8 @@ ProviderContainer _container() {
 }
 
 void main() {
-  group('разбор записи', () {
-    test('теги важнее имени файла', () {
+  group('parsing an entry', () {
+    test('tags beat the file name', () {
       final track = _track(
         _entry(
           name: 'Кто-то - Что-то.mp3',
@@ -86,19 +86,19 @@ void main() {
       expect(track.source, MusicSource.local);
     });
 
-    test('без тегов имя файла режется на «Артист - Название»', () {
+    test('with no tags the file name splits into "Artist - Title"', () {
       final track = _track(_entry(name: 'Аквариум - Город золотой.flac'));
       expect(track.artist, 'Аквариум');
       expect(track.name, 'Город золотой');
     });
 
-    test('нет ни тегов, ни дефиса — артист «Неизвестный»', () {
+    test('no tags and no dash: the artist is Unknown', () {
       final track = _track(_entry(name: 'record 7.wav'));
       expect(track.artist, 'Неизвестный');
       expect(track.name, 'record 7');
     });
 
-    test('пустые теги считаются отсутствующими', () {
+    test('empty tags count as missing', () {
       final track = _track(
         _entry(name: 'A - B.mp3', title: '  ', artist: '', album: ''),
       );
@@ -107,12 +107,12 @@ void main() {
       expect(track.album, isNull);
     });
 
-    test('обложка приезжает именем файла и становится своей картинкой', () {
+    test('a cover arrives as a file name and becomes an own picture', () {
       final track = _track(_entry(cover: 'lt_1.jpg'));
       expect(track.cover, 'local:lt_1.jpg');
     });
 
-    test('без ключа записи нет', () {
+    test('no key, no entry', () {
       expect(
         localTrackFromEntry({'name': 'x.mp3'}, unknownArtist: '—'),
         isNull,
@@ -121,8 +121,8 @@ void main() {
     });
   });
 
-  group('id и дедуп', () {
-    test('id стабилен по ключу и не зависит от тегов', () {
+  group('id and dedup', () {
+    test("the id is stable by key and doesn't depend on tags", () {
       final first = _track(_entry(title: 'Раз'));
       final second = _track(_entry(title: 'Два'));
       expect(first.id, second.id);
@@ -131,13 +131,13 @@ void main() {
       expect(MusicSource.fromId(first.id), MusicSource.local);
     });
 
-    test('разные файлы — разные id', () {
+    test('different files have different ids', () {
       final a = _track(_entry(key: 'a.mp3|100', uri: null, file: 'a.mp3'));
       final b = _track(_entry(key: 'b.mp3|100', uri: null, file: 'b.mp3'));
       expect(a.id, isNot(b.id));
     });
 
-    test('повторное добавление того же файла библиотеку не растит', () {
+    test("adding the same file again doesn't grow the library", () {
       final c = _container();
       final lib = c.read(libraryProvider.notifier);
       expect(lib.addToLibrary([_track(_entry())]), 1);
@@ -145,7 +145,7 @@ void main() {
       expect(c.read(libraryProvider).allTracks.length, 1);
     });
 
-    test('ключи для нативной стороны — только у своих треков', () {
+    test('keys for the native side only for own tracks', () {
       final c = _container();
       c.read(libraryProvider.notifier).addToLibrary([
         _track(_entry()),
@@ -161,8 +161,8 @@ void main() {
     });
   });
 
-  group('хранение', () {
-    test('трек переживает запись в файл библиотеки', () {
+  group('storage', () {
+    test('a track survives writing to the library file', () {
       final store = JsonStore.memory();
       final c = ProviderContainer(
         overrides: [
@@ -189,7 +189,7 @@ void main() {
       expect(localTrackKey(track), 'content://audio/1');
     });
 
-    test('свои треки среди удаляемых id находятся, чужие — нет', () {
+    test("own tracks are found among removed ids, others aren't", () {
       final c = _container();
       final own = _track(_entry(uri: null, file: 'song.mp3'));
       const foreign = Track(
@@ -210,15 +210,15 @@ void main() {
     });
   });
 
-  group('настройка режима', () {
-    test('по умолчанию — «на месте», как на ПК', () {
+  group('the mode setting', () {
+    test('in place by default', () {
       expect(
         _container().read(settingsProvider).localImport,
         LocalImportMode.inPlace,
       );
     });
 
-    test('выбор переживает перезапуск', () {
+    test('the choice survives a restart', () {
       final store = JsonStore.memory();
       final c = ProviderContainer(
         overrides: [
@@ -239,7 +239,7 @@ void main() {
       expect(reopened.read(settingsProvider).localImport, LocalImportMode.copy);
     });
 
-    test('незнакомый режим из чужой сборки не роняет настройки', () {
+    test("an unknown mode from another build doesn't crash settings", () {
       expect(readLocalImportMode('вообще не режим'), LocalImportMode.inPlace);
       expect(readLocalImportMode(null), LocalImportMode.inPlace);
       expect(readLocalImportMode('copy'), LocalImportMode.copy);

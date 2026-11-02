@@ -26,30 +26,30 @@ void main() {
     for (final id in ['a', 'b', 'c', 'd', 'e', 'f']) _track(id),
   ];
 
-  test('играющий трек встаёт первым, состав не меняется', () {
+  test('the playing track comes first, contents stay', () {
     final out = shuffledQueue(queue, 3, Random(7));
     expect(out.first.id, 'd');
     expect(out.length, queue.length);
     expect(_ids(out).toSet(), _ids(queue).toSet());
   });
 
-  test('без играющего мешаются все — порядок не исходный', () {
+  test('with nothing playing all get shuffled, not in the source order', () {
     final out = shuffledQueue(queue, -1, Random(7));
     expect(_ids(out).toSet(), _ids(queue).toSet());
     expect(_ids(out), isNot(_ids(queue)));
   });
 
-  test('номер вне очереди — как будто играющего нет', () {
+  test('a number outside the queue acts as nothing playing', () {
     final out = shuffledQueue(queue, 99, Random(1));
     expect(_ids(out).toSet(), _ids(queue).toSet());
   });
 
-  test('очередь из одного трека переживает перемешку', () {
+  test('a one-track queue survives a shuffle', () {
     expect(_ids(shuffledQueue([_track('a')], 0, Random(1))), ['a']);
     expect(shuffledQueue(const [], -1, Random(1)), isEmpty);
   });
 
-  test('перемешка правда мешает: два разных зерна дают разный порядок', () {
+  test('the shuffle really shuffles: two seeds give different orders', () {
     final long = [for (var i = 0; i < 30; i++) _track('t$i')];
     final a = _ids(shuffledQueue(long, 0, Random(1)));
     final b = _ids(shuffledQueue(long, 0, Random(2)));

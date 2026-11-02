@@ -27,7 +27,7 @@ void main() {
   setUp(() => ym.setToken(null));
   tearDown(() => ym.setToken(null));
 
-  test('сохранённый токен поднимается при старте и включает площадку', () {
+  test('a saved token comes up at start and turns the platform on', () {
     final store = JsonStore.memory({
       'yandex': {'token': 'saved-token'},
     });
@@ -36,7 +36,7 @@ void main() {
     expect(
       const YandexProvider().isEnabled,
       isFalse,
-      reason: 'до чтения стора',
+      reason: 'before the store is read',
     );
     expect(c.read(ymAuthProvider).authed, isTrue);
     // The token goes to the network layer, or the very first request would
@@ -45,14 +45,14 @@ void main() {
     expect(const YandexProvider().isEnabled, isTrue);
   });
 
-  test('пустое хранилище — площадка выключена', () {
+  test('an empty store: the platform is off', () {
     final c = _container(JsonStore.memory());
     expect(c.read(ymAuthProvider).authed, isFalse);
     expect(ym.activeToken(), isNull);
     expect(const YandexProvider().isEnabled, isFalse);
   });
 
-  test('выход стирает токен и с диска, и из сетевого слоя', () {
+  test('signing out erases the token from disk and the network layer', () {
     final store = JsonStore.memory({
       'yandex': {'token': 'saved-token', 'deviceId': 'abcdef0123456789'},
     });
@@ -70,7 +70,7 @@ void main() {
     expect(raw['deviceId'], 'abcdef0123456789');
   });
 
-  test('статус подписки не проверяется, пока не вошли', () async {
+  test("the subscription status isn't checked before sign-in", () async {
     final c = _container(JsonStore.memory());
     await c.read(ymAuthProvider.notifier).refresh();
     // No network here: if the refresh went to the API, the test would fail on
@@ -79,19 +79,22 @@ void main() {
     expect(c.read(ymAuthProvider).checking, isFalse);
   });
 
-  test('отмена входа гасит поллинг и убирает код с экрана', () {
-    final c = _container(JsonStore.memory());
-    final notifier = c.read(ymAuthProvider.notifier);
+  test(
+    'cancelling sign-in stops polling and takes the code off the screen',
+    () {
+      final c = _container(JsonStore.memory());
+      final notifier = c.read(ymAuthProvider.notifier);
 
-    notifier.cancelAuth();
+      notifier.cancelAuth();
 
-    final s = c.read(ymAuthProvider);
-    expect(s.connecting, isFalse);
-    expect(s.userCode, isNull);
-    expect(s.note, isNull);
-  });
+      final s = c.read(ymAuthProvider);
+      expect(s.connecting, isFalse);
+      expect(s.userCode, isNull);
+      expect(s.note, isNull);
+    },
+  );
 
-  test('причина отказа доезжает до UI кодом, а не «Instance of»', () {
+  test('the refusal reason reaches the UI as a code, not "Instance of"', () {
     expect(
       ymErrorCode(const YmException('ym.err.needPlus')),
       'ym.err.needPlus',

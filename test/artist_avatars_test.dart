@@ -72,7 +72,7 @@ String _key(String name, [MusicSource source = MusicSource.soundcloud]) =>
     artistAvatarKey(source, name);
 
 void main() {
-  test('берётся точное совпадение имени, а не первый из выдачи', () async {
+  test('takes the exact name match, not the first result', () async {
     final sc = _FakeProvider({
       'Onda': [
         _artist('Onda Fan Page', 'https://cdn/fan.jpg'),
@@ -86,7 +86,7 @@ void main() {
     expect(c.read(artistAvatarsProvider)[_key('onda')], 'https://cdn/real.jpg');
   });
 
-  test('свежий кеш второй раз в сеть не идёт', () async {
+  test('a fresh cache stays off the network', () async {
     final sc = _FakeProvider({
       'Artist': [_artist('Artist', 'https://cdn/a.jpg')],
     });
@@ -98,7 +98,7 @@ void main() {
     expect(sc.queries, ['Artist']);
   });
 
-  test('промах запоминается — по нему тоже не долбимся повторно', () async {
+  test('a miss is remembered and not asked again', () async {
     // The provider fails every request: no network.
     final sc = _FakeProvider(const {});
     final c = _container([sc]);
@@ -111,7 +111,7 @@ void main() {
     expect(c.read(artistAvatarsProvider), isEmpty);
   });
 
-  test('протухшая запись перезапрашивается, живая — нет', () async {
+  test('a stale entry is refetched, a live one is not', () async {
     final old = DateTime.now()
         .subtract(const Duration(days: 31))
         .millisecondsSinceEpoch;
@@ -145,7 +145,7 @@ void main() {
     expect(c.read(artistAvatarsProvider)[_key('stale')], 'https://cdn/new.jpg');
   });
 
-  test('артиста ищем у его площадки, а не у соседней', () async {
+  test("asks the artist's own platform, not another", () async {
     final sc = _FakeProvider({
       'Тот же': [_artist('Тот же', 'https://cdn/sc.jpg')],
     });
@@ -166,7 +166,7 @@ void main() {
     expect(avatars[_key('тот же')], isNull);
   });
 
-  test('локального артиста не спрашиваем ни у кого', () async {
+  test('a local artist is asked of nobody', () async {
     final sc = _FakeProvider({
       'Свой файл': [_artist('Свой файл', 'https://cdn/nope.jpg')],
     });
@@ -180,7 +180,7 @@ void main() {
     expect(c.read(artistAvatarsProvider), isEmpty);
   });
 
-  test('записи старого кеша без площадки выбрасываются', () async {
+  test('old cache entries without a platform are dropped', () async {
     final fresh = DateTime.now().millisecondsSinceEpoch;
     final sc = _FakeProvider({
       'Artist': [_artist('Artist', 'https://cdn/new.jpg')],

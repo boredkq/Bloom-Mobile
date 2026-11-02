@@ -6,7 +6,7 @@ import 'package:bloom/providers/soundcloud/soundcloud.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('трек: обложка t300, год, теги, издатель', () {
+  test('track: t300 cover, year, tags, publisher', () {
     final t = mapRawTrack({
       'id': 1,
       'title': 'Song',
@@ -29,7 +29,7 @@ void main() {
     expect(t.artistScId, 42);
   });
 
-  test('трек: release_date приоритетнее created_at, без user — Unknown', () {
+  test('track: release_date beats created_at, no user gives Unknown', () {
     final t = mapRawTrack({
       'id': 2,
       'release_date': '2021-09-09T00:00:00Z',
@@ -41,7 +41,7 @@ void main() {
     expect(t.media, isNull);
   });
 
-  test('плейлист: год альбома, обложка из calculated_artwork_url', () {
+  test('playlist: album year, cover from calculated_artwork_url', () {
     final p = mapRawPlaylist({
       'id': 7,
       'title': 'Album',
@@ -58,7 +58,7 @@ void main() {
     expect(p.artistAvatar, 'https://a/av-t300x300.jpg');
   });
 
-  test('стрим: DRM-only отдаёт код sc.err.drm', () async {
+  test('stream: DRM-only gives the code sc.err.drm', () async {
     await expectLater(
       streamUrl({
         'transcodings': [
@@ -72,7 +72,7 @@ void main() {
     );
   });
 
-  test('стрим: пустые transcodings — search.err.noStream', () async {
+  test('stream: empty transcodings give search.err.noStream', () async {
     await expectLater(
       streamUrl(null),
       throwsA(predicate((e) => e.toString() == 'search.err.noStream')),
@@ -82,7 +82,7 @@ void main() {
   // Downloading takes only progressive: HLS is a playlist of chunks and can't
   // be saved as a file. Such a track still plays; only saving must fail, with a
   // clear code rather than "no stream".
-  test('скачивание: HLS-only трек отдаёт код sc.err.hlsOnly', () async {
+  test('download: an HLS-only track gives the code sc.err.hlsOnly', () async {
     final media = {
       'transcodings': [
         {

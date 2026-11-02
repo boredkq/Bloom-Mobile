@@ -109,18 +109,21 @@ void main() {
         onProgress: onProgress,
       );
 
-  test('файл длиннее куска собирается целиком и в верном порядке', () async {
-    final data = _body(3 * 1024 * 1024 + 777);
-    final server = await _serve(data);
-    addTearDown(() => server.close(force: true));
+  test(
+    'a file longer than a chunk comes together whole and in order',
+    () async {
+      final data = _body(3 * 1024 * 1024 + 777);
+      final server = await _serve(data);
+      addTearDown(() => server.close(force: true));
 
-    final file = await fetch(server);
-    expect(file.readAsBytesSync(), data);
-    // The extension comes from the signature, not the URL, which has none.
-    expect(file.path.endsWith('.m4a'), isTrue);
-  });
+      final file = await fetch(server);
+      expect(file.readAsBytesSync(), data);
+      // The extension comes from the signature, not the URL, which has none.
+      expect(file.path.endsWith('.m4a'), isTrue);
+    },
+  );
 
-  test('оборванное соединение докачивается с той же позиции', () async {
+  test('a broken connection resumes from the same position', () async {
     final data = _body(3 * 1024 * 1024);
     final server = await _serve(data, breakAt: 2);
     addTearDown(() => server.close(force: true));
@@ -129,7 +132,7 @@ void main() {
     expect(file.readAsBytesSync(), data);
   });
 
-  test('прогресс доходит до единицы и не пятится', () async {
+  test('progress reaches one and never goes back', () async {
     final data = _body(2 * 1024 * 1024 + 5);
     final server = await _serve(data, breakAt: 1);
     addTearDown(() => server.close(force: true));
@@ -142,7 +145,7 @@ void main() {
     }
   });
 
-  test('площадка без Range отдаёт файл одним ответом', () async {
+  test('a platform with no Range gives the file in one answer', () async {
     final data = _body(1500);
     final server = await _serve(data, ignoreRange: true);
     addTearDown(() => server.close(force: true));
@@ -151,7 +154,7 @@ void main() {
     expect(file.readAsBytesSync(), data);
   });
 
-  test('безнадёжный обрыв не оставляет огрызка в каталоге', () async {
+  test('a hopeless break leaves no scrap in the folder', () async {
     final data = _body(3 * 1024 * 1024);
     final server = await _serve(data, deadAfter: 0);
     addTearDown(() => server.close(force: true));

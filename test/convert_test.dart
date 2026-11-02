@@ -49,7 +49,7 @@ class _FakeProvider extends MusicProvider {
 }
 
 void main() {
-  test('уверенное совпадение подставляется само', () async {
+  test('a confident match is filled in by itself', () async {
     final src = _track('sc:1');
     final provider = _FakeProvider({
       'Ночь Один': [_track('ytm:1', seconds: 201, source: MusicSource.ytmusic)],
@@ -62,7 +62,7 @@ void main() {
     expect(convertResult(items, decisions).single.id, 'ytm:1');
   });
 
-  test('спорное остаётся оригиналом, пока не выбрали', () async {
+  test('a doubtful one stays the original until picked', () async {
     final src = _track('sc:1');
     final provider = _FakeProvider({
       // The same title but an hour longer, which the matcher doesn't call
@@ -81,7 +81,7 @@ void main() {
     expect(convertResult(items, picked).single.id, 'ytm:1');
   });
 
-  test('трек уже на целевой площадке — за ним не ходим', () async {
+  test("a track already on the target platform isn't fetched", () async {
     final provider = _FakeProvider(const {});
     final items = await scanPlaylistConversion(provider, [
       _track('ytm:7', source: MusicSource.ytmusic),
@@ -92,7 +92,7 @@ void main() {
     expect(provider.calls, 0);
   });
 
-  test('упавшая площадка отличается от честного «не нашлось»', () async {
+  test('a failed platform differs from an honest not found', () async {
     final provider = _FakeProvider(const {}, throwsOn: {'Ночь Один'});
     final items = await scanPlaylistConversion(provider, [_track('sc:1')]);
 
@@ -100,7 +100,7 @@ void main() {
     expect(items.single.failed, isTrue);
   });
 
-  test('чужие площадки из выдачи в кандидаты не попадают', () async {
+  test("other platforms in the results don't become candidates", () async {
     final provider = _FakeProvider({
       'Ночь Один': [
         _track('sc:2', seconds: 200), // same track, not on the target
@@ -112,33 +112,38 @@ void main() {
     expect(items.single.failed, isFalse);
   });
 
-  test('пропущенный трек в копию не идёт, порядок остальных прежний', () async {
-    final provider = _FakeProvider({
-      'Ночь Один': [_track('ytm:1', seconds: 200, source: MusicSource.ytmusic)],
-      'Утро Один': [
-        _track(
-          'ytm:2',
-          name: 'Утро',
-          seconds: 200,
-          source: MusicSource.ytmusic,
-        ),
-      ],
-    });
-    final items = await scanPlaylistConversion(provider, [
-      _track('sc:1'),
-      _track('sc:2', name: 'Утро'),
-    ]);
+  test(
+    'a skipped track stays out of the copy, the others keep their order',
+    () async {
+      final provider = _FakeProvider({
+        'Ночь Один': [
+          _track('ytm:1', seconds: 200, source: MusicSource.ytmusic),
+        ],
+        'Утро Один': [
+          _track(
+            'ytm:2',
+            name: 'Утро',
+            seconds: 200,
+            source: MusicSource.ytmusic,
+          ),
+        ],
+      });
+      final items = await scanPlaylistConversion(provider, [
+        _track('sc:1'),
+        _track('sc:2', name: 'Утро'),
+      ]);
 
-    final decisions = {...defaultDecisions(items), 'sc:1': const SkipTrack()};
-    expect(convertResult(items, decisions).map((t) => t.id), ['ytm:2']);
+      final decisions = {...defaultDecisions(items), 'sc:1': const SkipTrack()};
+      expect(convertResult(items, decisions).map((t) => t.id), ['ytm:2']);
 
-    final stats = convertStats(items, decisions);
-    expect(stats.moved, 1);
-    expect(stats.skipped, 1);
-    expect(stats.kept, 0);
-  });
+      final stats = convertStats(items, decisions);
+      expect(stats.moved, 1);
+      expect(stats.skipped, 1);
+      expect(stats.kept, 0);
+    },
+  );
 
-  test('прогресс доходит до конца и порядок результатов сохраняется', () async {
+  test('progress reaches the end and results keep their order', () async {
     final provider = _FakeProvider(const {});
     final tracks = [
       for (var i = 0; i < 7; i++) _track('sc:$i', name: 'Песня $i'),
@@ -155,7 +160,7 @@ void main() {
     expect(progress.last, 7);
   });
 
-  test('отмена останавливает скан, а не доедает список', () async {
+  test('cancelling stops the scan instead of finishing the list', () async {
     final provider = _FakeProvider(const {});
     var cancelled = false;
     final tracks = [

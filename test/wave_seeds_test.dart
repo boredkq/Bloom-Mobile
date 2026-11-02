@@ -62,40 +62,42 @@ WaveLibrary _library(
 
 void main() {
   group('queueSeeds', () {
-    test('короткая очередь идёт в сиды целиком', () {
+    test('a short queue goes into seeds whole', () {
       final tracks = [for (var i = 0; i < 5; i++) _track('sc:$i')];
       expect(queueSeeds(tracks, _library(tracks)), [
         for (var i = 0; i < 5; i++) _sc(i),
       ]);
     });
 
-    test('длинная — десять равномерно по позициям', () {
+    test('a long one gives ten evenly by position', () {
       final tracks = [for (var i = 0; i < 20; i++) _track('sc:$i')];
       expect(queueSeeds(tracks, _library(tracks)), [
         for (var i = 0; i < 20; i += 2) _sc(i),
       ]);
     });
 
-    test('площадки вперемешку: у каждой своё радио; без радио и дизлайки — '
-        'мимо, ДО расчёта позиций', () {
-      final tracks = [
-        _track('sc:1'),
-        _track('ym:2', source: MusicSource.yandex),
-        _track('ytm:abc', source: MusicSource.ytmusic),
-        _track('sc:4'),
-      ];
-      expect(queueSeeds(tracks, _library(tracks, disliked: {'sc:4'})), [
-        _sc(1),
-        const WaveSeed('ytm', 'track:abc'),
-      ]);
-    });
+    test(
+      'mixed platforms: each has its radio; no radio and dislikes drop out before positions are computed',
+      () {
+        final tracks = [
+          _track('sc:1'),
+          _track('ym:2', source: MusicSource.yandex),
+          _track('ytm:abc', source: MusicSource.ytmusic),
+          _track('sc:4'),
+        ];
+        expect(queueSeeds(tracks, _library(tracks, disliked: {'sc:4'})), [
+          _sc(1),
+          const WaveSeed('ytm', 'track:abc'),
+        ]);
+      },
+    );
 
-    test('одно радио — один сид', () {
+    test('one radio, one seed', () {
       final tracks = [_track('sc:1'), _track('sc:2'), _track('sc:1')];
       expect(queueSeeds(tracks, _library(tracks)), [_sc(1), _sc(2)]);
     });
 
-    test('сидов не набралось — пусто', () {
+    test('not enough seeds: empty', () {
       final ym = [_track('ym:1', source: MusicSource.yandex)];
       expect(queueSeeds(ym, _library(ym)), isEmpty);
       expect(queueSeeds(const [], _library(const [])), isEmpty);
@@ -103,7 +105,7 @@ void main() {
   });
 
   group('personalSeeds', () {
-    test('два самых слушаемых, два свежих лайка и ещё один', () {
+    test('the two most played, two fresh likes and one more', () {
       final tracks = [for (var i = 0; i < 12; i++) _track('sc:$i')];
       final view = _library(
         tracks,
@@ -119,25 +121,28 @@ void main() {
       ]);
     });
 
-    test('следующий из топа уже взят — пятым идёт следующий лайк', () {
-      final tracks = [for (var i = 0; i < 6; i++) _track('sc:$i')];
-      final view = _library(
-        tracks,
-        // Only two tracks in the top: the "next" one around the circle is the
-        // first again.
-        plays: {'sc:0': 10, 'sc:1': 8},
-        favs: ['sc:3', 'sc:4', 'sc:5'],
-      );
-      expect(personalSeeds(view, 'sc', 0), [
-        _sc(0),
-        _sc(1),
-        _sc(3),
-        _sc(4),
-        _sc(5),
-      ]);
-    });
+    test(
+      'the next from the top is already taken: the next like goes fifth',
+      () {
+        final tracks = [for (var i = 0; i < 6; i++) _track('sc:$i')];
+        final view = _library(
+          tracks,
+          // Only two tracks in the top: the "next" one around the circle is the
+          // first again.
+          plays: {'sc:0': 10, 'sc:1': 8},
+          favs: ['sc:3', 'sc:4', 'sc:5'],
+        );
+        expect(personalSeeds(view, 'sc', 0), [
+          _sc(0),
+          _sc(1),
+          _sc(3),
+          _sc(4),
+          _sc(5),
+        ]);
+      },
+    );
 
-    test('только треки выбранной площадки', () {
+    test('only tracks of the chosen platform', () {
       final tracks = [
         _track('ytm:a', source: MusicSource.ytmusic),
         _track('sc:1'),
@@ -148,7 +153,7 @@ void main() {
       expect(personalSeeds(view, 'sc', 0), [_sc(1)]);
     });
 
-    test('сдвиг — вторая волна начинается не с того же', () {
+    test("the shift: a second wave doesn't start the same", () {
       final tracks = [for (var i = 0; i < 8; i++) _track('sc:$i')];
       final view = _library(
         tracks,
@@ -157,7 +162,7 @@ void main() {
       expect(personalSeeds(view, 'sc', 1), [_sc(2), _sc(3), _sc(0)]);
     });
 
-    test('ничего не слушали и не лайкали — три самых свежих', () {
+    test('nothing heard or liked: the three freshest', () {
       final tracks = [for (var i = 0; i < 4; i++) _track('sc:$i')];
       expect(personalSeeds(_library(tracks), 'sc', 0), [
         _sc(0),
@@ -166,7 +171,7 @@ void main() {
       ]);
     });
 
-    test('пусто и дизлайкнутое — без сидов', () {
+    test('empty and disliked: no seeds', () {
       expect(personalSeeds(_library(const []), 'sc', 0), isEmpty);
       final tracks = [_track('sc:1'), _track('sc:2')];
       final view = _library(

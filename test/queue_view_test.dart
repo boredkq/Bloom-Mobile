@@ -61,14 +61,14 @@ ProviderContainer _container(JsonStore store) {
 }
 
 void main() {
-  group('настройка', () {
-    test('по умолчанию вид обычный, как на ПК', () {
+  group('setting', () {
+    test('the regular view by default', () {
       final c = _container(JsonStore.memory());
       expect(c.read(queueViewProvider), QueueView.normal);
       expect(c.read(queueViewProvider).isExtended, isFalse);
     });
 
-    test('выбранный вид читается с диска', () {
+    test('the chosen view is read from disk', () {
       final c = _container(
         JsonStore.memory({
           'playerView': {'queueView': 'extended'},
@@ -77,7 +77,7 @@ void main() {
       expect(c.read(queueViewProvider).isExtended, isTrue);
     });
 
-    test('незнакомая запись — это обычный вид, а не падение', () {
+    test('an unknown entry means the regular view, not a crash', () {
       final c = _container(
         JsonStore.memory({
           'playerView': {'queueView': 'sections'},
@@ -86,7 +86,7 @@ void main() {
       expect(c.read(queueViewProvider), QueueView.normal);
     });
 
-    test('выбор уезжает на диск и не сносит соседнюю настройку', () {
+    test('the choice reaches the disk and keeps the neighboring setting', () {
       final store = JsonStore.memory({
         'playerView': {'titleAlign': 'left'},
       });
@@ -100,13 +100,13 @@ void main() {
     });
   });
 
-  group('промотка при открытии', () {
-    test('обычный вид оставляет две строки запаса сверху', () {
+  group('scroll on open', () {
+    test('the regular view leaves two rows of margin on top', () {
       expect(queueScrollOffset(index: 2, extended: false), 0);
       expect(queueScrollOffset(index: 5, extended: false), 3 * kTrackRowHeight);
     });
 
-    test('расширенный ставит наверх заголовок «Сейчас играет»', () {
+    test('the extended view puts the Now playing header on top', () {
       // Above it is the whole Played section, with its own header.
       expect(
         queueScrollOffset(index: 3, extended: true),
@@ -114,12 +114,12 @@ void main() {
       );
     });
 
-    test('играет первый — прокручивать нечего, заголовка «Прослушано» нет', () {
+    test('the first plays: nothing to scroll, no Played header', () {
       expect(queueScrollOffset(index: 0, extended: true), 0);
     });
   });
 
-  group('секции', () {
+  group('sections', () {
     /// A queue sheet with five tracks; [index] is the playing one.
     Future<_FakePlayback> pump(
       WidgetTester tester, {
@@ -183,7 +183,7 @@ void main() {
         (swipe.queueIndex!, (swipe.child as dynamic).dragIndex as int?),
     ];
 
-    testWidgets('обычный вид секций не рисует', (tester) async {
+    testWidgets('the regular view draws no sections', (tester) async {
       await pump(tester, extended: false);
       expect(find.text('ПРОСЛУШАНО'), findsNothing);
       expect(find.text('СЕЙЧАС ИГРАЕТ'), findsNothing);
@@ -192,14 +192,16 @@ void main() {
       expect(rows(tester), [(0, 0), (1, 1), (2, 2), (3, 3), (4, 4)]);
     });
 
-    testWidgets('расширенный бьёт очередь на три секции', (tester) async {
+    testWidgets('the extended view splits the queue into three sections', (
+      tester,
+    ) async {
       await pump(tester, extended: true);
       expect(find.text('ПРОСЛУШАНО'), findsOneWidget);
       expect(find.text('СЕЙЧАС ИГРАЕТ'), findsOneWidget);
       expect(find.text('ДАЛЕЕ'), findsOneWidget);
     });
 
-    testWidgets('номер тянучки — свой в секции, номер очереди — общий', (
+    testWidgets('the drag number is per section, the queue number is shared', (
       tester,
     ) async {
       await pump(tester, extended: true);
@@ -215,9 +217,7 @@ void main() {
       ]);
     });
 
-    testWidgets('перестановка в «Далее» уходит номерами очереди', (
-      tester,
-    ) async {
+    testWidgets('a move in Up next goes by queue numbers', (tester) async {
       final playback = await pump(tester, extended: true);
       final lists = tester
           .widgetList<SliverReorderableList>(find.byType(SliverReorderableList))
@@ -228,7 +228,7 @@ void main() {
       expect(playback.reorders, [(3, 5)]);
     });
 
-    testWidgets('играет первый — секции «Прослушано» нет', (tester) async {
+    testWidgets('the first plays: no Played section', (tester) async {
       await pump(tester, extended: true, index: 0);
       expect(find.text('ПРОСЛУШАНО'), findsNothing);
       expect(find.text('СЕЙЧАС ИГРАЕТ'), findsOneWidget);
@@ -236,13 +236,13 @@ void main() {
       expect(rows(tester), [(0, null), (1, 0), (2, 1), (3, 2), (4, 3)]);
     });
 
-    testWidgets('играет последний — секции «Далее» нет', (tester) async {
+    testWidgets('the last plays: no Up next section', (tester) async {
       await pump(tester, extended: true, index: 4);
       expect(find.text('ПРОСЛУШАНО'), findsOneWidget);
       expect(find.text('ДАЛЕЕ'), findsNothing);
     });
 
-    testWidgets('один трек в очереди — только «Сейчас играет»', (tester) async {
+    testWidgets('one track in the queue: only Now playing', (tester) async {
       await pump(tester, extended: true, index: 0, length: 1);
       expect(find.text('ПРОСЛУШАНО'), findsNothing);
       expect(find.text('ДАЛЕЕ'), findsNothing);

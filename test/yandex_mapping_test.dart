@@ -3,6 +3,7 @@
 /// playlist formats, the direct link signature.
 library;
 
+import 'package:bloom/core/providers/provider_text.dart';
 import 'package:bloom/core/entities/entities.dart';
 import 'package:bloom/providers/yandex/models.dart';
 import 'package:bloom/providers/yandex/ym_provider.dart';
@@ -10,50 +11,62 @@ import 'package:bloom/providers/yandex/yandex.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('разбор выдачи', () {
-    test('трек: id числом, артисты через запятую, обложка, год из альбома', () {
-      final t = parseTrack({
-        'id': 42,
-        'title': 'Песня',
-        'artists': [
-          {'id': 7, 'name': 'Первый'},
-          {'id': 8, 'name': 'Второй'},
-        ],
-        'coverUri': 'avatars.yandex.net/get-music/1/%%',
-        'durationMs': 185000,
-        'albums': [
-          {'year': 2019},
-        ],
-      })!;
+  group('parsing results', () {
+    test(
+      'track: id as a number, artists with commas, cover, year from the album',
+      () {
+        final t = parseTrack({
+          'id': 42,
+          'title': 'Песня',
+          'artists': [
+            {'id': 7, 'name': 'Первый'},
+            {'id': 8, 'name': 'Второй'},
+          ],
+          'coverUri': 'avatars.yandex.net/get-music/1/%%',
+          'durationMs': 185000,
+          'albums': [
+            {'year': 2019},
+          ],
+        })!;
 
-      expect(t.id, '42');
-      expect(t.artist, 'Первый, Второй');
-      expect(t.artistId, '7');
-      expect(t.artists, [(id: '7', name: 'Первый'), (id: '8', name: 'Второй')]);
-      expect(trackFromYm(t).artists.last, (name: 'Второй', id: 'ym:artist:8'));
-      expect(t.cover, 'https://avatars.yandex.net/get-music/1/400x400');
-      expect(t.duration, const Duration(milliseconds: 185000));
-      expect(t.year, '2019');
-      // No available field: Yandex only stays silent about available ones.
-      expect(t.available, isTrue);
-    });
+        expect(t.id, '42');
+        expect(t.artist, 'Первый, Второй');
+        expect(t.artistId, '7');
+        expect(t.artists, [
+          (id: '7', name: 'Первый'),
+          (id: '8', name: 'Второй'),
+        ]);
+        expect(trackFromYm(t).artists.last, (
+          name: 'Второй',
+          id: 'ym:artist:8',
+        ));
+        expect(t.cover, 'https://avatars.yandex.net/get-music/1/400x400');
+        expect(t.duration, const Duration(milliseconds: 185000));
+        expect(t.year, '2019');
+        // No available field: Yandex only stays silent about available ones.
+        expect(t.available, isTrue);
+      },
+    );
 
-    test('трек: без артистов и id — дефолты площадки, id строкой', () {
-      final t = parseTrack({'id': '99', 'available': false})!;
-      expect(t.id, '99');
-      expect(t.title, kYmUntitled);
-      expect(t.artist, kYmUnknownArtist);
-      expect(t.artistId, '');
-      expect(t.cover, '');
-      expect(t.year, '');
-      expect(t.available, isFalse);
+    test(
+      'track: no artists and id gives platform defaults, id as a string',
+      () {
+        final t = parseTrack({'id': '99', 'available': false})!;
+        expect(t.id, '99');
+        expect(t.title, providerText.untitled);
+        expect(t.artist, providerText.unknownArtist);
+        expect(t.artistId, '');
+        expect(t.cover, '');
+        expect(t.year, '');
+        expect(t.available, isFalse);
 
-      // With no id at all an item isn't a track, and such result rows get
-      // skipped.
-      expect(parseTrack({'title': 'x'}), isNull);
-    });
+        // With no id at all an item isn't a track, and such result rows get
+        // skipped.
+        expect(parseTrack({'title': 'x'}), isNull);
+      },
+    );
 
-    test('обложка берётся из coverUri, cover.uri или ogImage', () {
+    test('the cover comes from coverUri, cover.uri or ogImage', () {
       expect(coverFrom({'coverUri': 'a/%%'}), 'https://a/400x400');
       expect(
         coverFrom({
@@ -65,7 +78,7 @@ void main() {
       expect(coverFrom({}), '');
     });
 
-    test('альбом и артист: счётчик, год, похожие', () {
+    test('album and artist: count, year, similar', () {
       final a = parseAlbum({
         'id': 5,
         'title': 'Альбом',
@@ -87,7 +100,7 @@ void main() {
       expect(parseArtist({'name': 'Без id'}), isNull);
     });
 
-    test('плейлист: владелец из login, потом uid', () {
+    test('playlist: owner from login, then uid', () {
       final byLogin = parsePlaylist({
         'kind': 1000,
         'owner': {'login': 'user', 'uid': 55},
@@ -103,7 +116,7 @@ void main() {
       expect(byUid.owner, '55');
     });
 
-    test('плейлист-страница: rich-tracks и плоские треки, имя владельца', () {
+    test("playlist page: rich-tracks and flat tracks, the owner's name", () {
       final rich = playlistEntity({
         'title': 'Мой',
         'owner': {'name': 'Вася', 'login': 'vasya'},
@@ -124,8 +137,8 @@ void main() {
     });
   });
 
-  group('сквозные id', () {
-    test('плейлист: owner с тильдой разбирается по последней', () {
+  group('composite ids', () {
+    test('playlist: an owner with a tilde parses by the last one', () {
       final id = ymPlaylistId('user~name', '1003');
       expect(id, 'ym:pl:user~name~1003');
       final parsed = parseYmPlaylistId(id)!;
@@ -133,7 +146,7 @@ void main() {
       expect(parsed.kind, '1003');
     });
 
-    test('публичный плейлист и числовые id', () {
+    test('a public playlist and numeric ids', () {
       final uuid = ymPlaylistUuidId('lk.abc-123');
       expect(parseYmPlaylistUuidId(uuid), 'lk.abc-123');
       expect(parseYmPlaylistUuidId('ym:pl:a~1'), isNull);
@@ -146,14 +159,14 @@ void main() {
       expect(ymNumericId('ym:plu:abc'), '');
     });
 
-    test('источник узнаётся по префиксу', () {
+    test('the source is recognized by prefix', () {
       expect(MusicSource.fromId(ymTrackId('1')), MusicSource.yandex);
       expect(MusicSource.fromId(ymPlaylistId('u', '2')), MusicSource.yandex);
     });
   });
 
-  group('маппинг в сущности', () {
-    test('трек несёт артиста, обложку и признак доступности', () {
+  group('mapping to entities', () {
+    test('a track carries the artist, the cover and availability', () {
       final t = trackFromYm(
         const YmRawTrack(
           id: '42',
@@ -176,7 +189,7 @@ void main() {
       expect(const YandexProvider().canDownload(t), isFalse);
     });
 
-    test('альбом: нулевой счётчик становится «неизвестно»', () {
+    test('album: a zero count becomes unknown', () {
       final a = albumFromYm(
         const YmRawAlbum(
           id: '5',
@@ -196,8 +209,8 @@ void main() {
     });
   });
 
-  group('ссылки', () {
-    test('трек внутри альбома важнее самого альбома', () {
+  group('links', () {
+    test('a track inside an album beats the album', () {
       const url = 'https://music.yandex.ru/album/123/track/456';
       expect(reAlbumTrack.firstMatch(url)?.group(1), '456');
       // The branch order in resolve: the track first, or the link would open
@@ -205,7 +218,7 @@ void main() {
       expect(reAlbum.firstMatch(url)?.group(1), '123');
     });
 
-    test('плейлисты обоих форматов', () {
+    test('playlists of both formats', () {
       final old = reUserPlaylist.firstMatch(
         'https://music.yandex.ru/users/vasya/playlists/1003',
       )!;
@@ -222,15 +235,15 @@ void main() {
     });
   });
 
-  group('прямая ссылка', () {
-    test('подпись: md5(соль + path без слеша + s)', () {
+  group('direct link', () {
+    test('signature: md5(salt + path without the slash + s)', () {
       expect(
         signPath('/abc/def.mp3', 'xyz'),
         '018bd052f726715baee932ed27d907fc',
       );
     });
 
-    test('теги XML достаются по первому вхождению', () {
+    test('XML tags are taken by first occurrence', () {
       const xml =
           '<download-info><host>s1.ya.net</host><path>/a/b.mp3</path>'
           '<ts>62d</ts><s>sig</s></download-info>';
@@ -242,18 +255,18 @@ void main() {
     });
   });
 
-  test('без токена площадка выключена и в поиск не идёт', () {
+  test('no token: the platform is off and stays out of search', () {
     setToken(null);
     expect(const YandexProvider().isEnabled, isFalse);
     setToken('  ');
-    expect(activeToken(), isNull, reason: 'пробелы — это не токен');
+    expect(activeToken(), isNull, reason: "spaces aren't a token");
     setToken('abc');
     expect(const YandexProvider().isEnabled, isTrue);
     setToken(null);
   });
 
-  group('чарт и релизы', () {
-    test('чарт: место и динамика из обёртки, голый трек — по порядку', () {
+  group('chart and releases', () {
+    test('chart: place and trend from the wrapper, a bare track by order', () {
       final tracks = parseChart({
         'chart': {
           'tracks': [
@@ -278,7 +291,7 @@ void main() {
       expect(tracks.last.chartNew, isFalse);
     });
 
-    test('место в чарте доходит до трека, у обычного трека его нет', () {
+    test('a chart place reaches the track, a normal track has none', () {
       final chartTrack = trackFromYm(
         parseChart({
           'chart': {
@@ -297,7 +310,7 @@ void main() {
       expect(trackFromYm(parseTrack({'id': 6})!).chartPos, isNull);
     });
 
-    test('альбом: id и фото первого артиста, тип и дата выхода', () {
+    test("album: the first artist's id and photo, type and release date", () {
       final raw = parseAlbum({
         'id': 10,
         'title': 'Сингл',
@@ -324,12 +337,12 @@ void main() {
     });
   });
 
-  group('треки артиста порциями', () {
+  group('artist tracks in portions', () {
     List<Map<String, Object>> tracks(int n, [int from = 0]) => [
       for (var i = 0; i < n; i++) {'id': from + i, 'title': 'T${from + i}'},
     ];
 
-    test('по pager: есть ещё, пока загружено меньше total', () {
+    test('by pager: more while loaded is under total', () {
       final first = parseArtistTracksPage({
         'tracks': tracks(50),
         'pager': {'total': 120, 'perPage': 50, 'page': 0},
@@ -345,14 +358,14 @@ void main() {
       expect(last.nextPage, isNull);
     });
 
-    test('без pager полная страница значит «возможно, есть»', () {
+    test('no pager: a full page means maybe more', () {
       expect(parseArtistTracksPage({'tracks': tracks(50)}, 0).nextPage, 1);
       final short = parseArtistTracksPage({'tracks': tracks(12)}, 0);
       expect(short.nextPage, isNull);
       expect(short.total, isNull);
     });
 
-    test('пустая страница заканчивает список', () {
+    test('an empty page ends the list', () {
       final empty = parseArtistTracksPage({
         'tracks': <Object>[],
         'pager': {'total': 120},

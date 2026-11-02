@@ -72,7 +72,7 @@ void main() {
   // the widget tree, and without a binding the lookup crashes.
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('кандидаты — только плейлисты с источником', () {
+  test('candidates are only playlists with a source', () {
     final c = _container(_FakeSoundCloud(const {}), JsonStore.memory());
     final lib = c.read(libraryProvider.notifier);
     lib.createPlaylist('Свой');
@@ -86,7 +86,7 @@ void main() {
     expect(names, ['Импортированный']);
   });
 
-  test('проход обновляет только отмеченные и считает новые треки', () async {
+  test('a pass refreshes only marked ones and counts new tracks', () async {
     final sc = _FakeSoundCloud({
       'sc:set:1': [_track('sc:1'), _track('sc:2')],
       'sc:set:2': [_track('sc:9')],
@@ -124,36 +124,33 @@ void main() {
     expect(state.busy, isNull);
   });
 
-  test(
-    'несколько источников: новое сверху, добавленное руками на месте',
-    () async {
-      final sc = _FakeSoundCloud({
-        'sc:set:1': [_track('sc:1')],
-        'sc:set:2': [_track('sc:9')],
-      });
-      final c = _container(sc, JsonStore.memory());
-      final lib = c.read(libraryProvider.notifier);
-      final pl = lib.createPlaylist(
-        'Свой',
-        tracks: [_track('sc:7')],
-        source: _src('sc:set:1'),
-      );
-      lib.setPlaylistSources(pl.id, [_src('sc:set:1'), _src('sc:set:2')]);
+  test('several sources: new on top, what was added by hand stays', () async {
+    final sc = _FakeSoundCloud({
+      'sc:set:1': [_track('sc:1')],
+      'sc:set:2': [_track('sc:9')],
+    });
+    final c = _container(sc, JsonStore.memory());
+    final lib = c.read(libraryProvider.notifier);
+    final pl = lib.createPlaylist(
+      'Свой',
+      tracks: [_track('sc:7')],
+      source: _src('sc:set:1'),
+    );
+    lib.setPlaylistSources(pl.id, [_src('sc:set:1'), _src('sc:set:2')]);
 
-      final auto = c.read(plAutoProvider.notifier);
-      lib.setAutoRefresh([pl.id], true);
-      final result = await auto.runSweep(silent: true);
+    final auto = c.read(plAutoProvider.notifier);
+    lib.setAutoRefresh([pl.id], true);
+    final result = await auto.runSweep(silent: true);
 
-      expect(result.added, 2);
-      expect(c.read(libraryProvider).playlists.single.trackIds, [
-        'sc:1',
-        'sc:9',
-        'sc:7',
-      ]);
-    },
-  );
+    expect(result.added, 2);
+    expect(c.read(libraryProvider).playlists.single.trackIds, [
+      'sc:1',
+      'sc:9',
+      'sc:7',
+    ]);
+  });
 
-  test('один упавший источник не отменяет остальные', () async {
+  test("one failed source doesn't cancel the others", () async {
     final sc = _FakeSoundCloud({
       'sc:set:1': null,
       'sc:set:2': [_track('sc:9')],
@@ -174,7 +171,7 @@ void main() {
     expect(c.read(libraryProvider).playlists.single.trackIds, ['sc:9', 'sc:7']);
   });
 
-  test('упавший источник не стирает состав плейлиста', () async {
+  test("a failed source doesn't erase the playlist's contents", () async {
     final sc = _FakeSoundCloud({'sc:set:1': null});
     final c = _container(sc, JsonStore.memory());
     final lib = c.read(libraryProvider.notifier);
@@ -193,7 +190,7 @@ void main() {
     expect(c.read(plAutoProvider).runs[pl.id]?.failed, isTrue);
   });
 
-  test('без отмеченных плейлистов проход не запускается', () async {
+  test('no marked playlists, no pass', () async {
     final c = _container(_FakeSoundCloud(const {}), JsonStore.memory());
     c
         .read(libraryProvider.notifier)
@@ -204,7 +201,7 @@ void main() {
     expect(c.read(plAutoProvider).lastRun, 0);
   });
 
-  test('расписание, отметки и итоги переживают перезапуск', () async {
+  test('the schedule, marks and results survive a restart', () async {
     final store = JsonStore.memory();
     final first = _container(
       _FakeSoundCloud({
@@ -233,7 +230,7 @@ void main() {
     expect(state.lastRun, greaterThan(0));
   });
 
-  test('итоги удалённого плейлиста забываются', () async {
+  test("a deleted playlist's results are forgotten", () async {
     final store = JsonStore.memory();
     final first = _container(
       _FakeSoundCloud({

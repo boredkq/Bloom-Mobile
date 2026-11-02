@@ -92,7 +92,7 @@ void main() {
     );
   }
 
-  testWidgets('обложка летит и меняет форму по дороге', (tester) async {
+  testWidgets('the cover flies and changes shape on the way', (tester) async {
     await pumpApp(tester);
 
     await tester.tap(find.byType(GestureDetector));
@@ -102,14 +102,18 @@ void main() {
     expect(
       _flying(tester),
       isNotNull,
-      reason: 'посреди перехода в оверлее должна быть копия своей формы',
+      reason: 'mid-transition the overlay holds a copy with its own shape',
     );
 
     await tester.pumpAndSettle();
-    expect(_flying(tester), isNull, reason: 'копия убирается после посадки');
+    expect(
+      _flying(tester),
+      isNull,
+      reason: 'the copy is removed after landing',
+    );
   });
 
-  testWidgets('на «назад» форма идёт от шапки к карточке, а не наоборот', (
+  testWidgets('on back the shape goes from header to card, not the other way', (
     tester,
   ) async {
     await pumpApp(tester);
@@ -130,7 +134,9 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('страница под перелётом не едет по горизонтали', (tester) async {
+  testWidgets("the page under the flight doesn't move sideways", (
+    tester,
+  ) async {
     const key = Key('страница');
 
     await tester.pumpWidget(

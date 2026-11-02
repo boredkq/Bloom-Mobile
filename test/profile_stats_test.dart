@@ -74,7 +74,7 @@ void _seedPlays(BloomDb db, DateTime at, int n, [String id = 'sc:1']) {
 }
 
 void main() {
-  test('повторное прослушивание растит счётчик, а не плодит записи', () {
+  test('another play grows the count instead of adding entries', () {
     final c = _container();
     final track = _track('sc:1');
 
@@ -90,7 +90,7 @@ void main() {
     expect(c.read(profileStatsProvider).totalPlays, 3);
   });
 
-  test('время прослушивания и средняя длина считаются по счётчику', () {
+  test('listening time and average length go by the count', () {
     final c = _container();
     _listen(c, _track('sc:1', seconds: 200));
     _listen(c, _track('sc:1', seconds: 200));
@@ -102,7 +102,7 @@ void main() {
     expect(stats.uniqueTracks, 2);
   });
 
-  test('трек, которого нет в библиотеке, в топе остаётся — по снимку', () {
+  test('a track not in the library stays in the top, by its snapshot', () {
     final c = _container();
     _listen(c, _track('sc:1', artist: 'A'));
     _listen(c, _track('sc:1', artist: 'A'));
@@ -114,7 +114,7 @@ void main() {
     expect(stats.favArtist, 'A');
   });
 
-  test('прослушивания раскладываются по площадкам', () {
+  test('plays are split by platform', () {
     final c = _container();
     for (var i = 0; i < 3; i++) {
       _listen(c, _track('ytm:1', source: MusicSource.ytmusic));
@@ -128,7 +128,7 @@ void main() {
     expect(stats.bySource.length, 2);
   });
 
-  test('топ артистов сортируется по прослушиваниям, любимый — первый', () {
+  test('the artist top sorts by plays, the favorite first', () {
     final c = _container();
     _listen(c, _track('sc:1', artist: 'A'));
     _listen(c, _track('sc:2', artist: 'B'));
@@ -140,7 +140,7 @@ void main() {
     expect(stats.uniqueArtists, 2);
   });
 
-  test('мультиартистный трек идёт в зачёт каждому участнику', () {
+  test('a multi-artist track counts for each participant', () {
     final c = _container();
     _listen(c, _track('sc:1', artist: 'reidenshi, Øneheart'));
     _listen(c, _track('sc:2', artist: 'Øneheart'));
@@ -156,45 +156,51 @@ void main() {
     expect(stats.topArtists.last.source, MusicSource.soundcloud);
   });
 
-  test('дни — из журнала: серия с грейсом со вчера, рекорд, дни с музыкой', () {
-    final db = BloomDb.memory();
-    _seedPlays(db, _ago(1), 4);
-    _seedPlays(db, _ago(2), 2);
-    _seedPlays(db, _ago(4), 9);
-    db.exec('INSERT INTO days (day, app_ms) VALUES (?, ?)', [
-      dayKey(_ago(1)),
-      3600000,
-    ]);
-    final c = _container(db);
+  test(
+    'days from the journal: a streak with grace from yesterday, the record, days with music',
+    () {
+      final db = BloomDb.memory();
+      _seedPlays(db, _ago(1), 4);
+      _seedPlays(db, _ago(2), 2);
+      _seedPlays(db, _ago(4), 9);
+      db.exec('INSERT INTO days (day, app_ms) VALUES (?, ?)', [
+        dayKey(_ago(1)),
+        3600000,
+      ]);
+      final c = _container(db);
 
-    final stats = c.read(profileStatsProvider);
-    // Yesterday and the day before in a row, a gap on the third: a streak of 2.
-    expect(stats.streak, 2);
-    expect(stats.longestStreak, 2);
-    expect(stats.recordDay, 9);
-    expect(stats.activeDays, 3);
-    expect(stats.activity[dayKey(_ago(4))], 9);
-    expect(stats.appSec, 3600);
-  });
+      final stats = c.read(profileStatsProvider);
+      // Yesterday and the day before in a row, a gap on the third: a streak of 2.
+      expect(stats.streak, 2);
+      expect(stats.longestStreak, 2);
+      expect(stats.recordDay, 9);
+      expect(stats.activeDays, 3);
+      expect(stats.activity[dayKey(_ago(4))], 9);
+      expect(stats.appSec, 3600);
+    },
+  );
 
-  test('«На волне» берёт самую длинную серию: пропуск ступень не отнимает', () {
-    final db = BloomDb.memory();
-    for (final d in [10, 9, 8, 7]) {
-      _seedPlays(db, _ago(d), 1);
-    }
-    _seedPlays(db, _ago(1), 1);
-    final c = _container(db);
+  test(
+    "On a roll takes the longest streak: a gap doesn't take a tier away",
+    () {
+      final db = BloomDb.memory();
+      for (final d in [10, 9, 8, 7]) {
+        _seedPlays(db, _ago(d), 1);
+      }
+      _seedPlays(db, _ago(1), 1);
+      final c = _container(db);
 
-    final stats = c.read(profileStatsProvider);
-    expect(stats.streak, 1);
-    expect(stats.longestStreak, 4);
-    final streak = c
-        .read(achievementsProvider)
-        .firstWhere((a) => a.def.id == 'streak');
-    expect(streak.tier, AchTier.bronze); // 3 days
-  });
+      final stats = c.read(profileStatsProvider);
+      expect(stats.streak, 1);
+      expect(stats.longestStreak, 4);
+      final streak = c
+          .read(achievementsProvider)
+          .firstWhere((a) => a.def.id == 'streak');
+      expect(streak.tier, AchTier.bronze); // 3 days
+    },
+  );
 
-  test('достижения: тиры, прогресс до следующего и максимум', () {
+  test('achievements: tiers, progress to the next and the maximum', () {
     final c = _container();
     _listenMany(c, 150);
 
@@ -213,7 +219,7 @@ void main() {
     expect(devotee.value, 1);
   });
 
-  test('первый прогон засеивает молча, новые анлоки приходят потом', () {
+  test('the first run seeds silently, new unlocks come later', () {
     final db = BloomDb.memory();
     final c = _container(db);
     _listenMany(c, 150);
@@ -246,7 +252,7 @@ void main() {
     expect(fresh.single.tier, AchTier.silver);
   });
 
-  test('уровень: 10 за трек, 50 за день, 100/250/500 за ступени, 100·L', () {
+  test('level: 10 per track, 50 per day, 100/250/500 per tier, 100·L', () {
     final c = _container();
     _listenMany(c, 150);
 
@@ -262,7 +268,7 @@ void main() {
     expect(lv.to, 2800);
   });
 
-  test('уровень: дни подряд дают +10 за каждый предыдущий, до +50', () {
+  test('level: days in a row give +10 for each previous, up to +50', () {
     final db = BloomDb.memory();
     // Opened seven days in a row, with nothing heard.
     for (var d = 6; d >= 0; d--) {
@@ -278,50 +284,50 @@ void main() {
     expect(lv.to, 600);
   });
 
+  test('a visit and app time live in the days table and survive a restart', () {
+    final db = BloomDb.memory();
+    final c = _container(db);
+    c.read(daysProvider.notifier)
+      ..visit()
+      ..visit()
+      ..addUsage(1500)
+      ..addUsage(500);
+
+    expect(c.read(daysProvider).visited.length, 1);
+    expect(c.read(daysProvider).appMs, 2000);
+
+    final again = _container(db);
+    expect(again.read(daysProvider).appMs, 2000);
+    expect(again.read(levelProvider).days, 50);
+  });
+
   test(
-    'визит и время в приложении — в таблице дней, переживают перезапуск',
+    'clearing with the level: XP is set aside, the journal and marks go',
     () {
       final db = BloomDb.memory();
       final c = _container(db);
-      c.read(daysProvider.notifier)
-        ..visit()
-        ..visit()
-        ..addUsage(1500)
-        ..addUsage(500);
+      _listenMany(c, 150);
+      c
+          .read(unlockedAchievementsProvider.notifier)
+          .sync(c.read(achievementsProvider));
+      final before = c.read(levelProvider).xp;
 
-      expect(c.read(daysProvider).visited.length, 1);
-      expect(c.read(daysProvider).appMs, 2000);
+      c.read(statsClearProvider.notifier).clear(keepLevel: true);
 
-      final again = _container(db);
-      expect(again.read(daysProvider).appMs, 2000);
-      expect(again.read(levelProvider).days, 50);
+      final stats = c.read(profileStatsProvider);
+      expect(stats.totalPlays, 0);
+      expect(stats.activeDays, 0);
+      expect(stats.appSec, 0);
+      expect(c.read(unlockedAchievementsProvider).at, isEmpty);
+      // The first run is done, so anything taken anew comes as a notification.
+      expect(c.read(unlockedAchievementsProvider).seeded, isTrue);
+      expect(db.get('level.banked'), before);
+      // Today's visit stays: the app is open.
+      expect(c.read(levelProvider).xp, before + 50);
     },
   );
 
-  test('очистка с уровнем: XP откладываются, журнал и отметки уходят', () {
-    final db = BloomDb.memory();
-    final c = _container(db);
-    _listenMany(c, 150);
-    c
-        .read(unlockedAchievementsProvider.notifier)
-        .sync(c.read(achievementsProvider));
-    final before = c.read(levelProvider).xp;
-
-    c.read(statsClearProvider.notifier).clear(keepLevel: true);
-
-    final stats = c.read(profileStatsProvider);
-    expect(stats.totalPlays, 0);
-    expect(stats.activeDays, 0);
-    expect(stats.appSec, 0);
-    expect(c.read(unlockedAchievementsProvider).at, isEmpty);
-    // The first run is done, so anything taken anew comes as a notification.
-    expect(c.read(unlockedAchievementsProvider).seeded, isTrue);
-    expect(db.get('level.banked'), before);
-    // Today's visit stays: the app is open.
-    expect(c.read(levelProvider).xp, before + 50);
-  });
-
-  test('очистка без уровня: остаётся только сегодняшний визит', () {
+  test("clearing without the level: only today's visit stays", () {
     final c = _container();
     _listenMany(c, 150);
 
