@@ -1,6 +1,6 @@
-/// Кеш аватаров исполнителей: точное совпадение имени, промахи тоже
-/// запоминаются, свежий кеш сеть не дёргает, а спрашивается артист у ТОЙ
-/// площадки, где его слушали.
+/// The artist avatar cache: exact name match, misses are remembered too, a
+/// fresh cache stays off the network, and an artist is asked of the platform
+/// they were heard on.
 library;
 
 import 'package:bloom/app/providers.dart';
@@ -23,7 +23,7 @@ Artist _artist(String name, String? avatar, [MusicSource? source]) => Artist(
 class _FakeProvider extends MusicProvider {
   _FakeProvider(this.answers, [this.source = MusicSource.soundcloud]);
 
-  /// Что отдавать на запрос имени.
+  /// What to answer for a name.
   final Map<String, List<Artist>> answers;
 
   final List<String> queries = [];
@@ -65,7 +65,7 @@ ProviderContainer _container(
   return c;
 }
 
-/// Ссылка на артиста SoundCloud — с неё начинались все прежние проверки.
+/// A SoundCloud artist reference.
 ArtistRef _sc(String name) => (name: name, source: MusicSource.soundcloud);
 
 String _key(String name, [MusicSource source = MusicSource.soundcloud]) =>
@@ -99,7 +99,7 @@ void main() {
   });
 
   test('промах запоминается — по нему тоже не долбимся повторно', () async {
-    // Провайдер падает на любой запрос: сети нет.
+    // The provider fails every request: no network.
     final sc = _FakeProvider(const {});
     final c = _container([sc]);
 
@@ -107,7 +107,7 @@ void main() {
     await c.read(artistAvatarsProvider.notifier).ensure([_sc('Кто-то')]);
 
     expect(sc.queries, ['Кто-то']);
-    // Пустая запись наружу не показывается — в UI останется обложка трека.
+    // An empty entry isn't exposed, so the UI keeps the track cover.
     expect(c.read(artistAvatarsProvider), isEmpty);
   });
 
@@ -130,7 +130,7 @@ void main() {
       },
     );
 
-    // Кеш поднялся из файла ещё до всякой сети.
+    // The cache loaded from the file before any network.
     expect(
       c.read(artistAvatarsProvider)[_key('fresh')],
       'https://cdn/keep.jpg',
@@ -160,7 +160,7 @@ void main() {
 
     expect(sc.queries, isEmpty);
     expect(ym.queries, ['Тот же']);
-    // Записи разных площадок не смешиваются: у SoundCloud её просто нет.
+    // Platforms don't mix: SoundCloud just has no entry.
     final avatars = c.read(artistAvatarsProvider);
     expect(avatars[_key('тот же', MusicSource.yandex)], 'https://cdn/ym.jpg');
     expect(avatars[_key('тот же')], isNull);
@@ -194,7 +194,7 @@ void main() {
       },
     );
 
-    // Чья это была аватарка, уже не сказать — в карту она не попадает.
+    // There's no telling whose avatar it was, so it stays out of the map.
     expect(c.read(artistAvatarsProvider), isEmpty);
 
     await c.read(artistAvatarsProvider.notifier).ensure([_sc('Artist')]);

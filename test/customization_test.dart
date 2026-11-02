@@ -1,10 +1,9 @@
-/// Кастомизация: библиотека картинок, контексты, пресеты и их файл.
+/// Customization: the picture library, contexts, presets and their file.
 ///
-/// Проверяем то, что ломается тихо: удалённая картинка обязана пропасть и из
-/// контекстов, и из пресетов (иначе фон остаётся ссылкой в никуда), своя
-/// картинка фона обязана быть важнее «обложки трека как фон», а файл пресетов
-/// — переживать круг «выгрузили → загрузили» с теми же картинками и без
-/// дублей в библиотеке.
+/// I check what breaks quietly: a removed picture must leave contexts and
+/// presets too (or the background points nowhere), an own background picture
+/// must beat "cover as background", and the presets file must survive an export
+/// and import with the same pictures and no duplicates in the library.
 library;
 
 import 'package:bloom/core/store/json_store.dart';
@@ -30,7 +29,7 @@ ProviderContainer _container([JsonStore? store]) {
   return c;
 }
 
-/// Добавляет картинку ссылкой — единственный путь, которому не нужен диск.
+/// Adds a picture by URL, the only route that needs no disk.
 String _add(ProviderContainer c, String url) {
   expect(c.read(mediaLibProvider.notifier).addUrl(url), isTrue);
   return c.read(mediaLibProvider).last.id;
@@ -58,7 +57,7 @@ void main() {
       final c = _container(store);
       final id = _add(c, 'https://e.com/a.jpg');
       c.read(mediaLibProvider.notifier).setBlur(id, 40);
-      c.read(mediaLibProvider.notifier).setDim(id, 200); // выше потолка
+      c.read(mediaLibProvider.notifier).setDim(id, 200); // above the ceiling
       final fresh = _container(store);
       final item = fresh.read(mediaLibProvider).single;
       expect(item.blur, 40);
@@ -69,7 +68,7 @@ void main() {
       final store = JsonStore.memory({
         'media': [
           {'id': 'ml1', 'src': 'https://e.com/a.jpg'},
-          {'id': 'ml2'}, // без картинки
+          {'id': 'ml2'}, // no picture
           'мусор',
         ],
       });
@@ -86,7 +85,7 @@ void main() {
       custom.toggle(CustomCtx.bg, a, true);
       custom.toggle(CustomCtx.bg, b, true);
       expect(c.read(customProvider).bg, b);
-      // Выключение чужой картинки не снимает стоящую.
+      // Turning off another picture doesn't remove the active one.
       custom.toggle(CustomCtx.bg, a, false);
       expect(c.read(customProvider).bg, b);
       custom.toggle(CustomCtx.bg, b, false);
@@ -114,11 +113,12 @@ void main() {
 
       c.read(customProvider.notifier).toggle(CustomCtx.slider, a, true);
       c.read(customProvider.notifier).toggle(CustomCtx.bg, a, true);
-      // Порядок — как у тумблеров на странице картинки, а не как включали.
+      // The order follows the toggles on the picture page, not the order they
+      // were turned on.
       expect(c.read(mediaUsageProvider(a)), [CustomCtx.bg, CustomCtx.slider]);
       expect(c.read(mediaUsageProvider(b)), isEmpty);
 
-      // Картинку выбили из контекста другой — значок обязан уйти.
+      // Another picture took over the context, so the badge must go.
       c.read(customProvider.notifier).toggle(CustomCtx.bg, b, true);
       expect(c.read(mediaUsageProvider(a)), [CustomCtx.slider]);
       expect(c.read(mediaUsageProvider(b)), [CustomCtx.bg]);
@@ -137,11 +137,11 @@ void main() {
       expect(c.read(customProvider).bg, isNull);
       expect(c.read(customProvider).cover, b);
       expect(c.read(mediaLibProvider), hasLength(1));
-      // Пресет остался, но уже без удалённой картинки.
+      // The preset stays, without the removed picture.
       expect(c.read(presetsProvider).single.bg, isNull);
       expect(c.read(presetsProvider).single.cover, b);
 
-      // Удалили последнюю — опустевший пресет уходит целиком.
+      // The last one is gone, so the empty preset goes entirely.
       removeMedia(c.read, b);
       expect(c.read(presetsProvider), isEmpty);
       expect(c.read(mediaLibProvider), isEmpty);
@@ -167,7 +167,7 @@ void main() {
       custom.toggle(CustomCtx.cover, b, true);
       c.read(presetsProvider.notifier).apply(preset.id);
       expect(c.read(customProvider).bg, a);
-      // Обложки в пресете не было — её оставили как есть, как на ПК.
+      // The preset had no cover, so the current one stays as it is.
       expect(c.read(customProvider).cover, b);
     });
 
@@ -184,7 +184,7 @@ void main() {
       c.read(coverModeProvider.notifier).set(CoverMode.fallback);
       final preset = c.read(presetsProvider.notifier).save('снимок')!;
 
-      // Меняем всё после сохранения — пресет обязан вернуть своё.
+      // I change everything after saving: the preset must bring its own back.
       lib.setBlur(a, 5);
       lib.setDim(a, 90);
       c.read(coverModeProvider.notifier).set(CoverMode.always);
@@ -219,7 +219,7 @@ void main() {
       c.read(presetsProvider.notifier).apply(plain.id);
       expect(c.read(settingsProvider).themeId, 'dark');
 
-      // Круг через хранилище: пресет читается заново с тем же видом.
+      // A round trip through the store: the preset reads back the same.
       final fresh = _container(store);
       fresh.read(presetsProvider.notifier).apply(full.id);
       expect(fresh.read(settingsProvider).themeId, 'light');
@@ -244,7 +244,7 @@ void main() {
       settings.deleteCustomTheme(mine.id);
 
       c.read(presetsProvider.notifier).apply(preset.id);
-      c.read(presetsProvider.notifier).apply(preset.id); // без дублей
+      c.read(presetsProvider.notifier).apply(preset.id); // no duplicates
       final state = c.read(settingsProvider);
       expect(state.themeId, mine.id);
       expect(state.customThemes.where((t) => t.id == mine.id), hasLength(1));
@@ -290,13 +290,13 @@ void main() {
           preset,
         ], source.read(mediaLibProvider));
 
-        // Чужое устройство: библиотека пуста.
+        // Another device: an empty library.
         final target = _container();
         expect(await importPresets(target.read, content), 1);
         expect(target.read(mediaLibProvider), hasLength(2));
         final imported = target.read(presetsProvider).single;
         expect(imported.name, 'мой');
-        // Размытие приехало вместе с картинкой фона, а не потерялось.
+        // The blur came along with the background picture.
         expect(
           target.read(mediaLibProvider.notifier).byId(imported.bg)!.blur,
           24,
@@ -306,7 +306,7 @@ void main() {
           'https://e.com/b.gif',
         );
 
-        // Повторный импорт того же файла: пресет второй, а картинки те же.
+        // Importing the same file again: a second preset, the same pictures.
         expect(await importPresets(target.read, content), 1);
         expect(target.read(mediaLibProvider), hasLength(2));
         expect(target.read(presetsProvider), hasLength(2));
@@ -317,7 +317,7 @@ void main() {
       final c = _container();
       expect(decodePresets('не json'), isEmpty);
       expect(decodePresets('{"kind":"чужое"}'), isEmpty);
-      // Пресет без единой картинки — не пресет.
+      // A preset with no picture isn't a preset.
       expect(decodePresets('[{"name":"пусто"}]'), isEmpty);
       expect(await importPresets(c.read, 'не json'), 0);
     });
@@ -353,7 +353,7 @@ void main() {
         expect(settings.preset.bg, const Color(0xFF112233));
         expect(c.read(coverModeProvider), CoverMode.fallback);
 
-        // И обратно: в файле те же поля, что читает ПК.
+        // And back: the file holds the fields the computer reads.
         final json = preset.extrasToJson();
         expect((json['theme'] as Map)['accent'], '#ff0000');
         expect((json['transparency'] as Map)['trMode'], 'on');
@@ -361,7 +361,7 @@ void main() {
     );
 
     test('имя файла чистится от запрещённых символов', () {
-      // Пробелы остаются — они в именах файлов законны, как и на ПК.
+      // Spaces stay: they're legal in file names.
       expect(presetFileName('лето/2026: ночь'), 'лето_2026_ ночь.bloompresets');
       expect(presetFileName('   '), 'preset.bloompresets');
     });
@@ -389,7 +389,7 @@ void main() {
     test('размытие и затемнение обложки: умолчания, границы, перезапуск', () {
       final store = JsonStore.memory();
       final fx = _container(store).read(coverAsBgFxProvider.notifier);
-      // До первой правки — ровно то, что было зашито до появления ползунков.
+      // Before the first edit it's the built-in default.
       expect(fx.state.blur, kCoverAsBgBlur);
       expect(fx.state.dim, kCoverAsBgDim);
 

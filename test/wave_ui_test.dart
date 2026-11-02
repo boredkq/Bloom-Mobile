@@ -173,14 +173,15 @@ void main() {
       expect(find.text('Song sc:1'), findsOneWidget);
       expect(find.text('Artist sc:1'), findsOneWidget);
 
-      // Крестик в строке — второй круглый значок после «очистить всё» в шапке.
+      // The row's cross is the second round icon, after "clear all" in the
+      // header.
       await tester.tap(findGlyph(Bi.close));
       await tester.pumpAndSettle();
 
       expect(container.read(waveStoreProvider).isDisliked('sc:1'), isFalse);
       expect(find.text('Дизлайков пока нет'), findsOneWidget);
-      // Запись файла отложенная — дожидаемся её, иначе тест уходит с висящим
-      // таймером.
+      // The file write is delayed, so I wait for it, or the test ends with a
+      // pending timer.
       await tester.pump(const Duration(milliseconds: 500));
     });
   });

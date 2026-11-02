@@ -1,5 +1,5 @@
-/// Импорт по ссылке из шторки «+»: куда попадают треки и что считается
-/// «добавлено».
+/// Importing by link from the "+" sheet: where tracks land and what counts as
+/// added.
 library;
 
 import 'package:bloom/core/entities/entities.dart';
@@ -21,14 +21,14 @@ Track _track(String id) => Track(
   sourceData: const {'transcodings': []},
 );
 
-/// Площадка, у которой по ссылке лежит либо плейлист, либо одиночный трек.
+/// A platform where a link holds either a playlist or a single track.
 class _FakeSoundCloud extends MusicProvider {
   _FakeSoundCloud({this.sets = const {}, this.singles = const {}});
 
-  /// Ссылка → состав плейлиста.
+  /// Link to playlist contents.
   final Map<String, List<Track>> sets;
 
-  /// Ссылки, за которыми стоит один трек, — импортировать такое нельзя.
+  /// Links with a single track behind them, which can't be imported.
   final Map<String, Track> singles;
 
   @override
@@ -40,8 +40,8 @@ class _FakeSoundCloud extends MusicProvider {
     SearchSort sort = SearchSort.relevance,
   }) async => SearchResults.empty;
 
-  /// id коллекции — последняя часть пути: `https://sc/one?x` → `sc:set:one`,
-  /// так две разные ссылки ведут к одной коллекции.
+  /// A collection's id is the path's last part: `https://sc/one?x` gives
+  /// `sc:set:one`, so two different links lead to one collection.
   static String _idOf(String url) =>
       'sc:set:${Uri.parse(url).pathSegments.last}';
 
@@ -117,8 +117,8 @@ void main() {
     final playlist = env.container.read(libraryProvider).playlists.single;
     expect(playlist.id, result.createdId);
     expect(playlist.trackIds, ['sc:1', 'sc:2']);
-    // Источник запомнен — иначе плейлист нечем было бы обновлять. Вид — как
-    // на ПК: обновление идёт по id коллекции у её площадки.
+    // The source is remembered, or the playlist would have nothing to refresh
+    // from. The refresh goes by collection id on its platform.
     final source = playlist.sources.single;
     expect(source.toJson(), {
       'url': 'https://sc/one',
@@ -205,12 +205,12 @@ void main() {
     expect(result.added, 1);
     final playlist = env.container.read(libraryProvider).playlists.single;
     expect(playlist.trackIds.toSet(), {'sc:1', 'sc:2'});
-    // Импортированная коллекция становится источником и у существующего
-    // плейлиста: обновление только подмешивает новые треки наверх, добавленное
-    // руками остаётся на месте.
+    // An imported collection becomes a source of an existing playlist too: a
+    // refresh only mixes new tracks in on top, and what was added by hand stays
+    // put.
     expect(playlist.sources.map((s) => s.id), ['sc:set:one']);
 
-    // Другая ссылка на ту же коллекцию второй привязкой не становится.
+    // Another link to the same collection doesn't become a second source.
     await _import(
       env,
       'https://sc/one?utm=share',

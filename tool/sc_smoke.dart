@@ -1,10 +1,10 @@
-/// Сетевой smoke против живого api-v2 (не для CI) — порт `sc_smoke` из
-/// десктопного `soundcloud.rs`. Запуск: `dart run tool/sc_smoke.dart`.
+/// A network smoke run against the live API, not for CI. Run: `dart run
+/// tool/sc_smoke.dart`.
 ///
-/// Не требует Flutter-рантайма: провайдер — чистый Dart.
+/// It needs no Flutter runtime: the provider is plain Dart.
 library;
 
-// ignore_for_file: avoid_print — это консольный скрипт, вывод и есть результат.
+// ignore_for_file: avoid_print
 
 import 'dart:io';
 
@@ -22,7 +22,7 @@ Future<void> main() async {
     }
   }
 
-  // Поиск треков + маппинг.
+  // Track search plus mapping.
   final page = await searchTracks('daft punk', limit: 5);
   check(page.items.isNotEmpty, 'пустая выдача поиска');
   final t = page.items.first;
@@ -32,13 +32,13 @@ Future<void> main() async {
   );
   print('client_id: ${activeClientId()}');
 
-  // Резолв стрима из media.transcodings.
+  // Resolving the stream from media.transcodings.
   final stream = await streamUrl(t.media);
   check(stream.url.startsWith('http'), 'стрим не url');
   final head = stream.url.substring(0, stream.url.length.clamp(0, 60));
   print('stream: hls=${stream.isHls} url=$head…');
 
-  // Байты реально отдаются (range-GET, как это сделает плеер).
+  // Bytes really come through (a range GET, as the player does).
   final client = HttpClient();
   final req = await client.getUrl(Uri.parse(stream.url));
   req.headers.add('Range', 'bytes=0-1023');
@@ -51,7 +51,7 @@ Future<void> main() async {
   print('cdn: status ${resp.statusCode}, $bytes байт');
   client.close();
 
-  // Артист: поиск → профиль.
+  // Artist: search, then profile.
   final arts = await searchArtists('skrillex', limit: 3);
   check(arts.items.isNotEmpty, 'пустая выдача артистов');
   final a = arts.items.first;
@@ -59,7 +59,7 @@ Future<void> main() async {
   check(user != null && user.id == a.id, 'get_user не сошёлся');
   print('artist: ${user?.username}');
 
-  // Топ-треки и данные артиста.
+  // Top tracks and artist data.
   final top = await artistTopTracks('${a.id}', artistName: a.title);
   print('top tracks: ${top.length}');
   final data = await artistData('${a.id}', artistName: a.title);
@@ -69,12 +69,12 @@ Future<void> main() async {
   final rel = await relatedArtists('${a.id}');
   print('related: ${rel.length}');
 
-  // Резолв permalink-ссылки трека.
+  // Resolving a track's permalink.
   final resolved = await resolveUrl(t.permalink!);
   check(resolved?.kind == 'track', 'resolve не распознал трек');
   print('resolve ok');
 
-  // ── Контракт провайдера поверх того же порта ───────────────────────────
+  // ── The provider contract on top of it ───────────────────────────
   print('\n— провайдер —');
   final registry = ProviderRegistry()..register(const SoundCloudProvider());
 
@@ -89,7 +89,7 @@ Future<void> main() async {
   check(entity.id.startsWith('sc_'), 'id без префикса источника: ${entity.id}');
   check(entity.duration > Duration.zero, 'нулевая длительность');
 
-  // Плеер ходит именно так: провайдер по префиксу id → стрим.
+  // This is how the player goes: a provider by id prefix, then the stream.
   final provider = registry.forEntity(entity.id);
   check(provider != null, 'реестр не нашёл провайдера по id трека');
   final playable = await provider!.resolveStream(entity);
@@ -99,8 +99,8 @@ Future<void> main() async {
   );
   print('resolveStream: hls=${playable?.isHls}');
 
-  // Офлайн-копия: та же цепочка, но ссылка обязана быть на цельный файл, и по
-  // ней должны реально пойти байты — иначе «Слушать офлайн» молча не работает.
+  // An offline copy: the same chain, but the link must point to a whole file
+  // and bytes must really flow, or offline listening silently fails.
   check(provider.canDownload(entity), 'трек площадки не считается скачиваемым');
   final downloadable = await provider.resolveDownload(entity);
   check(
@@ -113,8 +113,8 @@ Future<void> main() async {
   )).close();
   check(dlResp.statusCode == 200, 'файл: CDN status ${dlResp.statusCode}');
   final first = await dlResp.first;
-  // Те же магические байты, по которым офлайн-стор выбирает расширение: `ftyp`
-  // с четвёртого байта — m4a, иначе mp3.
+  // The magic bytes the offline store picks an extension by: `ftyp` from the
+  // fourth byte is m4a, else mp3.
   final isM4a =
       first.length > 8 && String.fromCharCodes(first.sublist(4, 8)) == 'ftyp';
   check(first.isNotEmpty, 'файл: пустое тело');
@@ -124,7 +124,7 @@ Future<void> main() async {
   );
   dlClient.close(force: true);
 
-  // Страница артиста — шесть эндпоинтов параллельно.
+  // The artist page: six endpoints in parallel.
   final artistEntity = results.artists.isNotEmpty
       ? results.artists.first
       : (await registry.searchAll('skrillex')).artists.first;
@@ -141,7 +141,7 @@ Future<void> main() async {
     'у артиста пусто в популярных',
   );
 
-  // Альбом артиста открывается по своему сквозному id.
+  // An artist's album opens by its composite id.
   final albums = artistPage?.albums ?? const [];
   final album = albums.isEmpty
       ? null
@@ -151,7 +151,7 @@ Future<void> main() async {
     check(album.tracks.isNotEmpty, 'альбом без треков');
   }
 
-  // An account link opens the account's page, as on the PC.
+  // An account link opens the account's page.
   final handle = artistPage?.artist.permalink ?? artistEntity.permalink;
   if (handle != null) {
     final hit = await registry.resolveUrlAny(handle);
@@ -161,7 +161,7 @@ Future<void> main() async {
     }
   }
 
-  // Чужая ссылка не должна уходить в SC `/resolve` — провайдер отдаёт её дальше.
+  // A foreign link mustn't go to `/resolve`: the provider passes it on.
   check(
     await provider.resolveUrl('https://music.yandex.ru/album/1') == null,
     'SC взялся резолвить чужую ссылку',

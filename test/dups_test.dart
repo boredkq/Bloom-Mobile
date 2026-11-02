@@ -1,4 +1,4 @@
-/// «Найти дубли»: группировка повторов и выбор того, кого оставить.
+/// Finding duplicates: grouping repeats and choosing which one to keep.
 library;
 
 import 'package:bloom/core/entities/entities.dart';

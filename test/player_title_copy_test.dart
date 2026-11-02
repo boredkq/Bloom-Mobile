@@ -1,5 +1,4 @@
-/// Что кладёт в буфер тап по названию в полноэкранном плеере (порт
-/// `TitleCopyOnClick` с ПК).
+/// What a tap on the title in the full-screen player puts on the clipboard.
 library;
 
 import 'package:bloom/core/entities/entities.dart';

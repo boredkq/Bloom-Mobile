@@ -1,6 +1,6 @@
-/// Коллаж обложек: что попадает в него из списка треков и сколько плиток
-/// получается. Раскладка одна и та же у плитки библиотеки и у шапки списка,
-/// поэтому проверяется отдельно от обеих.
+/// The cover collage: what gets in from a track list and how many tiles come
+/// out. The layout is shared by the library tile and the list header, so it's
+/// tested apart from both.
 library;
 
 import 'package:bloom/app/theme/bloom_theme.dart';
@@ -11,8 +11,7 @@ import 'package:bloom/shared/ui/bloom_icon.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'support/glyphs.dart';
 
-/// Заглушка раздела — со значком, как в жизни: по нему и видно, сколько раз она
-/// нарисовалась.
+/// A section placeholder with an icon, which shows how many times it got drawn.
 const Widget _fallback = BloomIcon(Bi.history);
 
 Finder get _fallbacks => findGlyph(Bi.history);
@@ -31,8 +30,8 @@ Future<void> _pump(WidgetTester tester, List<String?> covers) =>
       ),
     );
 
-/// Сколько картинок собрал коллаж. Сами картинки в тесте не грузятся (сети
-/// нет), но виджеты `Image` в дереве стоят — по ним и считаем.
+/// How many pictures the collage built. Pictures don't load in a test (no
+/// network), but the `Image` widgets are in the tree, so I count those.
 Future<int> _images(WidgetTester tester, List<String?> covers) async {
   await _pump(tester, covers);
   return tester.widgetList(find.byType(Image)).length;
@@ -74,9 +73,9 @@ void main() {
       expect(_fallbacks, findsOneWidget);
     });
 
-    // `local:` без поднятого каталога обложек — картинки не будет, как и у
-    // сетевой, которая не загрузилась. Заглушка раздела со значком в ячейку не
-    // лезет: четыре таких ячейки давали сетку из четырёх иконок вместо коллажа.
+    // `local:` without a loaded covers folder gives no picture, like a network
+    // one that failed. A section placeholder with its icon doesn't fit a cell:
+    // four of them would make a grid of four icons instead of a collage.
     testWidgets('ячейка без картинки не повторяет заглушку раздела', (
       tester,
     ) async {

@@ -1,10 +1,10 @@
-/// Бегущая строка названия: когда катится, куда и как быстро.
+/// The title marquee: when it rolls, which way and how fast.
 ///
-/// Проверяем поведение, а не картинку: влезающий текст остаётся одной статичной
-/// строкой с эллипсисом, длинный раздваивается и едет влево ровно на «текст +
-/// зазор», а длительность цикла считается по скорости с полом в 4 s. Ширину
-/// строки берём с самого виджета (шрифт в тестах свой, считать её по кеглю
-/// нельзя) — сверяем именно зависимости между числами.
+/// I check behavior, not the picture: fitting text stays one static line with
+/// an ellipsis, long text splits in two and moves left by exactly "text + gap",
+/// and the cycle's duration comes from the speed with a 4 s floor. I take the
+/// line's width from the widget itself (tests have their own font) and check
+/// how the numbers relate.
 library;
 
 import 'package:bloom/shared/ui/marquee_text.dart';
@@ -13,7 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 const _style = TextStyle(fontSize: 20);
 
-/// Зазор между копиями — совпадает с умолчанием виджета (десктопные 64 px).
+/// The gap between copies, matching the widget's default.
 const double _gap = 64;
 
 Future<void> _pump(WidgetTester tester, String text, double width) {
@@ -31,7 +31,7 @@ Future<void> _pump(WidgetTester tester, String text, double width) {
   );
 }
 
-/// Смещения обеих копий строки от левого края обёртки.
+/// Both copies' offsets from the wrapper's left edge.
 List<double> _offsets(WidgetTester tester) {
   final wrap = tester.renderObject<RenderBox>(find.byType(ClipRect));
   return tester
@@ -49,7 +49,7 @@ void main() {
 
     expect(find.text('Трек'), findsOneWidget);
     expect(find.byType(ClipRect), findsNothing);
-    // Пустых кадров анимация не заказывает — таймер не заведён вовсе.
+    // The animation requests no idle frames: no timer at all.
     expect(tester.hasRunningAnimations, isFalse);
   });
 
@@ -58,24 +58,24 @@ void main() {
     await _pump(tester, text, 200);
     await tester.pump();
 
-    // Две копии одной строки — вторая закрывает хвост цикла и стоит ровно в
-    // шаге правее первой, поэтому в конце цикла встаёт на её место и
-    // «перемотки» на глаз нет.
+    // Two copies of one line: the second covers the end of the cycle one step
+    // to the right of the first, so it lands in its place and no rewind shows.
     expect(find.text(text), findsNWidgets(2));
     final start = _offsets(tester);
     expect(start.first, 0);
     final step = start[1] - start.first;
 
-    // Скорость 55 px/s, дальше округление до целых секунд — как на ПК.
+    // 55 px/s, then rounded to whole seconds.
     final seconds = (step / 55).round();
     expect(seconds, greaterThan(4));
 
-    // Допуск — пара процентов шага: цикл стартует кадром позже первой
-    // раскладки, и на длинной строке этот кадр стоит несколько пикселей.
+    // The tolerance is a couple of percent of the step: the cycle starts a
+    // frame after the first layout, and on a long line that frame is worth a
+    // few pixels.
     await tester.pump(Duration(seconds: seconds ~/ 2));
     expect(_offsets(tester).first, closeTo(-step / 2, step * 0.02));
 
-    // Иначе тест уйдёт с бесконечной анимацией на руках.
+    // Otherwise the test ends with an endless animation running.
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
@@ -88,13 +88,13 @@ void main() {
 
     final start = _offsets(tester);
     final step = start[1] - start.first;
-    // Строка переросла обёртку, но по 55 px/s прошла бы шаг быстрее 4 s —
-    // значит цикл упёрся в пол и едет медленнее расчётного.
+    // The line outgrew the wrapper but would cover the step faster than 4 s at
+    // 55 px/s, so the cycle hit the floor and moves slower than calculated.
     expect(step - _gap, greaterThan(60 + 4));
     expect((step / 55).round(), lessThan(4));
 
-    // Половина шага за 2 s — это ровно четырёхсекундный цикл. Если бы пол не
-    // сработал, за те же 2 s строка ушла бы заметно дальше.
+    // Half a step in 2 s is exactly a four-second cycle. Without the floor it
+    // would have gone noticeably further in the same 2 s.
     await tester.pump(const Duration(seconds: 2));
     expect(_offsets(tester).first, closeTo(-step / 2, step * 0.02));
 

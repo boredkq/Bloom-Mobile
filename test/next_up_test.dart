@@ -1,9 +1,10 @@
-/// Плашка «Далее» под слайдером: кого она называет и как хранится настройка.
+/// The "Up next" pill under the slider: who it names and how the setting is
+/// stored.
 ///
-/// Проверяем то, что ломается тихо. «Следующий» на последнем треке зависит от
-/// повтора: при `all` очередь закольцована ([PlaybackController.next] идёт
-/// `(index + 1) % length`), при `off` и `one` дальше ничего — ошибка здесь
-/// показала бы человеку не тот трек, а плеер при этом играл бы правильно.
+/// I check what breaks quietly. "Next" on the last track depends on repeat:
+/// with `all` the queue loops ([PlaybackController.next] goes `(index + 1) %
+/// length`), with `off` and `one` nothing follows. A mistake here would name
+/// the wrong track while the player plays the right one.
 library;
 
 import 'package:bloom/core/entities/entities.dart';

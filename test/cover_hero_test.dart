@@ -1,9 +1,9 @@
-/// Перелёт обложки: карточка → шапка страницы.
+/// The cover flight: card to page header.
 ///
-/// Проверяем не «красиво», а два места, где легко ошибиться и незаметно жить с
-/// ошибкой: летящая копия должна МЕНЯТЬ форму по дороге (иначе кружок аватарки
-/// щёлкает в прямоугольник на старте) и должна считать долю пути в правильную
-/// сторону на «назад» (там навигатор гонит кадры от 1 к 0).
+/// I check two places that are easy to get wrong without noticing: the flying
+/// copy must change shape on the way (or the avatar's circle snaps to a
+/// rectangle at the start), and it must count its progress the right way on
+/// "back" (the navigator runs frames from 1 to 0).
 library;
 
 import 'package:bloom/app/theme/bloom_theme.dart';
@@ -14,13 +14,12 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:bloom/core/l10n/l10n.dart';
 
-/// Скругление на карточке и в шапке — намеренно крайние значения, чтобы любое
-/// промежуточное было видно однозначно.
+/// Radii on the card and in the header are extreme values, so anything in
+/// between is unmistakable.
 const double _card = 50;
 const double _page = 0;
 
-/// Скругление летящей копии: единственный `ClipRRect`, который не совпадает ни
-/// с одним из концов.
+/// The flying copy's radius: the only `ClipRRect` that matches neither end.
 double? _flying(WidgetTester tester) {
   for (final clip in tester.widgetList<ClipRRect>(find.byType(ClipRRect))) {
     final shape = clip.borderRadius;
@@ -52,8 +51,8 @@ void main() {
   Future<void> pumpApp(WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        // Язык прибит гвоздями: иначе проверки текста зависели бы от локали
-        // машины, на которой гоняют тесты.
+        // The language is pinned: otherwise text checks would depend on the
+        // machine's locale.
         locale: const Locale('ru'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -119,9 +118,9 @@ void main() {
 
     await tester.tap(find.text('назад'));
     await tester.pump();
-    // Четверть пути назад: копия ещё почти прямоугольник шапки. Если долю
-    // перелёта считать без поправки на направление, здесь будет кружок
-    // карточки — тот самый щелчок формы на старте.
+    // A quarter of the way back: the copy is still almost the header's
+    // rectangle. Counting progress without the direction would show the card's
+    // circle here, the very snap at the start.
     await tester.pump(const Duration(milliseconds: 75));
 
     final radius = _flying(tester);
@@ -136,8 +135,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        // Язык прибит гвоздями: иначе проверки текста зависели бы от локали
-        // машины, на которой гоняют тесты.
+        // The language is pinned: otherwise text checks would depend on the
+        // machine's locale.
         locale: const Locale('ru'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -161,8 +160,8 @@ void main() {
 
     await tester.tap(find.text('открыть'));
     await tester.pump();
-    // Общий переход приложения на этом кадре увёл бы страницу вбок на четверть
-    // ширины — вместе со всем, кроме летящей обложки.
+    // The app's shared transition would have moved the page sideways by a
+    // quarter of its width on this frame, everything except the flying cover.
     await tester.pump(const Duration(milliseconds: 150));
 
     expect(tester.getTopLeft(find.byKey(key)).dx, 0);

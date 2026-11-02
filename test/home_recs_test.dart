@@ -1,6 +1,6 @@
-/// Витрины главной «Для вас» и «Похожие на» (`Home` ПК): сиды из журнала,
-/// отбор незнакомого, отсев реаплоадов, смесь треков и артистов. Площадки —
-/// фейковые, сеть не нужна.
+/// The home shelves "For you" and "Similar to": seeds from the journal, picking
+/// the unfamiliar, dropping reuploads, mixing tracks and artists. Platforms are
+/// fake, no network.
 library;
 
 import 'package:bloom/core/entities/entities.dart';
@@ -33,7 +33,8 @@ Track _t(
   artistId: artistId,
 );
 
-/// Площадка, которая отвечает похожими из словаря; радио есть у всех её треков.
+/// A platform that answers with similar tracks from a dictionary; all its
+/// tracks have a radio.
 class _Fake extends MusicProvider {
   _Fake({
     this.source = MusicSource.soundcloud,
@@ -64,9 +65,9 @@ class _Fake extends MusicProvider {
   Future<ArtistPageData?> getArtist(String id) async => pages[id];
 }
 
-/// Вход витрин: [plays] — id → сколько раз слушали (в пределах [daysAgo]).
-/// [heard] — слышанное, но не сохранённое. У игранного без трека в [tracks] и
-/// [heard] снимок свой — у каждого свой артист.
+/// The shelves' input: [plays] is id to play count (within [daysAgo]), [heard]
+/// is heard but not saved. A played track that's in neither [tracks] nor
+/// [heard] gets its own snapshot, each with its own artist.
 RecsInput _input({
   required List<_Fake> providers,
   Map<String, int> plays = const {},
@@ -96,7 +97,7 @@ RecsInput _input({
     stats: PlayStats.build(PlayLog(events: events, tracks: snapshots)),
     lib: LibraryState(
       tracks: {for (final t in tracks) t.id: t},
-      // Последний в [favs] — самый свежий лайк, он и сверху.
+      // The last in [favs] is the freshest like and goes on top.
       libIds: [
         for (final t in tracks.reversed)
           if (favs.contains(t.id)) t.id,
@@ -162,8 +163,8 @@ void main() {
         guard.accept(_t('sc:1', name: 'X - Ночь', artist: 'up', seconds: 203)),
         isFalse,
       );
-      // Общее слово есть, но это другой трек (длительность далеко за
-      // допуском) — индекс не должен его путать.
+      // There's a shared word, but it's another track (the duration is far
+      // outside the tolerance), and the index mustn't mix them up.
       expect(
         guard.accept(_t('sc:2', name: 'Ночь', artist: 'Y', seconds: 260)),
         isTrue,
@@ -174,7 +175,7 @@ void main() {
   group('«Для вас»: сиды', () {
     test('самое слушаемое за окно — с площадок, где есть радио', () {
       final input = _input(
-        // Яндекса нет (не вошли), своим файлам спросить не у кого.
+        // No Yandex (not signed in), and own files have nobody to ask.
         providers: [
           _Fake(),
           _Fake(source: MusicSource.ytmusic),
@@ -203,7 +204,7 @@ void main() {
         plays: {'sc:old': 6, 'sc:new': 2},
         daysAgo: {'sc:old': 200},
       );
-      // За 90 дней только один трек — меньше трёх, поэтому берём всё время.
+      // Only one track in 90 days, fewer than three, so I take all time.
       expect(pickForYouSeeds(input), ['sc:old', 'sc:new']);
     });
 
@@ -229,11 +230,11 @@ void main() {
               _t('sc:10', artist: 'A'),
               _t('sc:11', artist: 'A'),
               _t('sc:12', artist: 'A'),
-              _t('sc:2'), // уже слушали
+              _t('sc:2'), // already heard
             ],
             'sc:2': [
               _t('sc:20', name: 'Песня', artist: 'B'),
-              _t('sc:21', name: 'B - Песня', artist: 'uploader'), // реаплоад
+              _t('sc:21', name: 'B - Песня', artist: 'uploader'), // reupload
               _t('sc:22', artist: 'C'),
             ],
           },
@@ -278,7 +279,7 @@ void main() {
       );
       final input = _input(
         providers: [provider],
-        // Не сид (YouTube Music тут нет), только слышанное.
+        // Not a seed (no YouTube Music here), only heard.
         plays: {'sc:1': 3, 'ytm:9': 1},
         heard: [_t('ytm:9', name: 'целоваться', artist: 'lightprey')],
       );

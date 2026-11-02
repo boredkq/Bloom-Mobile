@@ -19,14 +19,14 @@ Track _track(String id) => Track(
   source: MusicSource.soundcloud,
 );
 
-/// Площадка, которая отдаёт витрину не с первого раза.
+/// A platform that gives up the shelf only after a few tries.
 class _FakeProvider extends MusicProvider {
   _FakeProvider({this.charts, this.releases, this.failFirst = 0});
 
   final List<Track>? charts;
   final NewReleases? releases;
 
-  /// Сколько первых ответов «сорвать» — пустотой, как это делает landing3.
+  /// How many first answers to fail with an empty result.
   int failFirst;
 
   int chartCalls = 0;
@@ -85,7 +85,7 @@ void main() {
       expect((first.block as DiscoverTracks).tracks.single.id, 'sc:a');
       expect(provider.chartCalls, 1);
 
-      // Второй заход на главную сеть не дёргает.
+      // A second visit to home stays off the network.
       await fetchDiscover(c.read(registryProvider), DiscoverMode.charts);
       expect(provider.chartCalls, 1);
     });
@@ -97,7 +97,7 @@ void main() {
       final result = await c.read(discoverProvider(DiscoverMode.charts).future);
       expect(result, isNotNull);
       expect((result!.block as DiscoverTracks).tracks.single.id, 'sc:a');
-      // Первый ответ был пустой — значит сходили дважды.
+      // The first answer was empty, so it went twice.
       expect(provider.chartCalls, 2);
     });
 
@@ -108,7 +108,7 @@ void main() {
         await c.read(discoverProvider(DiscoverMode.charts).future),
         isNull,
       );
-      // Заходов ровно столько, сколько попыток: первая плюс повторы.
+      // Exactly as many calls as attempts: the first plus the retries.
       expect(provider.chartCalls, kDiscoverRetries.length + 1);
     });
 

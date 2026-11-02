@@ -1,8 +1,9 @@
-/// Липкая шапка: кнопки остаются наверху, название с рядом действий уезжает.
+/// The sticky header: buttons stay on top, the title and action row scroll
+/// away.
 ///
-/// Проверяем геометрию и нажатия, а не картинку: где стоит ряд кнопок после
-/// прокрутки, до какой высоты сжимается шапка и что погасший ряд действий уже
-/// не ловит тапы — он оказывается ровно под кнопками.
+/// I check geometry and taps, not the picture: where the button row stands
+/// after scrolling, how far the header collapses, and that the faded action row
+/// catches no taps, since it ends up right under the buttons.
 library;
 
 import 'package:bloom/app/theme/bloom_theme.dart';
@@ -13,13 +14,13 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:bloom/core/l10n/l10n.dart';
 
-/// Системная строка — её высоту шапка обязана оставить под кнопками.
+/// The status bar: the header must keep its height clear of the buttons.
 const double _top = 40;
 
-/// Сжатая шапка: системная строка + отступ + ряд кнопок + отступ.
+/// The collapsed header: status bar, padding, button row, padding.
 const double _collapsed = _top + 10 + 48 + 10;
 
-/// Нажали ли «Воспроизвести» в ряду действий.
+/// Whether Play in the action row was pressed.
 bool _played = false;
 
 Future<void> _pumpList(WidgetTester tester) async {
@@ -61,7 +62,7 @@ Future<void> _pumpList(WidgetTester tester) async {
   );
 }
 
-/// Видимая высота шапки — её внешняя обрезка скруглённого низа.
+/// The header's visible height: the outer clip of its rounded bottom.
 double _headerHeight(WidgetTester tester) => tester
     .getSize(
       find
@@ -90,7 +91,8 @@ void main() {
     final titleBefore = tester.getTopLeft(find.text('Название списка')).dy;
     await _scroll(tester, -150);
 
-    // Кнопки на месте, название уехало вместе с обложкой ровно на прокрутку.
+    // The buttons stay, and the title left with the cover by exactly the
+    // scroll.
     expect(tester.getTopLeft(bar).dy, _top + 10);
     expect(_headerHeight(tester), 250);
     expect(
@@ -105,7 +107,8 @@ void main() {
 
     expect(_headerHeight(tester), _collapsed);
     expect(tester.getTopLeft(find.text('назад')).dy, _top + 10);
-    // Список ушёл под шапку: первая строка уже не первая на экране.
+    // The list went under the header: the first row is no longer first on
+    // screen.
     expect(find.text('строка 0'), findsNothing);
   });
 

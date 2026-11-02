@@ -1,6 +1,5 @@
-/// Недавнее в поиске: запросы и открытые карточки — порядок, дедуп, потолок и
-/// чтение с диска, то же, что делают `bloom_recent_searches` и
-/// `bloom_recent_items` на десктопе.
+/// Recent in search: queries and opened cards. Order, dedup, ceiling and
+/// reading from disk.
 library;
 
 import 'package:bloom/core/entities/entities.dart';
@@ -82,7 +81,7 @@ void main() {
   test('список переживает перезапуск: пишется и читается из хранилища', () {
     final store = JsonStore.memory();
     _container(store).read(recentSearchesProvider.notifier).push('kavinsky');
-    // Второй контейнер = новый запуск приложения с тем же файлом.
+    // A second container means a new app launch with the same file.
     expect(_container(store).read(recentSearchesProvider), ['kavinsky']);
   });
 
@@ -148,13 +147,13 @@ void main() {
 
     final restored = _container(store).read(recentItemsProvider);
     expect(restored, hasLength(2));
-    // Сет открывается той же сущностью, что пришла в выдаче, — и `sourceData`
-    // трека тоже на месте, иначе стрим пришлось бы резолвить заново.
+    // A set opens as the same entity that came in the results, and the track's
+    // `sourceData` is there too, or the stream would need resolving again.
     expect(restored.first, isA<RecentSet>());
     final set = (restored.first as RecentSet).set;
     expect(set.isAlbum, isTrue);
     expect(set.ownerName, 'Kavinsky');
-    expect(set.source, MusicSource.yandex); // источник восстановлен по id
+    expect(set.source, MusicSource.yandex); // the source is restored by id
     final track = (restored.last as RecentTrack).track;
     expect(track.sourceData, isNotNull);
     expect(track.cover, 'https://cdn/nightcall.jpg');
@@ -166,8 +165,8 @@ void main() {
     final track = RecentTrack(_track('sc:1'));
     notifier.push(track);
     notifier.push(RecentTrack(_track('sc:2')));
-    // Удаляем по ключу, а не по ссылке: в списке лежит запись, восстановленная
-    // с диска, — тем же объектом она уже не будет.
+    // I remove by key, not by reference: the list holds an entry restored from
+    // disk, which is no longer the same object.
     notifier.remove(RecentTrack(_track('sc:1')));
     expect(c.read(recentItemsProvider), hasLength(1));
     notifier.clear();

@@ -1,7 +1,7 @@
-/// С чего волна стартует: на чём именно она будет построена.
+/// What the wave starts from: what exactly it gets built on.
 ///
-/// Проверяем списком, а не на слух: ошибка здесь тихая — волна играет, просто
-/// не то и всегда одно и то же.
+/// I check by list, not by ear: a mistake here is quiet, the wave plays, just
+/// the wrong thing and always the same.
 library;
 
 import 'package:bloom/core/entities/entities.dart';
@@ -24,15 +24,15 @@ Track _track(
   source: source,
 );
 
-/// Радио есть у SoundCloud и YouTube Music; у Яндекса — будто входа нет.
+/// SoundCloud and YouTube Music have a radio; Yandex acts as if not signed in.
 WaveSeed? _seedOf(Track t) => t.source == MusicSource.yandex
     ? null
     : WaveSeed(t.source.code, 'track:${t.id.split(':').last}');
 
 WaveSeed _sc(int id) => WaveSeed('sc', 'track:$id');
 
-/// Библиотека из перечисленных треков (свежие сверху). [plays] — прослушивания,
-/// [favs] — лайки по порядку, свежий первым.
+/// A library of the listed tracks (freshest on top). [plays] are plays, [favs]
+/// are likes in order, freshest first.
 WaveLibrary _library(
   List<Track> tracks, {
   Map<String, int> plays = const {},
@@ -123,7 +123,8 @@ void main() {
       final tracks = [for (var i = 0; i < 6; i++) _track('sc:$i')];
       final view = _library(
         tracks,
-        // В топе всего два трека: «следующий» по кругу — снова первый.
+        // Only two tracks in the top: the "next" one around the circle is the
+        // first again.
         plays: {'sc:0': 10, 'sc:1': 8},
         favs: ['sc:3', 'sc:4', 'sc:5'],
       );

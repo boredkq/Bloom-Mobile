@@ -1,8 +1,8 @@
-/// Жесты строки трека: обложка — тянучка, остальная строка — меню.
+/// Track row gestures: the cover drags, the rest of the row opens the menu.
 ///
-/// Проверяем именно разведение двух долгих жестов: если оба висят на всей
-/// строке, они спорят в арене и зажатие обложки через раз открывает меню
-/// вместо перетаскивания.
+/// I check the split of the two long presses: if both sat on the whole row
+/// they'd fight in the arena, and holding the cover would open the menu every
+/// other time.
 library;
 
 import 'package:bloom/app/theme/bloom_theme.dart';
@@ -26,10 +26,10 @@ const _track = Track(
   source: MusicSource.soundcloud,
 );
 
-/// Что случилось со строкой за прогон.
+/// What happened to the row during the run.
 final _log = <String>[];
 
-/// [dragIndex] строки: null — обычный список, где двигать нечего.
+/// The row's [dragIndex]: null is a plain list with nothing to move.
 Future<void> _pumpRow(WidgetTester tester, {int? dragIndex}) async {
   _log.clear();
   await tester.pumpWidget(
@@ -39,15 +39,15 @@ Future<void> _pumpRow(WidgetTester tester, {int? dragIndex}) async {
         dbProvider.overrideWithValue(BloomDb.memory()),
       ],
       child: MaterialApp(
-        // Язык прибит гвоздями: иначе проверки текста зависели бы от локали
-        // машины, на которой гоняют тесты.
+        // The language is pinned: otherwise text checks would depend on the
+        // machine's locale.
         locale: const Locale('ru'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         theme: buildBloomTheme(BloomThemes.dark),
         home: Scaffold(
-          // Список настоящий: `ReorderableDelayedDragStartListener` без него
-          // не находит хозяина и падает на зажатии.
+          // A real list: without one `ReorderableDelayedDragStartListener`
+          // finds no owner and crashes on the press.
           body: ReorderableListView(
             buildDefaultDragHandles: false,
             onReorder: (from, to) => _log.add('reorder $from→$to'),
@@ -70,10 +70,10 @@ Future<void> _pumpRow(WidgetTester tester, {int? dragIndex}) async {
   );
 }
 
-/// Обложка строки — по ней жмут, чтобы потащить.
+/// The row's cover: pressed to drag.
 Finder get _cover => find.byType(Cover);
 
-/// Название трека — по нему жмут, чтобы открыть меню.
+/// The track's title: pressed to open the menu.
 Finder get _title => find.text('sleep mode');
 
 void main() {

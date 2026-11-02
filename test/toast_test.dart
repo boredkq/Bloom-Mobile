@@ -1,7 +1,7 @@
-/// Тосты: отмена, истечение и живой тост «работа → итог».
+/// Toasts: undo, expiry and the live "work to result" toast.
 ///
-/// Проверяем именно поведение, а не пиксели: кто и когда получает `fn` и
-/// `onExpire`, и что живой тост не пересоздаётся, а меняется на месте.
+/// I check behavior, not pixels: who gets `fn` and `onExpire` and when, and
+/// that a live toast changes in place rather than being rebuilt.
 library;
 
 import 'package:bloom/app/theme/bloom_theme.dart';
@@ -18,10 +18,10 @@ import 'package:bloom/core/l10n/l10n.dart';
 
 import 'support/glyphs.dart';
 
-/// Экран-подложка: тост показывается через мессенджер, поэтому нужен Scaffold.
+/// A host screen: a toast goes through the messenger, so it needs a Scaffold.
 ///
-/// Контейнер обязателен: карточка тоста — стеклянная поверхность и читает
-/// настройки прозрачности (`GlassBox`), а те живут в хранилище.
+/// The container is required: the toast card is a glass surface and reads
+/// transparency settings (`GlassBox`), which live in the store.
 Future<ScaffoldMessengerState> _pumpHost(WidgetTester tester) async {
   final container = ProviderContainer(
     overrides: [
@@ -36,8 +36,8 @@ Future<ScaffoldMessengerState> _pumpHost(WidgetTester tester) async {
     UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
-        // Язык прибит гвоздями: иначе проверки текста зависели бы от локали
-        // машины, на которой гоняют тесты.
+        // The language is pinned: otherwise text checks would depend on the
+        // machine's locale.
         locale: const Locale('ru'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -64,7 +64,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Трек удалён'), findsOneWidget);
 
-    // 2с жизни + анимация ухода.
+    // 2 s of life plus the exit animation.
     await tester.pump(const Duration(seconds: 3));
     await tester.pumpAndSettle();
     expect(find.text('Трек удалён'), findsNothing);
@@ -107,7 +107,7 @@ void main() {
       ),
     );
     await tester.pump();
-    // С кнопкой тост живёт 5с — ждём с запасом.
+    // With a button a toast lives 5 s, so I wait with a margin.
     await tester.pump(const Duration(seconds: 6));
     await tester.pumpAndSettle();
 
@@ -130,7 +130,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    // Старого текста уже нет — карточка та же, поменялось её содержимое.
+    // The old text is gone: the card is the same, its contents changed.
     expect(find.text('Сохранение для офлайна…'), findsNothing);
     expect(find.text('Доступно офлайн: Song'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);

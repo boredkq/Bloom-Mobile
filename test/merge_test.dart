@@ -1,4 +1,4 @@
-/// «Объединить с…»: порядок склейки и схлопывание повторов.
+/// Merging playlists: the join order and collapsing repeats.
 library;
 
 import 'package:bloom/core/entities/entities.dart';

@@ -1,9 +1,9 @@
-/// Таймер сна: время, персист и шторка.
+/// The sleep timer: time, persistence and the sheet.
 ///
-/// Проверяем то, что ломается тихо: срок считается по стенным часам (`endsAt`),
-/// «+5 минут» отсчитывается ОТ СРОКА, а не от «сейчас», надпись на кнопке
-/// округляет секунды вверх, а на диск уезжают только настройки — активный
-/// таймер перезапуск переживать не должен.
+/// I check what breaks quietly: the deadline goes by the wall clock (`endsAt`),
+/// "+5 minutes" counts from the deadline, not from now, the button's label
+/// rounds seconds up, and only settings reach the disk: an active timer must
+/// not survive a restart.
 library;
 
 import 'package:bloom/app/theme/bloom_theme.dart';
@@ -18,7 +18,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bloom/core/db/db.dart';
 import 'support/test_db.dart';
 
-/// Часы теста: ждать полчаса по-настоящему мы не будем.
+/// The test's clock: I won't really wait half an hour.
 DateTime _now = DateTime(2026, 8, 15, 23, 30);
 
 ProviderContainer _container(JsonStore store) {
@@ -33,14 +33,14 @@ ProviderContainer _container(JsonStore store) {
   return c;
 }
 
-/// Экран с кнопкой, открывающей шторку таймера.
+/// A screen with a button that opens the timer sheet.
 Future<void> _pumpSheet(WidgetTester tester, JsonStore store) async {
   await tester.pumpWidget(
     UncontrolledProviderScope(
       container: _container(store),
       child: MaterialApp(
-        // Язык прибит гвоздями: проверки текста не должны зависеть от локали
-        // машины, на которой гоняют тесты.
+        // The language is pinned: otherwise text checks would depend on the
+        // machine's locale.
         locale: const Locale('ru'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -68,9 +68,9 @@ SleepTimerState _stateOf(WidgetTester tester) => ProviderScope.containerOf(
   tester.element(find.byType(Scaffold).first),
 ).read(sleepTimerProvider);
 
-/// Тап + прокрутка времени до записи на диск (`JsonStore` откладывает её на
-/// 400 мс). `pumpAndSettle` здесь не годится: идущий таймер тикает раз в
-/// секунду и перерисовывает шторку — «успокоиться» ей уже не суждено.
+/// A tap plus running time past the disk write (`JsonStore` delays it by 400
+/// ms). `pumpAndSettle` won't do: a running timer ticks each second and redraws
+/// the sheet, so it never settles.
 Future<void> _tap(WidgetTester tester, Finder target) async {
   await tester.tap(target);
   for (var i = 0; i < 6; i++) {
@@ -78,8 +78,8 @@ Future<void> _tap(WidgetTester tester, Finder target) async {
   }
 }
 
-/// Снять таймер в конце теста: иначе его тик остаётся висеть и `testWidgets`
-/// падает на «A Timer is still pending».
+/// Stops the timer at the end of a test, or its tick stays and `testWidgets`
+/// fails on "A Timer is still pending".
 void _stop(WidgetTester tester) => _ctrlOf(tester).cancel();
 
 void main() {
@@ -96,8 +96,9 @@ void main() {
       expect(sleepLabel(const Duration(hours: 1)), '1:00');
       expect(sleepLabel(const Duration(minutes: 90)), '1:30');
       expect(sleepLabel(const Duration(minutes: 120)), '2:00');
-      // Секунды в этом виде не показываем и минуту ими не подгоняем: «1:05»
-      // должно висеть всю пятую минуту, а не мигать «1:06» её первую половину.
+      // This form shows no seconds and doesn't fudge the minute with them:
+      // "1:05" stays for the whole fifth minute rather than flashing "1:06" for
+      // its first half.
       expect(
         sleepLabel(const Duration(hours: 1, minutes: 5, seconds: 30)),
         '1:05',
@@ -143,7 +144,7 @@ void main() {
       final started = _now;
       ctrl.start(const Duration(minutes: 30));
 
-      // Прошло 29 минут — до конца минута.
+      // 29 minutes passed, one to go.
       _now = started.add(const Duration(minutes: 29));
       ctrl.extend();
 
@@ -151,7 +152,7 @@ void main() {
         c.read(sleepTimerProvider).endsAt,
         started.add(const Duration(minutes: 35)),
       );
-      // Не «5 минут от сейчас», а «минута + пять».
+      // Not "5 minutes from now" but "one minute plus five".
       expect(c.read(sleepTimerProvider).remaining, const Duration(minutes: 6));
       ctrl.cancel();
     });
@@ -172,8 +173,8 @@ void main() {
       final sleep = c.read(sleepTimerProvider);
       expect(sleep.mode, SleepMode.endOfTrack);
       expect(sleep.active, isTrue);
-      // Срока нет — ждать нечего, и `expired` тут не должен срабатывать: паузу
-      // поставит конец трека.
+      // No deadline, nothing to wait for, and `expired` mustn't fire: the
+      // track's end does the pause.
       expect(sleep.endsAt, isNull);
       expect(sleep.expired, isFalse);
     });
@@ -201,7 +202,7 @@ void main() {
       final second = _container(store).read(sleepTimerProvider);
       expect(second.fade, isFalse);
       expect(second.choice, const Duration(minutes: 45));
-      // Перезапуск — тишина: будить некого.
+      // A restart is silence: nobody to wake.
       expect(second.mode, SleepMode.off);
       expect(second.endsAt, isNull);
     });
@@ -232,7 +233,8 @@ void main() {
       await _tap(tester, find.text('15'));
       expect(_stateOf(tester).remaining, const Duration(minutes: 15));
 
-      // Часы стора двигаем сами: тик только пересчитывает от них остаток.
+      // I move the store's clock myself: a tick just recounts what's left from
+      // it.
       _now = _now.add(const Duration(minutes: 14, seconds: 30));
       await tester.pump(const Duration(seconds: 1));
       expect(_stateOf(tester).remaining, const Duration(seconds: 30));
@@ -240,7 +242,8 @@ void main() {
 
       _now = _now.add(const Duration(seconds: 31));
       await tester.pump(const Duration(seconds: 1));
-      // Ноль — сигнал плееру: пора на паузу. Сам таймер его не снимает.
+      // Zero is the signal to the player to pause. The timer doesn't remove
+      // itself.
       expect(_stateOf(tester).remaining, Duration.zero);
       expect(_stateOf(tester).expired, isTrue);
 
@@ -291,7 +294,7 @@ void main() {
       await _tap(tester, find.text('Выключить таймер'));
       expect(_stateOf(tester).mode, SleepMode.off);
 
-      // У «до конца трека» продлевать нечего — кнопки быть не должно.
+      // "Until the track ends" has nothing to extend, so no button.
       await _tap(tester, find.text('До конца трека').last);
       expect(find.text('+5 минут'), findsNothing);
       expect(find.text('Выключить таймер'), findsOneWidget);
@@ -328,8 +331,8 @@ void main() {
       final store = JsonStore.memory();
       await _pumpSheet(tester, store);
 
-      // Тычем в левую четверть полосы: точное значение зависит от ширины
-      // экрана теста, поэтому проверяем шаг и сторону, а не число.
+      // I tap the bar's left quarter: the exact value depends on the test
+      // screen's width, so I check the step and the side, not the number.
       final slider = tester.getRect(find.byType(Slider));
       await tester.tapAt(
         Offset(slider.left + slider.width * 0.25, slider.center.dy),

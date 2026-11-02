@@ -1,10 +1,10 @@
-/// Свои треки: разбор ответа нативной стороны и всё, что вокруг него ломается
-/// тихо.
+/// Own tracks: parsing the native side's answer and what breaks quietly around
+/// it.
 ///
-/// Проверяем ровно то, что не видно на глаз: id обязан быть стабильным (иначе
-/// повторное добавление того же файла даёт второй трек и дедуп не работает),
-/// теги обязаны честно уступать имени файла, а удаление — знать, за какими
-/// треками стоит наш файл, и не трогать чужие.
+/// I check what the eye can't see: the id must be stable (or adding the same
+/// file again makes a second track), tags must yield to the file name fairly,
+/// and removal must know which tracks have my file behind them and leave the
+/// others alone.
 library;
 
 import 'package:bloom/core/entities/entities.dart';
@@ -17,7 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bloom/core/db/db.dart';
 import 'support/test_db.dart';
 
-/// Ответ канала: минимум полей, остальное дописывают тесты.
+/// A channel answer: the minimum of fields, tests add the rest.
 Map<String, Object?> _entry({
   String key = 'content://audio/1',
   String name = 'song.mp3',
@@ -79,7 +79,7 @@ void main() {
       expect(track.name, 'Настоящее название');
       expect(track.artist, 'Настоящий артист');
       expect(track.album, 'Альбом');
-      // Из полной даты берём год, как lofty-часть на ПК.
+      // I take the year from a full date.
       expect(track.year, '2019');
       expect(track.genres, ['Rock', 'Indie']);
       expect(track.duration, const Duration(minutes: 3));
@@ -127,7 +127,7 @@ void main() {
       final second = _track(_entry(title: 'Два'));
       expect(first.id, second.id);
       expect(first.id, startsWith('lf'));
-      // Префикса площадки нет — трек считается своим.
+      // No platform prefix means it's an own track.
       expect(MusicSource.fromId(first.id), MusicSource.local);
     });
 
@@ -183,7 +183,7 @@ void main() {
       );
       addTearDown(reopened.dispose);
       final track = reopened.read(libraryProvider).allTracks.single;
-      // Без `sourceData` трек остался бы строкой, которую нечем заиграть.
+      // Without `sourceData` the track would be a row with nothing to play.
       expect(isLocalTrack(track), isTrue);
       expect(track.sourceData?['file'], 'song.mp3');
       expect(localTrackKey(track), 'content://audio/1');

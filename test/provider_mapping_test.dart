@@ -1,7 +1,7 @@
-/// Маппинг `ScRaw*` → общие сущности и разбор сквозных id. Без сети.
+/// Mapping `ScRaw*` to common entities and parsing composite ids. No network.
 ///
-/// Это новый шов между портом api-v2 и общим UI, поэтому здесь пришпилены
-/// ровно те места, где такой слой обычно и врёт.
+/// This is the seam between the API and the shared UI, so I pin the places
+/// where such a layer usually lies.
 library;
 
 import 'package:bloom/core/entities/entities.dart';
@@ -23,7 +23,7 @@ void main() {
     expect(scNumericId(scTrackId(88335161)), 88335161);
     expect(scNumericId(scArtistId(42)), 42);
     expect(scNumericId(scSetId(7)), 7);
-    // Мусор не роняет провайдер, а просто ничего не находит.
+    // Junk doesn't crash the provider, it just finds nothing.
     expect(scNumericId('sc:artist:нечисло'), 0);
   });
 
@@ -46,12 +46,13 @@ void main() {
     expect(track.id, 'sc:10');
     expect(track.source, MusicSource.soundcloud);
     expect(track.duration, const Duration(milliseconds: 185000));
-    // Пустые поля SC («», как у label_name) не должны утекать в UI строками.
+    // Empty SoundCloud fields ("", like label_name) mustn't reach the UI as
+    // strings.
     expect(track.publisher, isNull);
     expect(track.album, isNull);
     expect(track.genres, ['house']);
     expect(track.artistId, 'sc:artist:5');
-    // Без media резолвить стрим будет нечем.
+    // Without media there's nothing to resolve the stream with.
     expect(track.sourceData, isNotNull);
   });
 
@@ -64,8 +65,8 @@ void main() {
     expect(withCount.isAlbum, isTrue);
     expect(withCount.id, 'sc:set:1');
 
-    // У SC отсутствующий track_count приходит нулём; «0 треков» под альбомом
-    // хуже, чем ничего.
+    // A missing track_count comes as zero, and "0 tracks" under an album is
+    // worse than nothing.
     final noCount = setFromSc(
       mapRawPlaylist({'id': 2, 'title': 'B'}),
       isAlbum: false,

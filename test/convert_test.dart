@@ -1,6 +1,7 @@
-/// «Перенести на площадку»: скан, решения по трекам и состав копии.
+/// Moving a playlist to a platform: the scan, the track decisions and what the
+/// copy holds.
 ///
-/// Площадка — подставная: сеть здесь не при чём, проверяется разбор её выдачи.
+/// The platform is fake: no network, I check how its results are parsed.
 library;
 
 import 'package:bloom/core/entities/entities.dart';
@@ -22,15 +23,15 @@ Track _track(
   source: source,
 );
 
-/// Отдаёт заранее заданную выдачу по запросу; `null` — площадка «упала».
+/// Returns preset results per query; `null` means the platform failed.
 class _FakeProvider extends MusicProvider {
   _FakeProvider(this.answers, {this.throwsOn = const {}});
 
   final Map<String, List<Track>> answers;
   final Set<String> throwsOn;
 
-  /// Сколько запросов ушло — по нему видно, что скан не ходит за тем, что и так
-  /// на площадке.
+  /// How many requests went out: it shows the scan skips what's already on the
+  /// platform.
   int calls = 0;
 
   @override
@@ -64,7 +65,8 @@ void main() {
   test('спорное остаётся оригиналом, пока не выбрали', () async {
     final src = _track('sc:1');
     final provider = _FakeProvider({
-      // То же название, но на час длиннее — матчер уверенным это не считает.
+      // The same title but an hour longer, which the matcher doesn't call
+      // confident.
       'Ночь Один': [
         _track('ytm:1', seconds: 3600, source: MusicSource.ytmusic),
       ],
@@ -74,7 +76,7 @@ void main() {
     expect(items.single.status, ConvertStatus.ambiguous);
     expect(convertResult(items, defaultDecisions(items)).single.id, 'sc:1');
 
-    // Выбрали кандидата руками — в копию идёт он.
+    // A candidate picked by hand goes into the copy.
     final picked = {'sc:1': TakeMatch(items.single.cands.first.track)};
     expect(convertResult(items, picked).single.id, 'ytm:1');
   });
@@ -101,7 +103,7 @@ void main() {
   test('чужие площадки из выдачи в кандидаты не попадают', () async {
     final provider = _FakeProvider({
       'Ночь Один': [
-        _track('sc:2', seconds: 200), // тот же трек, но не с целевой площадки
+        _track('sc:2', seconds: 200), // same track, not on the target
       ],
     });
 

@@ -1,9 +1,10 @@
-/// Фон полноэкранного плеера: персист настройки, цвет из обложки и градиент.
+/// The full-screen player's background: persisting the setting, the cover color
+/// and the gradient.
 ///
-/// Проверяем то, что ломается тихо: незнакомая запись в `bloom.json` не должна
-/// ронять плеер; цвет, посчитанный от обложки, обязан остаться в тёмном
-/// коридоре (поверх него стоят белые подписи), а градиент — не доходить до
-/// цвета темы, иначе нижняя треть экрана выглядит как выключенный фон.
+/// I check what breaks quietly: an unknown stored value mustn't crash the
+/// player; a color from the cover must stay in the dark range (white labels sit
+/// on it); and the gradient mustn't reach the theme's color, or the screen's
+/// lower third looks like the background is off.
 library;
 
 import 'dart:ui' as ui;
@@ -24,9 +25,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bloom/core/db/db.dart';
 import 'support/test_db.dart';
 
-/// Готовый кадр без декодера: `createTestImage` в `testWidgets` не доезжает —
-/// декодирование настоящее, а часы там поддельные, и `await` виснет навсегда
-/// (наступил). `toImageSync` отдаёт картинку тут же.
+/// A ready frame with no decoder: `createTestImage` never finishes in
+/// `testWidgets`, since decoding is real and the clock is fake, and `await`
+/// hangs forever. `toImageSync` gives the picture at once.
 ui.Image _solidImage(int side) {
   final recorder = ui.PictureRecorder();
   Canvas(recorder).drawRect(
@@ -36,8 +37,8 @@ ui.Image _solidImage(int side) {
   return recorder.endRecording().toImageSync(side, side);
 }
 
-/// Готовая картинка вместо сетевой: в тестах сеть молчит, а проверять надо
-/// раскладку уже загруженного кадра.
+/// A ready picture instead of a network one: the network is silent in tests,
+/// and I need the layout of a loaded frame.
 class _FakeImage extends ImageProvider<_FakeImage> {
   _FakeImage(this.image);
 
@@ -124,7 +125,7 @@ void main() {
   });
 
   group('фон приложения', () {
-    /// Библиотека из одной картинки; `assigned` — стоит ли она фоном.
+    /// A one-picture library; `assigned` says whether it's the background.
     JsonStore withWallpaper({required bool assigned}) => JsonStore.memory({
       'media': [
         {
@@ -139,7 +140,8 @@ void main() {
     });
 
     test('берётся та самая картинка с её же размытием и затемнением', () {
-      // Числа — картинкины: плеер обязан повторить фон приложения один в один.
+      // The numbers are the picture's: the player must repeat the app
+      // background exactly.
       final item = _container(
         withWallpaper(assigned: true),
       ).read(playerAppBgProvider);
@@ -149,7 +151,8 @@ void main() {
     });
 
     test('картинка есть в библиотеке, но не стоит фоном — вариант пуст', () {
-      // Именно на этом строка в шторке и гаснет: брать в плеер нечего.
+      // This is what greys out the row in the sheet: nothing to take into the
+      // player.
       expect(
         _container(withWallpaper(assigned: false)).read(playerAppBgProvider),
         isNull,
@@ -215,21 +218,22 @@ void main() {
     test('снизу темнее, но не цвет темы', () {
       final colors = playerBgGradient(color, bg);
       expect(colors.last, isNot(bg));
-      // Нижняя точка ближе к теме, чем середина, — иначе градиента не видно.
+      // The bottom point is closer to the theme than the middle, or the
+      // gradient doesn't show.
       double distance(Color a, Color b) =>
           ((a.r - b.r).abs() + (a.g - b.g).abs() + (a.b - b.b).abs());
       expect(distance(colors.last, bg), lessThan(distance(colors[1], bg)));
     });
 
     test('границы цветов совпадают по числу с самими цветами', () {
-      // `LinearGradient` требует ровно столько же стопов — иначе ассерт на
-      // отрисовке, а не в тесте.
+      // `LinearGradient` needs exactly as many stops, or it asserts at paint
+      // time, not in the test.
       expect(playerBgGradient(color, bg).length, kPlayerBgStops.length);
       expect(kPlayerBgDim.length, 3);
     });
 
     test('под чёткой обложкой плёнка плотнее, но не в чёрный', () {
-      // Оба набора идут в один и тот же градиент — длины обязаны совпадать.
+      // Both sets go into the same gradient, so their lengths must match.
       expect(kPlayerBgDimSharp.length, kPlayerBgDim.length);
       for (var i = 0; i < kPlayerBgDim.length; i++) {
         expect(kPlayerBgDimSharp[i], greaterThan(kPlayerBgDim[i]));
@@ -250,10 +254,9 @@ void main() {
           child: SizedBox(
             width: 300,
             height: 600,
-            // Тот же `Stack` со свободными ограничениями, в который кладёт детей
-            // `AnimatedSwitcher`: на нём первая версия и провалилась — картинка
-            // вставала своим размером посреди экрана вместо фона во всю его
-            // площадь.
+            // The same `Stack` with loose constraints that `AnimatedSwitcher`
+            // puts children in: with it a picture can come out at its own size
+            // mid-screen instead of filling the background.
             child: Stack(
               children: [
                 CoverBgImage(image: _FakeImage(image), fx: CoverBgFx.blur),
@@ -291,8 +294,8 @@ void main() {
     await tester.pump();
     expect(find.byType(ImageFiltered), findsNothing);
     expect(find.byType(ColorFiltered), findsNothing);
-    // Размер — тот же: увеличение под размытием картинку не растягивало, оно
-    // прятало размазанную кромку.
+    // The same size: the zoom under the blur doesn't stretch the picture, it
+    // hides the smeared edge.
     expect(tester.getSize(find.byType(Image)), const Size(300, 600));
   });
 
@@ -322,14 +325,14 @@ void main() {
     }
 
     testWidgets('плёнка поверхности стекло НЕ гасит', (tester) async {
-      // Шапка плеера на фоне красится плёнкой блоков, и это поверхность темы:
-      // при включённой «Прозрачности» стекло ей положено.
+      // The player's header on a background is painted with the block film, a
+      // theme surface: with Transparency on it gets glass.
       expect((await pumpButton(tester, glass: true)).enabled, isTrue);
     });
 
     testWidgets('своя заливка без просьбы стекло гасит', (tester) async {
-      // Умолчание не поехало: акцент под play и прозрачный кружок миниплеера —
-      // это состояние, стеклом они не становятся.
+      // The default holds: the accent under play and the mini player's clear
+      // circle are states and don't turn to glass.
       expect((await pumpButton(tester)).enabled, isFalse);
     });
   });
@@ -347,8 +350,8 @@ void main() {
         ),
       ),
     );
-    // Ни картинки, ни градиента: фон выключен, и рисовать поверх заливки темы
-    // нечего.
+    // No picture and no gradient: the background is off, and there's nothing to
+    // draw over the theme's fill.
     expect(find.byType(DecoratedBox), findsNothing);
     expect(find.byType(Image), findsNothing);
   });

@@ -1,5 +1,5 @@
-/// Шрифт интерфейса: каталог, узнавание сохранённого выбора (в том числе
-/// десктопного CSS-стека) и хранение в настройках.
+/// The interface font: the catalog, recognizing a saved choice (a CSS stack
+/// included) and storing it in settings.
 library;
 
 import 'package:bloom/app/theme/fonts.dart';

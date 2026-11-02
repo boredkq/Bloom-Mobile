@@ -1,9 +1,9 @@
-/// Авто-тема: цвета всего интерфейса едут за обложкой играющего трека.
+/// The auto theme: the whole interface's colors follow the playing track's
+/// cover.
 ///
-/// Проверяем формулу поверхности (она должна остаться тёмной и не кислотной —
-/// поверх неё стоит весь текст) и правила переключения: авто-тема и
-/// авто-акцент не могут быть включены разом, а снятый с обложки цвет не имеет
-/// права пережить уход на обычный пресет.
+/// I check the surface formula (dark and not acid, since all text sits on it)
+/// and the switching rules: auto theme and auto accent can't both be on, and a
+/// cover color must not outlive the move to a normal preset.
 library;
 
 import 'package:bloom/core/store/json_store.dart';
@@ -32,8 +32,8 @@ void main() {
         autoThemeSurfaceFromHsl(const CoverHsl(210, 0.9, 0.7)),
       );
       expect(hsl.lightness, closeTo(0.075, 0.005));
-      // Допуск на тон широкий не просто так: на такой темноте весь цвет живёт
-      // в паре младших ступеней канала, и обратный перевод в HSL их округляет.
+      // The hue tolerance is wide on purpose: this dark, the color lives in a
+      // channel's lowest steps, and converting back to HSL rounds them.
       expect(hsl.hue, closeTo(210, 3));
     });
 
@@ -55,8 +55,8 @@ void main() {
     });
 
     test('темнее миниплеерного тона той же обложки', () {
-      // Поверхность — фон всего приложения, а не полоса среди хрома: она обязана
-      // быть самой тихой из посчитанных от обложки заливок.
+      // The surface is the whole app's background, so it has to be the quietest
+      // of the fills computed from a cover.
       const cover = CoverHsl(350, 0.8, 0.45);
       expect(
         HSLColor.fromColor(autoThemeSurfaceFromHsl(cover)).lightness,
@@ -102,8 +102,8 @@ void main() {
       settings.setTheme(kAutoThemeId);
       final state = c.read(settingsProvider);
       expect(state.autoTheme, isTrue);
-      // Своих цветов у авто-темы до первой обложки нет — перекрашивать не из
-      // чего, и экран не должен мигнуть в чужую тему.
+      // The auto theme has no colors before the first cover: nothing to repaint
+      // with, and the screen mustn't flash another theme.
       expect(state.tokens.bg, before.bg);
       expect(state.tokens.accent, before.accent);
     });
@@ -126,7 +126,8 @@ void main() {
       final state = c.read(settingsProvider);
       expect(state.autoTheme, isFalse);
       expect(state.themeId, kThemePresets.first.id);
-      // Снятый с обложки акцент ушёл вместе с режимом: пресету он чужой.
+      // The cover accent left along with the mode: it doesn't belong to a
+      // preset.
       expect(state.tokens.accent, kThemePresets.first.accent);
     });
 

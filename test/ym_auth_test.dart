@@ -1,5 +1,5 @@
-/// Вход в Яндекс.Музыку: что переживает перезапуск и когда площадка вообще
-/// участвует в поиске. Хранилище — в памяти, сеть не трогаем.
+/// Yandex Music sign-in: what survives a restart and when the platform takes
+/// part in search at all. The store is in memory, no network.
 library;
 
 import 'package:bloom/core/store/json_store.dart';
@@ -39,7 +39,8 @@ void main() {
       reason: 'до чтения стора',
     );
     expect(c.read(ymAuthProvider).authed, isTrue);
-    // Токен уезжает в сетевой слой, иначе первый же запрос ушёл бы без него.
+    // The token goes to the network layer, or the very first request would
+    // leave without it.
     expect(ym.activeToken(), 'saved-token');
     expect(const YandexProvider().isEnabled, isTrue);
   });
@@ -64,14 +65,16 @@ void main() {
     expect(ym.activeToken(), isNull);
     final raw = store.readMap('yandex');
     expect(raw['token'], isNull);
-    // id устройства переживает выход: он привязан к установке, а не к аккаунту.
+    // The device id survives signing out: it belongs to the install, not the
+    // account.
     expect(raw['deviceId'], 'abcdef0123456789');
   });
 
   test('статус подписки не проверяется, пока не вошли', () async {
     final c = _container(JsonStore.memory());
     await c.read(ymAuthProvider.notifier).refresh();
-    // Сети тут нет: если бы refresh пошёл в API, тест упал бы на исключении.
+    // No network here: if the refresh went to the API, the test would fail on
+    // the exception.
     expect(c.read(ymAuthProvider).hasPlus, isNull);
     expect(c.read(ymAuthProvider).checking, isFalse);
   });
@@ -93,7 +96,8 @@ void main() {
       ymErrorCode(const YmException('ym.err.needPlus')),
       'ym.err.needPlus',
     );
-    // Ошибка, всплывшая через toString (так она приходит из состояния стора).
+    // An error that surfaced through toString, as it comes from the store's
+    // state.
     expect(ymErrorCode('YmException: ym.err.auth'), 'ym.err.auth');
   });
 }

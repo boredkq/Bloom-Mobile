@@ -1,6 +1,6 @@
-/// База для тестов — в памяти, одна на хранилище настроек: новый контейнер
-/// поверх того же [JsonStore] видит те же данные, то есть «перезапуск»
-/// приложения в тесте проходит и для базы.
+/// The test database: in memory, one per settings store, so a new container
+/// over the same [JsonStore] sees the same data and an app "restart" in a test
+/// works for the database too.
 library;
 
 import 'package:bloom/core/db/db.dart';

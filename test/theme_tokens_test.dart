@@ -1,6 +1,4 @@
-/// Токены темы должны совпадать с десктопным Bloom: те же формулы от трёх
-/// цветов дают те же тона. Значения сверены с комментариями в `themeStore.ts`
-/// («Было руками: Dark #1c1c1c… #262626… #999/#555»).
+/// The theme tokens: formulas from three colors must give the expected shades.
 library;
 
 import 'package:bloom/app/theme/tokens.dart';
@@ -12,8 +10,8 @@ String _hex(Color c) {
   return '#${ch(c.r)}${ch(c.g)}${ch(c.b)}';
 }
 
-/// Полупрозрачный [top] поверх непрозрачного [bottom] — то, что реально видит
-/// глаз. Плёнки задаются альфой, а спрашивают с них итоговый цвет.
+/// Translucent [top] over opaque [bottom], what the eye really sees. Films are
+/// set by alpha and judged by the resulting color.
 String _over(Color top, Color bottom) {
   double ch(double t, double b) => t * top.a + b * (1 - top.a);
   return _hex(
@@ -40,16 +38,17 @@ void main() {
     expect(_hex(t.muted), '#5a5a5a');
     // mix(accent, block 22%).
     expect(_hex(t.accent2), '#cacaca');
-    // Белый акцент — надпись на нём чёрная, ховер темнеет (осветлять некуда).
+    // A white accent: black text on it, and the hover darkens (no room to
+    // lighten).
     expect(_hex(t.accentText), '#000000');
     expect(_hex(t.accentHover), '#e0e0e0');
     // mix(border, ovl 20%) from the unrounded border, as CSS color-mix.
     expect(_hex(t.borderFocus), '#555555');
-    // Пилюли и круглые кнопки шапки — ровно #1a1a1a, и именно сплошным
-    // цветом: плёнка тех же 6% даёт 24.7 и на устройстве садится в #181818.
+    // Pills and round header buttons are exactly #1a1a1a, as a solid color: a
+    // film of the same 6% gives 24.7 and lands at #181818 on a device.
     expect(_hex(t.pill), '#1a1a1a');
     expect(t.pill.a, 1);
-    // Плёнка --icon-bg остаётся как на десктопе — для элементов над обложкой.
+    // The icon film stays for elements over a cover.
     expect(_over(t.iconBg, t.bg), '#191919');
     expect(t.track.a, closeTo(0.04, 0.001));
   });
@@ -59,12 +58,13 @@ void main() {
 
     expect(t.isLight, isTrue);
     expect(_hex(t.text), '#111111');
-    // ovl теперь чёрный → рамка ТЕМНЕЕ поверхности, а не светлее.
+    // The overlay is black, so the border is darker than the surface, not
+    // lighter.
     expect(_hex(t.border), '#d8d8d8');
     // The black accent takes white text.
     expect(_hex(t.pill), '#e0e0e0');
     expect(_hex(t.accentText), '#ffffff');
-    // Чёрная плёнка «весит» больше — дорожка ослаблена до .07.
+    // A black film "weighs" more, so the track is eased to .07.
     expect(t.track.a, closeTo(0.07, 0.001));
   });
 

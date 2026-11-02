@@ -1,9 +1,9 @@
-/// Ошибка воспроизведения: код → фраза.
+/// A playback error: code to phrase.
 ///
-/// Проверяем то, что ломается тихо. Провайдеры бросают КОДЫ словаря, а под
-/// названием трека в плеере стоит текст — промах здесь показывает человеку
-/// «search.err.drm» вместо «Трек защищён DRM». Плюс `StateError`, который
-/// подмешивает к сообщению своё «Bad state: » и не даёт коду совпасть.
+/// I check what breaks quietly. Providers throw dictionary codes and the player
+/// shows text under the title: a miss here shows "search.err.drm" instead of a
+/// phrase. Plus `StateError`, which prepends its "Bad state: " and keeps the
+/// code from matching.
 library;
 
 import 'package:bloom/core/l10n/l10n.dart';
@@ -56,7 +56,7 @@ void main() {
   });
 }
 
-/// Исключение площадки: `toString` — сам код (как `ScException`).
+/// A platform exception: `toString` is the code itself.
 class _Code implements Exception {
   const _Code(this.code);
 

@@ -1,8 +1,8 @@
-/// Переключение вкладок каркаса: растворение вместо смены одним кадром.
+/// Switching the shell's tabs: a dissolve instead of a one-frame change.
 ///
-/// Проверяем не картинку, а три вещи, ради которых контейнер веток написан
-/// свой: на покое видна ровно одна ветка, во время перехода — обе (одна
-/// гаснет, вторая проявляется), и неактивная ветка не ловит тапы.
+/// I check the three things the custom branch container exists for: at rest
+/// exactly one branch shows, during a transition both do (one fading out, one
+/// in), and an inactive branch catches no taps.
 library;
 
 import 'package:bloom/app/shell.dart';
@@ -11,7 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:bloom/core/l10n/l10n.dart';
 
-/// Прозрачность ветки: `null` — ветка убрана со сцены (`Offstage`).
+/// A branch's opacity: `null` means it's off stage (`Offstage`).
 double? _opacity(WidgetTester tester, String label) {
   final branch = find.ancestor(
     of: find.text(label, skipOffstage: false),
@@ -30,7 +30,7 @@ double? _opacity(WidgetTester tester, String label) {
       .opacity;
 }
 
-/// Каркас с двумя ветками и кнопкой-переключателем вместо таб-бара.
+/// A shell with two branches and a switch button instead of the tab bar.
 Future<void> _pump(WidgetTester tester) async {
   var index = 0;
   await tester.pumpWidget(
@@ -73,8 +73,9 @@ void main() {
     await _pump(tester);
     await tester.tap(find.text('таб'));
     await tester.pump();
-    // Восьмая часть перехода: уходящая ещё не догорела (гаснет за первую
-    // четверть), приходящая ещё не проявилась (её интервал — 3/4).
+    // An eighth of the transition: the leaving one hasn't burned out (it fades
+    // over the first quarter), the arriving one hasn't appeared (its interval
+    // is 3/4).
     await tester.pump(kTabTransition ~/ 8);
 
     final leaving = _opacity(tester, 'Главная');
@@ -98,8 +99,8 @@ void main() {
     var index = 0;
     await tester.pumpWidget(
       MaterialApp(
-        // Язык прибит гвоздями: иначе проверки текста зависели бы от локали
-        // машины, на которой гоняют тесты.
+        // The language is pinned: otherwise text checks would depend on the
+        // machine's locale.
         locale: const Locale('ru'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,

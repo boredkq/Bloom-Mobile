@@ -1,9 +1,10 @@
-/// Синхронизация с настоящим ПК: [syncWithPc] против запущенного Bloom в
-/// домашней сети. Два «телефона» — две базы, сопряжённые с ПК по его QR.
+/// Syncing with a real computer: [syncWithPc] against a running Bloom on the
+/// home network. Two "phones" are two databases paired with the computer by its
+/// QR code.
 ///
-/// Обычным прогоном пропускается: нужен файл связок в `BLOOM_LIVE_PC`
-/// (`{"a": {"id", "link"}, "b": {...}}`) — его пишет подставной сценарий,
-/// который запускает Bloom, читает QR со снимка окна и сопрягает оба id.
+/// A normal run skips it: it needs a pairing file in `BLOOM_LIVE_PC` (`{"a":
+/// {"id", "link"}, "b": {...}}`), written by a helper that starts Bloom, reads
+/// the QR code off a window snapshot and pairs both ids.
 @TestOn('vm')
 library;
 
@@ -60,13 +61,14 @@ void main() {
   test(
     'phone A sends a playlist, a picture, a play; phone B gets them through the PC',
     () async {
-      // flutter_test подменяет HttpClient заглушкой — здесь нужна настоящая сеть.
+      // flutter_test swaps HttpClient for a stub, and this needs the real
+      // network.
       HttpOverrides.global = null;
       final links = jsonDecode(File(path!).readAsStringSync()) as Map;
       final a = _Phone(links['a'] as Map), b = _Phone(links['b'] as Map);
 
-      // ── A: свой плейлист со своей обложкой, профиль с той же картинкой, прослушивание
-      // Настоящий PNG 1×1: ПК его ещё и покажет.
+      // ── A: its playlist with its cover, a profile with the same picture, a
+      // play. A real 1×1 PNG: the computer will show it too.
       final png = base64Decode(
         'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
       );
@@ -103,7 +105,8 @@ void main() {
       final ra = await a.sync();
       expect(ra.sent, greaterThan(0));
 
-      // ── на ПК — свой плейлист, сделанный через его API ключом устройства
+      // ── On the computer: its own playlist, made through its API with the
+      // device key
       final pcLink = a.link;
       final pc = PcClient(
         pcLink.addresses.first,
@@ -113,7 +116,7 @@ void main() {
       );
       await pc.json('POST', '/v1/library/create', body: {'name': 'Made on PC'});
 
-      // ── B: всё пришло, картинка тем же файлом
+      // ── B: everything arrived, the picture as the same file
       final rb = await b.sync();
       expect(rb.touched, containsAll(['list', 'item', 'kv', 'plays']));
       final live = b.list('Live A');
@@ -140,19 +143,19 @@ void main() {
         1,
       );
 
-      // ── A: забирает плейлист ПК, своё назад не приходит
+      // ── A: takes the computer's playlist, its own doesn't come back
       final again = await a.sync();
       expect(a.list('Made on PC'), isNotNull);
       expect(a.db.value("SELECT count(*) FROM lists WHERE name = 'Live A'"), 1);
       expect(again.touched.contains('plays'), isFalse);
 
-      // ── B переименовал плейлист A — A это видит
+      // ── B renamed A's playlist, and A sees it
       final id = live['id'] as String;
       b.lib.renamePlaylist(id, 'Live A (renamed on B)');
       await b.sync();
       await a.sync();
       expect(a.list('Live A (renamed on B)'), isNotNull);
-      // Обложка не пропала по дороге туда и обратно.
+      // The cover survived the trip there and back.
       expect(a.list('Live A (renamed on B)')!['cover'], 'local:cover_1.png');
     },
     skip: path == null ? 'BLOOM_LIVE_PC is not set' : false,

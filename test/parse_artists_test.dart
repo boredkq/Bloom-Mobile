@@ -1,4 +1,4 @@
-/// Разбор строки артистов: где режем, а где имя оставляем целым.
+/// Parsing an artists string: where I cut and where a name stays whole.
 library;
 
 import 'package:bloom/shared/util/artists.dart';
@@ -25,8 +25,8 @@ void main() {
   });
 
   test('слово внутри имени именем и остаётся', () {
-    // Связки режут только между пробелами: иначе от «Swiftft» осталось бы
-    // «Swift», а «Sandvs» превратился бы в «Sand».
+    // Joiners cut only between spaces: otherwise "Swiftft" would become "Swift"
+    // and "Sandvs" would become "Sand".
     expect(parseArtists('Swiftft Fixt'), ['Swiftft Fixt']);
     expect(parseArtists('Sandvs'), ['Sandvs']);
   });

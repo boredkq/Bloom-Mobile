@@ -1,5 +1,5 @@
-/// Память волны: дизлайки, «уже показывали», курсоры станций, сдвиг сидов и
-/// идущая волна. Хранилище — в памяти, файловая система не нужна.
+/// The wave's memory: dislikes, "already shown", station cursors, the seed
+/// shift and the running wave. The store is in memory, no file system.
 library;
 
 import 'package:bloom/core/db/db.dart';
@@ -40,10 +40,10 @@ void main() {
       store,
     ).read(waveStoreProvider.notifier).toggleDislike(_track('sc:1'));
 
-    // Новый контейнер — то же, что новый запуск приложения.
+    // A new container is the same as a new app launch.
     final state = _container(store).read(waveStoreProvider);
     expect(state.isDisliked('sc:1'), isTrue);
-    // Список дизлайков надо чем-то показывать: одного id мало.
+    // The dislikes list needs something to show: an id isn't enough.
     expect(state.dislikes.single.name, 'Song');
   });
 
@@ -179,7 +179,7 @@ void main() {
     final c = _container(JsonStore.memory());
     c.read(waveStoreProvider.notifier).setSource(MusicSource.yandex);
 
-    // Выбор сохраняется — вернётся вход, вернётся и станция.
+    // The choice is kept: when sign-in comes back, so does the station.
     expect(c.read(waveStoreProvider).source, MusicSource.yandex);
     expect(c.read(effectiveWaveSourceProvider), MusicSource.soundcloud);
   });

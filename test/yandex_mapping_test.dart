@@ -1,6 +1,6 @@
-/// Разбор и маппинг Яндекс.Музыки без сети — сверка с поведением десктопного
-/// `yandex.rs` (id числом и строкой, обложка `%%` → 400x400, год из первого
-/// альбома, оба формата плейлиста, подпись прямой ссылки).
+/// Yandex Music parsing and mapping with no network: ids as numbers and
+/// strings, the `%%` cover to 400x400, the year from the first album, both
+/// playlist formats, the direct link signature.
 library;
 
 import 'package:bloom/core/entities/entities.dart';
@@ -34,7 +34,7 @@ void main() {
       expect(t.cover, 'https://avatars.yandex.net/get-music/1/400x400');
       expect(t.duration, const Duration(milliseconds: 185000));
       expect(t.year, '2019');
-      // Поля available нет — Яндекс молчит только про доступные.
+      // No available field: Yandex only stays silent about available ones.
       expect(t.available, isTrue);
     });
 
@@ -48,7 +48,8 @@ void main() {
       expect(t.year, '');
       expect(t.available, isFalse);
 
-      // Совсем без id элемент не трек — такие строки выдачи пропускаются.
+      // With no id at all an item isn't a track, and such result rows get
+      // skipped.
       expect(parseTrack({'title': 'x'}), isNull);
     });
 
@@ -114,10 +115,10 @@ void main() {
         ],
       });
       expect(rich.tracks.map((t) => t.id), ['1', '2']);
-      // owner.name важнее login — это отображаемое имя.
+      // owner.name beats login: it's the display name.
       expect(rich.subtitle, 'Вася');
 
-      // Старый формат: владелец плоским полем.
+      // The other format: the owner as a flat field.
       final flat = playlistEntity({'ownerName': 'Петя', 'tracks': []});
       expect(flat.subtitle, 'Петя');
     });
@@ -140,8 +141,8 @@ void main() {
       expect(ymNumericId('ym:42'), '42');
       expect(ymNumericId(ymArtistId('7')), '7');
       expect(ymNumericId(ymAlbumId('9')), '9');
-      // Не числовой хвост — id не разобрался, провайдер просто ничего не
-      // найдёт вместо падения.
+      // A non-numeric tail: the id doesn't parse, and the provider finds
+      // nothing instead of crashing.
       expect(ymNumericId('ym:plu:abc'), '');
     });
 
@@ -170,7 +171,8 @@ void main() {
       expect(t.year, '2019');
       expect(t.source, MusicSource.yandex);
       expect(t.sourceData?['available'], isFalse);
-      // Недоступный трек качать нечего — кнопка скачивания к нему не выйдет.
+      // An unavailable track has nothing to download, so the button doesn't
+      // show.
       expect(const YandexProvider().canDownload(t), isFalse);
     });
 
@@ -198,7 +200,8 @@ void main() {
     test('трек внутри альбома важнее самого альбома', () {
       const url = 'https://music.yandex.ru/album/123/track/456';
       expect(reAlbumTrack.firstMatch(url)?.group(1), '456');
-      // Порядок веток в resolve: сперва трек, иначе ссылка открыла бы альбом.
+      // The branch order in resolve: the track first, or the link would open
+      // the album.
       expect(reAlbum.firstMatch(url)?.group(1), '123');
     });
 
@@ -209,7 +212,7 @@ void main() {
       expect(old.group(1), 'vasya');
       expect(old.group(2), '1003');
 
-      // Префиксный id («Мне нравится») передаётся целиком, без срезания.
+      // A prefixed id ("I like it") goes through whole, uncut.
       expect(
         rePublicPlaylist
             .firstMatch('https://music.yandex.ru/playlists/lk.5f0e-11')
@@ -262,7 +265,7 @@ void main() {
               'track': {'id': 2, 'title': 'Новичок'},
               'chart': {'position': 2, 'shift': 0, 'progress': 'new'},
             },
-            // Элемент без обёртки — сам уже трек.
+            // An item with no wrapper is the track itself.
             {'id': 3, 'title': 'Голый'},
           ],
         },
@@ -316,7 +319,7 @@ void main() {
       expect(album.ownerId, 'ym:artist:77');
       expect(album.ownerAvatar, 'https://avatars.yandex.net/a/1000x1000');
       expect(album.albumType, 'single');
-      // Пустой тип — обычный альбом, поля нет вовсе.
+      // An empty type is a regular album: no field at all.
       expect(albumFromYm(parseAlbum({'id': 11})!).albumType, isNull);
     });
   });

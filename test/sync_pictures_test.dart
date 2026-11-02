@@ -1,5 +1,5 @@
-/// Картинки в посылке синхронизации ([SyncPictures]) и QR сопряжения
-/// ([PairOffer]) — без сети. С настоящим ПК их гоняет pc_sync_live_test.
+/// Pictures in a sync packet ([SyncPictures]) and the pairing QR ([PairOffer]),
+/// with no network.
 library;
 
 import 'dart:convert';

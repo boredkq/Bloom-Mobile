@@ -1,8 +1,8 @@
-/// Анимация смены трека: направление перехода и сами слои.
+/// The track change animation: the direction and the layers.
 ///
-/// Проверяем то, на чём анимация ломается незаметно: что обе поверхности едут
-/// в одну сторону (направление считается один раз, в плеере), что смену «под
-/// пальцем» слои не рисуют поверх жеста и что уехавший слой снимается.
+/// I check where it breaks unnoticed: that both surfaces go the same way (the
+/// direction is computed once, in the player), that a change under the finger
+/// draws no layers over the gesture, and that a gone layer is removed.
 library;
 
 import 'package:bloom/app/theme/bloom_theme.dart';
@@ -13,7 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderClipRect;
 import 'package:flutter_test/flutter_test.dart';
 
-/// Слои узнаём по тексту: у каждого трека свой.
+/// I recognize layers by text: each track has its own.
 Future<void> _pumpSwap(
   WidgetTester tester,
   String id, {
@@ -38,7 +38,7 @@ Future<void> _pumpSwap(
   ),
 );
 
-/// Сдвиг слоя с этим текстом, доля ширины.
+/// The shift of the layer with this text, as a share of the width.
 double _shiftOf(WidgetTester tester, String text) {
   final translation = tester.widget<FractionalTranslation>(
     find
@@ -67,7 +67,7 @@ void main() {
     test('явное направление сильнее номеров: закольцовка', () {
       final queue = ['a', 'b', 'c'];
       commitSwapDir(queue, 2);
-      // «Дальше» с последнего на первый — по номерам это «назад».
+      // "Next" from last to first is "back" by numbers.
       markSwapDir(1);
       commitSwapDir(queue, 0);
       expect(swapDir, 1);
@@ -79,7 +79,7 @@ void main() {
       markSwapDir(-1);
       commitSwapDir(queue, 1);
       expect(swapDir, -1);
-      // Следующее переключение считается уже по номерам.
+      // The next switch goes by numbers again.
       commitSwapDir(queue, 2);
       expect(swapDir, 1);
     });
@@ -103,7 +103,7 @@ void main() {
     test('несостоявшийся жест флаг за собой убирает', () {
       final queue = ['a', 'b'];
       commitSwapDir(queue, 0);
-      // «Назад» в середине трека отматывает его в начало, а не листает.
+      // "Back" mid-track rewinds it to the start instead of flipping.
       markSwapSilent();
       cancelSwapSilent();
       commitSwapDir(queue, 1);
@@ -127,8 +127,8 @@ void main() {
       await _pumpSwap(tester, 'второй');
       await tester.pump();
 
-      // Оба слоя в дереве, и разъезжаются они в одну сторону: новый идёт
-      // справа к нулю, старый уходит влево.
+      // Both layers are in the tree and part the same way: the new one comes
+      // from the right to zero, the old one leaves left.
       await tester.pump(const Duration(milliseconds: 60));
       expect(find.text('первый'), findsOneWidget);
       expect(_shiftOf(tester, 'второй'), greaterThan(0));
@@ -156,9 +156,9 @@ void main() {
       await _pumpSwap(tester, 'второй');
       await tester.pump(const Duration(milliseconds: 60));
 
-      // Слои разъехались — и обрезка обязана быть на месте: `Stack` считает
-      // переполнением только позиционированных детей, а сдвиг случается на
-      // покраске. Без неё подпись миниплеера наезжает на обложку.
+      // The layers parted, and the clip must be there: `Stack` only counts
+      // positioned children as overflow, and the shift happens at paint.
+      // Without the clip the mini player's label runs over the cover.
       expect(_shiftOf(tester, 'первый'), isNot(0));
       final clip = tester.renderObject<RenderClipRect>(
         find

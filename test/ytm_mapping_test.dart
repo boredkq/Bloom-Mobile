@@ -1,7 +1,7 @@
-/// Разбор и маппинг YouTube Music без сети — сверка с поведением десктопного
-/// `ytm.rs`: метка типа не утекает в артиста, длительность из двух разных мест,
-/// счётчик треков только там, где он есть, апскейл обложки, топ-результат
-/// первым в своём разделе, разбор ссылок.
+/// YouTube Music parsing and mapping with no network: the type label stays out
+/// of the artist, duration from two different places, the track count only
+/// where it exists, the cover upscale, the top result first in its section,
+/// link parsing.
 library;
 
 import 'package:bloom/core/entities/entities.dart';
@@ -10,7 +10,7 @@ import 'package:bloom/providers/ytmusic/ytm_provider.dart';
 import 'package:bloom/providers/ytmusic/ytmusic.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-// ---- Сборка сырых узлов InnerTube (только те поля, что разбирает порт) ----
+// ---- Building raw InnerTube nodes (only the fields that get parsed) ----
 
 Map<String, dynamic> _artistRun(String text, String browseId) => {
   'text': text,
@@ -43,7 +43,7 @@ Map<String, dynamic> _thumb(String url) => {
   },
 };
 
-/// Строка выдачи. [pageType] задаёт переход строки (у трека его нет).
+/// A result row. [pageType] sets the row's navigation (a track has none).
 Map<String, dynamic> _row({
   required List<Object> columns,
   String? videoId,
@@ -131,7 +131,7 @@ void main() {
               {'text': 'Песня'},
             ]),
             _col([
-              {'text': 'Song'}, // метка типа — не артист
+              {'text': 'Song'}, // a type label isn't an artist
               {'text': ' • '},
               _artistRun('Первый', 'UC1'),
               {'text': ' & '},
@@ -152,7 +152,7 @@ void main() {
         (id: 'UC2', name: 'Второй'),
       ]);
       expect(t.duration, const Duration(minutes: 3, seconds: 45));
-      // Обложку апскейлим до 544 — карточка в мобилке крупнее 60px.
+      // I upscale the cover to 544: the card is bigger than 60px.
       expect(t.cover, 'https://lh3.googleusercontent.com/aaa=w544-h544-l90-rj');
     });
 
@@ -177,14 +177,14 @@ void main() {
         )!;
 
         expect(t.duration, const Duration(minutes: 4, seconds: 2));
-        // Артист в строках альбома не повторяется; подставит его страница.
+        // The artist isn't repeated in an album's rows; the page fills it in.
         expect(t.artist, '1.2M plays');
       },
     );
 
     test('трек чарт-плейлиста: артист в НУЛЕВОМ run подписи', () {
-      // Гоча с десктопа: безусловный пропуск нулевого run оставлял чарт без
-      // исполнителей — там подпись это один run с каналом.
+      // Skipping the zeroth run unconditionally would leave a chart with no
+      // artists: there the label is one run with the channel.
       final t = parseTrack(
         _row(
           videoId: 'vid3',
@@ -263,7 +263,8 @@ void main() {
           ],
         )['musicResponsiveListItemRenderer'],
       )!;
-      // «Неизвестно», а не ноль: иначе UI покажет «0 тр.» у полного плейлиста.
+      // Unknown, not zero: otherwise the UI shows "0 tracks" for a full
+      // playlist.
       expect(userPl.trackCount, isNull);
       expect(playlistFromYtm(userPl).trackCount, isNull);
     });
@@ -386,12 +387,12 @@ void main() {
       );
 
       expect(d.tracks.single.id, 'v1');
-      // Артисты общей выдачи врут — вкладка их ЗАМЕЩАЕТ.
+      // The general results lie about artists, so the tab replaces them.
       expect(d.artists.map((a) => a.id), ['UCright']);
-      // Альбомы вкладки лишь ДОПОЛНЯЮТ: у общей выдачи бывают официальные
-      // плейлисты со счётчиком, которых во вкладке нет.
+      // The tab's albums only add: the general results can hold official
+      // playlists with a count that the tab doesn't have.
       expect(d.albums.map((a) => a.id), ['MPREb_x', 'MPREb_y']);
-      // Без вкладки «Songs» листать нечем — токена не запоминали.
+      // Without a Songs tab there's nothing to page, so no token was kept.
       expect(d.tracksHasMore, isFalse);
     });
 
@@ -521,7 +522,7 @@ void main() {
 
       final e = parseAlbumPage(page);
       expect(e.title, 'Пластинка');
-      // straplineTextOne приоритетнее subtitle: там метаданные, а не имя.
+      // straplineTextOne beats subtitle: that one holds metadata, not a name.
       expect(e.subtitle, 'Артист Шапки');
       expect(e.year, '2021');
       expect(e.ownerAvatar, endsWith('ava=w544-h544'));
@@ -584,7 +585,8 @@ void main() {
       final e = parseArtistPage(page);
       expect(e.description, 'Биография');
       expect(e.albums.map((a) => a.id), ['MPREb_rel']);
-      // Метка типа в своё поле не уезжает, год отделён от артиста.
+      // The type label stays out of its field, and the year is apart from the
+      // artist.
       expect(e.albums.single.year, '2024');
       expect(e.albums.single.artist, '');
       expect(e.similarArtists.map((a) => a.id), ['UCsim']);
@@ -694,7 +696,7 @@ void main() {
       expect(parseYtmTrackId(ytmPlaylistId('VLPL1')), isNull);
       expect(parseYtmAlbumId(ytmAlbumId('MPRE1')), 'MPRE1');
       expect(parseYtmPlaylistId(ytmPlaylistId('VLPL1')), 'VLPL1');
-      // Площадка определяется по префиксу id — 'ytm_' раньше 'ym_'.
+      // The platform goes by id prefix: 'ytm_' before 'ym_'.
       expect(MusicSource.fromId(ytmTrackId('vid')), MusicSource.ytmusic);
     });
 

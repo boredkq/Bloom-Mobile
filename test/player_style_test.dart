@@ -1,8 +1,7 @@
-/// Стиль плеера: персист и разбор записи с диска.
+/// The player style: persisting and parsing the stored value.
 ///
-/// Проверяем то, что ломается тихо: в `bloom.json` могла приехать десктопная
-/// запись (`large`, `cinema`) — таких стилей у нас нет, и молча падать из-за
-/// них плеер не должен.
+/// I check what breaks quietly: sync can bring in a value I don't have
+/// (`large`, `cinema`), and the player mustn't crash on it.
 library;
 
 import 'package:bloom/core/store/json_store.dart';

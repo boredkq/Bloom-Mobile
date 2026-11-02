@@ -1,5 +1,5 @@
-/// Сессия плеера в базе — вид `Session` ПК: строки `session_tracks`, kv
-/// `session`, источник очереди картой `Player.source`.
+/// The player session in the database: `session_tracks` rows, kv `session`, the
+/// queue source as a map.
 library;
 
 import 'package:bloom/core/db/db.dart';
@@ -23,7 +23,8 @@ Track _track(String id) => Track(
   source: MusicSource.soundcloud,
 );
 
-/// Два запуска на одной базе: второй контейнер читает то, что записал первый.
+/// Two launches on one database: the second container reads what the first
+/// wrote.
 (ProviderContainer Function(), BloomDb) _app() {
   final store = JsonStore.memory();
   final db = testDb(store);

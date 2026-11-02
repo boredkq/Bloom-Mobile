@@ -1,7 +1,7 @@
-/// Last.fm: подпись запроса, вход и правило зачёта скроббла.
+/// Last.fm: request signing, sign-in and the scrobble rule.
 ///
-/// Сеть не трогаем — вместо неё подменяется [lastfmTransport], и тесты заодно
-/// проверяют, ЧТО именно уехало бы в Last.fm.
+/// No network: [lastfmTransport] is swapped, and the tests also check what
+/// exactly would go to Last.fm.
 library;
 
 import 'package:bloom/core/entities/entities.dart';
@@ -13,10 +13,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bloom/core/db/db.dart';
 import 'support/test_db.dart';
 
-/// Запросы, ушедшие «в сеть» за тест.
+/// Requests that went "to the network" during a test.
 late List<Map<String, String>> sent;
 
-/// Что подменённый транспорт ответит на следующий запрос.
+/// What the fake transport answers next.
 late List<Map<String, dynamic>?> replies;
 
 ProviderContainer _container(JsonStore store, {DateTime? now}) {
@@ -45,7 +45,7 @@ Track _track(
   source: MusicSource.soundcloud,
 );
 
-/// Стор с уже подключённым аккаунтом и включёнными тумблерами.
+/// A store with a connected account and the switches on.
 JsonStore _connected() => JsonStore.memory({
   'lastfm': {
     'sk': 'SESSION',
@@ -184,7 +184,7 @@ void main() {
       final s = c.read(lastfmProvider);
       expect(s.connected, isTrue);
       expect(s.user, 'bxzlik');
-      // Подключить и не скробблить незачем — как на ПК.
+      // No point connecting and not scrobbling.
       expect(s.scrobbleEnabled, isTrue);
       expect(s.nowPlayingEnabled, isTrue);
       expect(s.oauthPending, isFalse);
@@ -208,11 +208,11 @@ void main() {
           await c.read(lastfmProvider.notifier).finishOAuth(silent: true),
           isFalse,
         );
-        // Подсказка на экране прежняя: человек ещё не нажал «Разрешить».
+        // The on-screen hint stays: the user hasn't pressed "Allow" yet.
         expect(c.read(lastfmProvider).note?.kind, LfmNoteKind.confirmAccess);
         expect(c.read(lastfmProvider).oauthPending, isTrue);
 
-        // А по кнопке — говорим как есть.
+        // On the button press I tell it as it is.
         replies.add({'message': 'Unauthorized Token'});
         await c.read(lastfmProvider.notifier).finishOAuth();
         expect(c.read(lastfmProvider).note?.kind, LfmNoteKind.error);
@@ -233,7 +233,7 @@ void main() {
       expect(c.read(lastfmProvider).connected, isFalse);
       expect(c.read(lastfmProvider).user, '');
       expect(store.readMap('lastfm')['sk'], isNull);
-      // Ключи приложения переживают выход: вводить их заново незачем.
+      // App keys survive signing out: no need to enter them again.
       expect(store.readMap('lastfm')['apiKey'], 'KEY');
     });
   });
@@ -327,7 +327,7 @@ void main() {
         hasLength(1),
         reason: 'второй тик того же трека',
       );
-      // Метка времени — НАЧАЛО трека, как требует Last.fm.
+      // The timestamp is the track's start, as Last.fm requires.
       expect(_methodCall('track.scrobble')?['timestamp[0]'], '1700000000');
 
       await Future<void>.delayed(Duration.zero);

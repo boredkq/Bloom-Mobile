@@ -1,10 +1,10 @@
-/// Пилюля «Сейчас играет» над трек-листом: когда она всплывает и куда ведёт.
+/// The "Now playing" pill over the tracklist: when it shows and where it leads.
 ///
-/// Проверяем то, что ломается тихо. Строки играющего трека в дереве может не
-/// быть вовсе (список ленивый), поэтому её место считается арифметикой — и
-/// ошибка там не видна ни в каком кадре: пилюля просто висит на видимом треке
-/// либо не приходит, когда нужна. Плюс срез видимой части: сверху её режет
-/// прилипшая шапка, снизу — миниплеер, и строка под ними не «видна».
+/// I check what breaks quietly. The playing row may not be in the tree at all
+/// (the list is lazy), so its place is arithmetic, and a mistake there shows in
+/// no frame: the pill just hangs over a visible track or doesn't come when
+/// needed. And the visible part is cut: on top by the stuck header, at the
+/// bottom by the mini player, and a row under them isn't "visible".
 library;
 
 import 'package:bloom/app/theme/bloom_theme.dart';
@@ -22,15 +22,17 @@ import 'support/glyphs.dart';
 import 'package:bloom/core/db/db.dart';
 import 'package:bloom/shared/ui/bloom_icon.dart';
 
-/// Шапка списка и её сжатый вид — числа взяты «как в жизни», лишь бы считались.
+/// The list header and its collapsed form: numbers from real life, as long as
+/// they add up.
 const double _hero = 300;
 const double _collapsed = 90;
 const double _padTop = 10;
 
-/// Нижние бары каркаса: миниплеер с таб-баром закрывают низ списка.
+/// The shell's bottom bars: the mini player and the tab bar cover the list's
+/// bottom.
 const double _bars = 130;
 
-/// Высота вьюпорта в тесте.
+/// The viewport's height in the test.
 const double _viewport = 640;
 
 Track _track(String id) => Track(
@@ -41,7 +43,8 @@ Track _track(String id) => Track(
   source: MusicSource.soundcloud,
 );
 
-/// Верх строки [i] в координатах прокрутки — та же арифметика, что у экрана.
+/// The top of row [i] in scroll coordinates, the same arithmetic as the
+/// screen's.
 double _rowTop(int i) => _hero + _padTop + i * kTrackRowHeight;
 
 class _FakePlayback extends PlaybackController {
@@ -64,12 +67,12 @@ void main() {
     );
 
     test('строка на виду — пилюли нет', () {
-      // Список не прокручен, строка стоит сразу под шапкой.
+      // The list isn't scrolled, and the row sits right under the header.
       expect(dir(_rowTop(0), 0), 0);
     });
 
     test('уехала вниз — стрелка вниз', () {
-      // Последняя видимая строка кончается на 640 − 130 = 510.
+      // The last visible row ends at 640 − 130 = 510.
       expect(dir(_rowTop(20), 0), 1);
     });
 
@@ -78,15 +81,15 @@ void main() {
     });
 
     test('запас в полторы строки не даёт пилюле мигать на границе', () {
-      // Строка ушла под миниплеер, но всего на строку — это ещё не «уехала».
+      // The row went under the mini player, but only by one row: not gone yet.
       final bottom = _viewport - _bars;
       expect(dir(bottom + kTrackRowHeight, 0), 0);
       expect(dir(bottom + kJumpShowGap + 1, 0), 1);
     });
 
     test('строка под прилипшей шапкой считается уехавшей вверх', () {
-      // Верх видимой части — не 0, а нижняя кромка сжатой шапки: строка,
-      // спрятанная под ней, не видна, сколько бы её ни было в раскладке.
+      // The visible part starts not at 0 but at the collapsed header's lower
+      // edge: a row hidden under it isn't visible, whatever the layout says.
       expect(dir(0, _collapsed + kJumpShowGap + 1), -1);
     });
 
@@ -131,8 +134,8 @@ void main() {
     });
 
     test('выше начала списка не уезжаем', () {
-      // Шапка ниже сжатой да просвет — у самых первых строк вычитать столько
-      // неоткуда, и цель ушла бы в минус.
+      // Header above collapsed plus the gap: the very first rows can't subtract
+      // that much, and the target would go negative.
       expect(
         nowPlayingJumpTarget(
           rowTop: _collapsed,
@@ -160,8 +163,8 @@ void main() {
   group('пилюля', () {
     late ScrollController scroll;
 
-    /// Список на 60 строк с шапкой и пилюлей поверх; играет [playingIndex],
-    /// `null` — играет трек не из этого списка.
+    /// A 60-row list with the header and the pill on top; [playingIndex] plays,
+    /// `null` means a track from outside this list plays.
     Future<void> pump(WidgetTester tester, {int? playingIndex = 30}) async {
       scroll = ScrollController();
       addTearDown(scroll.dispose);
@@ -236,12 +239,13 @@ void main() {
           ),
         ),
       );
-      // Не `pumpAndSettle`: внутри пилюли эквалайзер, и его анимация вечная.
+      // Not `pumpAndSettle`: the pill holds an equalizer with an endless
+      // animation.
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
     }
 
-    /// Видна ли пилюля — она не снимается с дерева, а гаснет.
+    /// Whether the pill shows: it stays in the tree and fades out.
     bool visible(WidgetTester tester) =>
         tester.widget<AnimatedOpacity>(find.byType(AnimatedOpacity)).opacity ==
         1;
@@ -265,7 +269,7 @@ void main() {
           epsilon: 1,
         ),
       );
-      // Доехали — пилюля ушла.
+      // Arrived, so the pill left.
       await tester.pump(const Duration(milliseconds: 300));
       expect(visible(tester), isFalse);
     });

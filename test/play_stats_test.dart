@@ -1,5 +1,5 @@
-/// Статистика прослушиваний и «История» поверх журнала в базе: окно топа,
-/// снимки треков, перезапуск, переезд при смене площадки, очистка.
+/// Play stats and History over the journal in the database: the top's window,
+/// track snapshots, restart, moving on a platform switch, clearing.
 library;
 
 import 'package:bloom/core/db/db.dart';
@@ -26,7 +26,7 @@ Track _track(
   source: source,
 );
 
-/// Контейнер с управляемыми часами: [clock] двигается руками.
+/// A container with a controlled clock: [clock] moves by hand.
 class _Env {
   _Env([BloomDb? db]) : db = db ?? BloomDb.memory() {
     c = ProviderContainer(
@@ -80,7 +80,7 @@ void main() {
         env.listen(_track('sc:$i'));
       }
       expect(env.history.length, 250);
-      expect(env.history.first.track.id, 'sc:249'); // свежее сверху
+      expect(env.history.first.track.id, 'sc:249'); // freshest on top
     });
 
     test('прослушивание не кладёт трек в библиотеку, но строка есть', () {
@@ -88,7 +88,8 @@ void main() {
       env.listen(_track('sc:1', name: 'A'));
 
       expect(env.c.read(libraryProvider).allTracks, isEmpty);
-      // Трек собран из снимка в базе — его есть чем показать и заиграть.
+      // The track is rebuilt from the snapshot in the database, so there's
+      // something to show and play.
       final track = env.history.single.track;
       expect(track.name, 'A');
       expect(track.source, MusicSource.soundcloud);

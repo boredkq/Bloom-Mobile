@@ -1,13 +1,13 @@
-/// Перенос строк в очереди: номер играющего трека обязан ехать вместе с ним.
+/// Moving rows in the queue: the playing track's number must move with it.
 ///
-/// Проверяем не на глаз, а сверкой со списком: перекладываем настоящий список
-/// и смотрим, что по посчитанному номеру лежит тот же элемент, что и был.
+/// I check against a real list: move the items and see that the computed number
+/// still holds the same element.
 library;
 
 import 'package:bloom/features/player/player_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Что осталось под номером [indexAfterReorder] после переноса.
+/// What's left at [indexAfterReorder] after the move.
 String _after(List<String> queue, int current, int from, int target) {
   final q = [...queue];
   q.insert(target, q.removeAt(from));

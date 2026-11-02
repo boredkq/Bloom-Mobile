@@ -1,8 +1,8 @@
-/// Загрузка файла трека: куски с `Range` и докачка оборванного соединения.
+/// Downloading a track file: `Range` chunks and resuming a broken connection.
 ///
-/// Площадка — подставной HTTP-сервер на локальном порту: проверяется ровно то,
-/// что googlevideo ломал на iOS («Connection closed while receiving data»),
-/// а сеть здесь не при чём.
+/// The platform is a fake HTTP server on a local port: I check what breaks when
+/// a server cuts off mid-body ("Connection closed while receiving data"), with
+/// no network involved.
 library;
 
 import 'dart:io';
@@ -12,7 +12,7 @@ import 'dart:typed_data';
 import 'package:bloom/features/offline/offline_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Тело «трека»: заголовок m4a (`....ftyp`), дальше предсказуемый мусор.
+/// The "track" body: an m4a header (`....ftyp`), then predictable junk.
 Uint8List _body(int size) {
   final bytes = Uint8List(size);
   bytes.setRange(0, 8, [0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70]);
@@ -23,13 +23,13 @@ Uint8List _body(int size) {
   return bytes;
 }
 
-/// Сервер, отдающий [data] по `Range`.
+/// A server giving [data] by `Range`.
 ///
-/// [breakAt] — сколько первых ответов оборвать, отдав половину обещанного тела
-/// (именно так ведёт себя googlevideo на длинной загрузке).
-/// [deadAfter] — с какого ответа рвать соединение, не отдав ни байта: загрузке
-/// не за что зацепиться, и она обязана сдаться.
-/// [ignoreRange] — площадка, которая про `Range` не знает: 200 и всё тело.
+/// [breakAt] is how many first answers to cut after half the promised body.
+/// [deadAfter] is the answer from which it drops the connection with no bytes
+/// at all: the download has nothing to hold on to and must give up.
+/// [ignoreRange] is a platform that doesn't know `Range`: 200 and the whole
+/// body.
 Future<HttpServer> _serve(
   Uint8List data, {
   int breakAt = 0,
@@ -64,8 +64,8 @@ Future<HttpServer> _serve(
     final n = served++;
 
     if (n < breakAt || (deadAfter != null && n >= deadAfter)) {
-      // Заголовки пишем руками: `HttpResponse` не даст оборвать соединение
-      // после того, как отправил их сам.
+      // I write the headers by hand: `HttpResponse` won't let me cut the
+      // connection after sending them itself.
       final socket = await res.detachSocket(writeHeaders: false);
       socket.write(
         'HTTP/1.1 206 Partial Content\r\n'
@@ -116,7 +116,7 @@ void main() {
 
     final file = await fetch(server);
     expect(file.readAsBytesSync(), data);
-    // Расширение — по сигнатуре, а не по URL (в нём его нет вовсе).
+    // The extension comes from the signature, not the URL, which has none.
     expect(file.path.endsWith('.m4a'), isTrue);
   });
 

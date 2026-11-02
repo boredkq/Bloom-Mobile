@@ -1,10 +1,11 @@
-/// «Соседние треки» — карусель миниплеера: настройка, геометрия и жест.
+/// Neighbor tracks, the mini player's carousel: the setting, the geometry and
+/// the gesture.
 ///
-/// Проверяем то, что ломается тихо: полоска соседа обязана встать в обычное
-/// поле экрана (иначе карточка просто худеет ни за чем), шаг карусели —
-/// в точности заменять середину соседом, строка соседа — не показывать чужой
-/// прогресс и не ловить нажатий, а перелистывание в карусели — не въезжать
-/// с другого края поверх уже приехавшей карточки.
+/// I check what breaks quietly: a neighbor's strip must fit the screen's normal
+/// margin (or the card just gets thinner for nothing), a carousel step must
+/// replace the middle with the neighbor exactly, a neighbor row must show no
+/// foreign progress and catch no taps, and a flip in the carousel mustn't slide
+/// in from the other edge over the card that already arrived.
 library;
 
 import 'package:bloom/app/theme/bloom_theme.dart';
@@ -32,8 +33,9 @@ Track _track(String id) => Track(
   source: MusicSource.soundcloud,
 );
 
-/// Очередь без звука: настоящий контроллер лезет за `audioHandlerProvider`,
-/// которого в тестах нет, а строке карточки нужен только сам список.
+/// A queue with no sound: the real controller reaches for
+/// `audioHandlerProvider`, which tests don't have, and the card's row only
+/// needs the list.
 class _FakePlayback extends PlaybackController {
   _FakePlayback(this.initial);
 
@@ -106,12 +108,12 @@ void main() {
 
     test('полоска соседа упирается в край экрана', () {
       final rect = card(neighbors: true);
-      // Правый край левого соседа: он стоит на шаг левее карточки. Слой соседей
-      // лежит от края экрана, так что это сразу экранная координата — и она же
-      // ширина видимой полоски, раз левый край полоски на нуле.
+      // The left neighbor's right edge: it stands one step left of the card.
+      // The neighbor layer starts at the screen's edge, so this is a screen
+      // coordinate already, and also the visible strip's width.
       final edge = rect.left - miniStride(rect.width) + rect.width;
       expect(edge, kMiniPeek);
-      // А просвет до карточки — обычное поле, не сверх него.
+      // The gap to the card is the normal margin, not on top of it.
       expect(rect.left - edge, kFloatGap);
     });
 
@@ -119,13 +121,13 @@ void main() {
       final rect = card(neighbors: true);
       final stride = miniStride(rect.width);
       expect(rect.left - stride + stride, rect.left);
-      // И между карточками остаётся тот же просвет, что по краям экрана.
+      // Between cards there's the same gap as at the screen's edges.
       expect(stride - rect.width, kFloatGap);
     });
 
     test('карточка ужимается ровно на две полоски', () {
-      // Просвет между полоской и карточкой берётся из обычного поля, поэтому
-      // сверх самих полосок карточка не теряет ничего.
+      // The gap between the strip and the card comes from the normal margin, so
+      // the card loses nothing beyond the strips themselves.
       expect(
         card(neighbors: false).width - card(neighbors: true).width,
         kMiniPeek * 2,
@@ -134,10 +136,10 @@ void main() {
   });
 
   group('строка соседа', () {
-    /// Строка играющего трека тут не строится вовсе: её индикаторы и кнопка
-    /// play лезут за живым плеером, которого в тестах нет. Это же и держит
-    /// проверку «соседу чужой прогресс не достаётся» — включённая по умолчанию
-    /// линия прогресса на соседе просто уронила бы тест.
+    /// The playing row isn't built here at all: its indicators and play button
+    /// reach for a live player tests don't have. That also keeps the
+    /// no-foreign-progress check honest: a progress line, on by default, would
+    /// crash the test on a neighbor.
     Future<void> pump(WidgetTester tester, {required bool neighbor}) async {
       final queue = [_track('a'), _track('b')];
       await tester.pumpWidget(
@@ -145,8 +147,8 @@ void main() {
           overrides: [
             jsonStoreProvider.overrideWithValue(
               JsonStore.memory({
-                // Линия прогресса включена по умолчанию — на ней и проверяем,
-                // что соседу чужой прогресс не достаётся.
+                // The progress line is on by default, so I check on it that a
+                // neighbor gets no foreign progress.
                 'miniStyle': {'neighbors': true},
               }),
             ),
@@ -160,8 +162,8 @@ void main() {
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             home: Scaffold(
-              // Ширина карточки, а не всего экрана: у строки во всю ширину
-              // теста подписи разъезжаются, и проверять было бы нечего.
+              // The card's width, not the whole screen's: at full test width
+              // the labels drift apart and there's nothing to check.
               body: Center(
                 child: SizedBox(
                   width: 320,
@@ -183,17 +185,17 @@ void main() {
 
     testWidgets('кнопки стоят, но не нажимаются', (tester) async {
       await pump(tester, neighbor: true);
-      // Умолчание — трио перемотки: раскладка у соседа та же, иначе на въезде
-      // подпись прыгала бы. Play рисует отдельный [PlayButton], перемотка —
-      // кружки атомов, поэтому считаем их порознь.
+      // The default is the skip trio: a neighbor has the same layout, or the
+      // label would jump on the way in. Play is a separate [PlayButton], skip
+      // buttons are atom circles, so I count them apart.
       final buttons = tester
           .widgetList<CircleIconButton>(find.byType(CircleIconButton))
           .toList();
       expect(buttons, hasLength(2));
       expect(buttons.every((b) => b.onTap == null), isTrue);
       expect(find.byType(PlayButton), findsOneWidget);
-      // У неживой кнопки нажатия нет вовсе: `InkWell` внутрь просто не
-      // ставится, и проверять `onTap` было бы не по чему.
+      // A dead button has no press at all: no `InkWell` inside, so there's no
+      // `onTap` to check.
       expect(
         find.descendant(
           of: find.byType(PlayButton),
@@ -243,8 +245,8 @@ void main() {
     testWidgets('перелистнули — карточка стоит на месте, без въезда', (
       tester,
     ) async {
-      // Сосед уже приехал в середину: вводить его с другого края нечего, и
-      // сдвиг обязан быть ровно нулём.
+      // The neighbor already arrived in the middle: nothing to bring in from
+      // the other edge, and the shift must be exactly zero.
       expect(await flick(tester, carousel: true, dx: -200), 0);
     });
 
@@ -253,8 +255,9 @@ void main() {
     });
 
     testWidgets('чужой сдвиг живёт дольше жеста', (tester) async {
-      // Карусель двигает им ещё и соседей: `TrackFlick` не имеет права его
-      // освобождать — иначе слой соседей слушал бы мёртвый `ValueNotifier`.
+      // The carousel moves its neighbors with it too: `TrackFlick` must not
+      // dispose it, or the neighbor layer would listen to a dead
+      // `ValueNotifier`.
       final shift = ValueNotifier<double>(0);
       addTearDown(shift.dispose);
       await tester.pumpWidget(

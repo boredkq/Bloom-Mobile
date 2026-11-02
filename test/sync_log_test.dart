@@ -1,8 +1,6 @@
-/// Синхронизация в базе — [SyncLog], порт `SyncLog` ПК. Два «устройства» —
-/// две базы; посылки идут между ними через JSON, как по сети. Те же сценарии
-/// гоняет dbtest ПК (`docs/tools/dbtest`), а формат двух кодов сверяют
-/// посылки: `fixtures/sync_from_pc.json` пишет dbtest, обратную — этот тест
-/// (`%TEMP%/bloom_sync_from_phone.json`, её применяет dbtest).
+/// Sync in the database: [SyncLog]. Two "devices" are two databases, and
+/// packets go between them through JSON, as over the network. The fixture and
+/// the packet this test writes check the format against the computer's side.
 library;
 
 import 'dart:convert';
@@ -27,7 +25,7 @@ Track _track(String id, {String name = 'Song'}) => Track(
   source: id.startsWith('ytm:') ? MusicSource.ytmusic : MusicSource.soundcloud,
 );
 
-/// Устройство: своя база и своя библиотека поверх неё.
+/// A device: its own database and its own library over it.
 class _Device {
   _Device() : store = JsonStore.memory() {
     db = testDb(store);
@@ -80,8 +78,8 @@ class _Device {
 Map<String, Object?> _wire(Map<String, Object?> m) =>
     jsonDecode(jsonEncode(m)) as Map<String, Object?>;
 
-/// Одна синхронизация телефона с ПК: сделанное на телефоне — наверх, потом
-/// вниз всё, чего у телефона нет. Возвращает число кругов.
+/// One sync of the phone with the computer: the phone's changes go up, then
+/// everything the phone lacks comes down. Returns the number of rounds.
 int _sync(_Device pc, _Device phone, {int limit = 2000, Set<String>? touched}) {
   var rounds = 0;
   for (var more = true; more; rounds++) {
@@ -117,7 +115,7 @@ void main() {
       tracks: [_track('sc:1'), _track('sc:2')],
     );
     expect(d.marks('list'), 1);
-    expect(d.marks('item'), 4); // в плейлисте и в «Всех треках»
+    expect(d.marks('item'), 4); // in the playlist and in All tracks
     final top = d.db.value('SELECT max(seq) FROM changes');
     d.db.exec('UPDATE lists SET updated_at = 5 WHERE id = ?', [pl.id]);
     expect(d.db.value('SELECT max(seq) FROM changes'), top);
@@ -126,7 +124,7 @@ void main() {
       d.db.value('SELECT kind FROM changes ORDER BY seq DESC LIMIT 1'),
       'list',
     );
-    d.lib.setPlaylistTracks(pl.id, ['sc:2', 'sc:1']); // перестановка
+    d.lib.setPlaylistTracks(pl.id, ['sc:2', 'sc:1']); // a reorder
     expect(d.marks('item'), 4);
     d.db.set('profile', {'nick': 'a'});
     d.db.set('other', 1);
@@ -134,7 +132,7 @@ void main() {
     d.lib.replaceTrack('sc:1', _track('ytm:1'));
     expect(d.marks('rekey'), 1);
     d.lib.deletePlaylist(pl.id);
-    expect(d.marks('list'), 1); // удалённое хранит свою отметку
+    expect(d.marks('list'), 1); // a deleted one keeps its mark
     expect(d.id, hasLength(32));
     expect(d.log.device(), d.id);
   });
@@ -187,7 +185,7 @@ void main() {
       expect(d.db.value("SELECT at FROM dislikes WHERE track_id = 'sc:2'"), 7);
       expect(d.db.getMap('profile')['nick'], 'pc');
       expect(d.db.get('profile.since'), 3000);
-      expect(d.plays, isPc ? 4 : 3); // прослушивание файла остаётся на ПК
+      expect(d.plays, isPc ? 4 : 3); // a file's play stays on the computer
       expect(d.count('SELECT sum(app_ms) FROM days'), 140);
       expect(
         d.count("SELECT count(*) FROM tracks WHERE id LIKE 'lf:%'"),
@@ -196,7 +194,7 @@ void main() {
     }
     final touched = <String>{};
     _sync(pc, phone, touched: touched);
-    expect(touched, isEmpty); // нового нет — ничего не взято
+    expect(touched, isEmpty); // nothing new, nothing taken
   });
 
   test('удаления, позднее изменение, перенос, теги и очистка доезжают', () async {
@@ -212,7 +210,7 @@ void main() {
     _sync(pc, phone);
     expect(pc.ids(pl.id), {'sc:1', 'sc:3'});
 
-    // Переименовали на обоих: остаётся позднее везде.
+    // Renamed on both: the later one stays everywhere.
     pc.lib.renamePlaylist(pl.id, 'A');
     await Future<void>.delayed(const Duration(milliseconds: 5));
     phone.lib.renamePlaylist(pl.id, 'B');
@@ -221,7 +219,7 @@ void main() {
       expect(d.db.value('SELECT name FROM lists WHERE id = ?', [pl.id]), 'B');
     }
 
-    // Снятый лайк не возвращается со стороны, где он ещё был.
+    // A removed like doesn't come back from the side that still had it.
     phone.lib.toggleFav(_track('sc:1'));
     _sync(pc, phone);
     _sync(pc, phone);
@@ -229,7 +227,7 @@ void main() {
       expect(d.ids(kFavList), isEmpty);
     }
 
-    // Трек переехал на другую площадку — прослушивания едут за ним и там.
+    // The track moved to another platform, and its plays follow there too.
     phone.play('sc:1', 1000);
     pc.lib.replaceTrack('sc:1', _track('ytm:1'));
     _sync(pc, phone);
@@ -240,7 +238,8 @@ void main() {
       expect(d.count("SELECT count(*) FROM plays WHERE track_id = 'ytm:1'"), 1);
     }
 
-    // Теги, исправленные руками, доезжают; обновление с площадки их не трогает.
+    // Tags fixed by hand get across; a refresh from the platform leaves them
+    // alone.
     pc.db.exec(
       "UPDATE tracks SET title = 'Mine', extra = json_set(extra, '\$.edited', json('true')) WHERE id = 'sc:3'",
     );
@@ -248,7 +247,7 @@ void main() {
     TrackStore(phone.db).put([_track('sc:3', name: 'Platform')]);
     expect(TrackStore(phone.db).getOne('sc:3')!.name, 'Mine');
 
-    // «Очистить статистику»: прослушивания до неё уходят везде, XP уровня остаются.
+    // Clearing stats: plays before it go everywhere, level XP stays.
     pc.play('sc:3', 2000);
     pc.db.exec("INSERT INTO days (day, app_ms) VALUES ('2020-01-01', 100)");
     _sync(pc, phone);
@@ -259,7 +258,7 @@ void main() {
       pc.log.markCleared(123);
     });
     await Future<void>.delayed(const Duration(milliseconds: 5));
-    phone.play('sc:3', BloomDb.now()); // после очистки — остаётся
+    phone.play('sc:3', BloomDb.now()); // after the clear, so it stays
     _sync(pc, phone);
     for (final d in [pc, phone]) {
       expect(d.plays, 1);
@@ -290,7 +289,7 @@ void main() {
       expect(d.ids(kFavList), {'ytm:1', 'ytm:3'});
       expect(d.plays, 26);
     }
-    // Свои прослушивания телефону чужими не возвращаются.
+    // The phone's own plays don't come back to it as foreign.
     expect(a.count('SELECT count(*) FROM plays WHERE device = ?', [a.id]), 0);
   });
 
@@ -299,7 +298,7 @@ void main() {
         jsonDecode(File('test/fixtures/sync_from_pc.json').readAsStringSync())
             as Map<String, Object?>;
     final phone = _Device();
-    phone.lib.toggleFav(_track('sc:4')); // переехал на ПК в ytm:4
+    phone.lib.toggleFav(_track('sc:4')); // moved to ytm:4 on the computer
     final touched = <String>{};
     expect(phone.log.apply(payload, touched: touched), isTrue);
     expect(
@@ -348,7 +347,8 @@ void main() {
     expect(TrackStore(phone.db).getOne('sc:3')!.name, 'Mine');
     expect(phone.log.got(payload['device'] as String).seq, payload['seq']);
 
-    // Обратно: лайк, плейлист, прослушивание, день и перенос sc:1 — для dbtest.
+    // The other way: a like, a playlist, a play, a day and the sc:1 move, for
+    // the computer's side to apply.
     phone.lib.toggleFav(_track('ytm:7'));
     phone.lib.createPlaylist('Phone list', tracks: [_track('ytm:7')]);
     phone.play('ytm:7', 9000);
@@ -358,8 +358,8 @@ void main() {
     File(
       '${Directory.systemTemp.path}/bloom_sync_from_phone.json',
     ).writeAsStringSync(const JsonEncoder.withIndent('  ').convert(out));
-    // Только сделанное здесь: присланное ПК ему не возвращается (кроме
-    // плейлиста, который едет вместе со своим треком).
+    // Only what was made here: what the computer sent doesn't go back to it
+    // (except a playlist that travels with its track).
     for (final c in (out['changes'] as List).cast<Map>()) {
       if (c['kind'] != 'list') expect(c['device'], phone.id);
     }

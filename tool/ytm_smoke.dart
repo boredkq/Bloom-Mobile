@@ -1,14 +1,14 @@
-/// Сетевой smoke против живого YouTube Music (не для CI) — сосед `ym_smoke.dart`.
-/// Порт канареек `ytm::tests` с десктопа: поиск по разделам, страницы, ссылки,
-/// пагинация без дублей, стрим с реальными байтами.
+/// A network smoke run against live YouTube Music, not for CI: search by
+/// section, pages, links, paging without duplicates, the stream with real
+/// bytes.
 ///
-/// Запуск: `dart run tool/ytm_smoke.dart [запрос]` (по умолчанию — «ado»).
+/// Run: `dart run tool/ytm_smoke.dart [query]` ("ado" by default).
 ///
-/// Гонять, когда YTM перестал играть: сразу видно, протухли ли константы
-/// клиентов (`kVrClientVersion`/`kWebClientVersion` в `ytmusic.dart`).
+/// Run it when YouTube Music stops playing: it shows at once whether the client
+/// constants have gone stale (`kVrClientVersion`/`kWebClientVersion`).
 library;
 
-// ignore_for_file: avoid_print — это консольный скрипт, вывод и есть результат.
+// ignore_for_file: avoid_print
 
 import 'dart:io';
 
@@ -30,15 +30,15 @@ Future<void> main(List<String> args) async {
   final query = args.firstOrNull ?? 'ado';
   const provider = YtmusicProvider();
 
-  // visitorData: без него `player` отвечает LOGIN_REQUIRED — это первое, что
-  // ломается, и первое, что надо видеть в выводе.
+  // visitorData: without it `player` answers LOGIN_REQUIRED. It's the first
+  // thing to break and the first to look for in the output.
   final visitor = await ytm.visitorData();
   print(
     'visitorData: ${visitor.isEmpty ? "ПУСТО" : "${visitor.length} симв."}',
   );
   check(visitor.isNotEmpty, 'visitorData не получен');
 
-  // ---- Поиск: разделы не смешиваются ----
+  // ---- Search: sections don't mix ----
   final found = await provider.search(query);
   print(
     'search «$query»: ${found.tracks.length} треков, '
@@ -55,7 +55,7 @@ Future<void> main(List<String> args) async {
     found.tracks.every((t) => t.artist != kYtmUnknownArtist),
     'трек без исполнителя (метка типа съела артиста)',
   );
-  // Искомое обязано лежать в СВОЁМ разделе (ловит контаминацию выдачи).
+  // What I search for must land in its own section (catches mixed-up results).
   check(
     found.artists.any(
       (a) => a.name.toLowerCase().contains(query.toLowerCase()),
@@ -66,7 +66,7 @@ Future<void> main(List<String> args) async {
   final track = found.tracks.first;
   print('первый трек: ${track.artist} — ${track.name} (${track.duration})');
 
-  // ---- Пагинация: страницы без дублей ----
+  // ---- Paging: pages without duplicates ----
   if (found.tracksHasMore) {
     final more = await provider.loadMoreTracks(query, found.tracks.length);
     final ids = found.tracks.map((t) => t.id).toSet();
@@ -80,7 +80,7 @@ Future<void> main(List<String> args) async {
     print('loadMoreTracks: продолжения нет (вкладка Songs не ответила)');
   }
 
-  // ---- Артист: полные списки, био, похожие ----
+  // ---- Artist: full lists, bio, similar ----
   final artistId = found.artists.first.id;
   final page = await provider.getArtist(artistId);
   print(
@@ -95,7 +95,7 @@ Future<void> main(List<String> args) async {
   );
   check((page?.albums.length ?? 0) > 0, 'у артиста нет релизов');
 
-  // ---- Альбом: артист в строках, счётчик ----
+  // ---- Album: the artist in rows, the count ----
   if (page != null && page.albums.isNotEmpty) {
     final album = await provider.getAlbum(page.albums.first.id);
     print(
@@ -110,14 +110,14 @@ Future<void> main(List<String> args) async {
     check((album?.playlist.cover ?? '').isNotEmpty, 'у альбома нет обложки');
   }
 
-  // ---- Плейлист ----
+  // ---- Playlist ----
   if (found.playlists.isNotEmpty) {
     final pl = await provider.getPlaylist(found.playlists.first.id);
     print('getPlaylist ${pl?.playlist.title}: ${pl?.tracks.length} треков');
     check((pl?.tracks.length ?? 0) > 0, 'плейлист без треков');
   }
-  // Счётчик треков есть только у официальных плейлистов YTM — но если он есть,
-  // он должен быть осмысленным (канарейка live_track_counts).
+  // Only official playlists have a track count, but where it exists it must
+  // make sense.
   final counted = found.playlists.where((p) => p.trackCount != null);
   print('плейлистов со счётчиком: ${counted.length}');
   check(counted.every((p) => p.trackCount! > 0), 'счётчик треков нулевой');
@@ -126,7 +126,7 @@ Future<void> main(List<String> args) async {
     'у альбома счётчик нулём',
   );
 
-  // ---- Ссылки ----
+  // ---- Links ----
   final videoId = parseYtmTrackId(track.id)!;
   final byWatch = await provider.resolveUrl(
     'https://music.youtube.com/watch?v=$videoId',
@@ -149,13 +149,13 @@ Future<void> main(List<String> args) async {
     );
   }
 
-  // Чужая ссылка уходит дальше по реестру, без запроса к YouTube.
+  // A foreign link goes on through the registry, with no request to YouTube.
   check(
     await provider.resolveUrl('https://soundcloud.com/x/y') == null,
     'YTM взялся резолвить чужую ссылку',
   );
 
-  // ---- Стрим: ссылка играбельна и реально отдаёт байты ----
+  // ---- Stream: the link is playable and really gives bytes ----
   final stream = await provider.resolveStream(track);
   print('resolveStream: ${stream?.url.substring(0, 60)}…');
   check(stream != null && stream.url.startsWith('http'), 'нет ссылки на поток');
@@ -174,7 +174,7 @@ Future<void> main(List<String> args) async {
     client.close();
   }
 
-  // ---- Ре-резолв трека по id (для «недавних» после рестарта) ----
+  // ---- Re-resolving a track by id (for recents after a restart) ----
   final again = await provider.resolveTrackById(track.id);
   print('resolveTrackById: ${again?.name}');
   check(again != null && again.name.isNotEmpty, 'трек по id не восстановился');

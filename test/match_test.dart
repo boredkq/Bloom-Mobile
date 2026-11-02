@@ -1,4 +1,4 @@
-/// Матчер площадок: тот же трек, найденный на другой площадке.
+/// The platform matcher: the same track found on another platform.
 library;
 
 import 'package:bloom/core/entities/entities.dart';
@@ -78,7 +78,7 @@ void main() {
       );
 
       expect(ranked.first.track.duration.inSeconds, 201);
-      // «Совсем другое» ниже порога — в выдачу не попало.
+      // "Something else entirely" is below the threshold and stays out.
       expect(ranked.length, 2);
     });
 

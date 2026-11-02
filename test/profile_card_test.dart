@@ -1,5 +1,5 @@
-/// Карточка профиля в виде ПК: kv `profile` с цветами "#hex", режим обложки
-/// «Авто» по умолчанию, длины 32/300/80, «С нами с» в `profile.since`.
+/// The profile card: kv `profile` with "#hex" colors, "Auto" cover mode by
+/// default, lengths 32/300/80, the since date in `profile.since`.
 library;
 
 import 'package:bloom/core/db/db.dart';
@@ -111,7 +111,7 @@ void main() {
   test('обложка для «Авто» — самого слушаемого трека с обложкой', () {
     final c = _container(BloomDb.memory());
     final log = c.read(playLogProvider.notifier);
-    // Без обложки слушали больше всех — он не в счёт.
+    // The most heard one has no cover, so it doesn't count.
     for (var i = 0; i < 5; i++) {
       log.log(_track('sc:0'));
     }
@@ -123,7 +123,7 @@ void main() {
     }
     expect(c.read(profileStatsProvider).topCover, 'https://a/1.jpg');
 
-    // Поровну — побеждает слушанный позже.
+    // A tie goes to the one heard later.
     log.log(_track('sc:2', cover: 'https://a/2.jpg'));
     expect(c.read(profileStatsProvider).topCover, 'https://a/2.jpg');
   });

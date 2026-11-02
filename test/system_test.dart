@@ -1,9 +1,9 @@
-/// «Система» и «Аудио»: журнал работы, перенос плейлистов, сравнение версий и
-/// сброс настроек.
+/// System and Audio: the work log, moving playlists, comparing versions and
+/// resetting settings.
 ///
-/// Ни сеть, ни файловую систему не трогаем: журнал без `open()` живёт в памяти
-/// (файла у него нет), проверка обновлений ходит через подменённый
-/// [releaseFetchProvider], а хранилище — `JsonStore.memory`.
+/// No network and no file system: the log without `open()` lives in memory, the
+/// update check goes through a swapped [releaseFetchProvider], and the store is
+/// `JsonStore.memory`.
 library;
 
 import 'dart:io';
@@ -128,8 +128,8 @@ void main() {
 
       final bundle = await buildExportAllBundle(c.read(libraryProvider));
       expect(bundle, contains('"sc:1"'));
-      // Трек лежит в библиотеке, но ни в одном плейлисте — файл переноса про
-      // плейлисты, а не про всю библиотеку.
+      // The track is in the library but in no playlist: the file is about
+      // playlists, not the whole library.
       expect(bundle, isNot(contains('"sc:2"')));
     });
 
@@ -179,7 +179,8 @@ void main() {
       expect(t['duration'], 225);
       expect(t['provider'], 'sc');
       expect(t['extra']['scId'], 5);
-      // Транскодинги — тем же ключом, что у ПК: там из них резолвится стрим.
+      // Transcodings under the shared key: the stream resolves from them on the
+      // other side.
       expect(t['extra']['media']['transcodings'], isNotEmpty);
     });
 
@@ -235,7 +236,7 @@ void main() {
         playlistFileName('AC/DC: лучшее?'),
         'AC_DC_ лучшее_.bloomplaylist',
       );
-      // Безымянный плейлист не должен дать файл без имени.
+      // A nameless playlist must not give a file with no name.
       expect(playlistFileName('   '), 'playlist.bloomplaylist');
     });
 
@@ -316,9 +317,9 @@ void main() {
       final file = await buildExportAllBundle(c.read(libraryProvider));
       expect(file, contains('https://cdn/pl.jpg'));
 
-      // Своя обложка ПК приезжает картинкой внутри файла. Каталога `covers/` в
-      // тестах нет, так что записать её некуда — импорт от этого не должен ни
-      // упасть, ни потерять плейлист.
+      // A computer's own cover arrives as a picture inside the file. Tests have
+      // no covers folder to write it to, and the import must neither crash nor
+      // lose the playlist.
       final other = _container(JsonStore.memory());
       final result = await import(
         other,
@@ -354,8 +355,8 @@ void main() {
             '{"tag_name":"v1.4.0","html_url":"https://example/1.4.0"}',
       );
       final about = c.read(aboutProvider.notifier);
-      // Версию платформа в тестах не отдаёт — подставляем сами через проверку
-      // с известной установленной.
+      // The platform gives no version in tests, so I set it through a check
+      // with a known installed one.
       about.state = const AboutState(version: '1.3.0');
       await about.check();
       expect(c.read(aboutProvider).phase, UpdatePhase.available);
@@ -440,11 +441,11 @@ void main() {
       final store = JsonStore.memory();
       final c = _container(store, notes: (_) async => _manifest);
       final notes = c.read(updateNotesProvider);
-      // Первый запуск: прошлой версии не записано — шторки нет, но отметка о
-      // запуске появляется.
+      // The first launch: no previous version recorded, so no sheet, but the
+      // launch mark appears.
       expect(await notes.whatsNew('1.0.0', 'ru'), isNull);
       expect(notes.lastRun, '1.0.0');
-      // Второй запуск той же версии — тоже тишина.
+      // A second launch of the same version: quiet too.
       expect(await notes.whatsNew('1.0.0', 'ru'), isNull);
     });
 
@@ -526,10 +527,11 @@ void main() {
       store.removeAll(kSettingsKeys);
 
       expect(store.read('settings'), isNull);
-      // Библиотека живёт в базе — сброс настроек до неё не достаёт.
+      // The library lives in the database, and a settings reset doesn't reach
+      // it.
       expect(_container(store).read(libraryProvider).isInLib('sc:1'), isTrue);
-      // Пересобранный стор читает уже пустое хранилище — ровно это и делает
-      // `resetSettings` через `ref.invalidate`.
+      // A rebuilt store reads the now empty storage, which is what
+      // `resetSettings` does through `ref.invalidate`.
       final fresh = _container(store).read(settingsProvider);
       expect(fresh.autoplay, isFalse);
       expect(fresh.themeId, 'dark');

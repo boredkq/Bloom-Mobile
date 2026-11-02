@@ -1,11 +1,11 @@
-/// Прозрачность: формулы стекла, персист, гейт оверлеев и сами поверхности.
+/// Transparency: glass formulas, persistence, the overlay gate and the
+/// surfaces.
 ///
-/// Проверяем то, что ломается тихо. Яркость стекла считается той же формулой,
-/// что на ПК (`applyTransparency`), — разойдись она, и одна и та же цифра дала
-/// бы там и здесь разное стекло. Тумблер оверлеев — ПОДРЕЖИМ: при выключенной
-/// прозрачности стекла не должно быть нигде. А ползунок в настройках
-/// показывает «уровень прозрачности», то есть ОБРАТНОЕ тому, что лежит в
-/// хранилище.
+/// I check what breaks quietly. Glass brightness must stay on its formula,
+/// since the same number has to give the same glass after a sync. The overlays
+/// toggle is a sub-mode: with transparency off there must be no glass anywhere.
+/// And the settings slider shows the transparency level, the inverse of what's
+/// stored.
 library;
 
 import 'package:bloom/app/theme/bloom_theme.dart';
@@ -32,7 +32,7 @@ ProviderContainer _container(JsonStore store) {
   return c;
 }
 
-/// Экран с одной стеклянной плашкой.
+/// A screen with one glass plate.
 Future<void> _pumpBox(WidgetTester tester, ProviderContainer container) async {
   await tester.pumpWidget(
     UncontrolledProviderScope(
@@ -52,7 +52,7 @@ Future<void> _pumpBox(WidgetTester tester, ProviderContainer container) async {
   );
 }
 
-/// Экран с кнопкой, открывающей шторку без обложки.
+/// A screen with a button that opens a sheet with no cover.
 Future<void> _pumpSheet(
   WidgetTester tester,
   ProviderContainer container,
@@ -83,7 +83,7 @@ Future<void> _pumpSheet(
   await tester.pumpAndSettle();
 }
 
-/// Заливка плашки: `GlassBox` красит её материалом.
+/// The plate's fill: `GlassBox` paints it with a material.
 Color _fillOf(WidgetTester tester) => tester
     .widget<Material>(
       find.descendant(
@@ -96,7 +96,7 @@ Color _fillOf(WidgetTester tester) => tester
 void main() {
   group('формулы', () {
     test('яркость стекла — те же три точки, что на ПК', () {
-      // 0 → 0.4 (тёмное), 50 → 1.0 (нейтрально), 100 → 1.8 (светлое).
+      // 0 → 0.4 (dark), 50 → 1.0 (neutral), 100 → 1.8 (light).
       expect(const Transparency(glassStr: 0).brightness, closeTo(0.4, 1e-9));
       expect(const Transparency(glassStr: 25).brightness, closeTo(0.7, 1e-9));
       expect(const Transparency(glassStr: 50).brightness, closeTo(1, 1e-9));
@@ -196,7 +196,7 @@ void main() {
         ..setOn(true)
         ..setGlassBlur(0)
         ..setGlassStr(50);
-      // Ни размывать, ни осветлять нечего — лишний слой заводить незачем.
+      // Nothing to blur or brighten, so no extra layer.
       expect(c.read(glassProvider)!.filter, isNull);
       c.read(transparencyProvider.notifier).setGlassStr(70);
       expect(c.read(glassProvider)!.filter, isNotNull);
@@ -224,8 +224,8 @@ void main() {
 
       expect(_fillOf(tester).a, closeTo(0.6, 0.01));
       expect(find.byType(BackdropFilter), findsOneWidget);
-      // `JsonStore` откладывает запись на 400 мс — без этого тест уходит с
-      // висящим таймером.
+      // `JsonStore` delays its write by 400 ms, and without this the test ends
+      // with a pending timer.
       await tester.pump(const Duration(milliseconds: 500));
     });
 
@@ -239,7 +239,7 @@ void main() {
       await _pumpBox(tester, c);
       await tester.pump();
 
-      // Заливка всё равно полупрозрачная — стекло без размытия это плёнка.
+      // The fill stays translucent: glass with no blur is a film.
       expect(_fillOf(tester).a, lessThan(1));
       expect(find.byType(BackdropFilter), findsNothing);
       await tester.pump(const Duration(milliseconds: 500));
@@ -256,7 +256,7 @@ void main() {
         ..setOverlayGlass(true);
       await _pumpSheet(tester, c);
 
-      // Два фильтра: поверхность шторки и её затемнение (`_BloomSheetRoute`).
+      // Two filters: the sheet's surface and its dimming.
       expect(find.byType(BackdropFilter), findsNWidgets(2));
       await tester.pump(const Duration(milliseconds: 500));
     });
@@ -265,7 +265,8 @@ void main() {
       tester,
     ) async {
       final c = _container(JsonStore.memory());
-      // Прозрачность блоков включена, а оверлеев — нет: шторку это не трогает.
+      // Block transparency is on and overlays' is off, which doesn't touch the
+      // sheet.
       c.read(transparencyProvider.notifier).setOn(true);
       await _pumpSheet(tester, c);
 

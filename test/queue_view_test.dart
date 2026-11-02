@@ -1,10 +1,11 @@
-/// Расширенный вид очереди: настройка, разбиение на секции и перевод номеров.
+/// The extended queue view: the setting, splitting into sections and
+/// translating numbers.
 ///
-/// Проверяем то, что ломается тихо. Номеров у строки два — свой в секции
-/// (тянучка) и свой в очереди (запуск, меню, «Убрать из очереди»), и перепутать
-/// их на второй секции ничего не мешает: список выглядит правильно, а действия
-/// бьют по чужим строкам. Плюс сама раскладка: играющий обязан быть закреплён,
-/// а пустых секций быть не должно.
+/// I check what breaks quietly. A row has two numbers, in its section
+/// (dragging) and in the queue (playing, menu, removing), and nothing stops
+/// them being mixed up in the second section: the list looks right and actions
+/// hit other rows. Plus the layout: the playing track must be pinned and no
+/// section may be empty.
 library;
 
 import 'package:bloom/app/theme/bloom_theme.dart';
@@ -32,9 +33,9 @@ Track _track(String id) => Track(
   source: MusicSource.soundcloud,
 );
 
-/// Очередь без звука: настоящий контроллер лезет за `audioHandlerProvider`,
-/// которого в тестах нет. Перестановку не делает, а записывает — проверяем
-/// именно то, какие номера до неё доехали.
+/// A queue with no sound: the real controller reaches for
+/// `audioHandlerProvider`, which tests don't have. It records a move instead of
+/// making it, so I check which numbers reached it.
 class _FakePlayback extends PlaybackController {
   _FakePlayback(this.initial);
 
@@ -106,7 +107,7 @@ void main() {
     });
 
     test('расширенный ставит наверх заголовок «Сейчас играет»', () {
-      // Выше него — вся секция «Прослушано» вместе со СВОИМ заголовком.
+      // Above it is the whole Played section, with its own header.
       expect(
         queueScrollOffset(index: 3, extended: true),
         3 * kTrackRowHeight + kQueueSectionLabel,
@@ -119,7 +120,7 @@ void main() {
   });
 
   group('секции', () {
-    /// Шторка очереди на пять треков; [index] — какой играет.
+    /// A queue sheet with five tracks; [index] is the playing one.
     Future<_FakePlayback> pump(
       WidgetTester tester, {
       required bool extended,
@@ -145,9 +146,9 @@ void main() {
             ),
             dbProvider.overrideWithValue(BloomDb.memory()),
             playbackProvider.overrideWith(() => playback),
-            // Строке играющего трека нужен поток play/pause (эквалайзер вместо
-            // длительности). Настоящего звука в тестах нет — отдаём молчащий
-            // плеер, его `playingStream` живёт внутри самого объекта.
+            // The playing row needs a play/pause stream (an equalizer instead
+            // of the duration). There's no real sound in tests, so I give it a
+            // silent player whose `playingStream` lives in the object itself.
             audioPlayerProvider.overrideWithValue(AudioPlayer()),
           ],
           child: MaterialApp(
@@ -167,14 +168,14 @@ void main() {
         ),
       );
       await tester.tap(find.text('открыть'));
-      // Не `pumpAndSettle`: у играющей строки эквалайзер, и на паузе он замирает
-      // не сразу — кадры крутим сами.
+      // Not `pumpAndSettle`: the playing row has an equalizer that doesn't
+      // freeze at once on pause, so I run frames myself.
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
       return playback;
     }
 
-    /// Пары «номер в очереди → номер в своей секции» по всем строкам шторки.
+    /// Pairs of queue number and section number for every row in the sheet.
     List<(int, int?)> rows(WidgetTester tester) => [
       for (final swipe in tester.widgetList<TrackSwipe>(
         find.byType(TrackSwipe),
@@ -187,7 +188,7 @@ void main() {
       expect(find.text('ПРОСЛУШАНО'), findsNothing);
       expect(find.text('СЕЙЧАС ИГРАЕТ'), findsNothing);
       expect(find.text('ДАЛЕЕ'), findsNothing);
-      // Номер строки в списке и в очереди — один и тот же.
+      // A row's number in the list and in the queue is the same.
       expect(rows(tester), [(0, 0), (1, 1), (2, 2), (3, 3), (4, 4)]);
     });
 
@@ -203,12 +204,12 @@ void main() {
     ) async {
       await pump(tester, extended: true);
       expect(rows(tester), [
-        // «Прослушано» начинается с нуля очереди — номера совпадают.
+        // Played starts at the queue's zero, so the numbers match.
         (0, 0),
         (1, 1),
-        // Играющий закреплён: тянучки у него нет вовсе.
+        // The playing track is pinned: no drag handle at all.
         (2, null),
-        // «Далее» начинается с третьего трека очереди, а внутри себя — с нуля.
+        // Up next starts at the queue's third track, and at zero inside itself.
         (3, 0),
         (4, 1),
       ]);
@@ -222,7 +223,7 @@ void main() {
           .widgetList<SliverReorderableList>(find.byType(SliverReorderableList))
           .toList();
       expect(lists, hasLength(2));
-      // Первую строку «Далее» (третью в очереди) тащим в конец секции.
+      // I drag Up next's first row (third in the queue) to the section's end.
       lists.last.onReorder(0, 2);
       expect(playback.reorders, [(3, 5)]);
     });

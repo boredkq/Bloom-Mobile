@@ -1,8 +1,8 @@
-/// Скорость воспроизведения: округление, подпись, персист и сама шторка.
+/// Playback speed: rounding, the label, persistence and the sheet.
 ///
-/// Проверяем то, что ломается тихо: шаг слайдера в double даёт хвосты (на диск
-/// уехало бы `1.3000000000000003`), питч обязан ехать за темпом ТОЛЬКО при
-/// включённом nightcore, а пилюля значения — сбрасывать на 1×.
+/// I check what breaks quietly: the slider's step in double leaves tails
+/// (`1.3000000000000003` would reach the disk), pitch must follow tempo only
+/// with nightcore on, and the value pill must reset to 1×.
 library;
 
 import 'package:bloom/app/theme/bloom_theme.dart';
@@ -28,14 +28,14 @@ ProviderContainer _container(JsonStore store) {
   return c;
 }
 
-/// Экран с кнопкой, открывающей шторку скорости.
+/// A screen with a button that opens the speed sheet.
 Future<void> _pumpSheet(WidgetTester tester, JsonStore store) async {
   await tester.pumpWidget(
     UncontrolledProviderScope(
       container: _container(store),
       child: MaterialApp(
-        // Язык прибит гвоздями: проверки текста не должны зависеть от локали
-        // машины, на которой гоняют тесты.
+        // The language is pinned: otherwise text checks would depend on the
+        // machine's locale.
         locale: const Locale('ru'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -55,15 +55,16 @@ Future<void> _pumpSheet(WidgetTester tester, JsonStore store) async {
   await tester.pumpAndSettle();
 }
 
-/// Тап + прокрутка времени до записи на диск: `JsonStore` откладывает её на
-/// 400 мс, и без этого тест уходит с висящим таймером.
+/// A tap plus running time past the disk write: `JsonStore` delays it by 400
+/// ms, and without this the test ends with a pending timer.
 Future<void> _tap(WidgetTester tester, Finder target) async {
   await tester.tap(target);
   await tester.pumpAndSettle();
   await tester.pump(const Duration(milliseconds: 500));
 }
 
-/// Стор шторки — контейнер живёт в дереве, достаём его через элемент.
+/// The sheet's store: the container lives in the tree, so I get it through the
+/// element.
 SpeedSettings _speedOf(WidgetTester tester) => ProviderScope.containerOf(
   tester.element(find.byType(Scaffold).first),
 ).read(speedProvider);
@@ -74,7 +75,7 @@ void main() {
       expect(clampRate(1.33), 1.35);
       expect(clampRate(1.32), 1.3);
       expect(clampRate(0.7 + 0.05), 0.75);
-      // Ровно шаг: результат обязан быть «круглым», иначе он утечёт в JSON.
+      // Exactly on a step: the result must be round, or it leaks into JSON.
       expect(clampRate(1.1500000000000001), 1.15);
     });
 
@@ -162,8 +163,7 @@ void main() {
       await _pumpSheet(tester, store);
       expect(_speedOf(tester).rate, 1.35);
 
-      // Пилюля — единственное место, где значение показано целиком: пресетов
-      // с 1.35× нет.
+      // The pill is the only place showing the full value: no preset has 1.35×.
       await _tap(tester, find.text('1.35×'));
       expect(_speedOf(tester).rate, 1);
     });
@@ -177,7 +177,7 @@ void main() {
       await _tap(tester, find.text('1.25×'));
       await _tap(tester, find.text('Тон едет вместе со скоростью'));
       expect(_speedOf(tester).nightcore, isTrue);
-      // Включённый nightcore — питч едет за темпом, а не остаётся на 1.
+      // With nightcore on, pitch follows tempo instead of staying at 1.
       expect(_speedOf(tester).pitch, 1.25);
 
       await _tap(tester, find.text('Nightcore'));
@@ -189,8 +189,8 @@ void main() {
       final store = JsonStore.memory();
       await _pumpSheet(tester, store);
 
-      // Тычем в правую четверть полосы: точное значение зависит от ширины
-      // экрана теста, поэтому проверяем шаг и сторону, а не число.
+      // I tap the bar's right quarter: the exact value depends on the test
+      // screen's width, so I check the step and the side, not the number.
       final track = tester.getRect(find.byType(Slider));
       await tester.tapAt(
         Offset(track.left + track.width * 0.75, track.center.dy),

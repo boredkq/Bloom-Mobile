@@ -1,5 +1,5 @@
-/// Маппинг SC без сети — сверка с поведением десктопного `soundcloud.rs`
-/// (JS-falsy-фолбэки, `-large` → `-t300x300`, год из release_date/created_at).
+/// SoundCloud mapping with no network: JS-falsy fallbacks, `-large` to
+/// `-t300x300`, the year from release_date/created_at.
 library;
 
 import 'package:bloom/providers/soundcloud/soundcloud.dart';
@@ -22,7 +22,7 @@ void main() {
     expect(t.artwork, 'https://i1.sndcdn.com/artworks-abc-t300x300.jpg');
     expect(t.year, '2019');
     expect(t.tags, ['house', 'techno']);
-    // Пустой label_name — JS-falsy, проваливается в publisher_metadata.
+    // An empty label_name is JS-falsy and falls through to publisher_metadata.
     expect(t.publisher, 'Label');
     expect(t.explicit, isTrue);
     expect(t.artistVerified, isTrue);
@@ -79,9 +79,9 @@ void main() {
     );
   });
 
-  // Скачивание берёт только progressive: HLS это плейлист кусков, файлом его не
-  // сохранить. Играть такой трек по-прежнему можно — падать должно ровно
-  // сохранение, и с понятным кодом, а не «нет стрима».
+  // Downloading takes only progressive: HLS is a playlist of chunks and can't
+  // be saved as a file. Such a track still plays; only saving must fail, with a
+  // clear code rather than "no stream".
   test('скачивание: HLS-only трек отдаёт код sc.err.hlsOnly', () async {
     final media = {
       'transcodings': [

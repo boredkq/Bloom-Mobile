@@ -1,8 +1,8 @@
-/// Перемешивание переставляет саму очередь, а не подкидывает случайный номер
-/// на переходе, — значит проверять надо состав и голову списка.
+/// Shuffling rearranges the queue itself rather than throwing a random number
+/// at each transition, so I check the contents and the list's head.
 ///
-/// Случайность в тесте фиксируем: `Random(seed)` даёт тот же порядок, и падение
-/// теста будет означать сломанную логику, а не невезение.
+/// The randomness is fixed: `Random(seed)` gives the same order, so a failure
+/// means broken logic, not bad luck.
 library;
 
 import 'dart:math';
@@ -54,7 +54,7 @@ void main() {
     final a = _ids(shuffledQueue(long, 0, Random(1)));
     final b = _ids(shuffledQueue(long, 0, Random(2)));
     expect(a, isNot(b));
-    expect(a.first, 't0'); // но голова на месте в обоих
+    expect(a.first, 't0'); // but the head stays in both
     expect(b.first, 't0');
   });
 }

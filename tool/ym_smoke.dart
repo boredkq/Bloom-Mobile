@@ -1,16 +1,15 @@
-/// Сетевой smoke против живого API Яндекс.Музыки (не для CI) — сосед
-/// `sc_smoke.dart`. Провайдер это чистый Dart, Flutter-рантайм не нужен.
+/// A network smoke run against the live Yandex Music API, not for CI. The
+/// provider is plain Dart, no Flutter runtime needed.
 ///
-/// Запуск с готовым токеном:
-///   `dart run tool/ym_smoke.dart <OAuth-токен>`
-///   (или положить его в переменную окружения YM_TOKEN)
+/// With a token: `dart run tool/ym_smoke.dart <OAuth token>`, or put it in the
+/// YM_TOKEN environment variable.
 ///
-/// Запуск без токена проходит device-flow: скрипт печатает адрес и код,
-/// ждёт подтверждения в браузере и дальше идёт с полученным токеном — им же
-/// можно пользоваться в следующих прогонах.
+/// Without one it goes through the device flow: it prints the address and code,
+/// waits for confirmation in a browser and goes on with the token, which works
+/// for later runs too.
 library;
 
-// ignore_for_file: avoid_print — это консольный скрипт, вывод и есть результат.
+// ignore_for_file: avoid_print
 
 import 'dart:io';
 
@@ -55,11 +54,12 @@ Future<void> main(List<String> args) async {
   const provider = YandexProvider();
   check(provider.isEnabled, 'провайдер выключен при живом токене');
 
-  // Подписка: без Плюса стрим отдаст 403, и это ожидаемый исход прогона.
+  // The subscription: without Plus the stream gives 403, an expected outcome of
+  // a run.
   final plus = await ym.hasPlus();
   print('Яндекс Плюс: $plus');
 
-  // Поиск — все четыре раздела одним запросом.
+  // Search: all four sections in one request.
   final found = await provider.search('земфира');
   print(
     'search: ${found.tracks.length} треков, ${found.artists.length} артистов, '
@@ -68,7 +68,7 @@ Future<void> main(List<String> args) async {
   check(found.tracks.isNotEmpty, 'пустая выдача поиска');
   check(found.artists.isNotEmpty, 'поиск без артистов');
 
-  // Вторая страница: свой пейджер, а не offset общего стора.
+  // The second page: its own pager, not the common store's offset.
   final more = await provider.loadMoreTracks('земфира', 24);
   print('loadMoreTracks: ещё ${more?.tracks.length ?? 0} треков');
   check((more?.tracks.length ?? 0) > 0, 'вторая страница пуста');
@@ -78,8 +78,7 @@ Future<void> main(List<String> args) async {
     'вторая страница целиком повторяет первую',
   );
 
-  // Стрим: подписанная ссылка + реальные байты range-GET, как это сделает
-  // плеер.
+  // The stream: a signed link plus real bytes by range GET, as the player does.
   final track = found.tracks.firstWhere(
     (t) => t.sourceData?['available'] != false,
     orElse: () => found.tracks.first,
@@ -102,12 +101,12 @@ Future<void> main(List<String> args) async {
     print('bytes: $bytes (status ${resp.statusCode})');
     client.close();
   } catch (e) {
-    // Без Плюса это штатный исход — трек просто не играет.
+    // Without Plus this is normal: the track just doesn't play.
     check(plus == false, 'стрим упал при активном Плюсе: $e');
     print('stream: недоступен ($e)');
   }
 
-  // Страница артиста: «Популярные» + дискография + альбомы + похожие.
+  // The artist page: popular, discography, albums, similar.
   final artistPage = await provider.getArtist(found.artists.first.id);
   print(
     'getArtist ${artistPage?.artist.name}: '
@@ -123,7 +122,7 @@ Future<void> main(List<String> args) async {
     'популярные без названий — brief-info отдал голые id, добор не сработал',
   );
 
-  // Альбом: треки собираются из всех volumes.
+  // An album: tracks are gathered from all volumes.
   final albums = artistPage?.albums ?? const [];
   if (albums.isNotEmpty) {
     final album = await provider.getAlbum(albums.first.id);
@@ -135,14 +134,14 @@ Future<void> main(List<String> args) async {
     );
   }
 
-  // Плейлист из выдачи — старый формат /users/<owner>/playlists/<kind>.
+  // A playlist from the results: the /users/<owner>/playlists/<kind> format.
   if (found.playlists.isNotEmpty) {
     final pl = await provider.getPlaylist(found.playlists.first.id);
     print('getPlaylist ${pl?.playlist.title}: ${pl?.tracks.length} треков');
     check((pl?.tracks.length ?? 0) > 0, 'плейлист без треков');
   }
 
-  // Ссылки: трек, альбом, артист. Id берётся из живой выдачи, а не прибит.
+  // Links: track, album, artist. The id comes from live results, not hardcoded.
   final trackNum = ymNumericId(track.id);
   final resolvedTrack = await provider.resolveUrl(
     'https://music.yandex.ru/track/$trackNum',
@@ -158,7 +157,7 @@ Future<void> main(List<String> args) async {
       resolvedAlbum is ResolvedSet && resolvedAlbum.playlist.isAlbum,
       'ссылка на альбом не дала альбом',
     );
-    // Ссылка «трек внутри альбома» обязана открыть ТРЕК, а не альбом.
+    // A "track inside an album" link must open the track, not the album.
     final inAlbum = await provider.resolveUrl(
       'https://music.yandex.ru/album/$albumNum/track/$trackNum',
     );
@@ -171,13 +170,13 @@ Future<void> main(List<String> args) async {
   );
   check(resolvedArtist is ResolvedArtist, 'ссылка на артиста не дала артиста');
 
-  // Чужая ссылка уходит дальше по реестру, без запроса к Яндексу.
+  // A foreign link goes on through the registry, with no request to Yandex.
   check(
     await provider.resolveUrl('https://soundcloud.com/x/y') == null,
     'Яндекс взялся резолвить чужую ссылку',
   );
 
-  // Витрины главной (UI под них ещё нет — проверяем, что данные приходят).
+  // The home shelves: I check that data arrives.
   final charts = await provider.getCharts();
   print('getCharts: ${charts?.length} треков');
   check((charts?.length ?? 0) > 0, 'чарт пуст');

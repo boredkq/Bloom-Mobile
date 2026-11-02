@@ -1,5 +1,5 @@
-/// Авто-обновление плейлистов: кого обходим, что считаем «добавилось» и что
-/// остаётся от плейлиста, когда площадка не ответила.
+/// Playlist auto-refresh: which ones I visit, what counts as added, and what's
+/// left of a playlist when the platform doesn't answer.
 library;
 
 import 'package:bloom/app/providers.dart';
@@ -23,11 +23,12 @@ Track _track(String id) => Track(
   sourceData: const {'transcodings': []},
 );
 
-/// Площадка, у которой по id коллекции лежит плейлист с заданным составом.
+/// A platform holding a playlist with given contents per collection id.
 class _FakeSoundCloud extends MusicProvider {
   _FakeSoundCloud(this.byId);
 
-  /// id коллекции → треки. `null` вместо списка — площадка падает.
+  /// Collection id to tracks. `null` instead of a list means the platform
+  /// fails.
   final Map<String, List<Track>?> byId;
 
   @override
@@ -49,7 +50,7 @@ class _FakeSoundCloud extends MusicProvider {
   }
 }
 
-/// Привязка SC-плейлиста — обновление ищет его по id.
+/// A SoundCloud playlist binding: the refresh finds it by id.
 PlSourceRef _src(String id) => PlSourceRef(id: id, provider: 'sc');
 
 ProviderContainer _container(_FakeSoundCloud provider, JsonStore store) {
@@ -67,8 +68,8 @@ ProviderContainer _container(_FakeSoundCloud provider, JsonStore store) {
 }
 
 void main() {
-  // Проход ищет мессенджер приложения, чтобы сказать о новых треках, — а тот
-  // живёт в дереве виджетов, и без биндинга поиск падает.
+  // The pass looks for the app's messenger to announce new tracks; it lives in
+  // the widget tree, and without a binding the lookup crashes.
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('кандидаты — только плейлисты с источником', () {
@@ -103,20 +104,20 @@ void main() {
     lib.setAutoRefresh([one.id], true);
     final result = await auto.runSweep(silent: true);
 
-    // В первом прибавился один трек, второй не отмечен — его не трогали.
+    // The first gained one track, the second isn't marked and wasn't touched.
     expect(result.added, 1);
     expect(result.changed, 1);
     expect(result.failed, 0);
     final playlists = c.read(libraryProvider).playlists;
-    // Новый трек лёг НАВЕРХ, старый остался на месте: обновление подмешивает, а
-    // не заменяет состав.
+    // The new track went on top and the old one stayed: a refresh mixes in, it
+    // doesn't replace.
     expect(playlists.firstWhere((p) => p.id == one.id).trackIds, [
       'sc:2',
       'sc:1',
     ]);
     expect(playlists.firstWhere((p) => p.id == two.id).trackIds, isEmpty);
 
-    // Итог прохода запомнен — из него собирается подпись в шторке.
+    // The pass's result is remembered for the label in the sheet.
     final state = c.read(plAutoProvider);
     expect(state.runs[one.id]?.added, 1);
     expect(state.lastRun, greaterThan(0));
@@ -166,7 +167,8 @@ void main() {
     lib.setAutoRefresh([pl.id], true);
     final result = await auto.runSweep(silent: true);
 
-    // Частичный успех — это успех: недоступную коллекцию могли удалить.
+    // A partial success is a success: the missing collection may have been
+    // deleted.
     expect(result.added, 1);
     expect(result.failed, 0);
     expect(c.read(libraryProvider).playlists.single.trackIds, ['sc:9', 'sc:7']);
@@ -224,7 +226,8 @@ void main() {
     expect(state.enabled, isTrue);
     expect(state.everyMin, 720);
     expect(state.onStart, isFalse);
-    // Отметка — на самом плейлисте, итоги и время прохода — в kv базы.
+    // The mark is on the playlist itself, results and time are in the
+    // database's kv.
     expect(second.read(libraryProvider).playlists.single.autoRefresh, isTrue);
     expect(state.runs[pl.id]?.added, 1);
     expect(state.lastRun, greaterThan(0));

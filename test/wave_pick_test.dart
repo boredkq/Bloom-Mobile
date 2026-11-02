@@ -1,5 +1,5 @@
-/// Отбор пачки волны (`pickBatch`, как `Wave::pick` ПК) — то, что решает, ЧТО
-/// именно человек услышит и в каком порядке.
+/// Picking the wave's batch (`pickBatch`): what decides which tracks get heard
+/// and in what order.
 library;
 
 import 'dart:math';
@@ -57,14 +57,15 @@ WavePick _ctx({
     isDisliked: disliked.contains,
     playedWithin: (id, _) => recent.contains(id),
     shown: shown,
-    // Случайную добавку глушим зерном: сравниваем вклады, а не удачу.
+    // A seed quiets the random bonus: I compare contributions, not luck.
     random: Random(1),
   );
 }
 
 List<String> _ids(List<Track> l) => [for (final t in l) t.id];
 
-/// Разные артисты — чтобы потолок и «не подряд» не мешали проверять остальное.
+/// Different artists, so the cap and "not in a row" don't get in the way of the
+/// other checks.
 List<Track> _page(int n, {int from = 0}) => [
   for (var i = from; i < from + n; i++) _t('sc:$i', artist: 'A$i'),
 ];
@@ -125,19 +126,19 @@ void main() {
     });
 
     test('лайк поднимает', () {
-      // Без лайка шестой (sc:5) стоит шестым; +8 — это четыре места.
+      // Without a like the sixth (sc:5) stays sixth; +8 is four places.
       final out = pickBatch([_page(10)], _ctx(favs: {'sc:5'}));
       expect(_ids(out).indexOf('sc:5'), lessThan(3));
     });
 
     test('артист, которого дослушивали в этой волне, поднимается', () {
-      // Ранги 0/5/10/15: последний с +12 обходит второй и третий.
+      // Ranks 0/5/10/15: the last, with +12, passes the second and third.
       final out = pickBatch([_page(4)], _ctx(run: _run(bonus: {'a3': 12})));
       expect(_ids(out).indexOf('sc:3'), 1);
     });
 
     test('бонус артиста не больше 12, а пролистанный уходит вниз', () {
-      // Без потолка 100 очков вытащили бы последнего на первое место.
+      // Without a cap 100 points would pull the last one to first place.
       final up = pickBatch([_page(10)], _ctx(run: _run(bonus: {'a9': 100})));
       expect(_ids(up).indexOf('sc:9'), greaterThan(2));
       final down = pickBatch([_page(4)], _ctx(run: _run(bonus: {'a0': -12})));
@@ -162,7 +163,7 @@ void main() {
       ];
       final out = pickBatch([page], _ctx(), take: 6);
       expect(out.where((t) => t.artist == 'Same').length, 2);
-      // А пачка короче, чем треков — тогда добираются и сверх потолка.
+      // If the batch runs short of tracks, it takes them past the cap too.
       final all = pickBatch([page], _ctx());
       expect(all.length, 8);
     });
@@ -177,7 +178,7 @@ void main() {
         _t('sc:6', artist: 'E'),
       ];
       final out = pickBatch([page], _ctx(), take: 5);
-      // Третий трек с A в пачку не прошёл, хотя строка у него своя.
+      // A's third track didn't get in, though its line is its own.
       expect(_ids(out), isNot(contains('sc:5')));
     });
 
@@ -255,7 +256,7 @@ void main() {
         run: _run(native: true),
         queue: [page[4]],
         disliked: {'ym:2'},
-        // Слышанное и своё станция решает сама.
+        // The station handles what's heard and own by itself.
         recent: {'ym:3'},
         library: [page[0]],
       ),
@@ -269,7 +270,8 @@ void main() {
         [
           _t('sc:1', name: 'целоваться', artist: 'lightprey', seconds: 200),
           _t('sc:2', name: 'Другая песня', artist: 'Кто-то', seconds: 200),
-          // Тот же трек: автор уехал в заголовок, загрузчик чужой.
+          // The same track: the author moved to the title, the uploader is
+          // someone else.
           _t(
             'sc:3',
             name: 'lightprey - целоваться',
@@ -353,7 +355,7 @@ void main() {
     expect(back.about, 'artist:x');
     expect(back.played, ['ytm:abc']);
     expect(back.bonus, {'x': 3});
-    // Без сидов волне не с чего продолжаться.
+    // With no seeds the wave has nothing to continue from.
     expect(WaveRun.fromJson({'mode': 'track', 'seeds': []}), isNull);
   });
 }

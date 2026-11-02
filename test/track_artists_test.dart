@@ -43,7 +43,8 @@ Track _track(String artist, {String? artistId}) => Track(
 class _FakeSoundCloud extends MusicProvider {
   _FakeSoundCloud(this.answers);
 
-  /// Что отдавать на запрос имени. Имени нет в карте — площадка молчит.
+  /// What to answer for a name. A name missing from the map means the platform
+  /// is silent.
   final Map<String, List<Artist>> answers;
 
   @override
@@ -60,15 +61,15 @@ class _FakeSoundCloud extends MusicProvider {
       answers[query] ?? const [];
 }
 
-/// Плеер без звука: страница артиста подписывается на очередь ради кнопки
-/// «Воспроизвести/Пауза», а настоящий контроллер лезет за `audioHandlerProvider`,
-/// которого в тестах нет. Ничего не играет — кнопка так и остаётся «Играть».
+/// A player with no sound: the artist page watches the queue for its Play/Pause
+/// button, and the real controller reaches for `audioHandlerProvider`, which
+/// tests don't have. Nothing plays, so the button stays on Play.
 class _SilentPlayback extends PlaybackController {
   @override
   PlaybackState build() => const PlaybackState();
 }
 
-/// Экран с кнопкой, по которой открывается развилка артистов.
+/// A screen with a button that opens the artist choice.
 Future<void> _pump(
   WidgetTester tester,
   Track track,
@@ -85,8 +86,8 @@ Future<void> _pump(
         playbackProvider.overrideWith(_SilentPlayback.new),
       ],
       child: MaterialApp(
-        // Язык прибит гвоздями: иначе проверки текста зависели бы от локали
-        // машины, на которой гоняют тесты.
+        // The language is pinned: otherwise text checks would depend on the
+        // machine's locale.
         locale: const Locale('ru'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -104,13 +105,13 @@ Future<void> _pump(
   );
 }
 
-/// Ссылки на аватарки, которые сейчас на экране.
+/// Links of the avatars now on screen.
 List<String?> _avatars(WidgetTester tester) => [
   for (final c in tester.widgetList<Cover>(find.byType(Cover)))
     if (c.circle) c.url,
 ];
 
-/// Строка шторки нажимается?
+/// Does the sheet's row respond to a press?
 bool _enabled(WidgetTester tester, String name) {
   final row = find.ancestor(
     of: find.text(name),
@@ -130,14 +131,14 @@ void main() {
     await tester.tap(find.text('артист'));
     await tester.pumpAndSettle();
 
-    // Оба имени стоят строками, а не одной ссылкой на залившего трек.
+    // Both names are rows, not one link to whoever uploaded the track.
     expect(find.text('Kanye West'), findsOneWidget);
     expect(find.text('Ty Dolla Sign'), findsOneWidget);
     expect(
       _avatars(tester),
       containsAll(['https://cdn/ye.jpg', 'https://cdn/ty.jpg']),
     );
-    // Подписчиков площадки Bloom не показывает: под именем пусто.
+    // Bloom shows no platform followers: nothing under the name.
     expect(find.textContaining('подписч'), findsNothing);
   });
 
@@ -186,8 +187,8 @@ void main() {
     await tester.tap(find.text('артист'));
     await tester.pumpAndSettle();
 
-    // Ни шторки, ни перехода: искать по имени там, где выбирать не из чего,
-    // значит уводить наугад.
+    // No sheet and no jump: searching by name with nothing to choose from would
+    // lead astray.
     expect(find.byType(SheetPanel), findsNothing);
     expect(find.byType(ArtistScreen), findsNothing);
   });

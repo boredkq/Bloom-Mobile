@@ -1,5 +1,5 @@
-/// Свайпы: настройка (что на что назначено и что это переживает перезапуск),
-/// математика «Следующим» и сама строка — жест, порог и плашка.
+/// Swipes: the setting (what's assigned and that it survives a restart), the
+/// "Play next" math and the row itself: gesture, threshold and plate.
 library;
 
 import 'package:bloom/app/theme/bloom_theme.dart';
@@ -35,12 +35,12 @@ ProviderContainer _container(JsonStore store) {
   return c;
 }
 
-/// Ширина строки в проверках жеста — по ней считается порог.
+/// The row's width in gesture checks: the threshold comes from it.
 const double _rowWidth = 400;
 
 const Key _rowKey = Key('row');
 
-/// Строка со свайпами в дереве. [log] пишется обработчиками плашек.
+/// A row with swipes in the tree. [log] is written by the plates' handlers.
 Future<void> _pumpRow(
   WidgetTester tester,
   List<String> log, {
@@ -90,7 +90,7 @@ void main() {
           .read(swipeProvider.notifier)
           .setAction(SwipeZone.library, isLeft: true, action: SwipeAction.like);
 
-      // Новый контейнер = новый запуск приложения с тем же файлом.
+      // A new container means a new launch with the same file.
       final fresh = _container(store).read(swipeProvider);
       expect(fresh.of(SwipeZone.library).left, SwipeAction.like);
       expect(fresh.of(SwipeZone.library).right, SwipeAction.queue);
@@ -133,7 +133,7 @@ void main() {
       final (next, index) = queueWithNext(queue, 2, _track('a'));
 
       expect(next.map((t) => t.id).toList(), ['b', 'c', 'a']);
-      // Играет по-прежнему «c», просто теперь он второй.
+      // "c" still plays, it's just second now.
       expect(next[index].id, 'c');
     });
 
@@ -177,7 +177,7 @@ void main() {
         _track('c'),
       ]);
 
-      // «b» играет и остаётся на месте, «c» переезжает к нему вплотную.
+      // "b" plays and stays, "c" moves right next to it.
       expect(next.map((t) => t.id).toList(), ['a', 'b', 'c']);
       expect(next[index].id, 'b');
     });
@@ -304,7 +304,7 @@ void main() {
       await gesture.moveBy(const Offset(-120, 0));
       await tester.pump();
 
-      // Строка уехала на те же 120, а плашка заняла освободившееся место.
+      // The row moved by the same 120, and the plate took the freed space.
       expect(tester.getCenter(find.byKey(_rowKey)).dx, 280);
       final panel = tester.getSize(
         find.byWidgetPredicate((w) => w is ClipRRect && w.child is ColoredBox),
