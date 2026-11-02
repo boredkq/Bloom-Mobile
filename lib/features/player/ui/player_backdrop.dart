@@ -77,10 +77,11 @@ class PlayerBackdrop extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(playerBgProvider);
     final style = ref.watch(playerStyleProvider);
-    final cover = playerBgCover(ref);
 
     // Living Apple Music Aura backdrop if mode is none but style is Aura.
     if (mode.isNone && !style.isAura) return const SizedBox.shrink();
+
+    final cover = playerBgCover(ref);
 
     // Own repaint boundary: under the background time ticks each second and the
     // progress bar creeps, and blurring and recomputing for each of their
