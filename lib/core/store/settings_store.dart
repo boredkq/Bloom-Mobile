@@ -55,18 +55,26 @@ NavBarStyle readNavStyle(Object? raw) {
 }
 
 /// A bottom bar tab. The bar always holds all four; only their order is a
-/// setting ([SettingsState.navOrder]). The enum order is the fresh install's
-/// order and also the router's branch order ([NavTab.index]).
+/// setting ([SettingsState.navOrder]). The enum order is the router's branch
+/// order ([NavTab.index]); a fresh install's order is [kDefaultNavOrder].
 enum NavTab { home, search, library, settings }
 
 /// The bar order from raw settings — always every tab exactly once: I repair
 /// the list rather than reject it, so a missing name lands at the end and
 /// unknown names or repeats drop out.
-List<NavTab> readNavOrder(Object? raw) {
-  if (raw is! List) return kDefaultNavOrder;
+///
+/// `navOrder` is the earlier key. A list there in the earlier default order was
+/// never picked by hand, so it moves to the current default; any other stays.
+List<NavTab> readNavOrder(Map<String, dynamic> raw) {
+  final saved = raw['navTabs'] ?? raw['navOrder'];
+  if (saved is! List) return kDefaultNavOrder;
+  if (raw['navTabs'] == null &&
+      saved.join(',') == 'home,search,library,settings') {
+    return kDefaultNavOrder;
+  }
   final seen = <NavTab>{};
   return [
-    for (final name in raw.whereType<String>())
+    for (final name in saved.whereType<String>())
       for (final tab in NavTab.values)
         if (tab.name == name && seen.add(tab)) tab,
     for (final tab in NavTab.values)
@@ -75,7 +83,12 @@ List<NavTab> readNavOrder(Object? raw) {
 }
 
 /// Bar order of a fresh install.
-const List<NavTab> kDefaultNavOrder = NavTab.values;
+const List<NavTab> kDefaultNavOrder = [
+  NavTab.home,
+  NavTab.library,
+  NavTab.search,
+  NavTab.settings,
+];
 
 /// What marks the active tab.
 enum NavIndicator {
@@ -377,7 +390,7 @@ class SettingsController extends Notifier<SettingsState> {
       accentBadges: raw['accentBadges'] as bool? ?? false,
       fontFamily: raw['fontFamily'] as String? ?? kDefaultFont,
       navStyle: readNavStyle(raw['navStyle']),
-      navOrder: readNavOrder(raw['navOrder']),
+      navOrder: readNavOrder(raw),
       navIndicator: readNavIndicator(raw),
       navLabels: readNavLabels(raw['navLabels']),
       navHomeLogo: raw['navHomeLogo'] as bool? ?? false,
@@ -407,7 +420,7 @@ class SettingsController extends Notifier<SettingsState> {
       'accentBadges': state.accentBadges,
       'fontFamily': state.fontFamily,
       'navStyle': state.navStyle.name,
-      'navOrder': [for (final tab in state.navOrder) tab.name],
+      'navTabs': [for (final tab in state.navOrder) tab.name],
       'navIndicator': state.navIndicator.name,
       'navLabels': state.navLabels.name,
       'navHomeLogo': state.navHomeLogo,
