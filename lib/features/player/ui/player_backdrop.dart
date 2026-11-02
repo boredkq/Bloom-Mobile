@@ -78,7 +78,8 @@ class PlayerBackdrop extends ConsumerWidget {
     final mode = ref.watch(playerBgProvider);
     final style = ref.watch(playerStyleProvider);
 
-    final glowStyle = style.isAura ||
+    final glowStyle =
+        style.isAura ||
         style.isLevyraCosmic ||
         style.isLevyraCyber ||
         style.isLevyraAurora ||

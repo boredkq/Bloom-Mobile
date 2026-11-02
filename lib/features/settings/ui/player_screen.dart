@@ -444,30 +444,32 @@ class _StylePreview extends ConsumerWidget {
     final targetRadius = vinyl
         ? side / 2
         : (ivory
-            ? 8.0
-            : (aura
-                ? 22.0
-                : (cosmic
-                    ? 24.0
-                    : (cyber
-                        ? 8.0
-                        : (aurora
-                            ? 28.0
-                            : (ember
-                                ? 18.0
-                                : (oled
-                                    ? 12.0
-                                    : (cassette ? 14.0 : side * 0.12))))))));
+              ? 8.0
+              : (aura
+                    ? 22.0
+                    : (cosmic
+                          ? 24.0
+                          : (cyber
+                                ? 8.0
+                                : (aurora
+                                      ? 28.0
+                                      : (ember
+                                            ? 18.0
+                                            : (oled
+                                                  ? 12.0
+                                                  : (cassette
+                                                        ? 14.0
+                                                        : side * 0.12))))))));
 
     final glowColor = aura
         ? t.accent
         : (cosmic
-            ? const Color(0xFF00E5FF)
-            : (cyber
-                ? const Color(0xFF00F0FF)
-                : (aurora
-                    ? const Color(0xFF00FF87)
-                    : (ember ? const Color(0xFFFF416C) : null))));
+              ? const Color(0xFF00E5FF)
+              : (cyber
+                    ? const Color(0xFF00F0FF)
+                    : (aurora
+                          ? const Color(0xFF00FF87)
+                          : (ember ? const Color(0xFFFF416C) : null))));
 
     return SheetPanel(
       gap: 10,
@@ -1083,7 +1085,8 @@ String _styleSub(AppLocalizations l, PlayerStyle style) => switch (style) {
   PlayerStyle.ivory => l.pvStyleIvorySub,
   PlayerStyle.levyraCosmic => 'Глубокий стеклянный градиент и космический неон',
   PlayerStyle.levyraCyber => 'Неоновый кибернетический HUD и бирюзовый фрейм',
-  PlayerStyle.levyraAurora => 'Изумрудное северное сияние и арктический градиент',
+  PlayerStyle.levyraAurora =>
+    'Изумрудное северное сияние и арктический градиент',
   PlayerStyle.levyraEmber => 'Теплый закатный свет и ламповый аналоговый блеск',
   PlayerStyle.levyraOled => 'Ультра-черная эстетика с тонкими контурами',
   PlayerStyle.levyraCassette => 'Винтажная кассета со вращающимися катушками',
@@ -1167,7 +1170,13 @@ class _StylePainter extends CustomPainter {
           RRect.fromLTRBR(3, 3, 21, 21, const Radius.circular(10)),
           stroke,
         );
-        canvas.drawArc(const Rect.fromLTWH(6, 6, 12, 12), 0, 3.14, false, stroke);
+        canvas.drawArc(
+          const Rect.fromLTWH(6, 6, 12, 12),
+          0,
+          3.14,
+          false,
+          stroke,
+        );
       case PlayerStyle.levyraEmber:
         canvas.drawRRect(
           RRect.fromLTRBR(4, 4, 20, 20, const Radius.circular(6)),

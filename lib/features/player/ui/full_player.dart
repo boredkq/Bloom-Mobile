@@ -338,23 +338,25 @@ class _Cover extends ConsumerWidget {
         final double radius = vinyl
             ? side / 2
             : (ivory
-                ? 8.0
-                : (aura
-                    ? 24.0
-                    : (cosmic
-                        ? 28.0
-                        : (cyber
-                            ? 8.0
-                            : (aurora
-                                ? 32.0
-                                : (ember
-                                    ? 20.0
-                                    : (oled
-                                        ? 14.0
-                                        : (cassette
-                                            ? 16.0
-                                            : _coverRadius))))))));
-        final double scale = ((aura || cosmic || aurora) && !spinning) ? 0.88 : 1.0;
+                  ? 8.0
+                  : (aura
+                        ? 24.0
+                        : (cosmic
+                              ? 28.0
+                              : (cyber
+                                    ? 8.0
+                                    : (aurora
+                                          ? 32.0
+                                          : (ember
+                                                ? 20.0
+                                                : (oled
+                                                      ? 14.0
+                                                      : (cassette
+                                                            ? 16.0
+                                                            : _coverRadius))))))));
+        final double scale = ((aura || cosmic || aurora) && !spinning)
+            ? 0.88
+            : 1.0;
 
         List<BoxShadow>? shadows;
         Border? border;
@@ -376,23 +378,32 @@ class _Cover extends ConsumerWidget {
         } else if (cosmic) {
           shadows = [
             BoxShadow(
-              color: const Color(0xFF00E5FF).withValues(alpha: spinning ? 0.55 : 0.25),
+              color: const Color(
+                0xFF00E5FF,
+              ).withValues(alpha: spinning ? 0.55 : 0.25),
               blurRadius: spinning ? 42 : 20,
               spreadRadius: spinning ? 4 : 0,
               offset: const Offset(0, 8),
             ),
             BoxShadow(
-              color: const Color(0xFF7C4DFF).withValues(alpha: spinning ? 0.35 : 0.15),
+              color: const Color(
+                0xFF7C4DFF,
+              ).withValues(alpha: spinning ? 0.35 : 0.15),
               blurRadius: spinning ? 64 : 32,
               spreadRadius: spinning ? 8 : 2,
             ),
           ];
-          border = Border.all(color: const Color(0xFF00E5FF).withValues(alpha: 0.6), width: 1.2);
+          border = Border.all(
+            color: const Color(0xFF00E5FF).withValues(alpha: 0.6),
+            width: 1.2,
+          );
         } else if (cyber) {
           border = Border.all(color: const Color(0xFF00F0FF), width: 2.0);
           shadows = [
             BoxShadow(
-              color: const Color(0xFF0066FF).withValues(alpha: spinning ? 0.55 : 0.25),
+              color: const Color(
+                0xFF0066FF,
+              ).withValues(alpha: spinning ? 0.55 : 0.25),
               blurRadius: spinning ? 32 : 16,
               spreadRadius: spinning ? 4 : 1,
             ),
@@ -400,36 +411,55 @@ class _Cover extends ConsumerWidget {
         } else if (aurora) {
           shadows = [
             BoxShadow(
-              color: const Color(0xFF00FF87).withValues(alpha: spinning ? 0.55 : 0.22),
+              color: const Color(
+                0xFF00FF87,
+              ).withValues(alpha: spinning ? 0.55 : 0.22),
               blurRadius: spinning ? 46 : 22,
               spreadRadius: spinning ? 6 : 1,
             ),
             BoxShadow(
-              color: const Color(0xFF60EFFF).withValues(alpha: spinning ? 0.35 : 0.12),
+              color: const Color(
+                0xFF60EFFF,
+              ).withValues(alpha: spinning ? 0.35 : 0.12),
               blurRadius: spinning ? 68 : 36,
             ),
           ];
-          border = Border.all(color: const Color(0xFF00FF87).withValues(alpha: 0.5), width: 1.2);
+          border = Border.all(
+            color: const Color(0xFF00FF87).withValues(alpha: 0.5),
+            width: 1.2,
+          );
         } else if (ember) {
           shadows = [
             BoxShadow(
-              color: const Color(0xFFFF416C).withValues(alpha: spinning ? 0.55 : 0.25),
+              color: const Color(
+                0xFFFF416C,
+              ).withValues(alpha: spinning ? 0.55 : 0.25),
               blurRadius: spinning ? 42 : 20,
               spreadRadius: spinning ? 5 : 1,
             ),
             BoxShadow(
-              color: const Color(0xFFFF4B2B).withValues(alpha: spinning ? 0.35 : 0.15),
+              color: const Color(
+                0xFFFF4B2B,
+              ).withValues(alpha: spinning ? 0.35 : 0.15),
               blurRadius: spinning ? 60 : 30,
             ),
           ];
-          border = Border.all(color: const Color(0xFFFF416C).withValues(alpha: 0.55), width: 1.2);
+          border = Border.all(
+            color: const Color(0xFFFF416C).withValues(alpha: 0.55),
+            width: 1.2,
+          );
         } else if (oled) {
           border = Border.all(color: const Color(0xFF334155), width: 1.0);
         } else if (cassette) {
-          border = Border.all(color: const Color(0xFFF72585).withValues(alpha: 0.8), width: 1.5);
+          border = Border.all(
+            color: const Color(0xFFF72585).withValues(alpha: 0.8),
+            width: 1.5,
+          );
           shadows = [
             BoxShadow(
-              color: const Color(0xFF7209B7).withValues(alpha: spinning ? 0.45 : 0.20),
+              color: const Color(
+                0xFF7209B7,
+              ).withValues(alpha: spinning ? 0.45 : 0.20),
               blurRadius: spinning ? 36 : 18,
             ),
           ];
@@ -499,9 +529,7 @@ class _Cover extends ConsumerWidget {
                   ),
                 ),
               if (cassette)
-                Positioned.fill(
-                  child: _CassetteOverlay(spinning: spinning),
-                ),
+                Positioned.fill(child: _CassetteOverlay(spinning: spinning)),
               // Text panel over the cover: the block's colour at 96%, appearing
               // with a fade and a slight zoom. ALWAYS drawn, visibility by
               // opacity, or the animation has nothing to play.

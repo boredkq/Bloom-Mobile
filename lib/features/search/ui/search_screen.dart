@@ -544,9 +544,7 @@ class _PlatformButton extends ConsumerWidget {
                 child: SizedBox(
                   width: 22,
                   height: 22,
-                  child: Center(
-                    child: PlatformLogo(provider.source, size: 18),
-                  ),
+                  child: Center(child: PlatformLogo(provider.source, size: 18)),
                 ),
               ),
             ),

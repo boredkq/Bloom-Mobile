@@ -761,7 +761,8 @@ class CircleIconButton extends StatelessWidget {
           width: size,
           height: size,
           child: Center(
-            child: child ??
+            child:
+                child ??
                 BloomIcon(
                   icon,
                   size: iconSize,

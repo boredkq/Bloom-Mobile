@@ -335,7 +335,9 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
                       // Telegram Connect Button
                       _AuthButton(
                         onTap: () {
-                          setState(() => _activeModal = _OnboardingModal.telegram);
+                          setState(
+                            () => _activeModal = _OnboardingModal.telegram,
+                          );
                         },
                         icon: Bi.send,
                         brandColor: const Color(0xFF2AABEE),
@@ -355,7 +357,9 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
                       // Yandex Music Connect Button
                       _AuthButton(
                         onTap: () {
-                          setState(() => _activeModal = _OnboardingModal.yandex);
+                          setState(
+                            () => _activeModal = _OnboardingModal.yandex,
+                          );
                         },
                         icon: Bi.musicNote,
                         brandColor: const Color(0xFFFC3F1D),
@@ -522,7 +526,9 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
             icon: BloomIcon(Bi.refresh, size: 18, color: t.accent),
             label: const Text('Синхронизировать сейчас'),
             onPressed: () async {
-              final ok = await ref.read(telegramAuthProvider.notifier).pushBackup();
+              final ok = await ref
+                  .read(telegramAuthProvider.notifier)
+                  .pushBackup();
               if (mounted) {
                 _closeModal();
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -610,7 +616,9 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
             elevation: 0,
           ),
           onPressed: () {
-            ref.read(telegramAuthProvider.notifier).startWebLogin(defaultVercelUrl);
+            ref
+                .read(telegramAuthProvider.notifier)
+                .startWebLogin(defaultVercelUrl);
             _closeModal();
           },
           child: const Text(
@@ -647,7 +655,10 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: t.ovlLine),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 11,
+            ),
           ),
         ),
         const SizedBox(height: 8),
@@ -661,7 +672,10 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: t.ovlLine),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 11,
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -708,7 +722,11 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
                   shape: BoxShape.circle,
                 ),
                 child: const Center(
-                  child: BloomIcon(Bi.musicNote, color: Color(0xFFFC3F1D), size: 22),
+                  child: BloomIcon(
+                    Bi.musicNote,
+                    color: Color(0xFFFC3F1D),
+                    size: 22,
+                  ),
                 ),
               ),
               const SizedBox(width: 14),
@@ -849,7 +867,10 @@ class _OnboardingScreenState extends ConsumerState<_OnboardingScreen> {
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: t.ovlLine),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 11,
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -1039,11 +1060,7 @@ class _SourcesVisual extends StatelessWidget {
             dotColor: const Color(0xFFFF5500),
             t: t,
           ),
-          _SourceChip(
-            label: 'Локальные файлы',
-            dotColor: t.accent,
-            t: t,
-          ),
+          _SourceChip(label: 'Локальные файлы', dotColor: t.accent, t: t),
           _SourceChip(
             label: 'YouTube Music',
             dotColor: const Color(0xFFFF0033),
@@ -1282,11 +1299,7 @@ class _CloudVisual extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: const Center(
-              child: BloomIcon(
-                Bi.send,
-                size: 20,
-                color: Color(0xFF2AABEE),
-              ),
+              child: BloomIcon(Bi.send, size: 20, color: Color(0xFF2AABEE)),
             ),
           ),
           const SizedBox(width: 12),
@@ -1316,10 +1329,7 @@ class _CloudVisual extends StatelessWidget {
                     const SizedBox(width: 5),
                     Text(
                       'Vercel Cloud Sync',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: t.text2,
-                      ),
+                      style: TextStyle(fontSize: 11, color: t.text2),
                     ),
                   ],
                 ),

@@ -50,7 +50,10 @@ class CloudPreset {
     Color parseHex(String? hex, Color fallback) {
       if (hex == null || hex.isEmpty) return fallback;
       final clean = hex.replaceAll('#', '');
-      final val = int.tryParse(clean.length == 6 ? 'FF$clean' : clean, radix: 16);
+      final val = int.tryParse(
+        clean.length == 6 ? 'FF$clean' : clean,
+        radix: 16,
+      );
       return val != null ? Color(val) : fallback;
     }
 
@@ -83,7 +86,8 @@ const List<CloudPreset> kFallbackPresets = [
     id: 'levyra-cosmic',
     name: 'Levyra Cosmic Glass',
     category: 'levyra',
-    description: 'Глубокий космический неоновый градиент с бирюзовым и фиолетовым свечением',
+    description:
+        'Глубокий космический неоновый градиент с бирюзовым и фиолетовым свечением',
     author: 'Levyra Design System',
     source: 'levyra.dev',
     accent: Color(0xFF00E5FF),
@@ -96,7 +100,8 @@ const List<CloudPreset> kFallbackPresets = [
     id: 'levyra-cyber',
     name: 'Levyra Cyberpunk Neon',
     category: 'cyberpunk',
-    description: 'Электрический циан и глубокий синий неон с кибернетической декой плеера',
+    description:
+        'Электрический циан и глубокий синий неон с кибернетической декой плеера',
     author: 'Levyra Audio Team',
     source: 'github.com/theclaymethod/unslop',
     accent: Color(0xFF00F0FF),
@@ -109,7 +114,8 @@ const List<CloudPreset> kFallbackPresets = [
     id: 'levyra-aurora',
     name: 'Levyra Aurora Borealis',
     category: 'nordic',
-    description: 'Изумрудное северное сияние с арктическими переливами и гладким свечением',
+    description:
+        'Изумрудное северное сияние с арктическими переливами и гладким свечением',
     author: 'Nordic Sound Collective',
     source: 'nordic-themes.org',
     accent: Color(0xFF00FF87),
@@ -122,7 +128,8 @@ const List<CloudPreset> kFallbackPresets = [
     id: 'levyra-ember',
     name: 'Levyra Ember Sunset',
     category: 'retro',
-    description: 'Теплое аналоговое свечение заката, винила и ламповых усилителей',
+    description:
+        'Теплое аналоговое свечение заката, винила и ламповых усилителей',
     author: 'Analog Craft',
     source: 'unsplash.com',
     accent: Color(0xFFFF416C),
@@ -135,7 +142,8 @@ const List<CloudPreset> kFallbackPresets = [
     id: 'tokyo-night',
     name: 'Tokyo Night Storm',
     category: 'cyberpunk',
-    description: 'Культовая темная палитра ночного Токио со штормовым синим акцентом',
+    description:
+        'Культовая темная палитра ночного Токио со штормовым синим акцентом',
     author: 'Tokyo Night Open Source',
     source: 'github.com/folke/tokyo-night',
     accent: Color(0xFF7AA2F7),
@@ -148,7 +156,8 @@ const List<CloudPreset> kFallbackPresets = [
     id: 'catppuccin-mocha',
     name: 'Catppuccin Mocha',
     category: 'minimal',
-    description: 'Мягкая пастельная палитра фламинго и сирени для комфортного звука',
+    description:
+        'Мягкая пастельная палитра фламинго и сирени для комфортного звука',
     author: 'Catppuccin Org',
     source: 'catppuccin.com',
     accent: Color(0xFFF5C2E7),
@@ -161,7 +170,8 @@ const List<CloudPreset> kFallbackPresets = [
     id: 'synthwave-84',
     name: 'Synthwave 1984',
     category: 'retro',
-    description: 'Ретро-футуризм 80-х, пурпурный неон и дека кассетного магнитофона',
+    description:
+        'Ретро-футуризм 80-х, пурпурный неон и дека кассетного магнитофона',
     author: 'Robb Owen',
     source: 'synthwave.dev',
     accent: Color(0xFFF72585),
@@ -174,7 +184,8 @@ const List<CloudPreset> kFallbackPresets = [
     id: 'oled-monolith',
     name: 'OLED Pure Monolith',
     category: 'minimal',
-    description: 'Абсолютно черный цвет 0% энергопотребления, микро-рамки и минимализм',
+    description:
+        'Абсолютно черный цвет 0% энергопотребления, микро-рамки и минимализм',
     author: 'Minimal Mono Lab',
     source: 'theclaymethod/unslop',
     accent: Color(0xFFFFFFFF),

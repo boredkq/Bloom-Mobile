@@ -510,7 +510,9 @@ Future<void> _openTelegramSettings(BuildContext context, WidgetRef ref) async {
               padding: const EdgeInsets.symmetric(vertical: 13),
             ),
             onPressed: () {
-              ref.read(telegramAuthProvider.notifier).startWebLogin(defaultVercelUrl);
+              ref
+                  .read(telegramAuthProvider.notifier)
+                  .startWebLogin(defaultVercelUrl);
               Navigator.of(context).pop();
             },
             child: const Text(
@@ -528,19 +530,25 @@ Future<void> _openTelegramSettings(BuildContext context, WidgetRef ref) async {
                 context: context,
                 builder: (ctx) => AlertDialog(
                   backgroundColor: t.blockColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   title: const Text('Ввод профиля Telegram'),
                   content: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       TextField(
                         controller: nameCtrl,
-                        decoration: const InputDecoration(labelText: 'Отображаемое имя'),
+                        decoration: const InputDecoration(
+                          labelText: 'Отображаемое имя',
+                        ),
                       ),
                       const SizedBox(height: 10),
                       TextField(
                         controller: userCtrl,
-                        decoration: const InputDecoration(labelText: '@username (без @)'),
+                        decoration: const InputDecoration(
+                          labelText: '@username (без @)',
+                        ),
                       ),
                     ],
                   ),
@@ -553,12 +561,19 @@ Future<void> _openTelegramSettings(BuildContext context, WidgetRef ref) async {
                       onPressed: () {
                         final name = nameCtrl.text.trim();
                         if (name.isNotEmpty) {
-                          ref.read(telegramAuthProvider.notifier).loginWithData({
-                            'id': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-                            'first_name': name,
-                            'username': userCtrl.text.trim().replaceAll('@', ''),
-                            'auth_date': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-                          });
+                          ref.read(telegramAuthProvider.notifier).loginWithData(
+                            {
+                              'id':
+                                  DateTime.now().millisecondsSinceEpoch ~/ 1000,
+                              'first_name': name,
+                              'username': userCtrl.text.trim().replaceAll(
+                                '@',
+                                '',
+                              ),
+                              'auth_date':
+                                  DateTime.now().millisecondsSinceEpoch ~/ 1000,
+                            },
+                          );
                           Navigator.of(ctx).pop();
                         }
                       },
