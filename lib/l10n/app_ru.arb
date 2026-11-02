@@ -873,7 +873,6 @@
   "wrJokeTiny": "Как-то пусто. Ты вообще включал музыку?",
   "wrJokeSmall": "Скромно. Но мы посчитали каждый трек.",
   "wrJokeOneTrack": "Один трек, один артист — уважаем постоянство.",
-  "wrPlaysN": "{count, plural, one{{count} прослушивание} few{{count} прослушивания} many{{count} прослушиваний} other{{count} прослушиваний}}",
   "wrPlaysWord": "{count, plural, one{прослушивание} few{прослушивания} many{прослушиваний} other{прослушиваний}}",
   "wrTracksN": "{count, plural, one{{count} трек} few{{count} трека} many{{count} треков} other{{count} треков}}",
   "wrTracksWord": "{count, plural, one{трек} few{трека} many{треков} other{треков}}",

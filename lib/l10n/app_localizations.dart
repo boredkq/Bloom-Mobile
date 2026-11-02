@@ -5024,12 +5024,6 @@ abstract class AppLocalizations {
   /// **'One track, one artist — respect the consistency.'**
   String get wrJokeOneTrack;
 
-  /// No description provided for @wrPlaysN.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, one{{count} play} other{{count} plays}}'**
-  String wrPlaysN(int count);
-
   /// the noun alone, for tiles where the number is rendered separately
   ///
   /// In en, this message translates to:

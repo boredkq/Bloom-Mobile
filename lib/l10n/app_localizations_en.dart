@@ -2863,17 +2863,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'One track, one artist — respect the consistency.';
 
   @override
-  String wrPlaysN(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count plays',
-      one: '$count play',
-    );
-    return '$_temp0';
-  }
-
-  @override
   String wrPlaysWord(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

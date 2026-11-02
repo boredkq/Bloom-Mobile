@@ -1152,8 +1152,6 @@
   "wrJokeTiny": "Kind of empty. Did you even press play?",
   "wrJokeSmall": "Modest. But we counted every single track.",
   "wrJokeOneTrack": "One track, one artist — respect the consistency.",
-  "wrPlaysN": "{count, plural, one{{count} play} other{{count} plays}}",
-  "@wrPlaysN": { "placeholders": { "count": { "type": "int" } } },
   "wrPlaysWord": "{count, plural, one{play} other{plays}}",
   "@wrPlaysWord": { "description": "the noun alone, for tiles where the number is rendered separately", "placeholders": { "count": { "type": "int" } } },
   "wrTracksN": "{count, plural, one{{count} track} other{{count} tracks}}",

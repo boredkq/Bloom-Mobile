@@ -2905,19 +2905,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get wrJokeOneTrack => 'Один трек, один артист — уважаем постоянство.';
 
   @override
-  String wrPlaysN(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count прослушиваний',
-      many: '$count прослушиваний',
-      few: '$count прослушивания',
-      one: '$count прослушивание',
-    );
-    return '$_temp0';
-  }
-
-  @override
   String wrPlaysWord(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

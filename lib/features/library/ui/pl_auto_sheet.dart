@@ -1,7 +1,6 @@
 /// Playlist auto-update sheet: the schedule (switch, period, check at launch),
 /// the list of playlists with sources, and Update now. That button closes the
-/// sheet: a live toast shows progress, lying UNDER the sheet where it can't be
-/// seen.
+/// sheet: a live toast shows progress.
 library;
 
 import 'package:flutter/material.dart';

@@ -134,8 +134,8 @@ String? miniCardCover(WidgetRef ref) => ref.watch(playerCoverProvider);
 /// The card's place in the shell's bottom bars. The player panel
 /// (`PlayerSheet`) draws the card: it grows out of it and must lie OVER the tab
 /// bar, which can't happen from inside a bar. The bar holds an empty place of
-/// that height, or the tab bar would jump up, lists would lose their bottom
-/// room and toasts would come from under the panel.
+/// that height, or the tab bar would jump up and lists would lose their bottom
+/// room.
 class MiniCardSlot extends ConsumerWidget {
   const MiniCardSlot({super.key});
 
