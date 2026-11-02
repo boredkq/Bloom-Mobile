@@ -1,4 +1,4 @@
-name: Проверки
+name: Checks
 
 # A quick check on every push and pull request: formatting, analyzer, tests. App
 # builds are slow and have their own workflow.
