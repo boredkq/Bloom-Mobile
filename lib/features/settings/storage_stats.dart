@@ -6,7 +6,6 @@ library;
 
 import 'dart:io';
 
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/store/cover_cache.dart';
@@ -16,11 +15,11 @@ import '../customization/media_store.dart';
 import '../lyrics/lyrics_store.dart';
 import '../offline/offline_store.dart';
 
-/// The file dialogs' channel: both are about the phone's file system.
-const MethodChannel _channel = MethodChannel('bloom/files');
+/// In the page's order; the ring's arcs go the same way round.
+enum CacheKind { lyrics, covers, offline, custom }
 
-/// Also picks the icon, the name and the text on the page.
-enum CacheKind { offline, lyrics, covers, custom }
+/// An arc of the ring, in degrees clockwise from the right.
+typedef StorageArc = ({int index, double start, double sweep});
 
 class CacheStat {
   const CacheStat({
@@ -37,12 +36,9 @@ class CacheStat {
 }
 
 class StorageStats {
-  const StorageStats({required this.caches, this.deviceTotal});
+  const StorageStats({required this.caches});
 
   final List<CacheStat> caches;
-
-  /// `null` if the platform didn't answer: then no share is shown.
-  final int? deviceTotal;
 
   CacheStat of(CacheKind kind) =>
       caches.firstWhere((c) => c.kind == kind, orElse: () => _empty(kind));
@@ -50,11 +46,28 @@ class StorageStats {
   int get bytes => caches.fold(0, (sum, c) => sum + c.bytes);
   int get count => caches.fold(0, (sum, c) => sum + c.count);
 
-  /// 0..1; `null` while the total is unknown.
-  double? get fraction {
-    final total = deviceTotal;
-    if (total == null || total <= 0) return null;
-    return (bytes / total).clamp(0.0, 1.0);
+  /// End to end from the top. A cache too small to see still gets a sliver,
+  /// taken from the others.
+  List<StorageArc> get arcs {
+    const sliver = 3.0;
+    final total = bytes;
+    final on = [
+      for (final kind in CacheKind.values)
+        if (of(kind).bytes > 0) of(kind),
+    ];
+    bool small(CacheStat c) => c.bytes / total * 360 < sliver;
+    final big = on.where((c) => !small(c)).fold(0, (s, c) => s + c.bytes);
+    final share = 360 - on.where(small).length * sliver;
+    var at = -90.0;
+    return [
+      for (final c in on)
+        () {
+          final sweep = small(c) ? sliver : c.bytes / big * share;
+          final arc = (index: c.kind.index, start: at, sweep: sweep);
+          at += sweep;
+          return arc;
+        }(),
+    ];
   }
 
   static CacheStat _empty(CacheKind kind) =>
@@ -79,11 +92,6 @@ final storageStatsProvider = FutureProvider.autoDispose<StorageStats>((
   return StorageStats(
     caches: [
       CacheStat(
-        kind: CacheKind.offline,
-        count: offline.count,
-        bytes: offline.bytes,
-      ),
-      CacheStat(
         kind: CacheKind.lyrics,
         count: lyrics.count,
         bytes: lyrics.bytes,
@@ -94,33 +102,38 @@ final storageStatsProvider = FutureProvider.autoDispose<StorageStats>((
         bytes: covers.bytes,
       ),
       CacheStat(
+        kind: CacheKind.offline,
+        count: offline.count,
+        bytes: offline.bytes,
+      ),
+      CacheStat(
         kind: CacheKind.custom,
         count: custom.count,
         bytes: custom.bytes,
       ),
     ],
-    deviceTotal: await _deviceTotal(),
   );
 });
 
-/// Returns how many went; the toast shows it.
-Future<int> clearCache(WidgetRef ref, CacheKind kind) async {
+/// Returns how many went; the toast shows it. Takes the container, not the
+/// page's ref: the page may be closed before the files are gone.
+Future<int> clearCache(ProviderContainer box, CacheKind kind) async {
   final deleted = switch (kind) {
-    CacheKind.offline => await ref.read(offlineProvider.notifier).clearAll(),
-    CacheKind.lyrics => ref.read(lyricsCacheProvider).clear(),
+    CacheKind.lyrics => box.read(lyricsCacheProvider).clear(),
     CacheKind.covers => await clearCoverCache(),
+    CacheKind.offline => await box.read(offlineProvider.notifier).clearAll(),
     // One by one: a picture may be a background or a cover, and a link to a
     // gone file would leave its place empty.
-    CacheKind.custom => _clearMedia(ref),
+    CacheKind.custom => _clearMedia(box),
   };
-  ref.invalidate(storageStatsProvider);
+  box.invalidate(storageStatsProvider);
   return deleted;
 }
 
-int _clearMedia(WidgetRef ref) {
-  final ids = [for (final item in ref.read(mediaLibProvider)) item.id];
+int _clearMedia(ProviderContainer box) {
+  final ids = [for (final item in box.read(mediaLibProvider)) item.id];
   for (final id in ids) {
-    removeMedia(ref.read, id);
+    removeMedia(box.read, id);
   }
   return ids.length;
 }
@@ -142,18 +155,4 @@ Future<({int count, int bytes})> _mediaStats(List<MediaItem> items) async {
     }
   }
   return (count: count, bytes: bytes);
-}
-
-/// `null` if the platform didn't answer.
-Future<int?> _deviceTotal() async {
-  try {
-    final space = await _channel.invokeMapMethod<String, Object?>('diskSpace');
-    final total = space?['total'];
-    return total is num && total > 0 ? total.toInt() : null;
-  } on PlatformException {
-    return null;
-  } on MissingPluginException {
-    // No native side (tests): the ring shows just the size.
-    return null;
-  }
 }

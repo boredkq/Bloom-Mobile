@@ -14,7 +14,7 @@ Future<void> pickOneSheet<T>({
   String? subtitle,
   required List<T> values,
   required T current,
-  required BloomGlyph Function(T) icon,
+  BloomGlyph Function(T)? icon,
   required String Function(T) label,
 
   /// A note under a choice's name; `null` if the label is enough.
@@ -36,7 +36,7 @@ Future<void> pickOneSheet<T>({
         children: [
           for (final value in values)
             SheetOptionTile(
-              icon: icon(value),
+              icon: icon?.call(value),
               label: label(value),
               sub: sub?.call(value),
               active: value == current,

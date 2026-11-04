@@ -3716,12 +3716,6 @@ abstract class AppLocalizations {
   /// **'Customization'**
   String get stCustom;
 
-  /// No description provided for @stCounting.
-  ///
-  /// In en, this message translates to:
-  /// **'Counting…'**
-  String get stCounting;
-
   /// No description provided for @stUsed.
   ///
   /// In en, this message translates to:
@@ -3734,48 +3728,6 @@ abstract class AppLocalizations {
   /// **'Clear data'**
   String get stManage;
 
-  /// No description provided for @stItems.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, one{{count} item} other{{count} items}}'**
-  String stItems(int count);
-
-  /// No description provided for @stUsedOf.
-  ///
-  /// In en, this message translates to:
-  /// **'{percent}% of {total}'**
-  String stUsedOf(String percent, String total);
-
-  /// No description provided for @stClearAll.
-  ///
-  /// In en, this message translates to:
-  /// **'Clear all'**
-  String get stClearAll;
-
-  /// No description provided for @stClearBody.
-  ///
-  /// In en, this message translates to:
-  /// **'The downloaded copies will be deleted and those tracks will stop playing without a network. They stay in your library and playlists.'**
-  String get stClearBody;
-
-  /// No description provided for @stClearLyricsBody.
-  ///
-  /// In en, this message translates to:
-  /// **'The saved lyrics will be deleted — they are fetched again on the next playback.'**
-  String get stClearLyricsBody;
-
-  /// No description provided for @stClearCustomBody.
-  ///
-  /// In en, this message translates to:
-  /// **'All uploaded images will be deleted. If one is currently set as a background or a cover, it will be reset.'**
-  String get stClearCustomBody;
-
-  /// No description provided for @stClearAllBody.
-  ///
-  /// In en, this message translates to:
-  /// **'The caches — offline copies, lyrics and images — will be deleted. Your library and playlists are not affected.'**
-  String get stClearAllBody;
-
   /// No description provided for @stCleared.
   ///
   /// In en, this message translates to:
@@ -3787,12 +3739,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Covers'**
   String get stCovers;
-
-  /// No description provided for @stClearCoversBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Downloaded covers will be deleted — they are fetched again the next time they show.'**
-  String get stClearCoversBody;
 
   /// No description provided for @stCoversCleared.
   ///
@@ -3823,6 +3769,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Keep lyrics'**
   String get stLyricsKeep;
+
+  /// No description provided for @stLyricsKeepFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep lyrics for'**
+  String get stLyricsKeepFor;
+
+  /// No description provided for @stClearSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear {size}'**
+  String stClearSize(String size);
+
+  /// No description provided for @stClearSure.
+  ///
+  /// In en, this message translates to:
+  /// **'Really clear?'**
+  String get stClearSure;
 
   /// No description provided for @stStaleRemoved.
   ///
@@ -3877,12 +3841,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'App data cleared'**
   String get stAllCleared;
-
-  /// No description provided for @stBytes.
-  ///
-  /// In en, this message translates to:
-  /// **'{value} B'**
-  String stBytes(String value);
 
   /// No description provided for @stKilobytes.
   ///

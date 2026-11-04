@@ -232,6 +232,65 @@ class SettingsRowShell extends StatelessWidget {
   }
 }
 
+/// A row of a group: the title, a value on the right, a chevron.
+class SettingsRow extends StatelessWidget {
+  const SettingsRow({
+    super.key,
+    this.icon,
+    this.leading,
+    required this.title,
+    required this.onTap,
+    this.value,
+    this.trailing,
+    this.enabled = true,
+  });
+
+  final BloomGlyph? icon;
+  final Widget? leading;
+  final String title;
+  final VoidCallback onTap;
+
+  /// Right of the title, before the chevron: the version number.
+  final String? value;
+
+  /// Replaces the chevron: an arrow beside the flag would read as a second
+  /// icon.
+  final Widget? trailing;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final text = value;
+    return SettingsRowShell(
+      icon: icon,
+      leading: leading,
+      title: title,
+      enabled: enabled,
+      // Makes 64 a row with the text line.
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 22),
+      onTap: onTap,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (text != null) ...[
+            Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: t.text2),
+            ),
+            const SizedBox(width: 10),
+          ],
+          trailing ?? BloomIcon(Bi.altArrowRight, size: 16, color: t.text2),
+        ],
+      ),
+    );
+  }
+}
+
 /// The plate of a choice standing on a page: lit when chosen.
 class PickPlate extends StatelessWidget {
   const PickPlate({

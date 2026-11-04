@@ -289,10 +289,6 @@ class FilesChannel: NSObject, UIDocumentPickerDelegate {
         // Nothing to release: on iOS the file is always my copy, and Dart
         // deletes it.
         result(nil)
-      case "diskSpace":
-        // The phone's storage: the denominator of the ring on the storage
-        // screen.
-        self.diskSpace(result: result)
       case "appInfo":
         // The build version for the About row.
         let info = Bundle.main.infoDictionary
@@ -307,22 +303,6 @@ class FilesChannel: NSObject, UIDocumentPickerDelegate {
         result(FlutterMethodNotImplemented)
       }
     }
-  }
-
-  /// Total and free space on the app's volume; `nil` when the system doesn't
-  /// answer, and the screen then shows no share.
-  private func diskSpace(result: @escaping FlutterResult) {
-    guard
-      let attrs = try? FileManager.default.attributesOfFileSystem(
-        forPath: NSHomeDirectory()
-      ),
-      let total = (attrs[.systemSize] as? NSNumber)?.int64Value,
-      let free = (attrs[.systemFreeSize] as? NSNumber)?.int64Value
-    else {
-      result(nil)
-      return
-    }
-    result(["total": total, "free": free])
   }
 
   /// Shows `UIActivityViewController` for a ready file.

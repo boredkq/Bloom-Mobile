@@ -2100,48 +2100,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stCustom => 'Customization';
 
   @override
-  String get stCounting => 'Counting…';
-
-  @override
   String get stUsed => 'Used';
 
   @override
   String get stManage => 'Clear data';
-
-  @override
-  String stItems(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count items',
-      one: '$count item',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String stUsedOf(String percent, String total) {
-    return '$percent% of $total';
-  }
-
-  @override
-  String get stClearAll => 'Clear all';
-
-  @override
-  String get stClearBody =>
-      'The downloaded copies will be deleted and those tracks will stop playing without a network. They stay in your library and playlists.';
-
-  @override
-  String get stClearLyricsBody =>
-      'The saved lyrics will be deleted — they are fetched again on the next playback.';
-
-  @override
-  String get stClearCustomBody =>
-      'All uploaded images will be deleted. If one is currently set as a background or a cover, it will be reset.';
-
-  @override
-  String get stClearAllBody =>
-      'The caches — offline copies, lyrics and images — will be deleted. Your library and playlists are not affected.';
 
   @override
   String stCleared(int count) {
@@ -2150,10 +2112,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get stCovers => 'Covers';
-
-  @override
-  String get stClearCoversBody =>
-      'Downloaded covers will be deleted — they are fetched again the next time they show.';
 
   @override
   String get stCoversCleared => 'Cover cache cleared';
@@ -2169,6 +2127,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get stLyricsKeep => 'Keep lyrics';
+
+  @override
+  String get stLyricsKeepFor => 'Keep lyrics for';
+
+  @override
+  String stClearSize(String size) {
+    return 'Clear $size';
+  }
+
+  @override
+  String get stClearSure => 'Really clear?';
 
   @override
   String stStaleRemoved(int count) {
@@ -2198,11 +2167,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get stAllCleared => 'App data cleared';
-
-  @override
-  String stBytes(String value) {
-    return '$value B';
-  }
 
   @override
   String stKilobytes(String value) {

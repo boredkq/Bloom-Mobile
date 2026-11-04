@@ -143,7 +143,7 @@ class BloomButton extends StatelessWidget {
       ButtonTone.plate => (null, idle ? t.muted : t.text),
       ButtonTone.accent => idle ? (t.pill, t.muted) : (t.accent, t.accentText),
       ButtonTone.danger => idle ? (t.ovlBg, t.muted) : (_danger, Colors.white),
-      ButtonTone.ink => (t.text, t.bg),
+      ButtonTone.ink => idle ? (t.pill, t.muted) : (t.text, t.bg),
     };
     final radius = BorderRadius.circular(pill ? 999 : t.radius);
     final spinner = BloomSpinner(size: 18, color: ink);

@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
-import android.os.StatFs
 import android.provider.Settings
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -96,10 +95,6 @@ class MainActivity : AudioServiceActivity() {
                     uri = call.argument<String>("uri").orEmpty(),
                     result = result,
                 )
-                // The phone's storage, the denominator of the storage ring.
-                // Measured on the volume holding the app's data: with adoptable
-                // storage that may not be the system partition.
-                "diskSpace" -> diskSpace(result)
                 // The build version for the About row. Not worth a package for
                 // two strings.
                 "appInfo" -> appInfo(result)
@@ -154,17 +149,6 @@ class MainActivity : AudioServiceActivity() {
         if (!own.isNullOrBlank()) return own
         val maker = Build.MANUFACTURER.replaceFirstChar { it.uppercase() }
         return if (Build.MODEL.startsWith(Build.MANUFACTURER, ignoreCase = true)) Build.MODEL else "$maker ${Build.MODEL}"
-    }
-
-    /** Total and free space on the volume with the app's data. */
-    private fun diskSpace(result: MethodChannel.Result) {
-        try {
-            val stat = StatFs(filesDir.absolutePath)
-            result.success(mapOf("total" to stat.totalBytes, "free" to stat.availableBytes))
-        } catch (e: Exception) {
-            // No volume or unreadable: the screen just shows no share.
-            result.success(null)
-        }
     }
 
     /**

@@ -2128,50 +2128,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get stCustom => 'Кастомизация';
 
   @override
-  String get stCounting => 'Считаю…';
-
-  @override
   String get stUsed => 'Занято';
 
   @override
   String get stManage => 'Очистка данных';
-
-  @override
-  String stItems(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count элементов',
-      many: '$count элементов',
-      few: '$count элемента',
-      one: '$count элемент',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String stUsedOf(String percent, String total) {
-    return '$percent% из $total';
-  }
-
-  @override
-  String get stClearAll => 'Очистить всё';
-
-  @override
-  String get stClearBody =>
-      'Скачанные копии будут удалены, и эти треки перестанут играть без сети. Из библиотеки и плейлистов они никуда не денутся.';
-
-  @override
-  String get stClearLyricsBody =>
-      'Сохранённые тексты будут удалены — при следующем воспроизведении они загрузятся заново.';
-
-  @override
-  String get stClearCustomBody =>
-      'Все загруженные картинки будут удалены. Если какая-то стоит фоном или обложкой — она сбросится.';
-
-  @override
-  String get stClearAllBody =>
-      'Кеши — офлайн-копии, тексты и картинки — будут удалены. Библиотека и плейлисты не затрагиваются.';
 
   @override
   String stCleared(int count) {
@@ -2180,10 +2140,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get stCovers => 'Обложки';
-
-  @override
-  String get stClearCoversBody =>
-      'Скачанные обложки будут удалены — при следующем показе они загрузятся заново.';
 
   @override
   String get stCoversCleared => 'Кеш обложек очищен';
@@ -2199,6 +2155,17 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get stLyricsKeep => 'Хранить тексты';
+
+  @override
+  String get stLyricsKeepFor => 'Срок текстов';
+
+  @override
+  String stClearSize(String size) {
+    return 'Очистить $size';
+  }
+
+  @override
+  String get stClearSure => 'Точно очистить?';
 
   @override
   String stStaleRemoved(int count) {
@@ -2228,11 +2195,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get stAllCleared => 'Данные очищены';
-
-  @override
-  String stBytes(String value) {
-    return '$value Б';
-  }
 
   @override
   String stKilobytes(String value) {

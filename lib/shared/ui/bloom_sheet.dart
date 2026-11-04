@@ -904,19 +904,21 @@ class SheetOptionTile extends StatelessWidget {
                   children: [
                     // One width for all, flags are the widest: names stand in a
                     // straight column.
-                    SizedBox(
-                      width: 32,
-                      child: Center(
-                        child:
-                            leading ??
-                            BloomIcon(
-                              icon!,
-                              size: 22,
-                              color: active ? t.accent : t.iconFg,
-                            ),
+                    if (leading != null || icon != null) ...[
+                      SizedBox(
+                        width: 32,
+                        child: Center(
+                          child:
+                              leading ??
+                              BloomIcon(
+                                icon,
+                                size: 22,
+                                color: active ? t.accent : t.iconFg,
+                              ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
+                      const SizedBox(width: 12),
+                    ],
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
