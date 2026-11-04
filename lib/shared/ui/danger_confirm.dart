@@ -88,11 +88,9 @@ class DangerSheetButton extends StatelessWidget {
   final bool enabled;
 
   @override
-  Widget build(BuildContext context) => BloomButton(
+  Widget build(BuildContext context) => SheetButton(
     label: label,
     tone: ButtonTone.danger,
-    pill: false,
-    height: 54,
     onTap: enabled ? () => Navigator.of(context).pop(true) : null,
   );
 }

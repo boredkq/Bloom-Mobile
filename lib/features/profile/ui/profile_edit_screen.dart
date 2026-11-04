@@ -482,11 +482,10 @@ class _ImageSheetState extends State<_ImageSheet> {
             ],
           ),
           const SizedBox(height: 10),
-          BloomButton(
+          SheetButton(
             label: context.l.commonUpload,
             icon: Bi.import,
             tone: ButtonTone.accent,
-            height: 52,
             onTap: () => _run(widget.onPick),
           ),
           if (_hasOwn)

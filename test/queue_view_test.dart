@@ -185,9 +185,9 @@ void main() {
 
     testWidgets('the regular view draws no sections', (tester) async {
       await pump(tester, extended: false);
-      expect(find.text('ПРОСЛУШАНО'), findsNothing);
-      expect(find.text('СЕЙЧАС ИГРАЕТ'), findsNothing);
-      expect(find.text('ДАЛЕЕ'), findsNothing);
+      expect(find.text('Прослушано'), findsNothing);
+      expect(find.text('Сейчас играет'), findsNothing);
+      expect(find.text('Далее'), findsNothing);
       // A row's number in the list and in the queue is the same.
       expect(rows(tester), [(0, 0), (1, 1), (2, 2), (3, 3), (4, 4)]);
     });
@@ -196,9 +196,9 @@ void main() {
       tester,
     ) async {
       await pump(tester, extended: true);
-      expect(find.text('ПРОСЛУШАНО'), findsOneWidget);
-      expect(find.text('СЕЙЧАС ИГРАЕТ'), findsOneWidget);
-      expect(find.text('ДАЛЕЕ'), findsOneWidget);
+      expect(find.text('Прослушано'), findsOneWidget);
+      expect(find.text('Сейчас играет'), findsOneWidget);
+      expect(find.text('Далее'), findsOneWidget);
     });
 
     testWidgets('the drag number is per section, the queue number is shared', (
@@ -230,23 +230,23 @@ void main() {
 
     testWidgets('the first plays: no Played section', (tester) async {
       await pump(tester, extended: true, index: 0);
-      expect(find.text('ПРОСЛУШАНО'), findsNothing);
-      expect(find.text('СЕЙЧАС ИГРАЕТ'), findsOneWidget);
-      expect(find.text('ДАЛЕЕ'), findsOneWidget);
+      expect(find.text('Прослушано'), findsNothing);
+      expect(find.text('Сейчас играет'), findsOneWidget);
+      expect(find.text('Далее'), findsOneWidget);
       expect(rows(tester), [(0, null), (1, 0), (2, 1), (3, 2), (4, 3)]);
     });
 
     testWidgets('the last plays: no Up next section', (tester) async {
       await pump(tester, extended: true, index: 4);
-      expect(find.text('ПРОСЛУШАНО'), findsOneWidget);
-      expect(find.text('ДАЛЕЕ'), findsNothing);
+      expect(find.text('Прослушано'), findsOneWidget);
+      expect(find.text('Далее'), findsNothing);
     });
 
     testWidgets('one track in the queue: only Now playing', (tester) async {
       await pump(tester, extended: true, index: 0, length: 1);
-      expect(find.text('ПРОСЛУШАНО'), findsNothing);
-      expect(find.text('ДАЛЕЕ'), findsNothing);
-      expect(find.text('СЕЙЧАС ИГРАЕТ'), findsOneWidget);
+      expect(find.text('Прослушано'), findsNothing);
+      expect(find.text('Далее'), findsNothing);
+      expect(find.text('Сейчас играет'), findsOneWidget);
       expect(rows(tester), [(0, null)]);
     });
   });

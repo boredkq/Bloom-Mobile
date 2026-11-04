@@ -175,9 +175,8 @@ class _SourceRow extends StatelessWidget {
         SheetRow(
           leading: PlatformLogo(
             MusicSource.fromCode(source.provider),
-            size: 18,
+            size: 22,
           ),
-          gap: 12,
           label: title,
           subtitle: under.isNotEmpty && under != title ? under : null,
           color: context.bloom.text,

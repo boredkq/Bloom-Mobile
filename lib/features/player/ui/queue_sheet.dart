@@ -31,7 +31,6 @@ import '../../../shared/ui/track_actions.dart';
 import '../../../shared/ui/track_swipes.dart';
 import '../player_controller.dart';
 import '../player_view_store.dart';
-import '../../../shared/ui/subpage_header.dart';
 
 /// Section header height in extended view. A number rather than built from
 /// margins: the sheet computes where to scroll on open from it.
@@ -152,12 +151,9 @@ class _QueueSheetState extends ConsumerState<_QueueSheet> {
   Widget _label(String text) => SliverToBoxAdapter(
     child: SizedBox(
       height: kQueueSectionLabel,
-      child: Padding(
+      child: SheetCaption(
+        text,
         padding: const EdgeInsets.fromLTRB(12, 14, 12, 6),
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: SettingsCaption(text),
-        ),
       ),
     ),
   );

@@ -13,8 +13,6 @@ import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../level.dart';
-import '../../../shared/ui/atoms.dart';
-import '../../../shared/ui/subpage_header.dart';
 import '../../settings/ui/settings_rows.dart';
 
 Future<void> showLevelSheet(BuildContext context) =>
@@ -161,10 +159,7 @@ class LevelSheet extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 22),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 6),
-          child: SettingsCaption(l.levelHow),
-        ),
+        SheetCaption(l.levelHow),
         _Source(
           icon: Bi.headphonesRound,
           title: l.levelPlays,
@@ -192,12 +187,9 @@ class LevelSheet extends ConsumerWidget {
           ),
         const SizedBox(height: 16),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: BloomButton(
+          padding: const EdgeInsets.fromLTRB(kSheetEdge, 0, kSheetEdge, 8),
+          child: SheetButton(
             label: l.levelOk,
-            tone: ButtonTone.plate,
-            overlay: true,
-            height: 46,
             onTap: () => Navigator.of(context).pop(),
           ),
         ),

@@ -1,6 +1,5 @@
-/// Parts of customization sheets for library and preset pictures. A plain sheet
-/// background with no picture, blocks filled with the theme's plate and no
-/// border, one edge margin for preview and blocks, Delete pinned to the bottom.
+/// Parts of customization sheets for library and preset pictures: the preview
+/// on top and Delete pinned to the bottom.
 library;
 
 import 'dart:ui' show ImageFilter;
@@ -10,12 +9,8 @@ import 'package:flutter/material.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/cover_store.dart';
-import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
-import '../../../shared/ui/pressable.dart';
-
-/// Margin of preview and blocks from the sheet's edge.
-const double kCustSheetEdge = 16;
+import '../../../shared/ui/bloom_sheet.dart';
 
 /// Sheet header: a full-width picture, with edges like the blocks below. There
 /// may be several pictures (a preset has one per taken context): they flip by
@@ -47,7 +42,7 @@ class _CustSheetPreviewState extends State<CustSheetPreview> {
     final t = context.bloom;
     final srcs = widget.srcs;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(kCustSheetEdge, 4, kCustSheetEdge, 0),
+      padding: const EdgeInsets.fromLTRB(kSheetEdge, 4, kSheetEdge, 0),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(t.radius),
         child: SizedBox(
@@ -152,125 +147,15 @@ class _FitImage extends StatelessWidget {
   }
 }
 
-/// Section caption over a block.
-class CustSheetLabel extends StatelessWidget {
-  const CustSheetLabel(this.text, {super.key});
+/// Delete, pinned to the sheet's bottom.
+class CustSheetDelete extends StatelessWidget {
+  const CustSheetDelete({super.key, required this.onTap});
 
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(
-      kCustSheetEdge + 2,
-      16,
-      kCustSheetEdge,
-      8,
-    ),
-    child: Text(
-      text,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: Theme.of(
-        context,
-      ).textTheme.bodySmall?.copyWith(color: context.bloom.text2),
-    ),
-  );
-}
-
-/// Section block: a theme plate with no border.
-class CustSheetBlock extends StatelessWidget {
-  const CustSheetBlock({super.key, required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: kCustSheetEdge),
-      child: Material(
-        color: t.pill,
-        borderRadius: BorderRadius.circular(t.radius),
-        clipBehavior: Clip.antiAlias,
-        child: Column(mainAxisSize: MainAxisSize.min, children: children),
-      ),
-    );
-  }
-}
-
-/// Where a row's text starts: its padding, icon box and gap.
-const double kCustRowText = 68;
-
-/// Block row: icon, title and [trailing] on the right (a tick for contexts).
-class CustSheetRow extends StatelessWidget {
-  const CustSheetRow({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.trailing,
-  });
-
-  final BloomGlyph icon;
-  final String label;
-  final VoidCallback onTap;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return Pressable(
-      onTap: onTap,
-      scale: 0.98,
-      child: SizedBox(
-        height: 64,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 38,
-                child: BloomIcon(icon, size: 20, color: t.iconFg),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              ?trailing,
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Button pinned to the sheet's bottom (Delete): no fill, a thin border and a
-/// centred white caption.
-class CustSheetFooterButton extends StatelessWidget {
-  const CustSheetFooterButton({
-    super.key,
-    required this.label,
-    required this.onTap,
-  });
-
-  final String label;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.all(kCustSheetEdge),
-    child: BloomButton(
-      label: label,
-      tone: ButtonTone.line,
-      pill: false,
-      height: 49,
-      onTap: onTap,
-    ),
+    padding: const EdgeInsets.all(kSheetEdge),
+    child: SheetButton(label: context.l.commonDelete, onTap: onTap),
   );
 }

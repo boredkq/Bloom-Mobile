@@ -1,12 +1,14 @@
-/// The library's plus sheet. Two views: main (a name field and an Import row)
-/// and import (a link field, a target choice, From file, Back). The tick on the
-/// right shows only when the field has something.
+/// The library's plus sheet: a name field and an Import row, which continues the
+/// sheet with a link field, a target choice and From file. The tick on the right
+/// shows only when the field has something.
 ///
 /// No cover at creation: it's set in the playlist itself.
 ///
 /// From file ignores the target: a transfer file is itself made of playlists,
 /// with no way to nest them in the chosen one.
 library;
+
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,15 +26,9 @@ import '../../../shared/ui/platform_logo.dart';
 import '../import_file.dart';
 import '../import_url.dart';
 
-/// How the sheet ended.
+/// How the import page ended.
 sealed class _Outcome {
   const _Outcome();
-}
-
-/// A name was entered: the caller creates the playlist, and then goes to it.
-class _NameEntered extends _Outcome {
-  const _NameEntered(this.name);
-  final String name;
 }
 
 /// A link import already happened inside the sheet: it's asynchronous, with its
@@ -72,17 +68,27 @@ Future<void> showCreatePlaylistSheet(
   BuildContext context,
   WidgetRef ref,
 ) async {
+  final name = await showBloomSheetChild<String>(
+    context: context,
+    child: _NameBody(
+      onImport: (sheet) =>
+          openNextSheet(sheet, () => unawaited(_showImportPage(context, ref))),
+    ),
+  );
+  if (name == null) return;
+  final playlist = ref.read(libraryProvider.notifier).createPlaylist(name);
+  if (context.mounted) context.go('/library/list/${playlist.id}');
+}
+
+Future<void> _showImportPage(BuildContext context, WidgetRef ref) async {
   final l10n = context.l;
   final outcome = await showBloomSheetChild<_Outcome>(
     context: context,
-    child: const _AddBody(),
+    child: const _ImportBody(),
   );
-  if (outcome == null) return;
-
   switch (outcome) {
-    case _NameEntered(:final name):
-      final playlist = ref.read(libraryProvider.notifier).createPlaylist(name);
-      if (context.mounted) context.go('/library/list/${playlist.id}');
+    case null:
+      return;
     case _Imported(:final result):
       toaster.show(
         importResultText(l10n, result),
@@ -100,33 +106,74 @@ Future<void> showCreatePlaylistSheet(
   }
 }
 
-class _AddBody extends ConsumerStatefulWidget {
-  const _AddBody();
+class _NameBody extends StatefulWidget {
+  const _NameBody({required this.onImport});
+
+  /// Gets the sheet's own context: Import continues this sheet.
+  final ValueChanged<BuildContext> onImport;
 
   @override
-  ConsumerState<_AddBody> createState() => _AddBodyState();
+  State<_NameBody> createState() => _NameBodyState();
 }
 
-class _AddBodyState extends ConsumerState<_AddBody> {
+class _NameBodyState extends State<_NameBody> {
   final _name = TextEditingController();
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final name = _name.text.trim();
+    if (name.isEmpty) return;
+    Navigator.of(context).pop(name);
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      SheetField(
+        controller: _name,
+        hint: context.l.cpNameHint,
+        autofocus: true,
+        onChanged: (_) => setState(() {}),
+        onSubmit: _submit,
+      ),
+      SheetPanel(
+        children: [
+          SheetRow(
+            icon: Bi.import,
+            label: context.l.cpImport,
+            trailing: const SheetChevron(),
+            onTap: () => widget.onImport(context),
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+class _ImportBody extends ConsumerStatefulWidget {
+  const _ImportBody();
+
+  @override
+  ConsumerState<_ImportBody> createState() => _ImportBodyState();
+}
+
+class _ImportBodyState extends ConsumerState<_ImportBody> {
   final _url = TextEditingController();
 
-  bool _importView = false;
   bool _busy = false;
   bool _targetOpen = false;
   ImportTarget _target = const ImportTarget.create();
 
   @override
   void dispose() {
-    _name.dispose();
     _url.dispose();
     super.dispose();
-  }
-
-  void _submitName() {
-    final name = _name.text.trim();
-    if (name.isEmpty) return;
-    Navigator.of(context).pop(_NameEntered(name));
   }
 
   Future<void> _runImport() async {
@@ -163,18 +210,6 @@ class _AddBodyState extends ConsumerState<_AddBody> {
           context.l.commonCreatePlaylist,
   };
 
-  @override
-  Widget build(BuildContext context) {
-    final playlists = ref.watch(libraryProvider).playlists;
-
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOut,
-      alignment: Alignment.topCenter,
-      child: _importView ? _importBody(playlists) : _mainBody(),
-    );
-  }
-
   /// An import target. A playlist stands with its cover: among many it's found
   /// by the picture sooner than by the name.
   Widget _targetRow((ImportTarget, String, BloomGlyph, String?) option) {
@@ -195,108 +230,90 @@ class _AddBodyState extends ConsumerState<_AddBody> {
     );
   }
 
-  Widget _mainBody() => Column(
-    key: const ValueKey('main'),
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      SheetField(
-        controller: _name,
-        hint: context.l.cpNameHint,
-        autofocus: true,
-        onChanged: (_) => setState(() {}),
-        onSubmit: _submitName,
-      ),
-      SheetPanel(
-        children: [
-          SheetRow(
-            icon: Bi.import,
-            label: context.l.cpImport,
-            trailing: const SheetChevron(),
-            onTap: () => setState(() => _importView = true),
-          ),
-        ],
-      ),
-    ],
-  );
+  @override
+  Widget build(BuildContext context) {
+    final playlists = ref.watch(libraryProvider).playlists;
 
-  Widget _importBody(List<UserPlaylist> playlists) => Column(
-    key: const ValueKey('import'),
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      SheetField(
-        controller: _url,
-        hint: context.l.cpLinkHint,
-        autofocus: true,
-        busy: _busy,
-        // Platform icon in the field, once the link is recognised.
-        trailing: switch (detectLinkSource(_url.text)) {
-          final source? => PlatformLogo(source, size: 18),
-          null => null,
-        },
-        onChanged: (_) => setState(() {}),
-        onSubmit: _runImport,
-      ),
-      SheetPanel(
+    // The target list opens by height, or the sheet would jerk by all of it.
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      alignment: Alignment.topCenter,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          SheetRow(
-            icon: Bi.folderPathConnect,
-            label: context.l.cpDestination(_targetLabel(playlists)),
-            trailing: const SheetChevron(),
-            onTap: () => setState(() => _targetOpen = !_targetOpen),
+          SheetField(
+            controller: _url,
+            hint: context.l.cpLinkHint,
+            autofocus: true,
+            busy: _busy,
+            // Platform icon in the field, once the link is recognised.
+            trailing: switch (detectLinkSource(_url.text)) {
+              final source? => PlatformLogo(source, size: 18),
+              null => null,
+            },
+            onChanged: (_) => setState(() {}),
+            onSubmit: _runImport,
           ),
-          if (_targetOpen) ...[
-            sheetDivider(),
-            for (final option in <(ImportTarget, String, BloomGlyph, String?)>[
-              (
-                const ImportTarget.create(),
-                context.l.commonCreatePlaylist,
-                Bi.addCircle,
-                null,
+          SheetPanel(
+            children: [
+              SheetRow(
+                icon: Bi.folderPathConnect,
+                label: context.l.cpDestination(_targetLabel(playlists)),
+                trailing: const SheetChevron(),
+                onTap: () => setState(() => _targetOpen = !_targetOpen),
               ),
-              (
-                const ImportTarget(ImportTargetKind.library),
-                context.l.commonAllTracks,
-                Bi.musicNote,
-                null,
+              if (_targetOpen) ...[
+                sheetDivider(),
+                for (final option
+                    in <(ImportTarget, String, BloomGlyph, String?)>[
+                      (
+                        const ImportTarget.create(),
+                        context.l.commonCreatePlaylist,
+                        Bi.addCircle,
+                        null,
+                      ),
+                      (
+                        const ImportTarget(ImportTargetKind.library),
+                        context.l.commonAllTracks,
+                        Bi.musicNote,
+                        null,
+                      ),
+                      (
+                        const ImportTarget(ImportTargetKind.favorites),
+                        context.l.commonFavorites,
+                        Bi.heartBold,
+                        null,
+                      ),
+                      // Playlists show with covers: an own list is known by its
+                      // picture faster than by name, and one icon for all tells
+                      // nothing apart.
+                      for (final p in playlists)
+                        (
+                          ImportTarget(
+                            ImportTargetKind.playlist,
+                            playlistId: p.id,
+                          ),
+                          p.name,
+                          Bi.musicLibrary2,
+                          p.cover ?? '',
+                        ),
+                    ])
+                  _targetRow(option),
+              ],
+            ],
+          ),
+          SheetPanel(
+            children: [
+              SheetRow(
+                icon: Bi.file,
+                label: context.l.cpFromFile,
+                onTap: () => Navigator.of(context).pop(const _FileRequested()),
               ),
-              (
-                const ImportTarget(ImportTargetKind.favorites),
-                context.l.commonFavorites,
-                Bi.heartBold,
-                null,
-              ),
-              // Playlists show with covers: an own list is known by its picture
-              // faster than by name, and one icon for all tells nothing apart.
-              for (final p in playlists)
-                (
-                  ImportTarget(ImportTargetKind.playlist, playlistId: p.id),
-                  p.name,
-                  Bi.musicLibrary2,
-                  p.cover ?? '',
-                ),
-            ])
-              _targetRow(option),
-          ],
+            ],
+          ),
         ],
       ),
-      SheetPanel(
-        children: [
-          SheetRow(
-            icon: Bi.file,
-            label: context.l.cpFromFile,
-            onTap: () => Navigator.of(context).pop(const _FileRequested()),
-          ),
-          sheetDivider(),
-          SheetRow(
-            icon: Bi.arrowLeft,
-            label: context.l.commonBack,
-            onTap: () => setState(() {
-              _importView = false;
-              _targetOpen = false;
-            }),
-          ),
-        ],
-      ),
-    ],
-  );
+    );
+  }
 }

@@ -849,15 +849,13 @@ class _PlayOnButton extends ConsumerWidget {
   }
 
   static void _showPlayOn(BuildContext context, WidgetRef ref, bool onPc) {
-    final t = context.bloom;
     final pc = ref.read(pcProvider).link?.name ?? '';
     final remote = ref.read(pcRemoteProvider.notifier);
-    Widget? mark(bool on) =>
-        on ? BloomIcon(Bi.check, size: 18, color: t.accent) : null;
-    showBloomSheet(
+    Widget? mark(bool on) => on ? const SheetTick() : null;
+    showBloomSheetChild<void>(
       context: context,
-      groups: [
-        [
+      child: SheetActionsPanel(
+        actions: [
           SheetAction(
             icon: Bi.monitor,
             label: pc.isEmpty ? context.l.setPc : pc,
@@ -871,7 +869,7 @@ class _PlayOnButton extends ConsumerWidget {
             onTap: onPc ? remote.playHere : null,
           ),
         ],
-      ],
+      ),
     );
   }
 }

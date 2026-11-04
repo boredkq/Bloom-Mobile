@@ -23,6 +23,7 @@ import '../../features/player/play_source.dart';
 import '../../features/player/player_controller.dart';
 import '../../features/wave/wave_actions.dart';
 import '../../features/wave/wave_store.dart';
+import '../util/artists.dart';
 import 'atoms.dart';
 import 'bloom_icon.dart';
 import 'bloom_sheet.dart';
@@ -81,6 +82,7 @@ Future<void> showTrackActions(
       SheetAction(
         icon: Bi.plus,
         label: context.l.taAddToPlaylist,
+        next: true,
         onTap: () => showAddToPlaylistSheet(context, ref, track),
       ),
       SheetAction(
@@ -98,6 +100,7 @@ Future<void> showTrackActions(
         SheetAction(
           icon: Bi.downloadMinimalistic,
           label: context.l.taDownload,
+          next: true,
           onTap: () =>
               _showDownloadSheet(context, ref, track, canOffline: canOffline),
         ),
@@ -126,6 +129,8 @@ Future<void> showTrackActions(
             icon: Bi.user,
             label: context.l.taGoToArtist,
             subtitle: track.artist,
+            // Several to pick from; a lone artist opens at once.
+            next: artistLinks(track).length > 1,
             onTap: () => openTrackArtist(context, ref, track),
           ),
         // About the library's record, so not for search results or own files.
@@ -134,12 +139,14 @@ Future<void> showTrackActions(
             icon: Bi.refreshSquare,
             label: context.l.spSwitch,
             subtitle: track.source.label10n(context.l),
+            next: true,
             onTap: () => _showSwitchPlatformSheet(context, ref, track),
           ),
         SheetAction(
           icon: Bi.infoCircle,
           label: context.l.tiTitle,
           subtitle: context.l.tiHint,
+          next: true,
           onTap: () =>
               showTrackInfoSheet(context, track, addedAt: lib.inLib[track.id]),
         ),

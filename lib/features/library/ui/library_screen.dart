@@ -780,23 +780,20 @@ class _DragCellState extends State<_DragCell> {
 }
 
 Future<void> _showSortSheet(BuildContext context, WidgetRef ref) {
-  final t = context.bloom;
   final active = ref.read(libOrderProvider).sort;
-  return showBloomSheet(
+  return showBloomSheetChild<void>(
     context: context,
-    groups: [
-      [
+    child: SheetActionsPanel(
+      actions: [
         for (final sort in LibSort.values)
           SheetAction(
             icon: sort.icon,
             label: sort.label(context.l),
             onTap: () => ref.read(libOrderProvider.notifier).setSort(sort),
-            trailing: sort == active
-                ? BloomIcon(Bi.checkCircleBold, size: 18, color: t.accent)
-                : null,
+            trailing: sort == active ? const SheetTick() : null,
           ),
       ],
-    ],
+    ),
   );
 }
 

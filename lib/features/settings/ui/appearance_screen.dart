@@ -1260,16 +1260,15 @@ class _ThemeCreatorState extends State<_ThemeCreator> {
           Row(
             children: [
               Expanded(
-                child: BloomButton(
+                child: SheetButton(
                   label: context.l.thRandom,
                   icon: Bi.magicStick,
-                  color: t.text2,
                   onTap: _random,
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: BloomButton(
+                child: SheetButton(
                   label: context.l.commonSave,
                   tone: ButtonTone.accent,
                   onTap: () => Navigator.of(context).pop(
@@ -1362,6 +1361,15 @@ class _ThemeDots extends StatelessWidget {
   }
 }
 
+/// The plate under a theme: a film, a stronger one for the chosen theme.
+BoxDecoration _themePlate(BuildContext context, bool active) {
+  final t = context.bloom;
+  return BoxDecoration(
+    color: t.text.withValues(alpha: active ? 0.12 : 0.04),
+    borderRadius: BorderRadius.circular(t.radius),
+  );
+}
+
 /// A full row above the presets. No colours of its own: it wears the ones on
 /// screen, taken from the cover.
 class _AutoThemeCard extends StatelessWidget {
@@ -1377,7 +1385,6 @@ class _AutoThemeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.bloom;
     final preview = preset.tokens();
     return Pressable(
       onTap: onTap,
@@ -1385,14 +1392,7 @@ class _AutoThemeCard extends StatelessWidget {
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: preview.bg,
-          borderRadius: BorderRadius.circular(t.radius),
-          border: Border.all(
-            color: active ? t.accent : preview.border,
-            width: active ? 2 : 1,
-          ),
-        ),
+        decoration: _themePlate(context, active),
         child: Row(
           children: [
             _ThemeDots(preset: preset, size: 24, ring: preview.bg),
@@ -1402,12 +1402,10 @@ class _AutoThemeCard extends StatelessWidget {
                 preset.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(color: preview.text),
+                style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
-            if (active) BloomIcon(Bi.check, size: 18, color: preview.accent),
+            if (active) const SheetTick(),
           ],
         ),
       ),
@@ -1415,7 +1413,7 @@ class _AutoThemeCard extends StatelessWidget {
   }
 }
 
-/// A card filled with the theme's background, dots on top, the name below.
+/// A plate with a little window of the theme, dots in it, the name below.
 class _PresetCard extends StatefulWidget {
   const _PresetCard({
     required this.preset,
@@ -1466,49 +1464,50 @@ class _PresetCardState extends State<_PresetCard> {
       child: Container(
         width: widget.width,
         height: 150,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: preview.bg,
-          borderRadius: BorderRadius.circular(t.radius),
-          border: Border.all(
-            color: active ? t.accent : preview.border,
-            width: active ? 2 : 1,
-          ),
-        ),
+        padding: const EdgeInsets.all(8),
+        decoration: _themePlate(context, active),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                _ThemeDots(preset: preset, size: 24, ring: preview.bg),
-                const Spacer(),
-                if (active)
-                  BloomIcon(Bi.check, size: 18, color: preview.accent),
-                if (widget.onDelete != null)
-                  // A larger hit area: the cross is small. Armed it's a red
-                  // bin, so the next tap's meaning shows.
-                  Pressable(
-                    onTap: _delete,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: BloomIcon(
-                        _armed ? Bi.trashBinTrash : Bi.close,
-                        size: 18,
-                        color: _armed ? preview.danger : preview.muted,
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                alignment: Alignment.topCenter,
+                decoration: BoxDecoration(
+                  color: preview.bg,
+                  borderRadius: BorderRadius.circular(t.radius * 0.7),
+                ),
+                child: Row(
+                  children: [
+                    _ThemeDots(preset: preset, size: 24, ring: preview.bg),
+                    const Spacer(),
+                    if (active)
+                      BloomIcon(Bi.check, size: 18, color: preview.accent),
+                    if (widget.onDelete != null)
+                      // A larger hit area: the cross is small. Armed it's a red
+                      // bin, so the next tap's meaning shows.
+                      Pressable(
+                        onTap: _delete,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: BloomIcon(
+                            _armed ? Bi.trashBinTrash : Bi.close,
+                            size: 18,
+                            color: _armed ? preview.danger : preview.muted,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-              ],
+                  ],
+                ),
+              ),
             ),
-            const Spacer(),
+            const SizedBox(height: 8),
             Text(
               preset.name,
-              maxLines: 2,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(color: preview.text),
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
+            const SizedBox(height: 2),
           ],
         ),
       ),

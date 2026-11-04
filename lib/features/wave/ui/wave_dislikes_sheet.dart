@@ -63,7 +63,7 @@ class _Row extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => SheetRow(
-    leading: Cover(url: track.cover, size: 44),
+    leading: Cover(url: track.cover, size: 40),
     gap: 12,
     label: track.name,
     subtitle: track.artist,
@@ -71,7 +71,10 @@ class _Row extends ConsumerWidget {
     // Off the list, the track can be picked again.
     trailing: CircleIconButton(
       icon: Bi.close,
+      size: 40,
       iconSize: 18,
+      background: Colors.transparent,
+      color: context.bloom.muted,
       onTap: () => ref.read(waveStoreProvider.notifier).undislike(track.id),
     ),
   );

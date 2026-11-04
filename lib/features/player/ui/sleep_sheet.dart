@@ -10,7 +10,6 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
@@ -26,7 +25,6 @@ class _SleepSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
     final theme = Theme.of(context).textTheme;
     final l = context.l;
     final sleep = ref.watch(sleepTimerProvider);
@@ -134,24 +132,18 @@ class _SleepSheet extends ConsumerWidget {
                   // of the track has nothing to extend.
                   if (running) ...[
                     Expanded(
-                      child: BloomButton(
+                      child: SheetButton(
                         label: l.playerSleepExtend,
                         icon: Bi.alarmAdd,
-                        tone: ButtonTone.plate,
-                        overlay: true,
-                        height: 44,
                         onTap: ctrl.extend,
                       ),
                     ),
                     const SizedBox(width: 10),
                   ],
                   Expanded(
-                    child: BloomButton(
+                    child: SheetButton(
                       label: l.playerSleepCancel,
                       icon: Bi.alarmTurnOff,
-                      tone: ButtonTone.plate,
-                      overlay: true,
-                      height: 44,
                       onTap: ctrl.cancel,
                     ),
                   ),
@@ -160,12 +152,9 @@ class _SleepSheet extends ConsumerWidget {
             ),
           ],
           const SizedBox(height: 14),
-          Divider(
-            height: 1,
-            thickness: 1,
-            color: t.ovlLine2,
-            indent: 20,
-            endIndent: 20,
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: kSheetEdge),
+            child: SheetLine(),
           ),
           SheetSwitchRow(
             label: l.playerSleepFade,

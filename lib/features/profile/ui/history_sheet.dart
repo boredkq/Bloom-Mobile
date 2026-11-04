@@ -14,7 +14,6 @@ import '../../../shared/ui/track_swipes.dart';
 import '../../library/history_format.dart';
 import '../../player/play_source.dart';
 import '../../settings/swipe_store.dart';
-import '../../../shared/ui/subpage_header.dart';
 import '../../../shared/ui/atoms.dart';
 
 /// The list can run to thousands of rows: it scrolls itself and builds lazily.
@@ -72,9 +71,9 @@ class _HistoryList extends ConsumerWidget {
       itemBuilder: (context, n) {
         final item = items[n];
         if (item is String) {
-          return Padding(
+          return SheetCaption(
+            item,
             padding: const EdgeInsets.fromLTRB(8, 18, 8, 8),
-            child: SettingsCaption(item),
           );
         }
         final i = item as int;

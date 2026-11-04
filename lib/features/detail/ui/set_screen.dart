@@ -326,6 +326,7 @@ class _SetScreenState extends ConsumerState<SetScreen> {
             icon: Bi.import,
             label: context.l.artistImport,
             subtitle: context.l.artistImportHint,
+            next: true,
             onTap: canPlay ? _import : null,
           ),
         ],

@@ -675,19 +675,26 @@ Future<void> showSortSheet(
             color: t.accent,
           ),
   );
-  // The line separates sorts from Default and the filter.
-  return showBloomSheet(
+  // Two plates: sorts apart from Default and the filter.
+  return showBloomSheetChild<void>(
     context: context,
-    groups: [
-      [
-        for (final s in TrackSort.values)
-          if (s.directional) item(s),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SheetActionsPanel(
+          actions: [
+            for (final s in TrackSort.values)
+              if (s.directional) item(s),
+          ],
+        ),
+        SheetActionsPanel(
+          actions: [
+            for (final s in TrackSort.values)
+              if (!s.directional) item(s),
+          ],
+        ),
       ],
-      [
-        for (final s in TrackSort.values)
-          if (!s.directional) item(s),
-      ],
-    ],
+    ),
   );
 }
 
@@ -872,6 +879,7 @@ Future<void> showPlaylistMenu(
           icon: Bi.import,
           label: context.l.tlMergeWith,
           subtitle: context.l.tlMergeHint,
+          next: true,
           onTap: () => showMergeSheet(context, ref, playlist),
         ),
         // Transfer is a copy with another platform's tracks. An empty playlist
@@ -881,6 +889,7 @@ Future<void> showPlaylistMenu(
             icon: Bi.arrowRight,
             label: context.l.tlConvert,
             subtitle: context.l.tlConvertHint,
+            next: true,
             onTap: () => showConvertSheet(context, ref, playlist, tracks),
           ),
         // Duplicate search runs right in the list, so I open the playlist

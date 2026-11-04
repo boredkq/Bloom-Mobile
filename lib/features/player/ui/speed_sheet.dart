@@ -26,7 +26,6 @@ class _SpeedSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
     final theme = Theme.of(context).textTheme;
     final l = context.l;
     final speed = ref.watch(speedProvider);
@@ -100,12 +99,9 @@ class _SpeedSheet extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 14),
-          Divider(
-            height: 1,
-            thickness: 1,
-            color: t.ovlLine2,
-            indent: 20,
-            endIndent: 20,
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: kSheetEdge),
+            child: SheetLine(),
           ),
           SheetSwitchRow(
             label: l.playerSpeedNightcore,

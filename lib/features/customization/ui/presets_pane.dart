@@ -19,7 +19,6 @@ import '../presets_file.dart';
 import '../presets_store.dart';
 import 'custom_sheet.dart';
 import 'custom_widgets.dart';
-import '../../../shared/ui/subpage_header.dart';
 
 class PresetsPane extends ConsumerWidget {
   const PresetsPane({super.key});
@@ -246,8 +245,7 @@ class _PresetCard extends ConsumerWidget {
       context: context,
       header: CustSheetPreview(srcs: srcs),
       footer: Builder(
-        builder: (sheet) => CustSheetFooterButton(
-          label: l10n.commonDelete,
+        builder: (sheet) => CustSheetDelete(
           onTap: close(
             sheet,
             () => ref.read(presetsProvider.notifier).delete(preset.id),
@@ -260,10 +258,10 @@ class _PresetCard extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Preset name as a caption over the block.
-            CustSheetLabel(name),
-            CustSheetBlock(
+            SheetCaption(name),
+            SheetPanel(
               children: [
-                CustSheetRow(
+                SheetRow(
                   icon: Bi.checkCircle,
                   label: l10n.custPresetApply,
                   onTap: close(sheet, () {
@@ -274,8 +272,8 @@ class _PresetCard extends ConsumerWidget {
                     );
                   }),
                 ),
-                const GroupDivider(indent: kCustRowText),
-                CustSheetRow(
+                sheetDivider(indent: 60),
+                SheetRow(
                   icon: Bi.export,
                   label: l10n.custPresetExport,
                   onTap: close(sheet, () async {

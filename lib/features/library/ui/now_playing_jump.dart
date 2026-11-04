@@ -187,7 +187,7 @@ class _NowPlayingJumpState extends ConsumerState<NowPlayingJump> {
           child: Pressable(
             onTap: _jump,
             child: GlassBox(
-              shape: StadiumBorder(side: BorderSide(color: t.ovlLine)),
+              shape: const StadiumBorder(),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(14, 0, 12, 0),
                 child: SizedBox(

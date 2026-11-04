@@ -135,15 +135,14 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
               Row(
                 children: [
                   Expanded(
-                    child: BloomButton(
+                    child: SheetButton(
                       label: context.l.commonCancel,
-                      color: t.text2,
                       onTap: () => Navigator.of(context).pop(),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: BloomButton(
+                    child: SheetButton(
                       label: context.l.commonDone,
                       tone: ButtonTone.accent,
                       onTap: () => Navigator.of(context).pop(_color),

@@ -6,12 +6,15 @@
 /// mini player too; otherwise they would stay above the dimming.
 library;
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme/tokens.dart';
+import '../../core/l10n/l10n.dart';
 import '../../core/store/cover_store.dart';
 import '../../features/settings/transparency_store.dart';
 import '../util/format.dart';
@@ -27,6 +30,7 @@ class SheetAction {
     required this.label,
     this.subtitle,
     this.onTap,
+    this.next = false,
     this.danger = false,
     this.trailing,
   });
@@ -37,9 +41,11 @@ class SheetAction {
   /// Grey line under the label. The capsule shows only the icon.
   final String? subtitle;
 
-  /// The sheet closes BEFORE the call: nearly every item opens a dialog or
-  /// another sheet, and those can't open over this one.
+  /// The sheet closes BEFORE the call, unless the item is [next].
   final VoidCallback? onTap;
+
+  /// [onTap] opens another sheet: it takes this one's place, with a Back row.
+  final bool next;
 
   /// Red: removes something.
   final bool danger;
@@ -48,11 +54,11 @@ class SheetAction {
   final Widget? trailing;
 }
 
-/// A sheet of items: [bar] in the capsule, [groups] as rows below it. Empty
-/// groups drop out.
+/// The menu of a track, list or artist: the banner, [bar] in the capsule, [groups]
+/// as flat rows below it. Empty groups drop out.
 Future<void> showBloomSheet({
   required BuildContext context,
-  Widget? header,
+  required SheetHero header,
   List<SheetAction> bar = const [],
   required List<List<SheetAction>> groups,
 }) {
@@ -102,12 +108,15 @@ const double kSheetRadius = 28;
 /// on it.
 const double kSheetEdge = 20;
 
-/// Inset of flat rows from the sheet's edge. A row adds its own 16, so icons
-/// stand at 24.
+/// Inset of a menu's flat rows from the sheet's edge. A row adds its own 16, so
+/// icons stand at 24.
 const double _kFlatEdge = 8;
 
 /// Height of a sheet's row, with a grey line or without.
 const double _kRowHeight = 56;
+
+/// How long a sheet takes to swap its content for what continues it.
+const Duration _kSheetSwap = Duration(milliseconds: 280);
 
 /// Opens a sheet: the one way in for all of them, those with a shell of their
 /// own too (queue, speed, colour picker).
@@ -118,14 +127,24 @@ Future<T?> showBloomModal<T>({
   required BuildContext context,
   required WidgetBuilder builder,
 }) {
+  // Called from [openNextSheet]: the open sheet shows this one instead.
+  if (_nextInto case final chain?) {
+    _nextInto = null;
+    return chain.push<T>(builder);
+  }
+
   final navigator = Navigator.of(context, rootNavigator: true);
   final glass = ProviderScope.containerOf(
     context,
     listen: false,
   ).read(overlayGlassProvider);
-  return navigator.push(
-    _BloomSheetRoute<T>(
-      builder: (context) => _FloatingFrame(child: builder(context)),
+  final first = _SheetPage<T>(builder);
+  final chain = _SheetChain(first);
+  // The route's own type is loose: a page further along closes the whole sheet
+  // with a result of its own type.
+  final closed = navigator.push<Object?>(
+    _BloomSheetRoute<Object?>(
+      builder: (_) => _FloatingFrame(child: _SheetStack(chain: chain)),
       capturedThemes: InheritedTheme.capture(
         from: context,
         to: navigator.context,
@@ -137,11 +156,396 @@ Future<T?> showBloomModal<T>({
       ),
     ),
   );
+  unawaited(closed.then(chain.close));
+  return first.result.future;
+}
+
+/// Where the next [showBloomModal] goes; set only while [openNextSheet] runs.
+_SheetChain? _nextInto;
+
+/// Runs [open], which opens a sheet: the sheet of [context] stays and shows it,
+/// with a Back row. If [open] decided not to open one, this sheet just closes.
+void openNextSheet(BuildContext context, VoidCallback open) {
+  _nextInto = context.getInheritedWidgetOfExactType<_SheetStackScope>()?.chain;
+  open();
+  final opened = _nextInto == null;
+  _nextInto = null;
+  if (!opened) Navigator.of(context).pop();
+}
+
+/// One screen of a sheet.
+class _SheetPage<T> {
+  _SheetPage(this.builder);
+
+  final WidgetBuilder builder;
+  final Completer<T?> result = Completer<T?>();
+  final Key key = UniqueKey();
+
+  void finish(Object? value) {
+    if (result.isCompleted) return;
+    result.complete(value is T ? value : null);
+  }
+}
+
+/// The screens of one sheet: the last is on show, the rest wait to come back.
+class _SheetChain extends ChangeNotifier {
+  _SheetChain(_SheetPage<dynamic> first) : pages = [first];
+
+  final List<_SheetPage<dynamic>> pages;
+  bool _closed = false;
+
+  Future<T?> push<T>(WidgetBuilder builder) {
+    final page = _SheetPage<T>(builder);
+    pages.add(page);
+    notifyListeners();
+    return page.result.future;
+  }
+
+  void back() {
+    if (_closed || pages.length < 2) return;
+    pages.removeLast().finish(null);
+    notifyListeners();
+  }
+
+  /// The sheet closed whole: what was picked belongs to the page on show. The
+  /// pages stay as they are, the sheet still has to slide away.
+  void close(Object? value) {
+    _closed = true;
+    pages.last.finish(value);
+    for (final page in pages) {
+      page.finish(null);
+    }
+  }
+}
+
+/// A page's place in its chain.
+class _SheetStackScope extends InheritedWidget {
+  const _SheetStackScope({
+    required this.chain,
+    required this.depth,
+    required this.ownSurface,
+    required super.child,
+  });
+
+  final _SheetChain chain;
+
+  /// 0 for the first page, which has nothing to go back to.
+  final int depth;
+
+  /// False: one surface stands behind all the pages, so a page paints none.
+  final bool ownSurface;
+
+  static _SheetStackScope? of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_SheetStackScope>();
+
+  @override
+  bool updateShouldNotify(_SheetStackScope old) =>
+      old.depth != depth || old.ownSurface != ownSurface;
+}
+
+/// Shows a chain's last page. The swap: the old content slides and fades out,
+/// the new one in, the sheet's height following.
+class _SheetStack extends StatefulWidget {
+  const _SheetStack({required this.chain});
+
+  final _SheetChain chain;
+
+  @override
+  State<_SheetStack> createState() => _SheetStackState();
+}
+
+class _SheetStackState extends State<_SheetStack>
+    with SingleTickerProviderStateMixin {
+  /// How far the content travels, as a share of the sheet's width.
+  static const double _travel = 0.2;
+
+  late final AnimationController _swap = AnimationController(
+    vsync: this,
+    duration: _kSheetSwap,
+    value: 1,
+  );
+  late final CurvedAnimation _curve = CurvedAnimation(
+    parent: _swap,
+    curve: Curves.easeOutCubic,
+  );
+
+  late _SheetPage<dynamic> _top = widget.chain.pages.last;
+  late List<_SheetPage<dynamic>> _shown = [...widget.chain.pages];
+  _SheetPage<dynamic>? _leaving;
+  bool _forward = true;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.chain.addListener(_chainChanged);
+    _swap.addStatusListener((status) {
+      if (status != AnimationStatus.completed || !mounted) return;
+      setState(() {
+        _leaving = null;
+        _shown = [...widget.chain.pages];
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    widget.chain.removeListener(_chainChanged);
+    _curve.dispose();
+    _swap.dispose();
+    super.dispose();
+  }
+
+  void _chainChanged() {
+    final pages = widget.chain.pages;
+    final before = _top;
+    setState(() {
+      _top = pages.last;
+      _forward = pages.contains(before);
+      _leaving = before;
+      _shown = [...pages, if (!_forward) before];
+    });
+    _swap.forward(from: 0);
+  }
+
+  Widget _slot(_SheetPage<dynamic> page, bool ownSurface) {
+    final onShow = page == _top;
+    final visible = onShow || page == _leaving;
+    return _SheetSlot(
+      key: page.key,
+      sizes: onShow,
+      child: Offstage(
+        offstage: !visible,
+        child: TickerMode(
+          enabled: visible,
+          child: AnimatedBuilder(
+            animation: _curve,
+            builder: (_, child) {
+              final way = (_forward ? 1 : -1) * _travel;
+              final v = _curve.value;
+              final (shift, opacity) = switch ((onShow, _leaving == null)) {
+                (_, true) => (0.0, 1.0),
+                (true, false) => (way * (1 - v), v),
+                (false, false) => (-way * v, 1 - v),
+              };
+              return FractionalTranslation(
+                translation: Offset(shift, 0),
+                child: Opacity(opacity: opacity, child: child),
+              );
+            },
+            child: _SheetStackScope(
+              chain: widget.chain,
+              // A leaving page isn't in the chain any more but keeps its row.
+              depth: _shown.indexOf(page),
+              ownSurface: ownSurface,
+              child: _SheetPageFocus(
+                active: onShow,
+                child: Builder(builder: page.builder),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final moving = _leaving != null;
+    final nested = widget.chain.pages.length > 1;
+    final shared = nested || moving;
+    return PopScope(
+      canPop: !nested,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) widget.chain.back();
+      },
+      child: Stack(
+        fit: StackFit.passthrough,
+        children: [
+          if (shared)
+            const Positioned.fill(
+              child: SheetSurface(child: SizedBox.expand()),
+            ),
+          AnimatedBuilder(
+            animation: _curve,
+            builder: (_, child) =>
+                _SheetHeight(progress: _curve.value, child: child),
+            child: Stack(
+              fit: StackFit.passthrough,
+              alignment: Alignment.topCenter,
+              children: [for (final page in _shown) _slot(page, !shared)],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Takes a sheet's height from the old page's to the new one's during a swap.
+/// At rest it's just the page's height: content that changes inside a page is
+/// not to be animated.
+class _SheetHeight extends SingleChildRenderObjectWidget {
+  const _SheetHeight({required this.progress, super.child});
+
+  final double progress;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderSheetHeight(progress);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderSheetHeight renderObject,
+  ) {
+    renderObject.progress = progress;
+  }
+}
+
+class _RenderSheetHeight extends RenderProxyBox {
+  _RenderSheetHeight(this._progress);
+
+  double _progress;
+  double? _from;
+  final LayerHandle<ClipRectLayer> _clip = LayerHandle<ClipRectLayer>();
+
+  set progress(double value) {
+    if (value == _progress) return;
+    // A swap starts, or starts over: from the height there is right now.
+    if (value < _progress && hasSize) _from = size.height;
+    _progress = value;
+    markNeedsLayout();
+  }
+
+  @override
+  void performLayout() {
+    child!.layout(constraints, parentUsesSize: true);
+    final page = child!.size;
+    final from = _from;
+    size = _progress >= 1 || from == null
+        ? page
+        : constraints.constrain(
+            Size(page.width, from + (page.height - from) * _progress),
+          );
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    if (child!.size.height <= size.height) {
+      _clip.layer = null;
+      return super.paint(context, offset);
+    }
+    _clip.layer = context.pushClipRect(
+      needsCompositing,
+      offset,
+      Offset.zero & size,
+      super.paint,
+      oldLayer: _clip.layer,
+    );
+  }
+
+  @override
+  void dispose() {
+    _clip.layer = null;
+    super.dispose();
+  }
+}
+
+/// A page's own focus. Without it a field's autofocus finds focus taken by the
+/// page underneath, and typing goes there. The page on show takes focus; coming
+/// back, its field gets it again.
+class _SheetPageFocus extends StatefulWidget {
+  const _SheetPageFocus({required this.active, required this.child});
+
+  final bool active;
+  final Widget child;
+
+  @override
+  State<_SheetPageFocus> createState() => _SheetPageFocusState();
+}
+
+class _SheetPageFocusState extends State<_SheetPageFocus> {
+  final FocusScopeNode _node = FocusScopeNode(debugLabel: 'sheet page');
+
+  void _takeFocus() => WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (mounted && widget.active) _node.requestFocus();
+  });
+
+  @override
+  void initState() {
+    super.initState();
+    _takeFocus();
+  }
+
+  @override
+  void didUpdateWidget(_SheetPageFocus old) {
+    super.didUpdateWidget(old);
+    if (widget.active && !old.active) _takeFocus();
+  }
+
+  @override
+  void dispose() {
+    _node.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      FocusScope(node: _node, child: widget.child);
+}
+
+/// A page in the stack. Only the page on show gives the stack its height; the
+/// others are laid out too and keep their state, at no height of their own.
+class _SheetSlot extends SingleChildRenderObjectWidget {
+  const _SheetSlot({super.key, required this.sizes, required super.child});
+
+  final bool sizes;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderSheetSlot(sizes);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderSheetSlot renderObject) {
+    renderObject.sizes = sizes;
+  }
+}
+
+class _RenderSheetSlot extends RenderProxyBox {
+  _RenderSheetSlot(this._sizes);
+
+  bool _sizes;
+
+  set sizes(bool value) {
+    if (value == _sizes) return;
+    _sizes = value;
+    markNeedsLayout();
+  }
+
+  // The sheet's width comes loose. Every page takes all of it, or one at no size
+  // would stand in the middle of the stack.
+  BoxConstraints _full(BoxConstraints c) => c.tighten(width: c.maxWidth);
+
+  @override
+  Size computeDryLayout(BoxConstraints constraints) {
+    final full = _full(constraints);
+    return _sizes ? child!.getDryLayout(full) : full.smallest;
+  }
+
+  @override
+  void performLayout() {
+    final full = _full(constraints);
+    child!.layout(full, parentUsesSize: _sizes);
+    size = _sizes ? child!.size : full.smallest;
+  }
 }
 
 /// A sheet whose dimming can be glass. The sheet route doesn't pass a barrier
 /// filter on, so I replace the barrier itself; a `Consumer`, because the blur
 /// slider lives in a sheet and its own dimming must follow the finger.
+///
+/// A tap outside closes the whole sheet. The stock barrier asks to pop politely,
+/// and a sheet with somewhere to go back to would only go back.
 class _BloomSheetRoute<T> extends ModalBottomSheetRoute<T> {
   _BloomSheetRoute({
     required super.builder,
@@ -153,7 +557,11 @@ class _BloomSheetRoute<T> extends ModalBottomSheetRoute<T> {
 
   @override
   Widget buildModalBarrier() {
-    final barrier = super.buildModalBarrier();
+    final barrier = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => navigator?.pop(),
+      child: IgnorePointer(child: super.buildModalBarrier()),
+    );
     return Consumer(
       builder: (context, ref, _) {
         final filter = ref.watch(overlayGlassProvider)?.filter;
@@ -234,24 +642,17 @@ class SheetSurface extends ConsumerWidget {
   }
 }
 
-/// What a sheet's blocks stand on. Under a [SheetHero] they're [flat]: rows
-/// without a plate or lines between them.
+/// What a sheet's blocks stand on.
 class _SheetSkinScope extends InheritedWidget {
-  const _SheetSkinScope({
-    required this.glass,
-    this.flat = false,
-    required super.child,
-  });
+  const _SheetSkinScope({required this.glass, required super.child});
 
   final bool glass;
-  final bool flat;
 
   static _SheetSkinScope? of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<_SheetSkinScope>();
 
   @override
-  bool updateShouldNotify(_SheetSkinScope old) =>
-      old.glass != glass || old.flat != flat;
+  bool updateShouldNotify(_SheetSkinScope old) => old.glass != glass;
 }
 
 /// Fill of a plate inside a sheet: a thin film on glass, or it would be the one
@@ -296,20 +697,22 @@ class SheetShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final media = MediaQuery.of(context);
     final hero = header is SheetHero;
+    final stack = _SheetStackScope.of(context);
+    final back = (stack?.depth ?? 0) > 0 ? stack!.chain.back : null;
 
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: media.size.height * maxFraction),
       child: _SheetSkinScope(
         glass: ref.watch(overlayGlassProvider) != null,
-        flat: hero,
         // A group of its own: the sheet lies over the page and its snapshot of
         // what's underneath must be its own too.
         child: GlassGroup(
           child: Stack(
             children: [
-              const Positioned.fill(
-                child: SheetSurface(child: SizedBox.expand()),
-              ),
+              if (stack?.ownSurface ?? true)
+                const Positioned.fill(
+                  child: SheetSurface(child: SizedBox.expand()),
+                ),
               SafeArea(
                 top: false,
                 child: Column(
@@ -329,6 +732,24 @@ class SheetShell extends ConsumerWidget {
                           : child,
                     ),
                     ?footer,
+                    // Below the list, not in it: a long one must not hide it.
+                    if (back != null)
+                      Padding(
+                        padding: EdgeInsets.only(
+                          top: scrolls ? 0 : 8,
+                          bottom: 16,
+                        ),
+                        child: SheetPanel(
+                          gap: 0,
+                          children: [
+                            SheetRow(
+                              icon: Bi.arrowLeft,
+                              label: context.l.commonBack,
+                              onTap: back,
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -526,7 +947,7 @@ class SheetOptionTile extends StatelessWidget {
                     if (check)
                       BloomCheck(on: active)
                     else if (active)
-                      BloomIcon(Bi.check, size: 20, color: t.accent),
+                      const SheetTick(),
                   ],
                 ),
               ),
@@ -538,6 +959,32 @@ class SheetOptionTile extends StatelessWidget {
   }
 }
 
+/// The one button at a sheet's bottom: a plate by default, its height everywhere.
+class SheetButton extends StatelessWidget {
+  const SheetButton({
+    super.key,
+    required this.label,
+    required this.onTap,
+    this.icon,
+    this.tone = ButtonTone.plate,
+  });
+
+  final String label;
+  final VoidCallback? onTap;
+  final BloomGlyph? icon;
+  final ButtonTone tone;
+
+  @override
+  Widget build(BuildContext context) => BloomButton(
+    label: label,
+    icon: icon,
+    tone: tone,
+    overlay: true,
+    height: 48,
+    onTap: onTap,
+  );
+}
+
 /// A sheet's row with a switch: the whole row toggles.
 class SheetSwitchRow extends StatelessWidget {
   const SheetSwitchRow({
@@ -547,6 +994,7 @@ class SheetSwitchRow extends StatelessWidget {
     this.subtitle,
     required this.value,
     required this.onChanged,
+    this.enabled = true,
     this.danger = false,
     this.padding = const EdgeInsets.all(kSheetEdge),
   });
@@ -556,6 +1004,9 @@ class SheetSwitchRow extends StatelessWidget {
   final String? subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
+
+  /// What depends on a switch that's off greys out and stays in place.
+  final bool enabled;
 
   /// Turning it on removes something: the switch is red, and the row while on.
   final bool danger;
@@ -568,7 +1019,7 @@ class SheetSwitchRow extends StatelessWidget {
     final color = danger && value ? t.danger : t.text;
     final glyph = icon;
     final sub = subtitle;
-    return GestureDetector(
+    final row = GestureDetector(
       onTap: () => onChanged(!value),
       behavior: HitTestBehavior.opaque,
       child: Padding(
@@ -601,6 +1052,9 @@ class SheetSwitchRow extends StatelessWidget {
         ),
       ),
     );
+    return enabled
+        ? row
+        : IgnorePointer(child: Opacity(opacity: 0.4, child: row));
   }
 }
 
@@ -648,7 +1102,7 @@ class SheetSlider extends StatelessWidget {
   );
 }
 
-/// A block of a sheet's rows: a plate, or flat under a [SheetHero].
+/// A block of a sheet's rows, on a plate.
 class SheetPanel extends StatelessWidget {
   const SheetPanel({super.key, required this.children, this.gap = 6});
 
@@ -659,17 +1113,6 @@ class SheetPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final column = Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: children,
-    );
-    if (_SheetSkinScope.of(context)?.flat ?? false) {
-      return Padding(
-        padding: EdgeInsets.symmetric(horizontal: _kFlatEdge, vertical: gap),
-        child: column,
-      );
-    }
     return Padding(
       padding: EdgeInsets.fromLTRB(kSheetEdge, gap, kSheetEdge, gap),
       child: Material(
@@ -678,28 +1121,58 @@ class SheetPanel extends StatelessWidget {
           borderRadius: BorderRadius.circular(context.bloom.radius),
         ),
         clipBehavior: Clip.antiAlias,
-        child: column,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
+        ),
       ),
     );
   }
 }
 
+/// A line across a sheet, between what isn't on a plate.
+class SheetLine extends StatelessWidget {
+  const SheetLine({super.key});
+
+  @override
+  Widget build(BuildContext context) =>
+      Divider(height: 1, thickness: 1, color: sheetLineColor(context));
+}
+
 /// A divider inside a [SheetPanel], starting where the text does: a line under
-/// the icons would cut their column in half. Flat rows go without one.
+/// the icons would cut their column in half.
 ///
 /// [indent] is where the block's text starts: 54 for an icon (16 + 22 + 16).
 Widget sheetDivider({double indent = 54}) => Builder(
-  builder: (context) => _SheetSkinScope.of(context)?.flat ?? false
-      ? const SizedBox.shrink()
-      : Divider(
-          height: 1,
-          thickness: 1,
-          indent: indent,
-          color: sheetLineColor(context),
-        ),
+  builder: (context) => Divider(
+    height: 1,
+    thickness: 1,
+    indent: indent,
+    color: sheetLineColor(context),
+  ),
 );
 
-/// The menu's items as flat rows.
+/// Items on a plate, for a sheet with no banner: a tap closes it and acts.
+class SheetActionsPanel extends StatelessWidget {
+  const SheetActionsPanel({super.key, required this.actions});
+
+  final List<SheetAction> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return SheetPanel(
+      children: [
+        for (final (i, action) in actions.indexed) ...[
+          if (i > 0) sheetDivider(indent: 60),
+          _SheetTile(action: action),
+        ],
+      ],
+    );
+  }
+}
+
+/// A menu's items as flat rows.
 class _SheetGroup extends StatelessWidget {
   const _SheetGroup({required this.actions});
 
@@ -730,19 +1203,22 @@ class _SheetTile extends StatelessWidget {
       subtitle: action.subtitle,
       danger: action.danger,
       trailing: action.trailing,
-      onTap: _closeThen(context, action.onTap),
+      onTap: _handler(context, action),
     );
   }
 }
 
-/// Closes the sheet, then acts. Null stays null: the item is greyed out.
-VoidCallback? _closeThen(BuildContext context, VoidCallback? onTap) =>
-    onTap == null
-    ? null
-    : () {
-        Navigator.of(context).pop();
-        onTap();
-      };
+/// What tapping an item does: closes the sheet and acts, or, for what continues
+/// it, keeps the sheet. Null stays null: the item is greyed out.
+VoidCallback? _handler(BuildContext context, SheetAction action) {
+  final onTap = action.onTap;
+  if (onTap == null) return null;
+  if (action.next) return () => openNextSheet(context, onTap);
+  return () {
+    Navigator.of(context).pop();
+    onTap();
+  };
+}
 
 /// A sheet's row: icon, label, grey line under it, a mark on the right.
 class SheetRow extends StatelessWidget {
@@ -910,7 +1386,7 @@ class _ActionBar extends StatelessWidget {
                   button: true,
                   label: action.label,
                   child: Pressable(
-                    onTap: _closeThen(context, action.onTap),
+                    onTap: _handler(context, action),
                     child: Center(
                       child: BloomIcon(
                         action.icon,
@@ -1248,9 +1724,6 @@ class OptionTile extends StatelessWidget {
         alignment: alignment,
         decoration: BoxDecoration(
           color: active ? t.accent : sheetPanelColor(context),
-          border: Border.all(
-            color: active ? t.accent : sheetLineColor(context),
-          ),
           borderRadius: BorderRadius.circular(t.radius * 0.8),
         ),
         child: builder(active ? t.accentText : t.text),

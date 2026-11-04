@@ -17,7 +17,6 @@ import '../custom_store.dart';
 import '../media_store.dart';
 import 'custom_sheet.dart';
 import 'custom_widgets.dart';
-import '../../../shared/ui/subpage_header.dart';
 
 Future<void> showMediaItemSheet(BuildContext context, MediaItem item) =>
     showBloomSheetChild<void>(
@@ -53,20 +52,17 @@ class _MediaItemBody extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        CustSheetLabel(context.l.custApplyTo),
-        CustSheetBlock(
+        SheetCaption(context.l.custApplyTo),
+        SheetPanel(
           children: [
             for (final ctx in CustomCtx.values) ...[
-              if (ctx != CustomCtx.values.first)
-                const GroupDivider(indent: kCustRowText),
+              if (ctx != CustomCtx.values.first) sheetDivider(indent: 60),
               // A tap places or clears the picture here; the tick means it's
               // there.
-              CustSheetRow(
+              SheetRow(
                 icon: customCtxIcon(ctx),
                 label: _ctxLabel(context, ctx),
-                trailing: targets.of(ctx) == item.id
-                    ? BloomIcon(Bi.check, size: 20, color: context.bloom.text)
-                    : null,
+                trailing: targets.of(ctx) == item.id ? const SheetTick() : null,
                 onTap: () => ref
                     .read(customProvider.notifier)
                     .toggle(ctx, id, targets.of(ctx) != id),
@@ -79,7 +75,7 @@ class _MediaItemBody extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              CustSheetLabel(context.l.custCoverMode),
+              SheetCaption(context.l.custCoverMode),
               for (final m in CoverMode.values)
                 SheetOptionTile(
                   icon: switch (m) {
@@ -101,8 +97,8 @@ class _MediaItemBody extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              CustSheetLabel(context.l.custEffects),
-              CustSheetBlock(
+              SheetCaption(context.l.custEffects),
+              SheetPanel(
                 children: [
                   _SliderRow(
                     label: context.l.custBlur,
@@ -219,8 +215,7 @@ class _DeleteButton extends ConsumerWidget {
   final String id;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => CustSheetFooterButton(
-    label: context.l.commonDelete,
+  Widget build(BuildContext context, WidgetRef ref) => CustSheetDelete(
     onTap: () {
       Navigator.of(context).pop();
       removeMedia(ref.read, id);

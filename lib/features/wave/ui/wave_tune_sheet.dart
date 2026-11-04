@@ -91,10 +91,10 @@ class _TuneSheet extends ConsumerWidget {
                     BloomIcon(Bi.altArrowRight, size: 18, color: t.muted),
                   ],
                 ),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  showWaveDislikesSheet(context);
-                },
+                onTap: () => openNextSheet(
+                  context,
+                  () => showWaveDislikesSheet(context),
+                ),
               ),
             ],
           ),
@@ -131,24 +131,15 @@ class _SourceTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final brand = platformColor[source] ?? t.accent;
     final tile = Pressable(
       onTap: onTap,
       child: Material(
-        // No fill for selected or others: brand colour is only in the outline
-        // and logo.
-        color: Colors.transparent,
+        // The chosen one stands on a film, the others on nothing.
+        color: selected ? t.text.withValues(alpha: 0.1) : Colors.transparent,
         borderRadius: BorderRadius.circular(t.radius * 0.8),
         clipBehavior: Clip.antiAlias,
-        child: Container(
+        child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(t.radius * 0.8),
-            border: Border.all(
-              color: brand.withValues(alpha: selected ? 1 : 0.28),
-              width: selected ? 1.5 : 1,
-            ),
-          ),
           child: Column(
             children: [
               PlatformLogo(source, size: 26),

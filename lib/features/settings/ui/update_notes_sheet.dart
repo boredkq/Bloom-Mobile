@@ -24,11 +24,8 @@ Future<void> showUpdateNote(BuildContext context, UpdateNote note) {
           children: [
             UpdateNoteView(note: note),
             const SizedBox(height: 24),
-            BloomButton(
+            SheetButton(
               label: sheet.l.commonClose,
-              tone: ButtonTone.plate,
-              pill: false,
-              height: 54,
               onTap: () => Navigator.of(sheet).pop(),
             ),
           ],
@@ -112,7 +109,7 @@ class _SummaryPlate extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: t.text.withValues(alpha: 0.05),
+        color: sheetPanelColor(context),
         borderRadius: BorderRadius.circular(t.radius),
       ),
       child: Column(

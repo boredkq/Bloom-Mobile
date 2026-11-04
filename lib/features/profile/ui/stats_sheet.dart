@@ -516,11 +516,10 @@ class _FootState extends ConsumerState<_Foot> {
               padding: const EdgeInsets.symmetric(vertical: 10),
             ),
           ] else if (month != null) ...[
-            BloomButton(
+            SheetButton(
               label: context.l.wrMonth,
               icon: Bi.medalRibbonsStar,
               tone: ButtonTone.accent,
-              height: 44,
               onTap: () {
                 // The review is its own sheet: this one goes first.
                 Navigator.of(context).pop();
@@ -532,12 +531,9 @@ class _FootState extends ConsumerState<_Foot> {
           Row(
             children: [
               Expanded(
-                child: BloomButton(
+                child: SheetButton(
                   label: _asking ? context.l.commonCancel : context.l.statsCopy,
                   icon: _asking ? null : Bi.copy,
-                  tone: ButtonTone.plate,
-                  overlay: true,
-                  height: 44,
                   onTap: _asking
                       ? () => setState(() => _asking = false)
                       : () => _copy(ref.read(profileStatsProvider)),
@@ -545,11 +541,10 @@ class _FootState extends ConsumerState<_Foot> {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: BloomButton(
+                child: SheetButton(
                   label: context.l.statsClear,
                   icon: Bi.trashBinTrash,
                   tone: ButtonTone.danger,
-                  height: 44,
                   onTap: _clear,
                 ),
               ),

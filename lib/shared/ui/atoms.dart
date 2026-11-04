@@ -92,9 +92,6 @@ enum ButtonTone {
   /// Irreversible action: red fill.
   danger,
 
-  /// Secondary: a line, no fill.
-  line,
-
   /// Main action on a coloured backdrop: the text colour's fill reads over any.
   ink,
 }
@@ -143,7 +140,6 @@ class BloomButton extends StatelessWidget {
     final (Color? fill, Color ink) = switch (tone) {
       ButtonTone.text => (null, idle ? t.muted : color ?? t.accent),
       ButtonTone.plate => (null, idle ? t.muted : t.text),
-      ButtonTone.line => (null, t.text2),
       ButtonTone.accent => idle ? (t.pill, t.muted) : (t.accent, t.accentText),
       ButtonTone.danger => idle ? (t.ovlBg, t.muted) : (_danger, Colors.white),
       ButtonTone.ink => (t.text, t.bg),
@@ -185,13 +181,6 @@ class BloomButton extends StatelessWidget {
         ButtonTone.plate => GlassBox(
           borderRadius: radius,
           overlay: overlay,
-          child: box,
-        ),
-        ButtonTone.line => DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: radius,
-            border: Border.all(color: t.ovlLine2),
-          ),
           child: box,
         ),
         _ => DecoratedBox(

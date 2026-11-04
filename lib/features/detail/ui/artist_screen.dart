@@ -436,6 +436,7 @@ class _ArtistScreenState extends ConsumerState<ArtistScreen> {
             icon: Bi.import,
             label: context.l.artistImport,
             subtitle: context.l.artistImportHint,
+            next: true,
             onTap: canPlay ? () => _import(artist) : null,
           ),
         ],

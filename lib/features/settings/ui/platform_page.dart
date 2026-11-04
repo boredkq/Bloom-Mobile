@@ -130,7 +130,7 @@ class PlatformPage extends StatelessWidget {
                 ],
                 BloomButton(
                   label: context.l.commonBack,
-                  tone: ButtonTone.line,
+                  tone: ButtonTone.plate,
                   pill: false,
                   height: 54,
                   onTap: onBack,

@@ -13,7 +13,6 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../pl_auto_store.dart';
-import '../../settings/ui/settings_rows.dart';
 
 /// Period caption.
 String _fmtEvery(AppLocalizations l, int min) =>
@@ -70,11 +69,12 @@ class _PlAutoBody extends ConsumerWidget {
         _Hero(selected: selected, candidates: candidates.length),
         SheetPanel(
           children: [
-            SettingsToggleRow(
-              title: context.l.paAutoTitle,
+            SheetSwitchRow(
+              label: context.l.paAutoTitle,
               subtitle: context.l.paAutoSubtitle,
               value: state.enabled,
               onChanged: auto.setEnabled,
+              padding: const EdgeInsets.all(16),
             ),
             sheetDivider(),
             _IntervalRow(
@@ -83,13 +83,14 @@ class _PlAutoBody extends ConsumerWidget {
               onPick: auto.setEveryMin,
             ),
             sheetDivider(),
-            SettingsToggleRow(
-              title: context.l.paOnStartTitle,
+            SheetSwitchRow(
+              label: context.l.paOnStartTitle,
               subtitle: context.l.paOnStartSubtitle,
               value: state.onStart,
               // Nothing to check at launch without a schedule.
               enabled: state.enabled,
               onChanged: auto.setOnStart,
+              padding: const EdgeInsets.all(16),
             ),
           ],
         ),
@@ -302,7 +303,7 @@ class _CandidateRow extends StatelessWidget {
               : context.l.paRunNoChanges} · ${_ago(context.l, run!.at)}';
 
     return SheetRow(
-      leading: Cover(url: playlist.cover, size: 44, covers: covers),
+      leading: Cover(url: playlist.cover, size: 40, covers: covers),
       gap: 12,
       label: playlist.name,
       subtitle: last == null
@@ -339,10 +340,9 @@ class _Footer extends StatelessWidget {
           const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
-            child: BloomButton(
+            child: SheetButton(
               label: context.l.paRefreshNow,
               tone: ButtonTone.accent,
-              height: 46,
               onTap: canRun ? onRun : null,
             ),
           ),
