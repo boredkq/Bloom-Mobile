@@ -18,6 +18,7 @@ import 'package:bloom/features/search/search_session.dart';
 import 'package:bloom/features/search/ui/search_layer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/test_db.dart';
@@ -138,6 +139,20 @@ void main() {
     expect(searchOpen.value, isFalse);
     expect(find.byType(EditableText), findsNothing);
     expect(_Page.created, 1);
+  });
+
+  testWidgets('the platform logo keeps its size inside the round button', (
+    tester,
+  ) async {
+    final c = await _app(tester);
+    c.read(activeProviderIdProvider.notifier).state = c
+        .read(registryProvider)
+        .enabled
+        .first
+        .id;
+    await _open(tester);
+
+    expect(tester.getSize(find.byType(SvgPicture)), const Size.square(23));
   });
 
   testWidgets('results hide the page, an emptied field shows it again', (

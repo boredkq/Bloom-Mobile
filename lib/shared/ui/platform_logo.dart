@@ -21,15 +21,8 @@ const Map<MusicSource, String> _assets = {
   MusicSource.yandex: 'assets/platform/yandex_music.svg',
 };
 
-/// One-colour versions for tinting. Only YouTube needs a separate file: in the
-/// colour asset the triangle is a white fill over the rectangle, and `srcIn`
-/// would merge them into a blob. SoundCloud and Yandex have one-fill
-/// silhouettes.
-const Map<MusicSource, String> _monoAssets = {
-  MusicSource.ytmusic: 'assets/platform/youtube_mono.svg',
-};
-
-/// Brand colour of each platform.
+/// Brand colour of each platform. Every asset is one fill, YouTube's triangle
+/// is a hole in it, so a tint keeps the shape.
 const Map<MusicSource, Color> platformColor = {
   MusicSource.soundcloud: Color(0xFFFF5500),
   MusicSource.ytmusic: Color(0xFFFF0033),
@@ -65,16 +58,18 @@ class PlatformLogo extends StatelessWidget {
         color: color ?? context.bloom.text,
       );
     }
-    final mono = color != null;
-    final asset = (mono ? _monoAssets[source] : null) ?? _assets[source];
+    final asset = _assets[source];
     if (asset == null) return SizedBox(width: size, height: size);
     final box = size * (_opticalScale[source] ?? 1);
+    final tint = color;
     return SvgPicture.asset(
       asset,
       width: box,
       height: box,
       fit: BoxFit.contain,
-      colorFilter: mono ? ColorFilter.mode(color!, BlendMode.srcIn) : null,
+      colorFilter: tint == null
+          ? null
+          : ColorFilter.mode(tint, BlendMode.srcIn),
     );
   }
 }
