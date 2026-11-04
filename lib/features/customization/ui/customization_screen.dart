@@ -1,6 +1,6 @@
 /// Customization, on one screen: context tiles on top (what stands where),
-/// Library and Presets tabs under them with a plus on the right, and the
-/// current tab's grid. The plus opens its tab's add sheet.
+/// Library and Presets tabs under them, a hairline from the tabs to a plus, and
+/// the current tab's grid. The plus opens its tab's add sheet.
 library;
 
 import 'package:flutter/material.dart';
@@ -26,6 +26,11 @@ enum _Pane { library, presets }
 
 /// Tab change: a slide from the side switched to, with a fade.
 const Duration _kPaneSwitch = Duration(milliseconds: 260);
+
+/// Smaller than the library's tabs: a hairline and the plus share this row.
+const double _kTabsSize = 22;
+const double _kPlusSize = 40;
+const double _kPlusGap = 7;
 
 class CustomizationScreen extends ConsumerStatefulWidget {
   const CustomizationScreen({super.key});
@@ -61,33 +66,48 @@ class _CustomizationScreenState extends ConsumerState<CustomizationScreen> {
             padding: EdgeInsets.symmetric(horizontal: 16),
             child: _CtxTiles(),
           ),
-          // Line between tiles and tabs.
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            child: Divider(height: 1, thickness: 1, color: t.ovlBg),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                PillTabs(
-                  labels: [context.l.custLibrary, context.l.custPresets],
-                  index: _pane.index,
-                  onPick: (i) => _pick(_Pane.values[i]),
-                ),
-                const Spacer(),
-                CircleIconButton(
-                  icon: Bi.add,
-                  size: 40,
-                  iconSize: 22,
-                  background: Colors.transparent,
-                  color: context.bloom.text2,
-                  onTap: () => switch (_pane) {
-                    _Pane.library => showAddMediaSheet(context, ref),
-                    _Pane.presets => showAddPresetSheet(context, ref),
-                  },
-                ),
-              ],
+            // The plus's own margin makes up the rest of the page's 16, so its
+            // glyph ends level with the tiles.
+            padding: const EdgeInsets.only(top: 14, right: 7),
+            child: LayoutBuilder(
+              builder: (context, box) => Row(
+                children: [
+                  // With large system text the tabs scroll rather than push the
+                  // plus off screen, and the hairline shrinks to nothing.
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: box.maxWidth - _kPlusSize - _kPlusGap,
+                    ),
+                    child: IntrinsicWidth(
+                      child: BigTabs<_Pane>(
+                        tabs: [
+                          BigTab(_Pane.library, context.l.custLibrary),
+                          BigTab(_Pane.presets, context.l.custPresets),
+                        ],
+                        current: _pane,
+                        onPick: _pick,
+                        size: _kTabsSize,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Divider(height: 1, thickness: 1, color: t.ovlLine2),
+                  ),
+                  const SizedBox(width: _kPlusGap),
+                  CircleIconButton(
+                    icon: Bi.add,
+                    size: _kPlusSize,
+                    iconSize: 22,
+                    background: Colors.transparent,
+                    color: t.text2,
+                    onTap: () => switch (_pane) {
+                      _Pane.library => showAddMediaSheet(context, ref),
+                      _Pane.presets => showAddPresetSheet(context, ref),
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
           Expanded(
