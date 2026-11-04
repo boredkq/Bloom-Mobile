@@ -902,25 +902,21 @@ class SheetOptionTile extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(14, 15, 18, 15),
                 child: Row(
                   children: [
-                    Container(
-                      width: 38,
-                      height: 38,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: active
-                            ? t.accent.withValues(alpha: 0.16)
-                            : t.text.withValues(alpha: 0.06),
-                        borderRadius: BorderRadius.circular(t.radius * 0.6),
+                    // One width for all, flags are the widest: names stand in a
+                    // straight column.
+                    SizedBox(
+                      width: 32,
+                      child: Center(
+                        child:
+                            leading ??
+                            BloomIcon(
+                              icon!,
+                              size: 22,
+                              color: active ? t.accent : t.iconFg,
+                            ),
                       ),
-                      child:
-                          leading ??
-                          BloomIcon(
-                            icon!,
-                            size: 20,
-                            color: active ? t.accent : t.iconFg,
-                          ),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -936,7 +932,7 @@ class SheetOptionTile extends StatelessWidget {
                             const SizedBox(height: 2),
                             Text(
                               note,
-                              maxLines: 1,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: theme.bodySmall,
                             ),

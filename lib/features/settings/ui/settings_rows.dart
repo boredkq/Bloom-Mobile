@@ -85,7 +85,7 @@ class SettingsLinkRow extends StatelessWidget {
 }
 
 /// A row with a choice behind it: the chosen value under the title, its picture
-/// in a circle on the right, so the choice shows without opening the sheet.
+/// on the right, so the choice shows without opening the sheet.
 class SettingsValueRow extends StatelessWidget {
   const SettingsValueRow({
     super.key,
@@ -111,12 +111,13 @@ class SettingsValueRow extends StatelessWidget {
       subtitle: value,
       subtitleLines: 1,
       onTap: onTap,
-      trailing: TintCircle(
-        size: 40,
-        color: t.text.withValues(alpha: 0.08),
-        child: IconTheme(
-          data: IconThemeData(color: t.iconFg, size: 21),
-          child: glyph,
+      trailing: SizedBox.square(
+        dimension: 26,
+        child: Center(
+          child: IconTheme(
+            data: IconThemeData(color: t.iconFg, size: 22),
+            child: glyph,
+          ),
         ),
       ),
     );
@@ -231,23 +232,20 @@ class SettingsRowShell extends StatelessWidget {
   }
 }
 
-/// A choice shown as a picture over its name: the chosen one is lit.
-class PickCard extends StatelessWidget {
-  const PickCard({
+/// The plate of a choice standing on a page: lit when chosen.
+class PickPlate extends StatelessWidget {
+  const PickPlate({
     super.key,
-    required this.picture,
-    required this.label,
     required this.active,
     required this.onTap,
+    required this.child,
     this.width,
     this.height,
   });
 
-  /// Comes from outside: accent when chosen, dimmed otherwise.
-  final Widget Function(Color ink) picture;
-  final String label;
   final bool active;
   final VoidCallback onTap;
+  final Widget child;
   final double? width;
   final double? height;
 
@@ -264,27 +262,106 @@ class PickCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(t.radius),
           child: Ink(
             color: active ? t.accent.withValues(alpha: 0.12) : null,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  picture(active ? t.accent : t.iconFg),
-                  const SizedBox(height: 10),
-                  Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: active ? t.text : t.text2,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            child: child,
           ),
         ),
       ),
     );
   }
+}
+
+/// A choice shown as a picture over its name.
+class PickCard extends StatelessWidget {
+  const PickCard({
+    super.key,
+    required this.picture,
+    required this.label,
+    required this.active,
+    required this.onTap,
+    this.width,
+    this.height,
+  });
+
+  /// Accent when chosen, dimmed otherwise; icons take it from [IconTheme].
+  final Widget Function(Color ink) picture;
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+  final double? width;
+  final double? height;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final ink = active ? t.accent : t.iconFg;
+    return PickPlate(
+      active: active,
+      onTap: onTap,
+      width: width,
+      height: height,
+      child: Padding(
+        // Narrow sides: three in a row on a small phone still fit their names.
+        padding: const EdgeInsets.fromLTRB(6, 12, 6, 10),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            IconTheme(
+              data: IconThemeData(color: ink, size: 24),
+              child: picture(ink),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: active ? t.text : t.text2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Few choices side by side, right on the page. [active] is a test and not a
+/// value, since a set can have several lit.
+class PickRow<T> extends StatelessWidget {
+  const PickRow({
+    super.key,
+    required this.values,
+    required this.active,
+    required this.label,
+    required this.picture,
+    required this.onTap,
+    this.height = 88,
+  });
+
+  final List<T> values;
+  final bool Function(T value) active;
+  final String Function(T value) label;
+  final Widget Function(T value, Color ink) picture;
+  final ValueChanged<T> onTap;
+
+  /// `null` lets the picture set it.
+  final double? height;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      for (var i = 0; i < values.length; i++) ...[
+        if (i > 0) const SizedBox(width: 12),
+        Expanded(
+          child: PickCard(
+            height: height,
+            label: label(values[i]),
+            active: active(values[i]),
+            picture: (ink) => picture(values[i], ink),
+            onTap: () => onTap(values[i]),
+          ),
+        ),
+      ],
+    ],
+  );
 }

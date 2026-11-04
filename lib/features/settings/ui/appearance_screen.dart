@@ -135,11 +135,6 @@ class AppearanceScreen extends ConsumerWidget {
               subtitle: _navIndicatorLabel(context.l, settings.navIndicator),
               onTap: () => _pickNavIndicator(context, ref),
             ),
-            SettingsLinkRow(
-              title: context.l.apNavLabelsRow,
-              subtitle: _navLabelsLabel(context.l, settings.navLabels),
-              onTap: () => _pickNavLabels(context, ref),
-            ),
             // A switch: it's either the icon or the mark. Last, since it's
             // about one tab and not the bar.
             SettingsToggleRow(
@@ -149,6 +144,30 @@ class AppearanceScreen extends ConsumerWidget {
               onChanged: controller.setNavHomeLogo,
             ),
           ],
+        ),
+        const SizedBox(height: 22),
+        SettingsCaption(context.l.apNavLabelsRow),
+        const SizedBox(height: 10),
+        // The whole bar with its chosen look: it gets compared to one's own.
+        PickRow<NavLabels>(
+          values: NavLabels.values,
+          active: (value) => value == settings.navLabels,
+          label: (value) => _navLabelsLabel(context.l, value),
+          picture: (value, ink) => AspectRatio(
+            aspectRatio: 100 / 64,
+            child: CustomPaint(
+              painter: _NavStyleGlyph(
+                style: settings.navStyle,
+                indicator: settings.navIndicator,
+                labels: value,
+                screen: t.bg,
+                frame: t.ovlLine2,
+                ink: ink,
+              ),
+            ),
+          ),
+          height: null,
+          onTap: controller.setNavLabels,
         ),
         const SizedBox(height: 26),
         SettingsCaption(context.l.apBgGroup),
@@ -390,25 +409,6 @@ Future<void> _pickNavIndicator(BuildContext context, WidgetRef ref) async {
   if (picked != null) {
     ref.read(settingsProvider.notifier).setNavIndicator(picked);
   }
-}
-
-Future<void> _pickNavLabels(BuildContext context, WidgetRef ref) async {
-  final settings = ref.read(settingsProvider);
-  final picked = await _pickNavCard<NavLabels>(
-    context: context,
-    values: NavLabels.values,
-    current: settings.navLabels,
-    label: (value) => _navLabelsLabel(context.l, value),
-    paint: (value, ink) => _NavStyleGlyph(
-      style: settings.navStyle,
-      indicator: settings.navIndicator,
-      labels: value,
-      screen: context.bloom.bg,
-      frame: context.bloom.ovlLine2,
-      ink: ink,
-    ),
-  );
-  if (picked != null) ref.read(settingsProvider.notifier).setNavLabels(picked);
 }
 
 /// A card of a two-column grid in a sheet, from the sheet's own context: the

@@ -308,15 +308,8 @@ Future<void> showPlatformGuide(
   return showBloomSheetChild<void>(
     context: context,
     header: Builder(
-      builder: (context) => SheetTitle(
-        title,
-        bottom: 14,
-        leading: TintCircle(
-          size: 38,
-          color: (mark.color ?? context.bloom.accent).withValues(alpha: 0.14),
-          child: mark.logo(size: 19),
-        ),
-      ),
+      builder: (context) =>
+          SheetTitle(title, bottom: 14, leading: mark.logo(size: 24)),
     ),
     child: Column(
       mainAxisSize: MainAxisSize.min,

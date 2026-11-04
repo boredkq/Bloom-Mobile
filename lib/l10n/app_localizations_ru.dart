@@ -1575,28 +1575,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pvGroupTitle => 'Заголовок';
 
   @override
-  String get pvTitleAlign => 'Выравнивание заголовка';
-
-  @override
   String get pvTitleAlignLeft => 'Слева';
-
-  @override
-  String get pvTitleAlignLeftSub => 'заголовок слева';
 
   @override
   String get pvTitleAlignCenter => 'По центру';
 
   @override
-  String get pvTitleAlignCenterSub => 'заголовок по центру';
-
-  @override
   String get pvTitleAlignRight => 'Справа';
-
-  @override
-  String get pvTitleAlignRightSub => 'заголовок справа';
-
-  @override
-  String get pvGroupLook => 'Внешний вид';
 
   @override
   String get pvStyleRow => 'Стиль плеера';
@@ -1605,13 +1590,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pvStyleStandard => 'Стандартный';
 
   @override
-  String get pvStyleStandardSub => 'классический вид с обложкой';
-
-  @override
   String get pvStyleVinyl => 'Пластинка';
-
-  @override
-  String get pvStyleVinylSub => 'виниловый диск с вращением';
 
   @override
   String get pvPlayButtonRow => 'Кнопка воспроизведения';
@@ -1620,25 +1599,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pvPlayButtonCircle => 'Круг';
 
   @override
-  String get pvPlayButtonCircleSub => 'заливка акцентом, как сейчас';
-
-  @override
   String get pvPlayButtonSquare => 'Квадрат';
-
-  @override
-  String get pvPlayButtonSquareSub => 'та же заливка, углы скруглены';
 
   @override
   String get pvPlayButtonPlain => 'Без фона';
 
   @override
-  String get pvPlayButtonPlainSub => 'одна иконка, крупнее соседних';
-
-  @override
   String get pvGroupSlider => 'Слайдер';
-
-  @override
-  String get pvSliderRow => 'Тип слайдера';
 
   @override
   String get pvSliderStandard => 'Обычный';
@@ -1651,15 +1618,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get pvGroupLyrics => 'Текст песни';
-
-  @override
-  String get pvLyricsRow => 'Вид';
-
-  @override
-  String get pvLyricsMode => 'Вид';
-
-  @override
-  String get pvLyricsModeSub => 'куда девается обложка, когда включён текст';
 
   @override
   String get pvLyricsModeOverlay => 'Поверх обложки';
@@ -1716,25 +1674,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pvBgNoneSub => 'Без фона';
 
   @override
-  String get pvBgFxRow => 'Эффект фона обложки';
-
-  @override
   String get pvBgFxDim => 'Затемнение';
-
-  @override
-  String get pvBgFxDimSub => 'Чёткая обложка с мягким затемнением';
 
   @override
   String get pvBgFxBlur => 'Размытие';
 
   @override
-  String get pvBgFxBlurSub => 'Глубокое размытие обложки';
-
-  @override
   String get pvBgFxOriginal => 'Оригинал';
-
-  @override
-  String get pvBgFxOriginalSub => 'Чистая обложка без фильтров';
 
   @override
   String get pvGroupMiniControls => 'Управление';
@@ -1743,34 +1689,25 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pvMiniBgRow => 'Фон';
 
   @override
-  String get pvMiniBgSub => 'чем залита карточка над таб-баром';
-
-  @override
   String get pvMiniBgTheme => 'Стандартный';
 
   @override
-  String get pvMiniBgCoverColor => 'Цвет обложки';
+  String get pvMiniBgCoverColor => 'Цвет';
 
   @override
-  String get pvMiniBgCover => 'Сама обложка';
+  String get pvMiniBgCover => 'Обложка';
 
   @override
   String get pvMiniProgressRow => 'Индикаторы прогресса';
 
   @override
-  String get pvMiniProgressSub => 'можно включить сразу несколько';
+  String get pvMiniProgressLine => 'Линия';
 
   @override
-  String get pvMiniProgressNone => 'Нет';
+  String get pvMiniProgressFill => 'Заливка';
 
   @override
-  String get pvMiniProgressLine => 'Линия внизу';
-
-  @override
-  String get pvMiniProgressFill => 'Заливка фона';
-
-  @override
-  String get pvMiniProgressRing => 'Кольцо на обложке';
+  String get pvMiniProgressRing => 'Кольцо';
 
   @override
   String get pvMiniShapeRow => 'Форма обложки';
@@ -1821,14 +1758,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pvMiniNeighborsRow => 'Соседние треки';
 
   @override
-  String get pvMiniNeighborsSub =>
-      'по краям выглядывают карточки предыдущего и следующего трека, а свайп по карточке листает очередь';
-
-  @override
   String get pvMiniNeighborsOff => 'Скрыты';
 
   @override
-  String get pvMiniNeighborsOn => 'Выглядывают по краям';
+  String get pvMiniNeighborsOn => 'По краям';
 
   @override
   String get lyricsLoading => 'Загрузка текста…';
@@ -2012,7 +1945,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get apNavLabelsAlways => 'Всегда';
 
   @override
-  String get apNavLabelsActive => 'Только у активного';
+  String get apNavLabelsActive => 'У активного';
 
   @override
   String get apNavHomeLogoRow => 'Логотип вместо «Главной»';

@@ -2636,23 +2636,11 @@ abstract class AppLocalizations {
   /// **'Title'**
   String get pvGroupTitle;
 
-  /// No description provided for @pvTitleAlign.
-  ///
-  /// In en, this message translates to:
-  /// **'Title alignment'**
-  String get pvTitleAlign;
-
   /// No description provided for @pvTitleAlignLeft.
   ///
   /// In en, this message translates to:
   /// **'Left'**
   String get pvTitleAlignLeft;
-
-  /// No description provided for @pvTitleAlignLeftSub.
-  ///
-  /// In en, this message translates to:
-  /// **'title on the left'**
-  String get pvTitleAlignLeftSub;
 
   /// No description provided for @pvTitleAlignCenter.
   ///
@@ -2660,29 +2648,11 @@ abstract class AppLocalizations {
   /// **'Center'**
   String get pvTitleAlignCenter;
 
-  /// No description provided for @pvTitleAlignCenterSub.
-  ///
-  /// In en, this message translates to:
-  /// **'title centered'**
-  String get pvTitleAlignCenterSub;
-
   /// No description provided for @pvTitleAlignRight.
   ///
   /// In en, this message translates to:
   /// **'Right'**
   String get pvTitleAlignRight;
-
-  /// No description provided for @pvTitleAlignRightSub.
-  ///
-  /// In en, this message translates to:
-  /// **'title on the right'**
-  String get pvTitleAlignRightSub;
-
-  /// the group holding the player style row
-  ///
-  /// In en, this message translates to:
-  /// **'Appearance'**
-  String get pvGroupLook;
 
   /// No description provided for @pvStyleRow.
   ///
@@ -2696,23 +2666,11 @@ abstract class AppLocalizations {
   /// **'Standard'**
   String get pvStyleStandard;
 
-  /// No description provided for @pvStyleStandardSub.
-  ///
-  /// In en, this message translates to:
-  /// **'the classic look with a square cover'**
-  String get pvStyleStandardSub;
-
   /// No description provided for @pvStyleVinyl.
   ///
   /// In en, this message translates to:
   /// **'Vinyl'**
   String get pvStyleVinyl;
-
-  /// No description provided for @pvStyleVinylSub.
-  ///
-  /// In en, this message translates to:
-  /// **'a spinning vinyl record'**
-  String get pvStyleVinylSub;
 
   /// shape of the play/pause button in the player and the mini player
   ///
@@ -2726,23 +2684,11 @@ abstract class AppLocalizations {
   /// **'Circle'**
   String get pvPlayButtonCircle;
 
-  /// No description provided for @pvPlayButtonCircleSub.
-  ///
-  /// In en, this message translates to:
-  /// **'accent fill, as it is now'**
-  String get pvPlayButtonCircleSub;
-
   /// No description provided for @pvPlayButtonSquare.
   ///
   /// In en, this message translates to:
   /// **'Square'**
   String get pvPlayButtonSquare;
-
-  /// No description provided for @pvPlayButtonSquareSub.
-  ///
-  /// In en, this message translates to:
-  /// **'the same fill with rounded corners'**
-  String get pvPlayButtonSquareSub;
 
   /// No description provided for @pvPlayButtonPlain.
   ///
@@ -2750,23 +2696,11 @@ abstract class AppLocalizations {
   /// **'No background'**
   String get pvPlayButtonPlain;
 
-  /// No description provided for @pvPlayButtonPlainSub.
-  ///
-  /// In en, this message translates to:
-  /// **'icon only, larger than its neighbours'**
-  String get pvPlayButtonPlainSub;
-
   /// the group holding the slider type row
   ///
   /// In en, this message translates to:
   /// **'Slider'**
   String get pvGroupSlider;
-
-  /// No description provided for @pvSliderRow.
-  ///
-  /// In en, this message translates to:
-  /// **'Slider type'**
-  String get pvSliderRow;
 
   /// No description provided for @pvSliderStandard.
   ///
@@ -2791,24 +2725,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Lyrics'**
   String get pvGroupLyrics;
-
-  /// settings row that opens the lyrics style sheet
-  ///
-  /// In en, this message translates to:
-  /// **'View'**
-  String get pvLyricsRow;
-
-  /// No description provided for @pvLyricsMode.
-  ///
-  /// In en, this message translates to:
-  /// **'View'**
-  String get pvLyricsMode;
-
-  /// No description provided for @pvLyricsModeSub.
-  ///
-  /// In en, this message translates to:
-  /// **'where the cover goes once lyrics are on'**
-  String get pvLyricsModeSub;
 
   /// No description provided for @pvLyricsModeOverlay.
   ///
@@ -2918,23 +2834,11 @@ abstract class AppLocalizations {
   /// **'No background'**
   String get pvBgNoneSub;
 
-  /// row shown under pvBgRow only while the player background is the track cover
-  ///
-  /// In en, this message translates to:
-  /// **'Cover background effect'**
-  String get pvBgFxRow;
-
   /// No description provided for @pvBgFxDim.
   ///
   /// In en, this message translates to:
   /// **'Dim'**
   String get pvBgFxDim;
-
-  /// No description provided for @pvBgFxDimSub.
-  ///
-  /// In en, this message translates to:
-  /// **'Sharp cover under a soft dim'**
-  String get pvBgFxDimSub;
 
   /// No description provided for @pvBgFxBlur.
   ///
@@ -2942,23 +2846,11 @@ abstract class AppLocalizations {
   /// **'Blur'**
   String get pvBgFxBlur;
 
-  /// No description provided for @pvBgFxBlurSub.
-  ///
-  /// In en, this message translates to:
-  /// **'Deeply blurred cover'**
-  String get pvBgFxBlurSub;
-
   /// No description provided for @pvBgFxOriginal.
   ///
   /// In en, this message translates to:
   /// **'Original'**
   String get pvBgFxOriginal;
-
-  /// No description provided for @pvBgFxOriginalSub.
-  ///
-  /// In en, this message translates to:
-  /// **'Clean cover, no filters'**
-  String get pvBgFxOriginalSub;
 
   /// No description provided for @pvGroupMiniControls.
   ///
@@ -2972,12 +2864,6 @@ abstract class AppLocalizations {
   /// **'Background'**
   String get pvMiniBgRow;
 
-  /// No description provided for @pvMiniBgSub.
-  ///
-  /// In en, this message translates to:
-  /// **'what fills the card above the tab bar'**
-  String get pvMiniBgSub;
-
   /// No description provided for @pvMiniBgTheme.
   ///
   /// In en, this message translates to:
@@ -2987,13 +2873,13 @@ abstract class AppLocalizations {
   /// No description provided for @pvMiniBgCoverColor.
   ///
   /// In en, this message translates to:
-  /// **'Cover color'**
+  /// **'Color'**
   String get pvMiniBgCoverColor;
 
   /// No description provided for @pvMiniBgCover.
   ///
   /// In en, this message translates to:
-  /// **'The cover itself'**
+  /// **'Cover'**
   String get pvMiniBgCover;
 
   /// No description provided for @pvMiniProgressRow.
@@ -3002,34 +2888,22 @@ abstract class AppLocalizations {
   /// **'Progress indicators'**
   String get pvMiniProgressRow;
 
-  /// No description provided for @pvMiniProgressSub.
-  ///
-  /// In en, this message translates to:
-  /// **'several can be on at once'**
-  String get pvMiniProgressSub;
-
-  /// No description provided for @pvMiniProgressNone.
-  ///
-  /// In en, this message translates to:
-  /// **'None'**
-  String get pvMiniProgressNone;
-
   /// No description provided for @pvMiniProgressLine.
   ///
   /// In en, this message translates to:
-  /// **'Line at the bottom'**
+  /// **'Line'**
   String get pvMiniProgressLine;
 
   /// No description provided for @pvMiniProgressFill.
   ///
   /// In en, this message translates to:
-  /// **'Background fill'**
+  /// **'Fill'**
   String get pvMiniProgressFill;
 
   /// No description provided for @pvMiniProgressRing.
   ///
   /// In en, this message translates to:
-  /// **'Ring around the cover'**
+  /// **'Ring'**
   String get pvMiniProgressRing;
 
   /// No description provided for @pvMiniShapeRow.
@@ -3128,12 +3002,6 @@ abstract class AppLocalizations {
   /// **'Adjacent tracks'**
   String get pvMiniNeighborsRow;
 
-  /// No description provided for @pvMiniNeighborsSub.
-  ///
-  /// In en, this message translates to:
-  /// **'the previous and next cards peek at the edges, and a swipe across the card flips through the queue'**
-  String get pvMiniNeighborsSub;
-
   /// No description provided for @pvMiniNeighborsOff.
   ///
   /// In en, this message translates to:
@@ -3143,7 +3011,7 @@ abstract class AppLocalizations {
   /// No description provided for @pvMiniNeighborsOn.
   ///
   /// In en, this message translates to:
-  /// **'Peeking at the edges'**
+  /// **'At the edges'**
   String get pvMiniNeighborsOn;
 
   /// No description provided for @lyricsLoading.
@@ -3503,7 +3371,7 @@ abstract class AppLocalizations {
   /// No description provided for @apNavLabelsActive.
   ///
   /// In en, this message translates to:
-  /// **'Active tab only'**
+  /// **'Active only'**
   String get apNavLabelsActive;
 
   /// No description provided for @apNavHomeLogoRow.

@@ -1546,28 +1546,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pvGroupTitle => 'Title';
 
   @override
-  String get pvTitleAlign => 'Title alignment';
-
-  @override
   String get pvTitleAlignLeft => 'Left';
-
-  @override
-  String get pvTitleAlignLeftSub => 'title on the left';
 
   @override
   String get pvTitleAlignCenter => 'Center';
 
   @override
-  String get pvTitleAlignCenterSub => 'title centered';
-
-  @override
   String get pvTitleAlignRight => 'Right';
-
-  @override
-  String get pvTitleAlignRightSub => 'title on the right';
-
-  @override
-  String get pvGroupLook => 'Appearance';
 
   @override
   String get pvStyleRow => 'Player style';
@@ -1576,13 +1561,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pvStyleStandard => 'Standard';
 
   @override
-  String get pvStyleStandardSub => 'the classic look with a square cover';
-
-  @override
   String get pvStyleVinyl => 'Vinyl';
-
-  @override
-  String get pvStyleVinylSub => 'a spinning vinyl record';
 
   @override
   String get pvPlayButtonRow => 'Play button';
@@ -1591,25 +1570,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pvPlayButtonCircle => 'Circle';
 
   @override
-  String get pvPlayButtonCircleSub => 'accent fill, as it is now';
-
-  @override
   String get pvPlayButtonSquare => 'Square';
-
-  @override
-  String get pvPlayButtonSquareSub => 'the same fill with rounded corners';
 
   @override
   String get pvPlayButtonPlain => 'No background';
 
   @override
-  String get pvPlayButtonPlainSub => 'icon only, larger than its neighbours';
-
-  @override
   String get pvGroupSlider => 'Slider';
-
-  @override
-  String get pvSliderRow => 'Slider type';
 
   @override
   String get pvSliderStandard => 'Standard';
@@ -1622,15 +1589,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pvGroupLyrics => 'Lyrics';
-
-  @override
-  String get pvLyricsRow => 'View';
-
-  @override
-  String get pvLyricsMode => 'View';
-
-  @override
-  String get pvLyricsModeSub => 'where the cover goes once lyrics are on';
 
   @override
   String get pvLyricsModeOverlay => 'Over the cover';
@@ -1688,25 +1646,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pvBgNoneSub => 'No background';
 
   @override
-  String get pvBgFxRow => 'Cover background effect';
-
-  @override
   String get pvBgFxDim => 'Dim';
-
-  @override
-  String get pvBgFxDimSub => 'Sharp cover under a soft dim';
 
   @override
   String get pvBgFxBlur => 'Blur';
 
   @override
-  String get pvBgFxBlurSub => 'Deeply blurred cover';
-
-  @override
   String get pvBgFxOriginal => 'Original';
-
-  @override
-  String get pvBgFxOriginalSub => 'Clean cover, no filters';
 
   @override
   String get pvGroupMiniControls => 'Controls';
@@ -1715,34 +1661,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pvMiniBgRow => 'Background';
 
   @override
-  String get pvMiniBgSub => 'what fills the card above the tab bar';
-
-  @override
   String get pvMiniBgTheme => 'Standard';
 
   @override
-  String get pvMiniBgCoverColor => 'Cover color';
+  String get pvMiniBgCoverColor => 'Color';
 
   @override
-  String get pvMiniBgCover => 'The cover itself';
+  String get pvMiniBgCover => 'Cover';
 
   @override
   String get pvMiniProgressRow => 'Progress indicators';
 
   @override
-  String get pvMiniProgressSub => 'several can be on at once';
+  String get pvMiniProgressLine => 'Line';
 
   @override
-  String get pvMiniProgressNone => 'None';
+  String get pvMiniProgressFill => 'Fill';
 
   @override
-  String get pvMiniProgressLine => 'Line at the bottom';
-
-  @override
-  String get pvMiniProgressFill => 'Background fill';
-
-  @override
-  String get pvMiniProgressRing => 'Ring around the cover';
+  String get pvMiniProgressRing => 'Ring';
 
   @override
   String get pvMiniShapeRow => 'Cover shape';
@@ -1793,14 +1730,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pvMiniNeighborsRow => 'Adjacent tracks';
 
   @override
-  String get pvMiniNeighborsSub =>
-      'the previous and next cards peek at the edges, and a swipe across the card flips through the queue';
-
-  @override
   String get pvMiniNeighborsOff => 'Hidden';
 
   @override
-  String get pvMiniNeighborsOn => 'Peeking at the edges';
+  String get pvMiniNeighborsOn => 'At the edges';
 
   @override
   String get lyricsLoading => 'Loading lyrics…';
@@ -1984,7 +1917,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apNavLabelsAlways => 'Always';
 
   @override
-  String get apNavLabelsActive => 'Active tab only';
+  String get apNavLabelsActive => 'Active only';
 
   @override
   String get apNavHomeLogoRow => 'Logo instead of Home';

@@ -1,7 +1,6 @@
-/// Player settings. Rows show what's chosen; the choices open in sheets, since
-/// open blocks took screens of scrolling. Sheets stay open on choosing:
-/// settings in them get tuned in turn, watching the preview. Glyphs are drawn
-/// here, the icon set has no such pictures.
+/// Player settings. Few choices stand right on the page as cards, so they can be
+/// tuned in turn; a long list with notes opens in a sheet. Glyphs are drawn here,
+/// the icon set has no such pictures.
 library;
 
 import 'dart:math' as math;
@@ -12,21 +11,16 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
-import '../../../features/customization/custom_store.dart';
 import '../../../features/lyrics/lyrics_store.dart';
 import '../../../features/player/play_button_store.dart';
 import '../../../features/player/player_bg_store.dart';
 import '../../../features/player/player_style_store.dart';
 import '../../../features/player/player_view_store.dart';
 import '../../../features/player/slider_style_store.dart';
-import '../../../features/player/ui/play_button.dart';
 import '../../../features/player/ui/slider_shapes.dart';
-import '../../../features/player/ui/vinyl_disc.dart';
-import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/subpage_header.dart';
-import '../../../shared/util/format.dart';
 import 'settings_rows.dart';
 import 'settings_sheets.dart';
 
@@ -35,41 +29,57 @@ class PlayerSettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final lyricsMode = ref.watch(lyricsPrefsProvider.select((p) => p.mode));
     final style = ref.watch(playerStyleProvider);
-    final playShape = ref.watch(playButtonShapeProvider);
-    final align = ref.watch(titleAlignProvider);
-    final slider = ref.watch(sliderStyleProvider);
+    final queue = ref.watch(queueViewProvider);
     final bg = ref.watch(playerBgProvider);
     final coverFx = ref.watch(coverBgFxProvider);
+    final align = ref.watch(titleAlignProvider);
+    final playShape = ref.watch(playButtonShapeProvider);
+    final lyricsMode = ref.watch(lyricsPrefsProvider.select((p) => p.mode));
     final l = context.l;
 
     return SubPage(
       title: l.setPlayer,
       onBack: () => context.go('/settings'),
       children: [
-        SettingsCaption(l.pvGroupLook),
+        SettingsCaption(l.pvStyleRow),
         const SizedBox(height: 10),
-        SettingsGroupCard(
-          rows: [
-            SettingsValueRow(
-              title: l.pvStyleRow,
-              value: _styleLabel(l, style),
-              glyph: _StyleGlyph(style: style),
-              onTap: () => _openStyle(context),
-            ),
-            SettingsValueRow(
-              title: l.pvPlayButtonRow,
-              value: _playShapeLabel(l, playShape),
-              glyph: _PlayShapeGlyph(shape: playShape),
-              onTap: () => _openPlayShape(context),
-            ),
-          ],
+        PickRow<PlayerStyle>(
+          values: PlayerStyle.values,
+          active: (v) => v == style,
+          label: (v) => _styleLabel(l, v),
+          picture: (v, ink) => CustomPaint(
+            size: const Size(24, 24),
+            painter: _StylePainter(style: v, color: ink),
+          ),
+          onTap: ref.read(playerStyleProvider.notifier).setStyle,
+        ),
+        const SizedBox(height: 22),
+        SettingsCaption(l.pvPlayButtonRow),
+        const SizedBox(height: 10),
+        PickRow<PlayButtonShape>(
+          values: PlayButtonShape.values,
+          active: (v) => v == playShape,
+          label: (v) => _playShapeLabel(l, v),
+          picture: (v, ink) => CustomPaint(
+            size: const Size(24, 24),
+            painter: _PlayShapePainter(shape: v, color: ink),
+          ),
+          onTap: ref.read(playButtonShapeProvider.notifier).set,
         ),
         const SizedBox(height: 22),
         SettingsCaption(l.pvGroupQueue),
         const SizedBox(height: 10),
-        const _QueueViewCards(),
+        PickRow<QueueView>(
+          values: QueueView.values,
+          active: (v) => v == queue,
+          label: (v) => v.isExtended ? l.pvQueueExtended : l.pvQueueNormal,
+          picture: (v, ink) => CustomPaint(
+            size: const Size(26, 20),
+            painter: _QueueGlyphPainter(extended: v.isExtended, color: ink),
+          ),
+          onTap: ref.read(queueViewProvider.notifier).set,
+        ),
         const SizedBox(height: 12),
         // About the queue it's taken from, not the slider.
         SettingsGroupCard(
@@ -93,89 +103,52 @@ class PlayerSettingsScreen extends ConsumerWidget {
               glyph: BloomIcon(_playerBgIcon(bg)),
               onTap: () => _openPlayerBg(context, ref),
             ),
-            // Only under "Cover": a row that changes nothing is worse than
-            // none.
-            if (bg.isCover)
-              SettingsValueRow(
-                title: l.pvBgFxRow,
-                value: _coverFxLabel(l, coverFx),
-                glyph: BloomIcon(_coverFxIcon(coverFx)),
-                onTap: () => _openCoverFx(context, ref),
-              ),
           ],
         ),
+        // Only under "Cover": a choice that changes nothing is worse than none.
+        if (bg.isCover) ...[
+          const SizedBox(height: 12),
+          PickRow<CoverBgFx>(
+            values: CoverBgFx.values,
+            active: (v) => v == coverFx,
+            label: (v) => _coverFxLabel(l, v),
+            picture: (v, _) => BloomIcon(_coverFxIcon(v)),
+            onTap: ref.read(coverBgFxProvider.notifier).set,
+          ),
+        ],
         const SizedBox(height: 22),
         SettingsCaption(l.pvGroupTitle),
         const SizedBox(height: 10),
-        SettingsGroupCard(
-          rows: [
-            SettingsValueRow(
-              title: l.pvTitleAlign,
-              value: _alignLabel(l, align),
-              glyph: _AlignRowGlyph(align: align),
-              onTap: () => _openTitleAlign(context),
-            ),
-          ],
+        PickRow<TitleAlign>(
+          values: TitleAlign.values,
+          active: (v) => v == align,
+          label: (v) => _alignLabel(l, v),
+          picture: (v, ink) => CustomPaint(
+            size: const Size(24, 24),
+            painter: _AlignGlyph(align: v, color: ink),
+          ),
+          onTap: ref.read(titleAlignProvider.notifier).set,
         ),
         const SizedBox(height: 22),
         SettingsCaption(l.pvGroupSlider),
         const SizedBox(height: 10),
-        SettingsGroupCard(
-          rows: [
-            SettingsValueRow(
-              title: l.pvSliderRow,
-              value: _sliderLabel(l, slider),
-              glyph: _SliderRowGlyph(style: slider),
-              onTap: () => _openSlider(context),
-            ),
-          ],
-        ),
+        const _SliderCards(),
         const SizedBox(height: 22),
         SettingsCaption(l.pvGroupLyrics),
         const SizedBox(height: 10),
-        SettingsGroupCard(
-          rows: [
-            SettingsValueRow(
-              title: l.pvLyricsRow,
-              value: _modeLabel(l, lyricsMode),
-              glyph: const BloomIcon(Bi.magicStick),
-              onTap: () => _openLyrics(context),
-            ),
-          ],
+        PickRow<LyricsMode>(
+          values: LyricsMode.values,
+          active: (v) => v == lyricsMode,
+          label: (v) => _modeLabel(l, v),
+          picture: (v, ink) => CustomPaint(
+            size: const Size(28, 24),
+            painter: _ModePainter(mode: v, color: ink),
+          ),
+          onTap: ref.read(lyricsPrefsProvider.notifier).setMode,
         ),
       ],
     );
   }
-}
-
-/// The player's style. A live preview on top, rows under it: the difference is
-/// a picture, no words explain it. Stays open on choosing: the square rounds
-/// into a disc and starts spinning. No header, it would eat the preview's
-/// height.
-Future<void> _openStyle(BuildContext context) {
-  return showBloomSheetChild<void>(
-    context: context,
-    child: Consumer(
-      builder: (context, ref, _) {
-        final current = ref.watch(playerStyleProvider);
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _StylePreview(style: current),
-            for (final style in PlayerStyle.values)
-              SheetOptionTile(
-                leading: _StyleGlyph(style: style),
-                label: _styleLabel(context.l, style),
-                sub: _styleSub(context.l, style),
-                active: style == current,
-                onTap: () =>
-                    ref.read(playerStyleProvider.notifier).setStyle(style),
-              ),
-          ],
-        );
-      },
-    ),
-  );
 }
 
 // ── Play button
@@ -189,95 +162,9 @@ String _playShapeLabel(AppLocalizations l, PlayButtonShape shape) =>
       PlayButtonShape.plain => l.pvPlayButtonPlain,
     };
 
-String _playShapeSub(AppLocalizations l, PlayButtonShape shape) =>
-    switch (shape) {
-      PlayButtonShape.circle => l.pvPlayButtonCircleSub,
-      PlayButtonShape.square => l.pvPlayButtonSquareSub,
-      PlayButtonShape.plain => l.pvPlayButtonPlainSub,
-    };
-
-/// Like the style's sheet: a live button on top, the shapes under it, stays
-/// open on choosing.
-Future<void> _openPlayShape(BuildContext context) {
-  return showBloomSheetChild<void>(
-    context: context,
-    child: Consumer(
-      builder: (context, ref, _) {
-        final current = ref.watch(playButtonShapeProvider);
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const _PlayShapePreview(),
-            for (final shape in PlayButtonShape.values)
-              SheetOptionTile(
-                leading: _PlayShapeGlyph(shape: shape),
-                label: _playShapeLabel(context.l, shape),
-                sub: _playShapeSub(context.l, shape),
-                active: shape == current,
-                onTap: () =>
-                    ref.read(playButtonShapeProvider.notifier).set(shape),
-              ),
-          ],
-        );
-      },
-    ),
-  );
-}
-
-/// The real [PlayButton] between its neighbours, or "bigger than the others"
-/// has nothing to compare with. Not live: it shows the look, it doesn't touch
-/// the sound.
-class _PlayShapePreview extends StatelessWidget {
-  const _PlayShapePreview();
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return SheetPanel(
-      gap: 10,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 26),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              BloomIcon(Bi.skipPreviousBold, size: 30, color: t.iconFg),
-              const SizedBox(width: 26),
-              const PlayButton(
-                size: 68,
-                iconSize: 28,
-                plainIconSize: 40,
-                spinnerSize: 28,
-                live: false,
-              ),
-              const SizedBox(width: 26),
-              BloomIcon(Bi.skipNextBold, size: 30, color: t.iconFg),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 /// The play sign in a frame of its shape. Drawn here: ready icons differ in
 /// weight and placement and would read as different icons, not as one button in
 /// three shapes.
-class _PlayShapeGlyph extends StatelessWidget {
-  const _PlayShapeGlyph({required this.shape});
-
-  final PlayButtonShape shape;
-
-  @override
-  Widget build(BuildContext context) => CustomPaint(
-    size: const Size(23, 23),
-    painter: _PlayShapePainter(
-      shape: shape,
-      color: IconTheme.of(context).color ?? context.bloom.iconFg,
-    ),
-  );
-}
-
 class _PlayShapePainter extends CustomPainter {
   const _PlayShapePainter({required this.shape, required this.color});
 
@@ -325,54 +212,8 @@ class _PlayShapePainter extends CustomPainter {
       old.shape != shape || old.color != color;
 }
 
-/// The queue's look. The one setting standing as cards: two choices, and the
-/// glyph itself shows the difference.
-class _QueueViewCards extends ConsumerWidget {
-  const _QueueViewCards();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final current = ref.watch(queueViewProvider);
-    final l = context.l;
-    return Row(
-      children: [
-        for (final view in QueueView.values) ...[
-          if (view != QueueView.values.first) const SizedBox(width: 12),
-          Expanded(
-            child: PickCard(
-              height: 88,
-              label: view.isExtended ? l.pvQueueExtended : l.pvQueueNormal,
-              active: view == current,
-              picture: (ink) => IconTheme(
-                data: IconThemeData(color: ink),
-                child: _QueueViewGlyph(extended: view.isExtended),
-              ),
-              onTap: () => ref.read(queueViewProvider.notifier).set(view),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
 /// A flat list against one with section headers. Drawn here: the icon set has
 /// one "list", and two equal icons show no difference.
-class _QueueViewGlyph extends StatelessWidget {
-  const _QueueViewGlyph({required this.extended});
-
-  final bool extended;
-
-  @override
-  Widget build(BuildContext context) => CustomPaint(
-    size: const Size(26, 20),
-    painter: _QueueGlyphPainter(
-      extended: extended,
-      color: IconTheme.of(context).color ?? context.bloom.iconFg,
-    ),
-  );
-}
-
 class _QueueGlyphPainter extends CustomPainter {
   _QueueGlyphPainter({required this.extended, required this.color});
 
@@ -418,149 +259,6 @@ class _QueueGlyphPainter extends CustomPainter {
       old.extended != extended || old.color != color;
 }
 
-/// The style's preview: the playing track's real cover, the disc spinning with
-/// the same [VinylSpin]. With nothing playing, the usual placeholder.
-class _StylePreview extends ConsumerWidget {
-  const _StylePreview({required this.style});
-
-  final PlayerStyle style;
-
-  static const double side = 132;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
-    final vinyl = style.isVinyl;
-    final url = ref.watch(playerCoverProvider);
-
-    return SheetPanel(
-      gap: 10,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 22),
-          child: Column(
-            children: [
-              SizedBox(
-                width: side,
-                height: side,
-                child: Stack(
-                  children: [
-                    // The square rounds into a circle before the eyes: that shows
-                    // what the setting did. The player's radius is taken as a
-                    // share of the side, or a small picture looks sharper.
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0, end: vinyl ? 1 : 0),
-                      duration: const Duration(milliseconds: 320),
-                      curve: Curves.easeOutCubic,
-                      builder: (context, k, child) => ClipRRect(
-                        borderRadius: BorderRadius.circular(
-                          side * (0.11 + 0.39 * k),
-                        ),
-                        child: child,
-                      ),
-                      child: VinylSpin(
-                        enabled: vinyl,
-                        // Always spinning here: no sound in settings, and a still
-                        // circle would hide half of the mode.
-                        spinning: true,
-                        child: Cover(url: url, size: side, radius: 0),
-                      ),
-                    ),
-                    if (vinyl)
-                      Positioned.fill(
-                        child: Center(
-                          child: VinylLabel(size: side * VinylLabel.share),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
-              // Bars, not text: the preview shows the layout, a live title would
-              // take all the attention.
-              _Bar(
-                width: 104,
-                height: 9,
-                color: t.text.withValues(alpha: 0.55),
-              ),
-              const SizedBox(height: 8),
-              _Bar(width: 68, height: 7, color: t.text.withValues(alpha: 0.24)),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// A bar in place of a text line.
-class _Bar extends StatelessWidget {
-  const _Bar({required this.width, required this.height, required this.color});
-
-  final double width;
-  final double height;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: width,
-    height: height,
-    decoration: BoxDecoration(
-      color: color,
-      borderRadius: BorderRadius.circular(height / 2),
-    ),
-  );
-}
-
-/// The title's alignment: three large rows with a caption, closing on choosing,
-/// since nothing else is set here. No header: the row it came from stays
-/// visible above.
-Future<void> _openTitleAlign(BuildContext context) {
-  return showBloomSheetChild<void>(
-    context: context,
-    child: Consumer(
-      builder: (context, ref, _) {
-        final current = ref.watch(titleAlignProvider);
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final align in TitleAlign.values)
-              SheetOptionTile(
-                leading: CustomPaint(
-                  size: const Size(22, 22),
-                  painter: _AlignGlyph(align: align, color: context.bloom.text),
-                ),
-                label: _alignLabel(context.l, align),
-                sub: _alignSub(context.l, align),
-                active: align == current,
-                onTap: () {
-                  Navigator.of(context).pop();
-                  ref.read(titleAlignProvider.notifier).set(align);
-                },
-              ),
-          ],
-        );
-      },
-    ),
-  );
-}
-
-/// The row's version: no circle, in [IconTheme]'s colour.
-class _AlignRowGlyph extends StatelessWidget {
-  const _AlignRowGlyph({required this.align});
-
-  final TitleAlign align;
-
-  @override
-  Widget build(BuildContext context) => CustomPaint(
-    size: const Size(21, 21),
-    painter: _AlignGlyph(
-      align: align,
-      color: IconTheme.of(context).color ?? context.bloom.iconFg,
-    ),
-  );
-}
-
 /// Three lines of different length moved to their side.
 class _AlignGlyph extends CustomPainter {
   const _AlignGlyph({required this.align, required this.color});
@@ -603,136 +301,107 @@ String _alignLabel(AppLocalizations l, TitleAlign align) => switch (align) {
   TitleAlign.right => l.pvTitleAlignRight,
 };
 
-String _alignSub(AppLocalizations l, TitleAlign align) => switch (align) {
-  TitleAlign.left => l.pvTitleAlignLeftSub,
-  TitleAlign.center => l.pvTitleAlignCenterSub,
-  TitleAlign.right => l.pvTitleAlignRightSub,
-};
+// ── Slider
+// ────────────────────────────────────────────────────────────────────
 
-/// The slider's type: a live bar on top, rows under it. Stays open on choosing,
-/// that's what the preview is for. No header: it would eat the height and the
-/// bar says it.
-Future<void> _openSlider(BuildContext context) {
-  return showBloomSheetChild<void>(
-    context: context,
-    child: Consumer(
-      builder: (context, ref, _) {
-        final current = ref.watch(sliderStyleProvider);
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _SliderPreview(style: current),
-            for (final style in SliderStyle.values)
-              SheetOptionTile(
-                // In its 44×10 proportions: at 28 px it reads as a bar with a
-                // thumb, not a dash.
-                leading: CustomPaint(
-                  size: const Size(28, 6.4),
-                  painter: _SliderGlyph(
-                    style: style,
-                    color: context.bloom.text,
-                  ),
-                ),
-                label: _sliderLabel(context.l, style),
-                active: style == current,
-                onTap: () => ref.read(sliderStyleProvider.notifier).set(style),
-              ),
-          ],
-        );
-      },
-    ),
-  );
-}
-
-/// A live bar on the player's [bloomSliderTheme], so settings can't differ from
-/// the real one. It can be dragged: half the types differ in the thumb and how
-/// it cuts the track.
-class _SliderPreview extends StatefulWidget {
-  const _SliderPreview({required this.style});
-
-  final SliderStyle style;
-
-  /// A sample track: 3:45, at 1:24 (ms).
-  static const int total = 225000;
-  static const int start = 84000;
-
-  /// Constant: the pattern here doesn't change from one opening to the next.
-  static const int waveSeed = 42;
+/// The types one under another, each showing itself: they differ in the track
+/// and the knob, a small picture wouldn't tell them apart.
+class _SliderCards extends ConsumerWidget {
+  const _SliderCards();
 
   @override
-  State<_SliderPreview> createState() => _SliderPreviewState();
-}
-
-class _SliderPreviewState extends State<_SliderPreview> {
-  double _value = _SliderPreview.start.toDouble();
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-    return SheetPanel(
-      gap: 10,
+  Widget build(BuildContext context, WidgetRef ref) {
+    final current = ref.watch(sliderStyleProvider);
+    return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(18, 22, 18, 18),
-          child: Column(
-            children: [
-              SizedBox(
-                // Taller than in the player: it's what the sheet is opened for.
-                height: 44,
-                child: SliderTheme(
-                  data: bloomSliderTheme(
-                    SliderTheme.of(context),
-                    style: widget.style,
-                    tokens: t,
-                    waveSeed: _SliderPreview.waveSeed,
-                  ),
-                  child: Slider(
-                    value: _value,
-                    max: _SliderPreview.total.toDouble(),
-                    onChanged: (v) => setState(() => _value = v),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      mmss(Duration(milliseconds: _value.round())),
-                      style: theme.bodyMedium,
-                    ),
-                    Text(
-                      mmss(const Duration(milliseconds: _SliderPreview.total)),
-                      style: theme.bodyMedium,
-                    ),
-                  ],
-                ),
-              ),
-            ],
+        for (final style in SliderStyle.values) ...[
+          if (style != SliderStyle.values.first) const SizedBox(height: 8),
+          _SliderCard(
+            style: style,
+            active: style == current,
+            onTap: () => ref.read(sliderStyleProvider.notifier).set(style),
           ),
-        ),
+        ],
       ],
     );
   }
 }
 
-/// The row's version, narrower than in the sheet: full width it looks like a
-/// ruler beside the icons.
-class _SliderRowGlyph extends StatelessWidget {
-  const _SliderRowGlyph({required this.style});
+class _SliderCard extends StatelessWidget {
+  const _SliderCard({
+    required this.style,
+    required this.active,
+    required this.onTap,
+  });
 
   final SliderStyle style;
+  final bool active;
+  final VoidCallback onTap;
+
+  /// Constant: the wave's pattern doesn't change from one opening to the next.
+  static const int waveSeed = 42;
 
   @override
-  Widget build(BuildContext context) => CustomPaint(
-    size: const Size(26, 6),
-    painter: _SliderGlyph(
-      style: style,
-      color: IconTheme.of(context).color ?? context.bloom.iconFg,
-    ),
-  );
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return PickPlate(
+      active: active,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                CustomPaint(
+                  size: const Size(44, 10),
+                  painter: _SliderGlyph(
+                    style: style,
+                    color: active ? t.accent : t.iconFg,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _sliderLabel(context.l, style),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: active ? t.text : t.text2,
+                    ),
+                  ),
+                ),
+                if (active) const SheetTick(),
+              ],
+            ),
+            // The player's own theme, so this can't differ from the real one.
+            // Only shows: a press anywhere on the plate chooses.
+            ExcludeSemantics(
+              child: IgnorePointer(
+                child: SizedBox(
+                  height: 34,
+                  child: SliderTheme(
+                    data:
+                        bloomSliderTheme(
+                          SliderTheme.of(context),
+                          style: style,
+                          tokens: t,
+                          waveSeed: waveSeed,
+                        ).copyWith(
+                          padding: EdgeInsets.zero,
+                          // The player's track is lost on a plate this light.
+                          inactiveTrackColor: style == SliderStyle.wave
+                              ? null
+                              : t.text.withValues(alpha: 0.2),
+                        ),
+                    child: Slider(value: 0.45, onChanged: (_) {}),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// A filled bar, a hairline with a dot, two segments with a drop, and columns.
@@ -798,89 +467,9 @@ String _sliderLabel(AppLocalizations l, SliderStyle style) => switch (style) {
   SliderStyle.wave => l.pvSliderWave,
 };
 
-/// The lyrics' place: only the view, the active line lights up whole.
-Future<void> _openLyrics(BuildContext context) {
-  final l = context.l;
-  return showBloomSheetChild<void>(
-    context: context,
-    child: Consumer(
-      builder: (context, ref, _) {
-        final current = ref.watch(lyricsPrefsProvider.select((p) => p.mode));
-        final ctrl = ref.read(lyricsPrefsProvider.notifier);
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _Section(
-              title: l.pvLyricsMode,
-              subtitle: l.pvLyricsModeSub,
-              // Two large buttons with their glyphs: the difference is a
-              // picture.
-              child: Row(
-                children: [
-                  for (final mode in LyricsMode.values) ...[
-                    if (mode != LyricsMode.values.first)
-                      const SizedBox(width: 8),
-                    Expanded(
-                      child: PickCard(
-                        height: 88,
-                        label: _modeLabel(l, mode),
-                        active: current == mode,
-                        picture: (ink) => IconTheme(
-                          data: IconThemeData(color: ink),
-                          child: _ModeGlyph(mode: mode),
-                        ),
-                        onTap: () => ctrl.setMode(mode),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        );
-      },
-    ),
-  );
-}
-
-/// One setting in a sheet: name, note, buttons. No plate: the buttons are cards
-/// already, a box around them would be a frame in a frame.
-class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.child, this.subtitle});
-
-  final String title;
-  final String? subtitle;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(kSheetEdge, 8, kSheetEdge, 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: theme.titleMedium),
-          if (subtitle case final text?) ...[
-            const SizedBox(height: 3),
-            Text(text, style: theme.bodySmall),
-          ],
-          const SizedBox(height: 10),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
 String _styleLabel(AppLocalizations l, PlayerStyle style) => switch (style) {
   PlayerStyle.standard => l.pvStyleStandard,
   PlayerStyle.vinyl => l.pvStyleVinyl,
-};
-
-String _styleSub(AppLocalizations l, PlayerStyle style) => switch (style) {
-  PlayerStyle.standard => l.pvStyleStandardSub,
-  PlayerStyle.vinyl => l.pvStyleVinylSub,
 };
 
 String _modeLabel(AppLocalizations l, LyricsMode mode) => switch (mode) {
@@ -888,22 +477,7 @@ String _modeLabel(AppLocalizations l, LyricsMode mode) => switch (mode) {
   LyricsMode.replace => l.pvLyricsModeReplace,
 };
 
-/// Two tiles side by side for standard, a circle in a circle for vinyl.
-class _StyleGlyph extends StatelessWidget {
-  const _StyleGlyph({required this.style});
-
-  final PlayerStyle style;
-
-  @override
-  Widget build(BuildContext context) => CustomPaint(
-    size: const Size(24, 24),
-    painter: _StylePainter(
-      style: style,
-      color: IconTheme.of(context).color ?? context.bloom.iconFg,
-    ),
-  );
-}
-
+/// A square cover for standard, a disc with a label for vinyl.
 class _StylePainter extends CustomPainter {
   const _StylePainter({required this.style, required this.color});
 
@@ -922,17 +496,11 @@ class _StylePainter extends CustomPainter {
       ..color = color;
 
     switch (style) {
-      // A wide tile on the left, a narrow one on the right.
       case PlayerStyle.standard:
         canvas.drawRRect(
-          RRect.fromLTRBR(3, 3, 11, 21, const Radius.circular(1)),
+          RRect.fromLTRBR(3, 3, 21, 21, const Radius.circular(5)),
           stroke,
         );
-        canvas.drawRRect(
-          RRect.fromLTRBR(14, 3, 21, 21, const Radius.circular(1)),
-          stroke,
-        );
-      // A disc with a label.
       case PlayerStyle.vinyl:
         canvas.drawCircle(const Offset(12, 12), 9, stroke);
         canvas.drawCircle(const Offset(12, 12), 3, stroke);
@@ -947,21 +515,6 @@ class _StylePainter extends CustomPainter {
 
 /// A cover square with lines over it on the left, lines alone on the right. Not
 /// in the icon set, so drawn here.
-class _ModeGlyph extends StatelessWidget {
-  const _ModeGlyph({required this.mode});
-
-  final LyricsMode mode;
-
-  @override
-  Widget build(BuildContext context) => CustomPaint(
-    size: const Size(28, 24),
-    painter: _ModePainter(
-      mode: mode,
-      color: IconTheme.of(context).color ?? context.bloom.iconFg,
-    ),
-  );
-}
-
 class _ModePainter extends CustomPainter {
   const _ModePainter({required this.mode, required this.color});
 
@@ -1067,29 +620,9 @@ String _coverFxLabel(AppLocalizations l, CoverBgFx fx) => switch (fx) {
   CoverBgFx.original => l.pvBgFxOriginal,
 };
 
-String _coverFxSub(AppLocalizations l, CoverBgFx fx) => switch (fx) {
-  CoverBgFx.dim => l.pvBgFxDimSub,
-  CoverBgFx.blur => l.pvBgFxBlurSub,
-  CoverBgFx.original => l.pvBgFxOriginalSub,
-};
-
 BloomGlyph _coverFxIcon(CoverBgFx fx) => switch (fx) {
   // Moon is dim, drop is blur, the wand is "as it is".
   CoverBgFx.dim => Bi.moon,
   CoverBgFx.blur => Bi.waterdrop,
   CoverBgFx.original => Bi.magicStick,
 };
-
-/// Built like the background's sheet: captions explain the choices, closes on
-/// choosing, no header.
-Future<void> _openCoverFx(BuildContext context, WidgetRef ref) {
-  return pickOneSheet(
-    context: context,
-    values: CoverBgFx.values,
-    current: ref.read(coverBgFxProvider),
-    icon: _coverFxIcon,
-    label: (fx) => _coverFxLabel(context.l, fx),
-    sub: (fx) => _coverFxSub(context.l, fx),
-    apply: ref.read(coverBgFxProvider.notifier).set,
-  );
-}

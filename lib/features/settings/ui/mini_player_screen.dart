@@ -1,5 +1,5 @@
-/// Settings of the mini player, the card above the tab bar. Choices are lists
-/// in sheets, not tiles: labels here are long.
+/// Settings of the mini player, the card above the tab bar. Few choices stand
+/// right on the page as cards, the rest open in sheets.
 library;
 
 import 'package:flutter/material.dart';
@@ -20,42 +20,52 @@ class MiniPlayerSettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mini = ref.watch(miniStyleProvider);
+    final ctrl = ref.read(miniStyleProvider.notifier);
     final l = context.l;
 
     return SubPage(
       title: l.setMiniPlayer,
       onBack: () => context.go('/settings'),
       children: [
-        SettingsCaption(l.pvGroupLook),
+        SettingsCaption(l.pvMiniBgRow),
         const SizedBox(height: 10),
+        PickRow<MiniBg>(
+          values: MiniBg.values,
+          active: (bg) => bg == mini.bg,
+          label: (bg) => _miniBgLabel(l, bg),
+          picture: (bg, _) => BloomIcon(_miniBgIcon(bg)),
+          onTap: ctrl.setBg,
+        ),
+        const SizedBox(height: 22),
+        SettingsCaption(l.pvMiniShapeRow),
+        const SizedBox(height: 10),
+        PickRow<MiniCoverShape>(
+          values: MiniCoverShape.values,
+          active: (shape) => shape == mini.shape,
+          label: (shape) => _miniShapeLabel(l, shape),
+          picture: (shape, _) => BloomIcon(_miniShapeIcon(shape)),
+          onTap: ctrl.setShape,
+        ),
+        const SizedBox(height: 22),
         SettingsGroupCard(
           rows: [
-            SettingsValueRow(
-              title: l.pvMiniBgRow,
-              value: _miniBgLabel(l, mini.bg),
-              glyph: BloomIcon(_miniBgIcon(mini.bg)),
-              onTap: () => _openMiniBg(context, ref),
-            ),
-            SettingsValueRow(
-              title: l.pvMiniShapeRow,
-              value: _miniShapeLabel(l, mini.shape),
-              glyph: BloomIcon(_miniShapeIcon(mini.shape)),
-              onTap: () => _openMiniShape(context, ref),
-            ),
             SettingsValueRow(
               title: l.pvMiniRadiusRow,
               value: _miniRadiusLabel(l, mini.radius),
               glyph: BloomIcon(_miniRadiusIcon(mini.radius)),
               onTap: () => _openMiniRadius(context, ref),
             ),
-            SettingsValueRow(
-              title: l.pvMiniProgressRow,
-              value: _miniProgressSummary(l, mini),
-              // A set: the icon is about the progress as such.
-              glyph: const BloomIcon(Bi.soundwave),
-              onTap: () => _openMiniProgress(context),
-            ),
           ],
+        ),
+        const SizedBox(height: 22),
+        SettingsCaption(l.pvMiniProgressRow),
+        const SizedBox(height: 10),
+        PickRow<MiniProgressKind>(
+          values: MiniProgressKind.values,
+          active: mini.has,
+          label: (kind) => _miniProgressLabel(l, kind),
+          picture: (kind, _) => BloomIcon(_miniProgressIcon(kind)),
+          onTap: (kind) => ctrl.toggleProgress(kind, !mini.has(kind)),
         ),
         const SizedBox(height: 22),
         SettingsCaption(l.pvGroupMiniControls),
@@ -69,13 +79,17 @@ class MiniPlayerSettingsScreen extends ConsumerWidget {
               glyph: const BloomIcon(Bi.gamepad),
               onTap: () => _openMiniButtons(context),
             ),
-            SettingsValueRow(
-              title: l.pvMiniNeighborsRow,
-              value: _miniNeighborsLabel(l, mini.neighbors),
-              glyph: BloomIcon(_miniNeighborsIcon(mini.neighbors)),
-              onTap: () => _openMiniNeighbors(context, ref),
-            ),
           ],
+        ),
+        const SizedBox(height: 22),
+        SettingsCaption(l.pvMiniNeighborsRow),
+        const SizedBox(height: 10),
+        PickRow<bool>(
+          values: const [false, true],
+          active: (on) => on == mini.neighbors,
+          label: (on) => _miniNeighborsLabel(l, on),
+          picture: (on, _) => BloomIcon(_miniNeighborsIcon(on)),
+          onTap: ctrl.setNeighbors,
         ),
       ],
     );
@@ -135,37 +149,6 @@ BloomGlyph _miniProgressIcon(MiniProgressKind kind) => switch (kind) {
   MiniProgressKind.ring => Bi.refreshCircle,
 };
 
-/// What's on, in the sheet's order. Commas: it's a set, not one of several.
-String _miniProgressSummary(AppLocalizations l, MiniStyle mini) {
-  final parts = [
-    for (final kind in MiniProgressKind.values)
-      if (mini.has(kind)) _miniProgressLabel(l, kind),
-  ];
-  return parts.isEmpty ? l.pvMiniProgressNone : parts.join(', ');
-}
-
-Future<void> _openMiniBg(BuildContext context, WidgetRef ref) => pickOneSheet(
-  context: context,
-  title: context.l.pvMiniBgRow,
-  subtitle: context.l.pvMiniBgSub,
-  values: MiniBg.values,
-  current: ref.read(miniStyleProvider).bg,
-  icon: _miniBgIcon,
-  label: (bg) => _miniBgLabel(context.l, bg),
-  apply: ref.read(miniStyleProvider.notifier).setBg,
-);
-
-Future<void> _openMiniShape(BuildContext context, WidgetRef ref) =>
-    pickOneSheet(
-      context: context,
-      title: context.l.pvMiniShapeRow,
-      values: MiniCoverShape.values,
-      current: ref.read(miniStyleProvider).shape,
-      icon: _miniShapeIcon,
-      label: (shape) => _miniShapeLabel(context.l, shape),
-      apply: ref.read(miniStyleProvider.notifier).setShape,
-    );
-
 Future<void> _openMiniRadius(BuildContext context, WidgetRef ref) =>
     pickOneSheet(
       context: context,
@@ -176,34 +159,6 @@ Future<void> _openMiniRadius(BuildContext context, WidgetRef ref) =>
       label: (radius) => _miniRadiusLabel(context.l, radius),
       apply: ref.read(miniStyleProvider.notifier).setRadius,
     );
-
-/// A set: rows toggle in place and the sheet stays open.
-Future<void> _openMiniProgress(BuildContext context) {
-  final l = context.l;
-  return showBloomSheetChild<void>(
-    context: context,
-    header: SheetTitle(l.pvMiniProgressRow, subtitle: l.pvMiniProgressSub),
-    child: Consumer(
-      builder: (context, ref, _) {
-        final mini = ref.watch(miniStyleProvider);
-        final ctrl = ref.read(miniStyleProvider.notifier);
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final kind in MiniProgressKind.values)
-              SheetOptionTile(
-                icon: _miniProgressIcon(kind),
-                label: _miniProgressLabel(l, kind),
-                active: mini.has(kind),
-                check: true,
-                onTap: () => ctrl.toggleProgress(kind, !mini.has(kind)),
-              ),
-          ],
-        );
-      },
-    ),
-  );
-}
 
 // ── Controls ─────────────────────────────────────────────────────────────────
 
@@ -231,7 +186,7 @@ String _miniButtonsSummary(AppLocalizations l, MiniStyle mini) {
   return parts.isEmpty ? l.pvMiniButtonsNone : parts.join(', ');
 }
 
-/// A set too: any, or none at all, and then the card is its cover and caption.
+/// A set: any, or none at all, and then the card is its cover and caption.
 Future<void> _openMiniButtons(BuildContext context) {
   final l = context.l;
   return showBloomSheetChild<void>(
@@ -263,16 +218,3 @@ String _miniNeighborsLabel(AppLocalizations l, bool on) =>
     on ? l.pvMiniNeighborsOn : l.pvMiniNeighborsOff;
 
 BloomGlyph _miniNeighborsIcon(bool on) => on ? Bi.transferHorizontal : Bi.stop;
-
-/// A choice of two, not a switch: it reads like its neighbours in this card.
-Future<void> _openMiniNeighbors(BuildContext context, WidgetRef ref) =>
-    pickOneSheet<bool>(
-      context: context,
-      title: context.l.pvMiniNeighborsRow,
-      subtitle: context.l.pvMiniNeighborsSub,
-      values: const [false, true],
-      current: ref.read(miniStyleProvider).neighbors,
-      icon: _miniNeighborsIcon,
-      label: (on) => _miniNeighborsLabel(context.l, on),
-      apply: ref.read(miniStyleProvider.notifier).setNeighbors,
-    );
