@@ -1676,6 +1676,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pvMiniProgressRing => 'Ring';
 
   @override
+  String get pvMiniProgressTint => 'Track color';
+
+  @override
+  String get pvMiniProgressTintSub =>
+      'Color the progress with the cover accent instead of the theme color';
+
+  @override
   String get pvMiniShapeRow => 'Cover shape';
 
   @override

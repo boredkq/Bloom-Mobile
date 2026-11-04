@@ -505,6 +505,8 @@
   "pvMiniProgressLine": "Линия",
   "pvMiniProgressFill": "Заливка",
   "pvMiniProgressRing": "Кольцо",
+  "pvMiniProgressTint": "Цвет трека",
+  "pvMiniProgressTintSub": "Красить прогресс акцентом из обложки, а не цветом темы",
   "pvMiniShapeRow": "Форма обложки",
   "pvMiniShapeRounded": "Закруглённая",
   "pvMiniShapeCircle": "Круг",

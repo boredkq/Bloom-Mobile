@@ -716,6 +716,8 @@
   "pvMiniProgressLine": "Line",
   "pvMiniProgressFill": "Fill",
   "pvMiniProgressRing": "Ring",
+  "pvMiniProgressTint": "Track color",
+  "pvMiniProgressTintSub": "Color the progress with the cover accent instead of the theme color",
   "pvMiniShapeRow": "Cover shape",
   "pvMiniShapeRounded": "Rounded",
   "pvMiniShapeCircle": "Circle",

@@ -95,6 +95,54 @@ void main() {
     });
   });
 
+  group('progress tint', () {
+    test('off by default, and a broken entry means off', () {
+      expect(
+        _container(JsonStore.memory()).read(miniStyleProvider).progressTint,
+        isFalse,
+      );
+      final broken = _container(
+        JsonStore.memory({
+          'miniStyle': {'progressTint': 'yes'},
+        }),
+      );
+      expect(broken.read(miniStyleProvider).progressTint, isFalse);
+    });
+
+    test('the choice reaches the disk and comes back', () {
+      final store = JsonStore.memory();
+      _container(store).read(miniStyleProvider.notifier).setProgressTint(true);
+
+      expect((store.read('miniStyle')! as Map)['progressTint'], isTrue);
+      expect(_container(store).read(miniStyleProvider).progressTint, isTrue);
+    });
+
+    test('useless only when nothing would take the tint', () {
+      const fillOnly = MiniProgress(line: false, fill: true);
+
+      expect(const MiniStyle().progressTintUseful, isTrue);
+      expect(
+        const MiniStyle(
+          progress: MiniProgress(line: false, ring: true),
+          bg: MiniBg.coverColor,
+        ).progressTintUseful,
+        isTrue,
+      );
+      expect(const MiniStyle(progress: fillOnly).progressTintUseful, isTrue);
+      expect(
+        const MiniStyle(
+          progress: fillOnly,
+          bg: MiniBg.coverColor,
+        ).progressTintUseful,
+        isFalse,
+      );
+      expect(
+        const MiniStyle(progress: MiniProgress(line: false)).progressTintUseful,
+        isFalse,
+      );
+    });
+  });
+
   group('geometry', () {
     const screen = Size(360, 800);
 

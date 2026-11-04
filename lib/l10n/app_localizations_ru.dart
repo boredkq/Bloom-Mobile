@@ -1704,6 +1704,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pvMiniProgressRing => 'Кольцо';
 
   @override
+  String get pvMiniProgressTint => 'Цвет трека';
+
+  @override
+  String get pvMiniProgressTintSub =>
+      'Красить прогресс акцентом из обложки, а не цветом темы';
+
+  @override
   String get pvMiniShapeRow => 'Форма обложки';
 
   @override

@@ -67,6 +67,18 @@ class MiniPlayerSettingsScreen extends ConsumerWidget {
           picture: (kind, _) => BloomIcon(_miniProgressIcon(kind)),
           onTap: (kind) => ctrl.toggleProgress(kind, !mini.has(kind)),
         ),
+        const SizedBox(height: 12),
+        SettingsGroupCard(
+          rows: [
+            SettingsToggleRow(
+              title: l.pvMiniProgressTint,
+              subtitle: l.pvMiniProgressTintSub,
+              value: mini.progressTint,
+              enabled: mini.progressTintUseful,
+              onChanged: ctrl.setProgressTint,
+            ),
+          ],
+        ),
         const SizedBox(height: 22),
         SettingsCaption(l.pvGroupMiniControls),
         const SizedBox(height: 10),

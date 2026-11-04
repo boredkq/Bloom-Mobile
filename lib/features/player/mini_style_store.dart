@@ -85,6 +85,7 @@ class MiniStyle {
   const MiniStyle({
     this.bg = MiniBg.theme,
     this.progress = const MiniProgress(),
+    this.progressTint = false,
     this.shape = MiniCoverShape.rounded,
     this.radius = MiniRadius.rounded,
     this.buttons = kDefaultMiniButtons,
@@ -93,6 +94,9 @@ class MiniStyle {
 
   final MiniBg bg;
   final MiniProgress progress;
+
+  /// Indicators take the cover's accent instead of the theme's.
+  final bool progressTint;
   final MiniCoverShape shape;
   final MiniRadius radius;
   final Set<MiniButton> buttons;
@@ -107,11 +111,19 @@ class MiniStyle {
     MiniProgressKind.ring => progress.ring,
   };
 
+  /// Whether the tint has anything to paint. The line and the ring always take
+  /// it; the fill on a cover colour card already has the track's own tone.
+  bool get progressTintUseful =>
+      progress.line ||
+      progress.ring ||
+      (progress.fill && bg != MiniBg.coverColor);
+
   bool hasButton(MiniButton button) => buttons.contains(button);
 
   MiniStyle copyWith({
     MiniBg? bg,
     MiniProgress? progress,
+    bool? progressTint,
     MiniCoverShape? shape,
     MiniRadius? radius,
     Set<MiniButton>? buttons,
@@ -119,6 +131,7 @@ class MiniStyle {
   }) => MiniStyle(
     bg: bg ?? this.bg,
     progress: progress ?? this.progress,
+    progressTint: progressTint ?? this.progressTint,
     shape: shape ?? this.shape,
     radius: radius ?? this.radius,
     buttons: buttons ?? this.buttons,
@@ -146,6 +159,7 @@ class MiniStyleController extends Notifier<MiniStyle> {
               ring: progress['ring'] as bool? ?? false,
             )
           : const MiniProgress(),
+      progressTint: raw['progressTint'] == true,
       shape: _enumFromJson(
         MiniCoverShape.values,
         raw['shape'],
@@ -186,6 +200,8 @@ class MiniStyleController extends Notifier<MiniStyle> {
     ),
   );
 
+  void setProgressTint(bool on) => _set(state.copyWith(progressTint: on));
+
   void setNeighbors(bool on) => _set(state.copyWith(neighbors: on));
 
   void toggleButton(MiniButton button, bool on) {
@@ -207,6 +223,7 @@ class MiniStyleController extends Notifier<MiniStyle> {
         'fill': next.progress.fill,
         'ring': next.progress.ring,
       },
+      'progressTint': next.progressTint,
       'shape': next.shape.name,
       'radius': next.radius.name,
       'buttons': [
@@ -227,12 +244,28 @@ T _enumFromJson<T extends Enum>(List<T> values, Object? raw, T fallback) {
   return fallback;
 }
 
-/// The cover's dark dominant, the card background in cover colour mode. The key
-/// is the cover link, not the track: the card may show a custom picture, and
-/// the colour must come from what's visible. `null`: no cover or unreadable, so
-/// the theme's plate stays.
+/// One scan per cover, shared by the card's background and the progress tint.
+/// The key is the cover link, not the track: the card may show a custom
+/// picture, and the colour must come from what's visible.
+final _miniCoverHslProvider = FutureProvider.autoDispose
+    .family<CoverHsl?, String?>((ref, cover) => extractCoverHsl(cover));
+
+/// The cover's dark dominant, the card background in cover colour mode. `null`:
+/// no cover or unreadable, so the theme's plate stays.
 final miniCoverColorProvider = FutureProvider.autoDispose
     .family<Color?, String?>((ref, cover) async {
-      final hsl = await extractCoverHsl(cover);
+      final hsl = await ref.watch(_miniCoverHslProvider(cover).future);
       return hsl == null ? null : miniBgFromHsl(hsl);
+    });
+
+/// How light the progress tint is, whatever the auto accent's level: a thin
+/// line has to read on a dark card.
+const double _miniTintLevel = 0.5;
+
+/// The cover's accent for the progress indicators. `null`: no cover or
+/// unreadable, so they keep the theme's accent.
+final miniProgressTintProvider = FutureProvider.autoDispose
+    .family<Color?, String?>((ref, cover) async {
+      final hsl = await ref.watch(_miniCoverHslProvider(cover).future);
+      return hsl == null ? null : accentFromHsl(hsl, _miniTintLevel);
     });

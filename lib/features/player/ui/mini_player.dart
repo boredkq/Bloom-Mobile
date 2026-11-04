@@ -99,6 +99,16 @@ double _progressFrac(WidgetRef ref) {
       : (head.position.inMilliseconds / total).clamp(0.0, 1.0);
 }
 
+/// What the indicators are painted with: the cover's accent when the setting is
+/// on, otherwise the theme's. Also the theme's while the cover is being read.
+/// Only the playing track's card has indicators, so it's always that cover.
+Color _progressColor(WidgetRef ref, BloomTokens t) {
+  final on = ref.watch(miniStyleProvider.select((s) => s.progressTint));
+  if (!on) return t.accent;
+  return ref.watch(miniProgressTintProvider(miniCardCover(ref))).value ??
+      t.accent;
+}
+
 /// A cover's picture or colour under the card is dark whatever the theme, so on
 /// a light theme its row takes the dark theme's ink.
 final _miniInkProvider = Provider<ThemeData>(
@@ -421,7 +431,7 @@ class _RingProgress extends ConsumerWidget {
         frac: _progressFrac(ref),
         // Muted: on a cover auto accent a full-strength ring blazes around the
         // picture and pulls the eye from the card.
-        color: t.accent.withValues(alpha: 0.7),
+        color: _progressColor(ref, t).withValues(alpha: 0.7),
         track: t.ovlLine,
         // A round cover gets a true circle rather than a square with a large
         // radius: corners of a rounded rectangle with r at half the side still
@@ -559,7 +569,7 @@ class _FillProgress extends ConsumerWidget {
         // over a red card.
         child: ColoredBox(
           color: tint == null
-              ? t.accent.withValues(alpha: 0.18)
+              ? _progressColor(ref, t).withValues(alpha: 0.18)
               : Color.lerp(tint, const Color(0xFFFFFFFF), 0.05)!,
         ),
       ),
@@ -581,7 +591,10 @@ class _Hairline extends ConsumerWidget {
         alignment: Alignment.centerLeft,
         child: FractionallySizedBox(
           widthFactor: frac,
-          child: ColoredBox(color: t.accent, child: const SizedBox(height: 2)),
+          child: ColoredBox(
+            color: _progressColor(ref, t),
+            child: const SizedBox(height: 2),
+          ),
         ),
       ),
     );

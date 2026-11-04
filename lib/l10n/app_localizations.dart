@@ -2894,6 +2894,18 @@ abstract class AppLocalizations {
   /// **'Ring'**
   String get pvMiniProgressRing;
 
+  /// No description provided for @pvMiniProgressTint.
+  ///
+  /// In en, this message translates to:
+  /// **'Track color'**
+  String get pvMiniProgressTint;
+
+  /// No description provided for @pvMiniProgressTintSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Color the progress with the cover accent instead of the theme color'**
+  String get pvMiniProgressTintSub;
+
   /// No description provided for @pvMiniShapeRow.
   ///
   /// In en, this message translates to:
