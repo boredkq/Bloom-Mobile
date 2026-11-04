@@ -620,7 +620,6 @@ class HeaderSearchField extends StatelessWidget {
     super.key,
     required this.hint,
     this.controller,
-    this.focusNode,
     this.action,
     this.trailing,
     this.onChanged,
@@ -630,7 +629,6 @@ class HeaderSearchField extends StatelessWidget {
 
   final String hint;
   final TextEditingController? controller;
-  final FocusNode? focusNode;
   final TextInputAction? action;
   final Widget? trailing;
   final ValueChanged<String>? onChanged;
@@ -657,7 +655,6 @@ class HeaderSearchField extends StatelessWidget {
             Expanded(
               child: BloomField(
                 controller: controller,
-                focusNode: focusNode,
                 hint: hint,
                 autofocus: true,
                 action: action,

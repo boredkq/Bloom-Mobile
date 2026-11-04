@@ -1155,15 +1155,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get searchSourceAll => 'Все источники';
 
   @override
-  String get searchRecent => 'Недавние запросы';
-
-  @override
-  String get searchRecentOpened => 'Недавно открытые';
-
-  @override
-  String get searchRemoveRecent => 'Убрать из недавних';
-
-  @override
   String get searchNothingFound => 'Ничего не нашлось';
 
   @override

@@ -22,7 +22,6 @@ import '../../../core/providers/music_provider.dart';
 import '../../../core/providers/registry.dart';
 import '../../../features/detail/detail_nav.dart';
 import '../../../features/player/play_source.dart';
-import '../../../features/player/player_controller.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/big_tabs.dart';
 import '../../../shared/ui/bloom_icon.dart';
@@ -31,7 +30,6 @@ import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/platform_logo.dart';
 import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/skeleton.dart';
-import '../recent_store.dart';
 
 /// Whether a string looks like a link. Domains get caught with no protocol too,
 /// since that's how they get pasted. The exact parsing is the platform's; this
@@ -87,7 +85,6 @@ class SearchScreen extends ConsumerStatefulWidget {
 
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _controller = TextEditingController();
-  final _focus = FocusNode();
 
   SearchTab _tab = SearchTab.all;
   SearchResults _results = SearchResults.empty;
@@ -109,16 +106,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   @override
   void dispose() {
     _controller.dispose();
-    _focus.dispose();
     super.dispose();
   }
 
   Future<void> _search() async {
     final query = _controller.text.trim();
     if (query.isEmpty) return;
-    // Remembered at the start, so a query lands in recents even with empty
-    // results: repeating a typo beats typing it all again.
-    ref.read(recentSearchesProvider.notifier).push(query);
     final gen = ++_generation;
     setState(() {
       _lastQuery = query;
@@ -173,18 +166,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   void _go(SearchTab tab) => setState(() => _tab = tab);
 
-  /// A tap on a recent query: fills the field and searches right away. The
-  /// keyboard goes: it would take half the screen over fresh results, and a
-  /// filled query rarely needs editing.
-  void _applyRecent(String query) {
-    _controller.value = TextEditingValue(
-      text: query,
-      selection: TextSelection.collapsed(offset: query.length),
-    );
-    _focus.unfocus();
-    _search();
-  }
-
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -209,7 +190,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 Expanded(
                   child: _SearchField(
                     controller: _controller,
-                    focusNode: _focus,
                     onSubmit: _search,
                     onClear: () => setState(() {
                       _controller.clear();
@@ -254,18 +234,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       );
     }
     if (_results.isEmpty) {
-      // Before the first query, recents in place of a stand-in. Not after a
-      // failed search: nothing found answers what was typed, and swapping in
-      // history hides that result.
-      final recents = ref.watch(recentSearchesProvider);
-      final items = ref.watch(recentItemsProvider);
-      if (!_searched && (recents.isNotEmpty || items.isNotEmpty)) {
-        return _RecentPanel(
-          queries: recents,
-          items: items,
-          onPick: _applyRecent,
-        );
-      }
       final text = _searched
           ? context.l.searchNothingFound
           : context.l.searchFindSomething;
@@ -283,20 +251,17 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 class _SearchField extends StatelessWidget {
   const _SearchField({
     required this.controller,
-    required this.focusNode,
     required this.onSubmit,
     required this.onClear,
   });
 
   final TextEditingController controller;
-  final FocusNode focusNode;
   final VoidCallback onSubmit;
   final VoidCallback onClear;
 
   @override
   Widget build(BuildContext context) => HeaderSearchField(
     controller: controller,
-    focusNode: focusNode,
     hint: context.l.searchHint,
     action: TextInputAction.search,
     onSubmitted: (_) => onSubmit(),
@@ -310,212 +275,6 @@ class _SearchField extends StatelessWidget {
             ),
     ),
   );
-}
-
-/// Recent on an empty search screen: opened cards as a strip first, queries as
-/// rows below.
-///
-/// Queries are rows rather than pills: a query can be long (бой с тенью 3
-/// саундтрек), a pill shows only an ellipsis, and a past query gets recognised
-/// by its tail.
-class _RecentPanel extends ConsumerWidget {
-  const _RecentPanel({
-    required this.queries,
-    required this.items,
-    required this.onPick,
-  });
-
-  final List<String> queries;
-  final List<RecentItem> items;
-  final ValueChanged<String> onPick;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return ListView(
-      // Room below for the shell's bars, floating over the content.
-      padding: EdgeInsets.fromLTRB(8, 4, 8, 12 + bottomBarsInset(context)),
-      children: [
-        if (items.isNotEmpty) ...[
-          _RecentHeader(
-            title: context.l.searchRecentOpened,
-            onClear: () => ref.read(recentItemsProvider.notifier).clear(),
-          ),
-          // Height as in the results' playlist strip: the same cards, standing
-          // alike.
-          EntityCarousel(
-            height: 194,
-            itemCount: items.length,
-            builder: (i) => _RecentCard(item: items[i]),
-          ),
-        ],
-        if (queries.isNotEmpty) ...[
-          _RecentHeader(
-            title: context.l.searchRecent,
-            onClear: () => ref.read(recentSearchesProvider.notifier).clear(),
-          ),
-          for (final query in queries)
-            _RecentRow(
-              query: query,
-              onTap: () => onPick(query),
-              onRemove: () =>
-                  ref.read(recentSearchesProvider.notifier).remove(query),
-            ),
-        ],
-      ],
-    );
-  }
-}
-
-class _RecentHeader extends StatelessWidget {
-  const _RecentHeader({required this.title, required this.onClear});
-
-  final String title;
-  final VoidCallback onClear;
-
-  @override
-  Widget build(BuildContext context) => SectionTitle(
-    title,
-    side: 8,
-    actionLabel: context.l.commonClear,
-    onAction: onClear,
-  );
-}
-
-/// A recently opened card: a cover (a circle for an artist), a title and type.
-/// Its own rather than [SetCard], [ArtistCard] or [TrackCard]: one strip holds
-/// different entities, needing one silhouette and one remove gesture. The
-/// caption is the type, not the author: cover and title are recognisable, but
-/// not whether it's an album or a track.
-class _RecentCard extends ConsumerWidget {
-  const _RecentCard({required this.item});
-
-  final RecentItem item;
-
-  static const double _size = 132;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l = context.l;
-    final (cover, title, subtitle, source, circle) = switch (item) {
-      RecentTrack(:final track) => (
-        track.cover,
-        track.name,
-        l.commonTrack,
-        track.source,
-        false,
-      ),
-      RecentArtist(:final artist) => (
-        artist.avatar,
-        artist.name,
-        l.commonArtist,
-        artist.source,
-        true,
-      ),
-      RecentSet(:final set) => (
-        set.cover,
-        set.title,
-        set.isAlbum ? l.commonAlbum : l.commonPlaylist,
-        set.source,
-        false,
-      ),
-    };
-
-    return EntityCard(
-      size: _size,
-      center: circle,
-      title: title,
-      lines: [subtitle],
-      cover: (side) =>
-          SourcedCover(url: cover, size: side, source: source, circle: circle),
-      onTap: () => _openRecent(context, ref, item),
-      onLongPress: () => _removeRecent(context, ref, item),
-    );
-  }
-}
-
-/// Opens a recent item: an artist or set page, while a track just plays. The
-/// entry rises to the top. No request to the platform: the list holds the
-/// entity from results, with cover, owner and `sourceData`.
-void _openRecent(BuildContext context, WidgetRef ref, RecentItem item) {
-  ref.read(recentItemsProvider.notifier).push(item);
-  switch (item) {
-    case RecentTrack(:final track):
-      ref
-          .read(playbackProvider.notifier)
-          .playQueue([track], 0, source: PlainSource.single(track));
-    case RecentArtist(:final artist):
-      openArtist(context, artist.id, initial: artist);
-    case RecentSet(:final set):
-      openSet(context, set);
-  }
-}
-
-/// One-action sheet: Remove from recent, for a long-pressed card.
-Future<void> _removeRecent(
-  BuildContext context,
-  WidgetRef ref,
-  RecentItem item,
-) {
-  final (cover, title, subtitle) = switch (item) {
-    RecentTrack(:final track) => (track.cover, track.name, track.artist),
-    RecentArtist(:final artist) => (
-      artist.avatar,
-      artist.name,
-      context.l.commonArtist,
-    ),
-    RecentSet(:final set) => (
-      set.cover,
-      set.title,
-      set.ownerName ??
-          (set.isAlbum ? context.l.commonAlbum : context.l.commonPlaylist),
-    ),
-  };
-
-  return showBloomSheet(
-    context: context,
-    header: SheetHero(cover: cover, title: title, subtitle: subtitle),
-    groups: [
-      [
-        SheetAction(
-          icon: Bi.close,
-          label: context.l.searchRemoveRecent,
-          danger: true,
-          onTap: () => ref.read(recentItemsProvider.notifier).remove(item),
-        ),
-      ],
-    ],
-  );
-}
-
-class _RecentRow extends StatelessWidget {
-  const _RecentRow({
-    required this.query,
-    required this.onTap,
-    required this.onRemove,
-  });
-
-  final String query;
-  final VoidCallback onTap;
-  final VoidCallback onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    return SheetRow(
-      leading: BloomIcon(Bi.clockCircle, size: 20, color: t.muted),
-      gap: 12,
-      label: query,
-      trailing: CircleIconButton(
-        icon: Bi.close,
-        size: 34,
-        iconSize: 18,
-        background: Colors.transparent,
-        color: t.muted,
-        onTap: onRemove,
-      ),
-      onTap: onTap,
-    );
-  }
 }
 
 class _PlatformButton extends ConsumerWidget {
@@ -584,13 +343,7 @@ const int _tracksPreview = 4;
 /// The gap over a kind's own tab, as in the library.
 const double _tabTop = 18;
 
-/// Records a card opened from results. Called from result tiles, which home and
-/// the library share, so through its `onOpen` rather than inside: only search
-/// keeps recents.
-void _remember(WidgetRef ref, RecentItem item) =>
-    ref.read(recentItemsProvider.notifier).push(item);
-
-class _ResultsView extends ConsumerWidget {
+class _ResultsView extends StatelessWidget {
   const _ResultsView({
     required this.results,
     required this.tab,
@@ -608,18 +361,14 @@ class _ResultsView extends ConsumerWidget {
   final ValueChanged<SearchTab> onTab;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final l = context.l;
     Widget setGrid(List<Playlist> sets) => CardGrid(
       columns: 2,
       caption: setCaption(sets),
       top: _tabTop,
       itemCount: sets.length,
-      itemBuilder: (context, i) => SetCard(
-        set: sets[i],
-        size: null,
-        onOpen: () => _remember(ref, RecentSet(sets[i])),
-      ),
+      itemBuilder: (context, i) => SetCard(set: sets[i], size: null),
     );
     final artists = results.artists;
     switch (tab) {
@@ -633,12 +382,8 @@ class _ResultsView extends ConsumerWidget {
           caption: 48,
           top: _tabTop,
           itemCount: artists.length,
-          itemBuilder: (context, i) => ArtistCard(
-            artist: artists[i],
-            size: null,
-            centerLabel: true,
-            onOpen: () => _remember(ref, RecentArtist(artists[i])),
-          ),
+          itemBuilder: (context, i) =>
+              ArtistCard(artist: artists[i], size: null, centerLabel: true),
         );
       case SearchTab.all || SearchTab.tracks:
         break;
@@ -659,10 +404,7 @@ class _ResultsView extends ConsumerWidget {
       height: setRowHeight(sets),
       padding: 16,
       itemCount: sets.length,
-      builder: (i) => SetCard(
-        set: sets[i],
-        onOpen: () => _remember(ref, RecentSet(sets[i])),
-      ),
+      builder: (i) => SetCard(set: sets[i]),
     );
 
     final sections = <Widget>[
@@ -677,7 +419,6 @@ class _ResultsView extends ConsumerWidget {
               queue: [tracks[i]],
               index: 0,
               source: source,
-              onOpen: () => _remember(ref, RecentTrack(tracks[i])),
             ),
           ),
       ],
@@ -687,11 +428,8 @@ class _ResultsView extends ConsumerWidget {
           height: 168,
           padding: 16,
           itemCount: results.artists.length,
-          builder: (i) => ArtistCard(
-            artist: results.artists[i],
-            centerLabel: true,
-            onOpen: () => _remember(ref, RecentArtist(results.artists[i])),
-          ),
+          builder: (i) =>
+              ArtistCard(artist: results.artists[i], centerLabel: true),
         ),
       ],
       if (all && results.albums.isNotEmpty) ...[

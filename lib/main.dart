@@ -46,6 +46,8 @@ Future<void> main() async {
   // The store is read BEFORE the first frame, or the library and theme blink
   // empty and screens need loading states.
   final store = await _step('bloom.json', JsonStore.open);
+  // Nothing reads these: they'd sit in the file for good.
+  store.removeAll(const ['recentSearches', 'recentItems']);
   // The listener's data: library, play log, follows.
   final db = await _step('bloom.db', BloomDb.open);
   // User fonts before the first frame, or the chosen one flashes as Inter.

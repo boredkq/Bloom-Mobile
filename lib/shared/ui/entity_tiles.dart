@@ -66,7 +66,6 @@ class TrackRow extends ConsumerWidget {
     this.source,
     this.dragIndex,
     this.mark,
-    this.onOpen,
     this.number,
     this.rank,
   });
@@ -80,10 +79,6 @@ class TrackRow extends ConsumerWidget {
 
   /// Chart position; see [TrackRowShell.rank].
   final int? rank;
-
-  /// Called before playback to record a recent item on the search screen. Only
-  /// search keeps recents, so other lists leave it unset.
-  final VoidCallback? onOpen;
 
   /// Where [queue] came from; see [PlaybackState.source]. A row inside a
   /// playlist starts it whole: its tile should show the equalizer and the
@@ -102,12 +97,9 @@ class TrackRow extends ConsumerWidget {
     return TrackRowShell(
       track: track,
       active: ref.watch(playbackProvider).track?.id == track.id,
-      onTap: () {
-        onOpen?.call();
-        ref
-            .read(playbackProvider.notifier)
-            .playQueue(queue, index, source: source);
-      },
+      onTap: () => ref
+          .read(playbackProvider.notifier)
+          .playQueue(queue, index, source: source),
       // The sheet learns the library section from the list's source; it has no
       // other sign of where the row is from, and Remove from playlist depends
       // on it.
@@ -233,7 +225,6 @@ class SourcedCover extends StatelessWidget {
     required this.size,
     required this.source,
     this.small = false,
-    this.circle = false,
     this.flight,
     this.overlay,
   });
@@ -244,7 +235,6 @@ class SourcedCover extends StatelessWidget {
 
   /// In a row: a smaller badge, closer to the edge.
   final bool small;
-  final bool circle;
   final CoverFlight? flight;
   final Widget? overlay;
 
@@ -253,13 +243,7 @@ class SourcedCover extends StatelessWidget {
     final edge = small ? 3.0 : 6.0;
     return Stack(
       children: [
-        Cover(
-          url: url,
-          size: size,
-          circle: circle,
-          flight: flight,
-          overlay: overlay,
-        ),
+        Cover(url: url, size: size, flight: flight, overlay: overlay),
         Positioned(
           right: edge,
           bottom: edge,
@@ -708,7 +692,6 @@ class ArtistCard extends StatefulWidget {
     this.size = 104,
     this.centerLabel = false,
     this.pinned = false,
-    this.onOpen,
   });
 
   final Artist artist;
@@ -716,9 +699,6 @@ class ArtistCard extends StatefulWidget {
 
   /// A pin after the name.
   final bool pinned;
-
-  /// See [TrackRow.onOpen].
-  final VoidCallback? onOpen;
 
   /// Centred labels, as in artist grids and library follows.
   final bool centerLabel;
@@ -763,10 +743,8 @@ class _ArtistCardState extends State<ArtistCard> {
       ],
       cover: (side) =>
           Cover(url: artist.avatar, size: side, circle: true, flight: flight),
-      onTap: () {
-        widget.onOpen?.call();
-        openArtist(context, artist.id, initial: artist, flight: flight);
-      },
+      onTap: () =>
+          openArtist(context, artist.id, initial: artist, flight: flight),
     );
   }
 }
@@ -817,13 +795,10 @@ double setRowHeight(Iterable<Playlist> sets) => 146 + setCaption(sets);
 /// With a `null` [size] it fills the grid cell; a number is a fixed carousel
 /// width.
 class SetCard extends StatefulWidget {
-  const SetCard({super.key, required this.set, this.size = 132, this.onOpen});
+  const SetCard({super.key, required this.set, this.size = 132});
 
   final Playlist set;
   final double? size;
-
-  /// See [TrackRow.onOpen].
-  final VoidCallback? onOpen;
 
   @override
   State<SetCard> createState() => _SetCardState();
@@ -847,10 +822,7 @@ class _SetCardState extends State<SetCard> {
         flight: flight,
         overlay: SetEqualizer(setId: set.id),
       ),
-      onTap: () {
-        widget.onOpen?.call();
-        openSet(context, set, flight: flight);
-      },
+      onTap: () => openSet(context, set, flight: flight),
     );
   }
 }

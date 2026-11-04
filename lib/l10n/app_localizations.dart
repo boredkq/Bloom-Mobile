@@ -1964,24 +1964,6 @@ abstract class AppLocalizations {
   /// **'All sources'**
   String get searchSourceAll;
 
-  /// No description provided for @searchRecent.
-  ///
-  /// In en, this message translates to:
-  /// **'Recent searches'**
-  String get searchRecent;
-
-  /// No description provided for @searchRecentOpened.
-  ///
-  /// In en, this message translates to:
-  /// **'Recently opened'**
-  String get searchRecentOpened;
-
-  /// No description provided for @searchRemoveRecent.
-  ///
-  /// In en, this message translates to:
-  /// **'Remove from recent'**
-  String get searchRemoveRecent;
-
   /// No description provided for @searchNothingFound.
   ///
   /// In en, this message translates to:

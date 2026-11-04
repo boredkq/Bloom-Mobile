@@ -1134,15 +1134,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchSourceAll => 'All sources';
 
   @override
-  String get searchRecent => 'Recent searches';
-
-  @override
-  String get searchRecentOpened => 'Recently opened';
-
-  @override
-  String get searchRemoveRecent => 'Remove from recent';
-
-  @override
   String get searchNothingFound => 'Nothing found';
 
   @override

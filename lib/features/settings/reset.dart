@@ -48,7 +48,6 @@ import '../../features/profile/achievements.dart';
 import '../../features/profile/artist_avatars.dart';
 import '../../features/profile/level.dart';
 import '../../features/profile/profile_store.dart';
-import '../../features/search/recent_store.dart';
 import '../../features/wave/wave_controller.dart';
 import '../../features/wave/wave_store.dart';
 import '../../features/wrapped/wrapped_store.dart';
@@ -150,10 +149,6 @@ Future<void> hardReset(WidgetRef ref) async {
   ref.invalidate(levelBankedProvider);
   ref.invalidate(profileSinceProvider);
   ref.invalidate(profileProvider);
-  ref.invalidate(recentSearchesProvider);
-  // Apart from the queries: without this the wiped list stays in memory and the
-  // first opening writes it all back.
-  ref.invalidate(recentItemsProvider);
   // What it was built for is gone.
   ref.invalidate(artistAvatarsProvider);
   ref.invalidate(offlineProvider);
