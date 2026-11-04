@@ -1,6 +1,7 @@
 /// My Wave atop the home screen: the
 /// living circle on a stage in the wave's colour fills the first screen, the
-/// rest of the home lies below it.
+/// rest of the home lies below it. The stage always leaves room for the mini
+/// player, so a track coming or going moves nothing on it.
 ///
 /// With nothing in the player, "My Wave" at the circle's heart starts it; else
 /// the circle holds what plays, a wave or not: the artist, the cover, dislike ·
@@ -28,6 +29,7 @@ import '../../customization/custom_store.dart';
 import '../../detail/artists_sheet.dart';
 import '../../player/play_source.dart';
 import '../../player/player_controller.dart';
+import '../../player/ui/mini_player.dart';
 import '../../player/ui/player_sheet.dart';
 import '../../profile/artist_avatars.dart';
 import '../../settings/cover_accent.dart';
@@ -48,6 +50,9 @@ const double _pickShare = 0.36;
 const double _filmAlpha = 0.72;
 const double _filmSide = 44;
 
+/// The height of the home's header, under the status bar.
+const double kHomeHeaderHeight = 60;
+
 /// Waves to turn to. Read again when the library or the dislikes change, not
 /// on every play: the row shouldn't shift under the finger.
 final _picksProvider = Provider.autoDispose<List<WaveOption>>((ref) {
@@ -57,10 +62,7 @@ final _picksProvider = Provider.autoDispose<List<WaveOption>>((ref) {
 });
 
 class WaveHero extends ConsumerStatefulWidget {
-  const WaveHero({super.key, required this.header, required this.scroll});
-
-  /// The home's header, over the stage.
-  final Widget header;
+  const WaveHero({super.key, required this.scroll});
 
   /// The home's scroll: scrolled away, the circle rests.
   final ScrollController scroll;
@@ -110,10 +112,14 @@ class _WaveHeroState extends ConsumerState<WaveHero> {
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
     final width = mq.size.width;
-    final height = mq.size.height - bottomBarsInset(context);
-    final head = mq.padding.top + 60;
-    final picks = ref.watch(_picksProvider);
     final track = ref.watch(playbackProvider.select((s) => s.track));
+    // The bars' inset holds the mini player's room only while it shows.
+    final height =
+        mq.size.height -
+        bottomBarsInset(context) -
+        (track == null ? kMiniCardHeight + kFloatGap : 0);
+    final head = mq.padding.top + kHomeHeaderHeight;
+    final picks = ref.watch(_picksProvider);
     final playing = ref.watch(playingNowProvider);
     final cover = ref.watch(playerCoverProvider);
     final tone = track == null
@@ -141,13 +147,19 @@ class _WaveHeroState extends ConsumerState<WaveHero> {
     final heartBottom = listOn ? _picksH : 0.0;
     final center = Offset(width / 2, (head + height - heartBottom) / 2);
 
+    // The screen goes on under the bars, or what lies below would peek through
+    // the gaps between them.
     return SizedBox(
-      height: height,
+      height: mq.size.height,
       child: Stack(
         // The stage runs on up into a pull past the top.
         clipBehavior: Clip.none,
         children: [
-          Positioned.fill(
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: height,
             child: GestureDetector(
               onLongPress: () => showWaveTuneSheet(context),
               child: Vibe(
@@ -163,7 +175,7 @@ class _WaveHeroState extends ConsumerState<WaveHero> {
             top: head,
             left: 24,
             right: 24,
-            bottom: heartBottom,
+            height: height - heartBottom - head,
             child: Center(
               child: track == null
                   ? _WaveTitle(
@@ -188,7 +200,7 @@ class _WaveHeroState extends ConsumerState<WaveHero> {
             Positioned(
               left: 0,
               right: 0,
-              bottom: 0,
+              top: height - _picksH,
               height: _picksH,
               child: _Picks(
                 options: ring,
@@ -197,12 +209,6 @@ class _WaveHeroState extends ConsumerState<WaveHero> {
                 arcR: height - _picksH + _PickItem._side / 2 - center.dy,
               ),
             ),
-          Positioned(
-            top: mq.padding.top,
-            left: 0,
-            right: 0,
-            child: widget.header,
-          ),
         ],
       ),
     );

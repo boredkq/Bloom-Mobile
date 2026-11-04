@@ -8,7 +8,10 @@ import 'package:bloom/core/l10n/l10n.dart';
 import 'package:bloom/core/store/json_store.dart';
 import 'package:bloom/features/wave/ui/wave_dislikes_sheet.dart';
 import 'package:bloom/features/player/player_controller.dart';
+import 'package:bloom/features/player/ui/mini_player.dart';
+import 'package:bloom/features/wave/ui/vibe.dart';
 import 'package:bloom/features/wave/ui/wave_hero.dart';
+import 'package:bloom/shared/ui/atoms.dart';
 import 'package:bloom/features/wave/wave_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -88,7 +91,7 @@ void main() {
         c,
         ListView(
           controller: scroll,
-          children: [WaveHero(header: const SizedBox(), scroll: scroll)],
+          children: [WaveHero(scroll: scroll)],
         ),
       );
     }
@@ -127,6 +130,44 @@ void main() {
       expect(find.text('Song sc:1'), findsOneWidget);
       expect(findGlyph(Bi.dislike), findsOneWidget);
       expect(findGlyph(Bi.heart), findsOneWidget);
+    });
+
+    testWidgets('a track coming moves nothing on the stage', (tester) async {
+      // The bars' inset grows by the mini player's room when a track comes.
+      Future<(Offset, Rect)> stage(Track? playing, double inset) async {
+        final scroll = ScrollController();
+        addTearDown(scroll.dispose);
+        await _pump(
+          tester,
+          _container(playing: playing),
+          Builder(
+            builder: (context) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(padding: EdgeInsets.only(bottom: inset)),
+              child: CustomScrollView(
+                controller: scroll,
+                slivers: [SliverToBoxAdapter(child: WaveHero(scroll: scroll))],
+              ),
+            ),
+          ),
+        );
+        await settle(tester);
+        final vibe = find.byType(Vibe);
+        return (tester.widget<Vibe>(vibe).center, tester.getRect(vibe));
+      }
+
+      const nav = 76.0;
+      final empty = await stage(null, nav);
+      final playing = await stage(
+        _track('sc:1'),
+        nav + kMiniCardHeight + kFloatGap,
+      );
+      expect(playing, empty);
+
+      // Swapping the scope leaves a timer behind.
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 1));
     });
   });
 
