@@ -89,12 +89,13 @@ class LibraryScreen extends ConsumerWidget {
 
     final slivers = switch (tab) {
       LibTab.all => [
-        SliverToBoxAdapter(child: SectionLabel(l.libSystem)),
+        SliverToBoxAdapter(child: SectionTitle(l.libSystem)),
         order.grid ? row(system) : _RowsSliver(entries: system),
         if (playlists.isNotEmpty) ...[
           SliverToBoxAdapter(
-            child: SectionLabel(
+            child: SectionTitle(
               l.commonPlaylists,
+              chevron: true,
               onTap: () => go(LibTab.playlists),
             ),
           ),
@@ -104,8 +105,9 @@ class LibraryScreen extends ConsumerWidget {
         ],
         if (artists.isNotEmpty) ...[
           SliverToBoxAdapter(
-            child: SectionLabel(
+            child: SectionTitle(
               l.libTabArtists,
+              chevron: true,
               onTap: () => go(LibTab.artists),
             ),
           ),

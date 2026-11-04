@@ -933,12 +933,13 @@ class EntityCarousel extends StatelessWidget {
 }
 
 /// A section title. With [onTap] it's a link to the whole of it, an arrow
-/// after the words.
+/// after the words, or a chevron with [chevron].
 class SectionTitle extends StatelessWidget {
   const SectionTitle(
     this.title, {
     super.key,
     this.onTap,
+    this.chevron = false,
     this.side = 16,
     this.actionLabel,
     this.onAction,
@@ -946,6 +947,7 @@ class SectionTitle extends StatelessWidget {
 
   final String title;
   final VoidCallback? onTap;
+  final bool chevron;
 
   /// A small link at the right ("Show all").
   final String? actionLabel;
@@ -970,8 +972,8 @@ class SectionTitle extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(left: 2, top: 2),
             child: BloomIcon(
-              Bi.arrowRight,
-              size: 22,
+              chevron ? Bi.altArrowRight : Bi.arrowRight,
+              size: chevron ? 20 : 22,
               color: context.bloom.text.withValues(alpha: 0.55),
             ),
           ),
