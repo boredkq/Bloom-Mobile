@@ -163,6 +163,7 @@ class _UsageBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) => GlassSurface(
     shape: BorderRadius.circular(10),
+    white: true,
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       child: Row(

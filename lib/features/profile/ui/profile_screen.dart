@@ -82,11 +82,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             children: [
               GlassIconButton(
                 icon: Bi.arrowLeft,
+                white: true,
                 onTap: () => context.go('/home'),
               ),
               const Spacer(),
               GlassIconButton(
                 icon: Bi.pen,
+                white: true,
                 onTap: () => context.go('$kProfileLocation/edit'),
               ),
             ],

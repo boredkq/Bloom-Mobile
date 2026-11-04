@@ -311,7 +311,14 @@ class PlatformRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SheetRow(
-      leading: PlatformLogo(source, size: 22),
+      // Logos differ in width: in one box the names line up with the rows below.
+      leading: SizedBox(
+        width: 22,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: PlatformLogo(source, size: 22),
+        ),
+      ),
       label: source.label10n(context.l),
       onTap: onTap,
     );

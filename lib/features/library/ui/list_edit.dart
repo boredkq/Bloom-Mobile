@@ -556,9 +556,13 @@ class _EditHero extends StatelessWidget {
                 // heading, not another header button.
                 Pressable(
                   onTap: onRename,
-                  child: const Padding(
-                    padding: EdgeInsets.all(4),
-                    child: BloomIcon(Bi.pen, size: 21, color: Colors.white),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: BloomIcon(
+                      Bi.pen,
+                      size: 21,
+                      color: context.bloom.text,
+                    ),
                   ),
                 ),
               ],
@@ -578,7 +582,7 @@ class _EditHero extends StatelessWidget {
 
 /// Sources button in the edit header: a glass pill with a tie count. Glass
 /// rather than a theme plate: it stands on the cover, like the header's
-/// buttons.
+/// buttons, in the same ink.
 class _SourcesButton extends StatelessWidget {
   const _SourcesButton({required this.count, required this.onTap});
 
@@ -588,6 +592,7 @@ class _SourcesButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context).textTheme;
+    final ink = context.bloom.text;
 
     return Pressable(
       onTap: onTap,
@@ -598,14 +603,11 @@ class _SourcesButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const BloomIcon(Bi.link, size: 18, color: Colors.white),
+              BloomIcon(Bi.link, size: 18, color: ink),
               const SizedBox(width: 9),
               Text(
                 context.l.psTitle,
-                style: theme.titleMedium?.copyWith(
-                  fontSize: 14,
-                  color: Colors.white,
-                ),
+                style: theme.titleMedium?.copyWith(fontSize: 14, color: ink),
               ),
               // Zero isn't shown: an empty count on the very button that makes
               // the first tie just confuses.
@@ -617,22 +619,22 @@ class _SourcesButton extends StatelessWidget {
                     vertical: 1,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
+                    color: ink.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
                     '$count',
                     style: theme.bodySmall?.copyWith(
-                      color: Colors.white,
+                      color: ink,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ],
-              const BloomIcon(
+              BloomIcon(
                 Bi.altArrowRight,
                 size: 20,
-                color: Colors.white70,
+                color: ink.withValues(alpha: 0.7),
               ),
             ],
           ),

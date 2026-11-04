@@ -212,11 +212,13 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                         GlassIconButton(
                           icon: _armed ? Bi.trashBinTrash : Bi.altArrowLeft,
                           color: _armed ? t.danger : null,
+                          white: true,
                           onTap: _cancel,
                         ),
                         const Spacer(),
                         GlassIconButton(
                           icon: Bi.gallery,
+                          white: true,
                           onTap: () => _imageMenu(ProfileImage.avatar),
                         ),
                       ],

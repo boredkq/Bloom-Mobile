@@ -642,7 +642,6 @@ class HeaderSearchField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final ink = overPicture ? Colors.white : t.text;
     final body = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: SizedBox(
@@ -652,7 +651,7 @@ class HeaderSearchField extends StatelessWidget {
             BloomIcon(
               Bi.magnifier,
               size: 21,
-              color: overPicture ? Colors.white : t.muted,
+              color: overPicture ? t.text : t.muted,
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -666,11 +665,11 @@ class HeaderSearchField extends StatelessWidget {
                 onSubmitted: onSubmitted,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontSize: kHeaderTitleSize,
-                  color: ink,
+                  color: t.text,
                 ),
                 hintStyle: TextStyle(
                   fontSize: kHeaderTitleSize,
-                  color: overPicture ? Colors.white54 : t.muted,
+                  color: overPicture ? t.text.withValues(alpha: 0.54) : t.muted,
                 ),
               ),
             ),
@@ -817,19 +816,25 @@ class _SecondTapState extends State<SecondTap> {
   Widget build(BuildContext context) => widget.builder(_armed, _tap);
 }
 
-/// Frosted glass under controls on top of a cover. The circle is light because
-/// the blur gives the contrast: a nearly clear white film picks up the cover's
-/// colour instead of a dark patch.
+/// Frosted glass under controls on top of a cover. A nearly clear film picks up
+/// the cover's colour instead of a solid patch, and the blur gives the contrast.
 const double kGlassBlur = 14;
-const Color kGlassFilm = Color(0x2BFFFFFF);
+const double kGlassFilm = 0x2B / 255;
 
 /// Wraps any shape in glass: [shape] clips the blur and draws the film's
-/// border.
+/// border. The film takes the theme's ink, as a hero's scrim fades into the page;
+/// [white] is for a raw picture, with no scrim under it.
 class GlassSurface extends StatelessWidget {
-  const GlassSurface({super.key, required this.shape, required this.child});
+  const GlassSurface({
+    super.key,
+    required this.shape,
+    required this.child,
+    this.white = false,
+  });
 
   final BorderRadius shape;
   final Widget child;
+  final bool white;
 
   @override
   Widget build(BuildContext context) {
@@ -838,7 +843,9 @@ class GlassSurface extends StatelessWidget {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: kGlassBlur, sigmaY: kGlassBlur),
         child: Material(
-          color: kGlassFilm,
+          color: (white ? Colors.white : context.bloom.text).withValues(
+            alpha: kGlassFilm,
+          ),
           borderRadius: shape,
           clipBehavior: Clip.antiAlias,
           child: child,
@@ -848,8 +855,8 @@ class GlassSurface extends StatelessWidget {
   }
 }
 
-/// Round button over a picture: light glass, white icon. `pill` and `iconFg`
-/// read as a grey patch on a banner.
+/// Round button over a picture: glass and an icon in the theme's ink. `pill` and
+/// `iconFg` read as a grey patch on a banner.
 class GlassIconButton extends StatelessWidget {
   const GlassIconButton({
     super.key,
@@ -860,6 +867,7 @@ class GlassIconButton extends StatelessWidget {
     this.iconSize = 23,
     this.background,
     this.color,
+    this.white = false,
   });
 
   final BloomGlyph? icon;
@@ -874,15 +882,19 @@ class GlassIconButton extends StatelessWidget {
   final Color? background;
   final Color? color;
 
+  /// On a raw picture with its own dark shade, not on a hero's scrim.
+  final bool white;
+
   @override
   Widget build(BuildContext context) {
+    final ink = white ? Colors.white : context.bloom.text;
     if (background case final fill?) {
       return CircleIconButton(
         icon: icon,
         size: size,
         iconSize: iconSize,
         background: fill,
-        color: color ?? Colors.white,
+        color: color ?? ink,
         onTap: onTap,
       );
     }
@@ -890,6 +902,7 @@ class GlassIconButton extends StatelessWidget {
       onTap: onTap,
       child: GlassSurface(
         shape: BorderRadius.circular(size / 2),
+        white: white,
         child: SizedBox(
           width: size,
           height: size,
@@ -898,7 +911,9 @@ class GlassIconButton extends StatelessWidget {
               BloomIcon(
                 icon,
                 size: iconSize,
-                color: color ?? (onTap == null ? Colors.white38 : Colors.white),
+                color:
+                    color ??
+                    (onTap == null ? ink.withValues(alpha: 0.38) : ink),
               ),
         ),
       ),
@@ -908,7 +923,7 @@ class GlassIconButton extends StatelessWidget {
 
 /// Bottom edge of the cover in hero headers. The cover runs the full header
 /// height and is clipped by rounded corners rather than fading out. The scrim
-/// only keeps white text readable on a light photo, so it never reaches full
+/// only keeps the text readable on any photo, so it never reaches full
 /// opacity or the edge would vanish.
 class HeroCover extends StatelessWidget {
   const HeroCover({super.key, required this.child, this.start = 0.20});
@@ -931,16 +946,16 @@ class HeroCover extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           child,
-          // Top: white buttons and the status bar vanish on a light photo, so
-          // they get a dark scrim whatever the cover.
+          // Top: the buttons and the status bar vanish on a photo of their own
+          // tone, so they get the page's color whatever the cover.
           DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.black.withValues(alpha: 0.55),
-                  Colors.black.withValues(alpha: 0),
+                  t.bg.withValues(alpha: 0.55),
+                  t.bg.withValues(alpha: 0),
                 ],
                 stops: const [0, 0.28],
               ),

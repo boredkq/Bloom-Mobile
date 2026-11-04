@@ -640,7 +640,7 @@ class _AddLocalButtonState extends ConsumerState<_AddLocalButton> {
     icon: Bi.add,
     onTap: _add,
     child: _busy
-        ? const Center(child: BloomSpinner(size: 18, color: Colors.white))
+        ? Center(child: BloomSpinner(size: 18, color: context.bloom.text))
         : null,
   );
 }
