@@ -29,24 +29,13 @@ class _Head extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
     final list = ref.watch(achievementsProvider);
     final done = list.fold(0, (n, a) => n + a.tierReached);
     final total = list.length * kTierOrder.length;
     return SheetTitle(
       context.l.profileAchievements,
       bottom: 12,
-      trailing: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: sheetLineColor(context)),
-        ),
-        child: Text(
-          '$done/$total',
-          style: bloomText(size: 12, weight: 700, color: t.text2),
-        ),
-      ),
+      trailing: SheetCountPill('$done/$total'),
     );
   }
 }

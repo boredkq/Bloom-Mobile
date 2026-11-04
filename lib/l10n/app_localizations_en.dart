@@ -271,13 +271,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get playerSpeedNightcore => 'Nightcore';
 
   @override
-  String get playerSpeedNightcoreSub => 'Pitch follows the speed';
-
-  @override
   String get playerSleep => 'Sleep timer';
-
-  @override
-  String get playerSleepMin => 'min';
 
   @override
   String playerSleepMinutes(int count) {
@@ -303,10 +297,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get playerSleepFade => 'Fade out';
-
-  @override
-  String get playerSleepFadeSub =>
-      'Volume drops to zero over the last 20 seconds';
 
   @override
   String get notifChannelName => 'Playback';
@@ -626,16 +616,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paTitle => 'Auto-refresh';
 
   @override
-  String get paAutoTitle => 'Refresh automatically';
+  String get paOff => 'Off';
 
   @override
-  String get paAutoSubtitle => 'Pull new tracks from the sources on a schedule';
+  String get paNoneSelected => 'Nothing selected';
 
   @override
   String get paOnStartTitle => 'Check on launch';
-
-  @override
-  String get paOnStartSubtitle => 'One pass a few seconds after start';
 
   @override
   String get paPlaylistsWithSources => 'Playlists with sources';
@@ -644,22 +631,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paSelectAll => 'Select all';
 
   @override
-  String get paDeselectAll => 'Clear all';
-
-  @override
   String get paNothingToRefresh =>
       'Nothing to refresh: no playlist has sources yet. Link one while editing a playlist — or import a playlist from a link and it remembers its own.';
 
   @override
   String get paRefreshing => 'Refreshing…';
-
-  @override
-  String get paNeverRefreshed => 'Never refreshed';
-
-  @override
-  String paLastRun(String ago) {
-    return 'Last pass: $ago';
-  }
 
   @override
   String get paSoon => 'any moment';
@@ -2591,6 +2567,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get waveNoDislikes => 'Nothing disliked yet';
+
+  @override
+  String get waveClearDislikesAsk => 'Clear all dislikes?';
 
   @override
   String get waveDislike => 'Dislike';

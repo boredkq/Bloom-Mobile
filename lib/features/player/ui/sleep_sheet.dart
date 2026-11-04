@@ -1,7 +1,7 @@
 /// Sleep timer sheet, from the moon button in the player's tool row: presets,
 /// until the end of the track, a custom time bar, +5 minutes on a running timer
-/// and a fade switch. A solid background; it doesn't close on each tap, since
-/// time isn't picked on the first try.
+/// and a fade tile. A solid background; it doesn't close on each tap, since time
+/// isn't picked on the first try.
 ///
 /// It only calls `sleep_timer_store`; `PlaybackController` handles pause and
 /// volume.
@@ -51,8 +51,10 @@ class _SleepSheet extends ConsumerWidget {
                 for (final preset in kSleepPresets) ...[
                   if (preset != kSleepPresets.first) const SizedBox(width: 8),
                   Expanded(
-                    child: _PresetCard(
-                      minutes: preset.inMinutes,
+                    child: OptionTile.label(
+                      l.playerSleepMinutes(preset.inMinutes),
+                      size: 13,
+                      height: 50,
                       active: running && sleep.choice == preset,
                       // A tap on the selected preset clears the timer: no need
                       // to look for a cancel button.
@@ -68,11 +70,16 @@ class _SleepSheet extends ConsumerWidget {
           const SizedBox(height: 10),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: _EndOfTrackCard(
-              active: sleep.mode == SleepMode.endOfTrack,
-              onTap: () => sleep.mode == SleepMode.endOfTrack
-                  ? ctrl.cancel()
-                  : ctrl.untilTrackEnd(),
+            child: SizedBox(
+              width: double.infinity,
+              child: OptionTile.label(
+                l.playerSleepEndOfTrack,
+                scale: 0.98,
+                active: sleep.mode == SleepMode.endOfTrack,
+                onTap: () => sleep.mode == SleepMode.endOfTrack
+                    ? ctrl.cancel()
+                    : ctrl.untilTrackEnd(),
+              ),
             ),
           ),
           const SizedBox(height: 18),
@@ -152,100 +159,20 @@ class _SleepSheet extends ConsumerWidget {
             ),
           ],
           const SizedBox(height: 14),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: kSheetEdge),
-            child: SheetLine(),
-          ),
-          SheetSwitchRow(
-            label: l.playerSleepFade,
-            subtitle: l.playerSleepFadeSub,
-            value: sleep.fade,
-            onChanged: ctrl.setFade,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: OptionTile.label(
+                l.playerSleepFade,
+                scale: 0.98,
+                active: sleep.fade,
+                onTap: () => ctrl.setFade(!sleep.fade),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
-}
-
-/// Preset: a large number with min under it, accent-filled when the timer runs
-/// on this time.
-class _PresetCard extends StatelessWidget {
-  const _PresetCard({
-    required this.minutes,
-    required this.active,
-    required this.onTap,
-  });
-
-  final int minutes;
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => OptionTile(
-    active: active,
-    onTap: onTap,
-    height: 56,
-    builder: (ink) => Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          '$minutes',
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.3,
-            height: 1.1,
-            color: ink,
-          ),
-        ),
-        Text(
-          context.l.playerSleepMin,
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.2,
-            height: 1.2,
-            color: ink.withValues(alpha: active ? 0.75 : 0.55),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-/// Until the end of the track, a wide plate under the presets.
-class _EndOfTrackCard extends StatelessWidget {
-  const _EndOfTrackCard({required this.active, required this.onTap});
-
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => OptionTile(
-    active: active,
-    onTap: onTap,
-    height: 52,
-    scale: 0.98,
-    padding: const EdgeInsets.symmetric(horizontal: 16),
-    alignment: Alignment.centerLeft,
-    builder: (ink) => Row(
-      children: [
-        BloomIcon(Bi.musicNote, size: 20, color: ink),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            context.l.playerSleepEndOfTrack,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.2,
-              color: ink,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
 }

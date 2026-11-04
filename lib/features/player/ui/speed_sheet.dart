@@ -1,6 +1,6 @@
 /// Speed picker sheet, from the speedometer button in the player's tool row:
-/// three preset cards (0.75×, 1×, 1.25×), a custom speed bar with marks every
-/// 0.25× and a Nightcore switch (pitch follows tempo). A solid background.
+/// three preset tiles (0.75×, 1×, 1.25×), a custom speed bar with marks every
+/// 0.25× and a wide Nightcore tile (pitch follows tempo). A solid background.
 ///
 /// Values go to `speed_store`, and `PlaybackController` applies them. The sheet
 /// doesn't close on a preset or switch: speed gets picked by ear.
@@ -43,8 +43,10 @@ class _SpeedSheet extends ConsumerWidget {
                 for (final preset in kSpeedPresets) ...[
                   if (preset != kSpeedPresets.first) const SizedBox(width: 10),
                   Expanded(
-                    child: _PresetCard(
-                      value: preset,
+                    child: OptionTile.label(
+                      speedLabel(preset),
+                      size: 16,
+                      height: 50,
                       active: speed.rate == preset,
                       onTap: () => ctrl.setRate(preset),
                     ),
@@ -99,50 +101,22 @@ class _SpeedSheet extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 14),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: kSheetEdge),
-            child: SheetLine(),
-          ),
-          SheetSwitchRow(
-            label: l.playerSpeedNightcore,
-            subtitle: l.playerSpeedNightcoreSub,
-            value: speed.nightcore,
-            onChanged: ctrl.setNightcore,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: OptionTile.label(
+                l.playerSpeedNightcore,
+                scale: 0.98,
+                active: speed.nightcore,
+                onTap: () => ctrl.setNightcore(!speed.nightcore),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
-}
-
-/// Preset card, accent-filled when it's the one set.
-class _PresetCard extends StatelessWidget {
-  const _PresetCard({
-    required this.value,
-    required this.active,
-    required this.onTap,
-  });
-
-  final double value;
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => OptionTile(
-    active: active,
-    onTap: onTap,
-    height: 52,
-    builder: (ink) => Text(
-      speedLabel(value),
-      style: TextStyle(
-        fontSize: 17,
-        fontWeight: FontWeight.w800,
-        letterSpacing: -0.3,
-        color: ink,
-      ),
-    ),
-  );
 }
 
 /// Marks under the bar every 0.25×, those matching presets larger. The bar is

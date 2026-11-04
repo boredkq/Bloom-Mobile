@@ -275,13 +275,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get playerSpeedNightcore => 'Nightcore';
 
   @override
-  String get playerSpeedNightcoreSub => 'Тон едет вместе со скоростью';
-
-  @override
   String get playerSleep => 'Таймер сна';
-
-  @override
-  String get playerSleepMin => 'мин';
 
   @override
   String playerSleepMinutes(int count) {
@@ -307,10 +301,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get playerSleepFade => 'Плавное затухание';
-
-  @override
-  String get playerSleepFadeSub =>
-      'Последние 20 секунд громкость уходит в ноль';
 
   @override
   String get notifChannelName => 'Воспроизведение';
@@ -634,17 +624,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get paTitle => 'Авто-обновление';
 
   @override
-  String get paAutoTitle => 'Обновлять автоматически';
+  String get paOff => 'Выключено';
 
   @override
-  String get paAutoSubtitle => 'Тянуть новые треки из источников по расписанию';
+  String get paNoneSelected => 'Ничего не выбрано';
 
   @override
   String get paOnStartTitle => 'Проверять при запуске';
-
-  @override
-  String get paOnStartSubtitle =>
-      'Один проход через несколько секунд после старта';
 
   @override
   String get paPlaylistsWithSources => 'Плейлисты с источниками';
@@ -653,22 +639,11 @@ class AppLocalizationsRu extends AppLocalizations {
   String get paSelectAll => 'Выбрать все';
 
   @override
-  String get paDeselectAll => 'Снять все';
-
-  @override
   String get paNothingToRefresh =>
       'Обновлять нечего: ни у одного плейлиста нет источников. Привяжите ссылку в правке плейлиста — или импортируйте плейлист по ссылке, он запомнит её сам.';
 
   @override
   String get paRefreshing => 'Идёт обновление…';
-
-  @override
-  String get paNeverRefreshed => 'Ещё не обновлялось';
-
-  @override
-  String paLastRun(String ago) {
-    return 'Последний проход: $ago';
-  }
 
   @override
   String get paSoon => 'вот-вот';
@@ -2628,6 +2603,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get waveNoDislikes => 'Дизлайков пока нет';
+
+  @override
+  String get waveClearDislikesAsk => 'Очистить все дизлайки?';
 
   @override
   String get waveDislike => 'Дизлайк';

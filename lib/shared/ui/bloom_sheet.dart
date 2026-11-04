@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/theme/bloom_theme.dart';
 import '../../app/theme/tokens.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/store/cover_store.dart';
@@ -1690,6 +1691,26 @@ class _ConfirmButton extends StatelessWidget {
   }
 }
 
+/// A count on an outlined pill, by a sheet's title.
+class SheetCountPill extends StatelessWidget {
+  const SheetCountPill(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(999),
+      border: Border.all(color: sheetLineColor(context)),
+    ),
+    child: Text(
+      text,
+      style: bloomText(size: 12, weight: 700, color: context.bloom.text2),
+    ),
+  );
+}
+
 /// Choice tile of a sheet grid: accent when picked, the sheet's plate
 /// otherwise. [builder] lays out the content in the given ink.
 class OptionTile extends StatelessWidget {
@@ -1703,6 +1724,29 @@ class OptionTile extends StatelessWidget {
     this.alignment = Alignment.center,
     this.scale = 0.94,
   });
+
+  /// A tile that says one thing. A wide one presses less, by [scale].
+  OptionTile.label(
+    String text, {
+    Key? key,
+    required bool active,
+    required VoidCallback onTap,
+    double height = 46,
+    double size = 15,
+    double scale = 0.94,
+  }) : this(
+         key: key,
+         active: active,
+         onTap: onTap,
+         height: height,
+         scale: scale,
+         builder: (ink) => Text(
+           text,
+           maxLines: 1,
+           overflow: TextOverflow.ellipsis,
+           style: bloomText(size: size, weight: 700, color: ink),
+         ),
+       );
 
   final bool active;
   final VoidCallback onTap;

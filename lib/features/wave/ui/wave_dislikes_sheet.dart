@@ -11,6 +11,7 @@ import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
+import '../../../shared/ui/bloom_toast.dart';
 import '../wave_store.dart';
 
 void showWaveDislikesSheet(BuildContext context) => showBloomModal<void>(
@@ -30,16 +31,31 @@ class _DislikesSheet extends ConsumerWidget {
       scrolls: false,
       header: SheetTitle(
         context.l.waveDislikesTitle,
-        subtitle: context.l.tracksCount(tracks.length),
         right: 12,
         bottom: 12,
-        trailing: CircleIconButton(
-          icon: Bi.trashBinTrash,
-          iconSize: 20,
-          onTap: tracks.isEmpty
-              ? null
-              : () => ref.read(waveStoreProvider.notifier).clearDislikes(),
-        ),
+        trailing: tracks.isEmpty
+            ? null
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SheetCountPill('${tracks.length}'),
+                  const SizedBox(width: 8),
+                  CircleIconButton(
+                    icon: Bi.trashBinTrash,
+                    iconSize: 20,
+                    background: Colors.transparent,
+                    // Months of marks go at once, so I ask first.
+                    onTap: () => toaster.show(
+                      context.l.waveClearDislikesAsk,
+                      kind: ToastKind.warn,
+                      action: ToastAction(
+                        label: context.l.commonClear,
+                        fn: ref.read(waveStoreProvider.notifier).clearDislikes,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
       ),
       child: tracks.isEmpty
           ? CenterNote(

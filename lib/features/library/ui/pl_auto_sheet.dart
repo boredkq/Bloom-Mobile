@@ -1,6 +1,6 @@
-/// Playlist auto-update sheet: the schedule (switch, period, check at launch),
-/// the list of playlists with sources, and Update now. That button closes the
-/// sheet: a live toast shows progress.
+/// Playlist auto-update sheet: the title with the switch and how things stand
+/// under it, the period and check at launch, the playlists with sources, and
+/// Update now. That button closes the sheet: a live toast shows progress.
 library;
 
 import 'package:flutter/material.dart';
@@ -12,6 +12,7 @@ import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
+import '../../../shared/ui/pressable.dart';
 import '../pl_auto_store.dart';
 
 /// Period caption.
@@ -66,26 +67,28 @@ class _PlAutoBody extends ConsumerWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _Hero(selected: selected, candidates: candidates.length),
-        SheetPanel(
-          children: [
-            SheetSwitchRow(
-              label: context.l.paAutoTitle,
-              subtitle: context.l.paAutoSubtitle,
+        SheetTitle(
+          context.l.paTitle,
+          subtitle: _status(context.l, state, selected, candidates.length),
+          bottom: 12,
+          trailing: Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: BloomSwitch(
               value: state.enabled,
               onChanged: auto.setEnabled,
-              padding: const EdgeInsets.all(16),
             ),
-            sheetDivider(),
+          ),
+        ),
+        SheetPanel(
+          children: [
             _IntervalRow(
               value: state.everyMin,
               enabled: state.enabled,
               onPick: auto.setEveryMin,
             ),
-            sheetDivider(),
+            sheetDivider(indent: 16),
             SheetSwitchRow(
               label: context.l.paOnStartTitle,
-              subtitle: context.l.paOnStartSubtitle,
               value: state.onStart,
               // Nothing to check at launch without a schedule.
               enabled: state.enabled,
@@ -97,19 +100,31 @@ class _PlAutoBody extends ConsumerWidget {
         SheetCaption(
           context.l.paPlaylistsWithSources,
           color: t.muted,
-          trailing: candidates.isEmpty
+          trailing: candidates.length < 2
               ? null
-              : BloomButton(
-                  label: allSelected
-                      ? context.l.paDeselectAll
-                      : context.l.paSelectAll,
-                  height: 24,
+              : Pressable(
                   onTap: state.running
                       ? null
                       : () => library.setAutoRefresh(
                           candidates.map((p) => p.id),
                           !allSelected,
                         ),
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          context.l.paSelectAll,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.copyWith(color: t.text2),
+                        ),
+                        const SizedBox(width: 10),
+                        BloomCheck(on: allSelected),
+                      ],
+                    ),
+                  ),
                 ),
         ),
         if (candidates.isEmpty)
@@ -140,78 +155,46 @@ class _PlAutoBody extends ConsumerWidget {
               ],
             ],
           ),
-        _Footer(
-          hint: state.running
-              ? context.l.paRefreshing
-              : state.lastRun == 0
-              ? context.l.paNeverRefreshed
-              : context.l.paLastRun(_ago(context.l, state.lastRun)),
-          canRun: !state.running && selected > 0,
-          onRun: () {
-            Navigator.of(context).pop();
-            auto.runSweep();
-          },
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+          child: SizedBox(
+            width: double.infinity,
+            child: SheetButton(
+              label: context.l.paRefreshNow,
+              icon: Bi.refresh,
+              tone: ButtonTone.accent,
+              onTap: !state.running && selected > 0
+                  ? () {
+                      Navigator.of(context).pop();
+                      auto.runSweep();
+                    }
+                  : null,
+            ),
+          ),
         ),
       ],
     );
   }
 }
 
-/// Header: an update icon, title and state chips.
-class _Hero extends ConsumerWidget {
-  const _Hero({required this.selected, required this.candidates});
-
-  final int selected;
-  final int candidates;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
-    final state = ref.watch(plAutoProvider);
-    String? next() {
-      if (!state.enabled || selected == 0) return null;
-      final left =
-          state.lastRun +
-          state.everyMin * 60 * 1000 -
-          DateTime.now().millisecondsSinceEpoch;
-      if (left <= 0) return context.l.paSoon;
-      final min = (left / 60000).ceil();
-      return context.l.paNextIn(_fmtEvery(context.l, min));
-    }
-
-    final chips = [
-      context.l.paSelected(selected, candidates),
-      if (state.enabled) _fmtEvery(context.l, state.everyMin),
-      ?next(),
-    ];
-    return SheetTitle(
-      context.l.paTitle,
-      bottom: 12,
-      leading: Container(
-        width: 52,
-        height: 52,
-        decoration: BoxDecoration(
-          color: t.sysAllTint,
-          borderRadius: BorderRadius.circular(t.radius),
-        ),
-        child: BloomIcon(
-          Bi.refresh,
-          size: 24,
-          color: state.running ? t.accent : t.sysAllIco,
-        ),
-      ),
-      line: Padding(
-        padding: const EdgeInsets.only(top: 4),
-        child: Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: [
-            for (final chip in chips) BloomTag(text: chip, active: false),
-          ],
-        ),
-      ),
-    );
-  }
+/// How things stand, the one line under the title.
+String _status(
+  AppLocalizations l,
+  PlAutoState state,
+  int selected,
+  int candidates,
+) {
+  if (state.running) return l.paRefreshing;
+  if (!state.enabled) return l.paOff;
+  if (selected == 0) return l.paNoneSelected;
+  final left =
+      state.lastRun +
+      state.everyMin * 60 * 1000 -
+      DateTime.now().millisecondsSinceEpoch;
+  final next = left <= 0
+      ? l.paSoon
+      : l.paNextIn(_fmtEvery(l, (left / 60000).ceil()));
+  return '${l.paSelected(selected, candidates)} · $next';
 }
 
 class _IntervalRow extends StatelessWidget {
@@ -249,14 +232,12 @@ class _IntervalRow extends StatelessWidget {
                 children: [
                   for (final min in kPlAutoIntervals) ...[
                     Expanded(
-                      child: OptionTile(
+                      child: OptionTile.label(
+                        _fmtEvery(context.l, min),
+                        size: 13,
+                        height: 38,
                         active: min == value,
-                        height: 36,
                         onTap: () => onPick(min),
-                        builder: (ink) => Text(
-                          _fmtEvery(context.l, min),
-                          style: theme.bodySmall?.copyWith(color: ink),
-                        ),
                       ),
                     ),
                     if (min != kPlAutoIntervals.last) const SizedBox(width: 6),
@@ -312,42 +293,6 @@ class _CandidateRow extends StatelessWidget {
       color: context.bloom.text,
       trailing: busy ? const BloomSpinner(size: 20) : BloomCheck(on: selected),
       onTap: onTap,
-    );
-  }
-}
-
-class _Footer extends StatelessWidget {
-  const _Footer({
-    required this.hint,
-    required this.canRun,
-    required this.onRun,
-  });
-
-  final String hint;
-  final bool canRun;
-  final VoidCallback onRun;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-      child: Column(
-        children: [
-          Text(hint, style: theme.bodySmall?.copyWith(color: t.muted)),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: SheetButton(
-              label: context.l.paRefreshNow,
-              tone: ButtonTone.accent,
-              onTap: canRun ? onRun : null,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

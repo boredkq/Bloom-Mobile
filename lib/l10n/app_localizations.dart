@@ -566,23 +566,11 @@ abstract class AppLocalizations {
   /// **'Nightcore'**
   String get playerSpeedNightcore;
 
-  /// No description provided for @playerSpeedNightcoreSub.
-  ///
-  /// In en, this message translates to:
-  /// **'Pitch follows the speed'**
-  String get playerSpeedNightcoreSub;
-
   /// No description provided for @playerSleep.
   ///
   /// In en, this message translates to:
   /// **'Sleep timer'**
   String get playerSleep;
-
-  /// label under the number on a sleep timer preset card
-  ///
-  /// In en, this message translates to:
-  /// **'min'**
-  String get playerSleepMin;
 
   /// sleep timer time in the pill and at the ends of the bar
   ///
@@ -625,12 +613,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Fade out'**
   String get playerSleepFade;
-
-  /// No description provided for @playerSleepFadeSub.
-  ///
-  /// In en, this message translates to:
-  /// **'Volume drops to zero over the last 20 seconds'**
-  String get playerSleepFadeSub;
 
   /// No description provided for @notifChannelName.
   ///
@@ -1160,29 +1142,23 @@ abstract class AppLocalizations {
   /// **'Auto-refresh'**
   String get paTitle;
 
-  /// No description provided for @paAutoTitle.
+  /// No description provided for @paOff.
   ///
   /// In en, this message translates to:
-  /// **'Refresh automatically'**
-  String get paAutoTitle;
+  /// **'Off'**
+  String get paOff;
 
-  /// No description provided for @paAutoSubtitle.
+  /// No description provided for @paNoneSelected.
   ///
   /// In en, this message translates to:
-  /// **'Pull new tracks from the sources on a schedule'**
-  String get paAutoSubtitle;
+  /// **'Nothing selected'**
+  String get paNoneSelected;
 
   /// No description provided for @paOnStartTitle.
   ///
   /// In en, this message translates to:
   /// **'Check on launch'**
   String get paOnStartTitle;
-
-  /// No description provided for @paOnStartSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'One pass a few seconds after start'**
-  String get paOnStartSubtitle;
 
   /// No description provided for @paPlaylistsWithSources.
   ///
@@ -1196,12 +1172,6 @@ abstract class AppLocalizations {
   /// **'Select all'**
   String get paSelectAll;
 
-  /// No description provided for @paDeselectAll.
-  ///
-  /// In en, this message translates to:
-  /// **'Clear all'**
-  String get paDeselectAll;
-
   /// No description provided for @paNothingToRefresh.
   ///
   /// In en, this message translates to:
@@ -1213,18 +1183,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Refreshing…'**
   String get paRefreshing;
-
-  /// No description provided for @paNeverRefreshed.
-  ///
-  /// In en, this message translates to:
-  /// **'Never refreshed'**
-  String get paNeverRefreshed;
-
-  /// No description provided for @paLastRun.
-  ///
-  /// In en, this message translates to:
-  /// **'Last pass: {ago}'**
-  String paLastRun(String ago);
 
   /// No description provided for @paSoon.
   ///
@@ -4567,6 +4525,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Nothing disliked yet'**
   String get waveNoDislikes;
+
+  /// No description provided for @waveClearDislikesAsk.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all dislikes?'**
+  String get waveClearDislikesAsk;
 
   /// No description provided for @waveDislike.
   ///

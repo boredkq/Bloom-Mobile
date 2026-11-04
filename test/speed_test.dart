@@ -168,14 +168,12 @@ void main() {
       expect(_speedOf(tester).rate, 1);
     });
 
-    testWidgets('the nightcore switch toggles by a tap on the whole row', (
-      tester,
-    ) async {
+    testWidgets('the nightcore tile toggles by a tap', (tester) async {
       final store = JsonStore.memory();
       await _pumpSheet(tester, store);
 
       await _tap(tester, find.text('1.25×'));
-      await _tap(tester, find.text('Тон едет вместе со скоростью'));
+      await _tap(tester, find.text('Nightcore'));
       expect(_speedOf(tester).nightcore, isTrue);
       // With nightcore on, pitch follows tempo instead of staying at 1.
       expect(_speedOf(tester).pitch, 1.25);

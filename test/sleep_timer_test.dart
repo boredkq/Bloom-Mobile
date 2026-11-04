@@ -233,7 +233,7 @@ void main() {
       final store = JsonStore.memory();
       await _pumpSheet(tester, store);
 
-      await _tap(tester, find.text('15'));
+      await _tap(tester, find.text('15 мин').first);
       expect(_stateOf(tester).remaining, const Duration(minutes: 15));
 
       // I move the store's clock myself: a tick just recounts what's left from
@@ -261,11 +261,11 @@ void main() {
       final store = JsonStore.memory();
       await _pumpSheet(tester, store);
 
-      await _tap(tester, find.text('30'));
+      await _tap(tester, find.text('30 мин').first);
       expect(_stateOf(tester).mode, SleepMode.timer);
       expect(_stateOf(tester).choice, const Duration(minutes: 30));
 
-      await _tap(tester, find.text('30'));
+      await _tap(tester, find.text('30 мин').first);
       expect(_stateOf(tester).mode, SleepMode.off);
     });
 
@@ -288,7 +288,7 @@ void main() {
       expect(find.text('+5 минут'), findsNothing);
       expect(find.text('Выключить таймер'), findsNothing);
 
-      await _tap(tester, find.text('45'));
+      await _tap(tester, find.text('45 мин').first);
       expect(find.text('+5 минут'), findsOneWidget);
 
       await _tap(tester, find.text('+5 минут'));
@@ -308,22 +308,17 @@ void main() {
       final store = JsonStore.memory();
       await _pumpSheet(tester, store);
 
-      await _tap(tester, find.text('60'));
+      await _tap(tester, find.text('60 мин').first);
       expect(find.text('Осталось 1:00'), findsOneWidget);
       _stop(tester);
     });
 
-    testWidgets('the fade switch toggles by a tap on the whole row', (
-      tester,
-    ) async {
+    testWidgets('the fade tile toggles by a tap', (tester) async {
       final store = JsonStore.memory();
       await _pumpSheet(tester, store);
       expect(_stateOf(tester).fade, isTrue);
 
-      await _tap(
-        tester,
-        find.text('Последние 20 секунд громкость уходит в ноль'),
-      );
+      await _tap(tester, find.text('Плавное затухание'));
       expect(_stateOf(tester).fade, isFalse);
 
       await _tap(tester, find.text('Плавное затухание'));
