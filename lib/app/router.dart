@@ -21,7 +21,6 @@ import '../features/library/ui/tracklist_screen.dart';
 import '../features/profile/ui/profile_edit_screen.dart';
 import '../features/pc/ui/pc_screen.dart';
 import '../features/profile/ui/profile_screen.dart';
-import '../features/search/ui/search_screen.dart';
 import '../features/settings/ui/appearance_screen.dart';
 import '../features/settings/ui/audio_screen.dart';
 import '../features/settings/ui/lastfm_screen.dart';
@@ -43,23 +42,23 @@ import 'theme/tokens.dart';
 
 final GlobalKey<NavigatorState> _rootKey = GlobalKey<NavigatorState>();
 
-/// Tab navigators in branch order ([NavTab.index]).
+/// Tab navigators.
 ///
 /// Pages opened from outside a tab's tree need them: the full player lives in
 /// the root navigator, and an artist page pushed there would cover the tab bar
 /// and the mini player.
-final List<GlobalKey<NavigatorState>> _branchKeys = [
-  for (final _ in NavTab.values) GlobalKey<NavigatorState>(),
-];
+final Map<NavTab, GlobalKey<NavigatorState>> _branchKeys = {
+  for (final tab in kBranchTabs) tab: GlobalKey<NavigatorState>(),
+};
 
 /// The navigator of the open tab. `null` until the shell is built.
 NavigatorState? currentBranchNavigator() {
   final path = bloomRouter.state.uri.path;
-  final tab = NavTab.values.firstWhere(
+  final tab = kBranchTabs.firstWhere(
     (tab) => path.startsWith('/${tab.name}'),
     orElse: () => NavTab.home,
   );
-  return _branchKeys[tab.index].currentState;
+  return _branchKeys[tab]!.currentState;
 }
 
 /// The profile page: it lives inside home, opened from the header avatar.
@@ -120,12 +119,13 @@ final GoRouter bloomRouter = GoRouter(
   initialLocation: '/home',
   routes: [
     StatefulShellRoute(
-      builder: (context, state, shell) => BloomShell(shell: shell),
+      builder: (context, state, shell) =>
+          BloomShell(shell: shell, location: state.uri.path),
       navigatorContainerBuilder: (context, shell, children) =>
           BranchCrossfade(index: shell.currentIndex, children: children),
       branches: [
         StatefulShellBranch(
-          navigatorKey: _branchKeys[NavTab.home.index],
+          navigatorKey: _branchKeys[NavTab.home],
           routes: [
             GoRoute(
               path: '/home',
@@ -141,16 +141,7 @@ final GoRouter bloomRouter = GoRouter(
           ],
         ),
         StatefulShellBranch(
-          navigatorKey: _branchKeys[NavTab.search.index],
-          routes: [
-            GoRoute(
-              path: '/search',
-              builder: (_, _) => const _Page(SearchScreen()),
-            ),
-          ],
-        ),
-        StatefulShellBranch(
-          navigatorKey: _branchKeys[NavTab.library.index],
+          navigatorKey: _branchKeys[NavTab.library],
           routes: [
             GoRoute(
               path: '/library',
@@ -185,7 +176,7 @@ final GoRouter bloomRouter = GoRouter(
           ],
         ),
         StatefulShellBranch(
-          navigatorKey: _branchKeys[NavTab.settings.index],
+          navigatorKey: _branchKeys[NavTab.settings],
           routes: [
             GoRoute(
               path: '/settings',

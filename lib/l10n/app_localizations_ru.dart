@@ -1158,9 +1158,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get searchNothingFound => 'Ничего не нашлось';
 
   @override
-  String get searchFindSomething => 'Найди что-нибудь';
-
-  @override
   String get searchSectionEmpty => 'В этом разделе ничего не нашлось';
 
   @override

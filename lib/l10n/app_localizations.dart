@@ -1970,12 +1970,6 @@ abstract class AppLocalizations {
   /// **'Nothing found'**
   String get searchNothingFound;
 
-  /// No description provided for @searchFindSomething.
-  ///
-  /// In en, this message translates to:
-  /// **'Find something'**
-  String get searchFindSomething;
-
   /// No description provided for @searchSectionEmpty.
   ///
   /// In en, this message translates to:

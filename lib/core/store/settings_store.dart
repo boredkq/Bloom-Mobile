@@ -55,9 +55,13 @@ NavBarStyle readNavStyle(Object? raw) {
 }
 
 /// A bottom bar tab. The bar always holds all four; only their order is a
-/// setting ([SettingsState.navOrder]). The enum order is the router's branch
-/// order ([NavTab.index]); a fresh install's order is [kDefaultNavOrder].
+/// setting ([SettingsState.navOrder]). A fresh install's order is
+/// [kDefaultNavOrder].
 enum NavTab { home, search, library, settings }
+
+/// The tabs that are router branches, in branch order. Search isn't one: it
+/// opens as a layer over the tab that's open.
+const List<NavTab> kBranchTabs = [NavTab.home, NavTab.library, NavTab.settings];
 
 /// The bar order from raw settings — always every tab exactly once: I repair
 /// the list rather than reject it, so a missing name lands at the end and

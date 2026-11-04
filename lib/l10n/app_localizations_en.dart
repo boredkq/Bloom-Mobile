@@ -1137,9 +1137,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchNothingFound => 'Nothing found';
 
   @override
-  String get searchFindSomething => 'Find something';
-
-  @override
   String get searchSectionEmpty => 'Nothing found in this section';
 
   @override

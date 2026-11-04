@@ -20,6 +20,7 @@ import '../core/store/settings_store.dart';
 import '../features/player/ui/mini_player.dart';
 import '../features/player/ui/player_sheet.dart';
 import '../features/profile/achievements.dart';
+import '../features/search/ui/search_layer.dart';
 import '../features/settings/about_store.dart';
 import '../features/settings/update_notes_store.dart';
 import '../features/settings/ui/update_notes_sheet.dart';
@@ -37,9 +38,12 @@ import '../shared/ui/pressable.dart';
 import 'theme/tokens.dart';
 
 class BloomShell extends ConsumerStatefulWidget {
-  const BloomShell({super.key, required this.shell});
+  const BloomShell({super.key, required this.shell, required this.location});
 
   final StatefulNavigationShell shell;
+
+  /// Where the router stands. Search leaves when this changes.
+  final String location;
 
   @override
   ConsumerState<BloomShell> createState() => _BloomShellState();
@@ -47,6 +51,44 @@ class BloomShell extends ConsumerStatefulWidget {
 
 class _BloomShellState extends ConsumerState<BloomShell> {
   Timer? _noticeTimer;
+
+  /// The page keeps its size under the search field: with the keyboard it would
+  /// lay out anew and lose its place. Held until the keyboard is fully gone, or
+  /// the page would shrink as search closes.
+  bool _holdBody = false;
+
+  /// A tab press. Search is a layer over the open tab, not a tab of its own: any
+  /// other tab closes it first, and the tab it was over just comes back as it
+  /// was.
+  void _onTab(NavTab tab) {
+    if (tab == NavTab.search) return toggleSearch();
+    final branch = kBranchTabs.indexOf(tab);
+    final current = widget.shell.currentIndex;
+    if (searchOpen.value) {
+      closeSearch();
+      if (branch != current) widget.shell.goBranch(branch);
+      return;
+    }
+    widget.shell.goBranch(branch, initialLocation: branch == current);
+  }
+
+  /// System Back goes to what's on top. The router alone starts from the tab's
+  /// navigator, so it would close the page under a sheet or under the player:
+  /// sheets live in the root navigator, and the player has no route at all.
+  Future<bool> _onBack() async {
+    final root = Navigator.of(context, rootNavigator: true);
+    if (root.canPop()) {
+      await root.maybePop();
+      return true;
+    }
+    return collapsePlayerSheet();
+  }
+
+  @override
+  void didUpdateWidget(BloomShell old) {
+    super.didUpdateWidget(old);
+    if (old.location != widget.location) dropSearch();
+  }
 
   /// The app can stay open into the 1st: the date is checked on coming back.
   late final AppLifecycleListener _life = AppLifecycleListener(
@@ -151,58 +193,58 @@ class _BloomShellState extends ConsumerState<BloomShell> {
     final t = context.bloom;
     ref.listen(achievementsProvider, (_, _) => _sync());
     final shell = widget.shell;
-    final scaffold = Scaffold(
-      // The background picture lies under the shell, which then has no fill.
-      backgroundColor: ref.watch(backgroundOnProvider)
-          ? Colors.transparent
-          : t.bg,
-      extendBody: true,
-      body: shell,
-      // The bars have their own glass group: they lie over the list, and with a
-      // shared snapshot the rows passing under them wouldn't blur.
-      bottomNavigationBar: GlassGroup(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Room for the mini player card; the player panel draws the card
-            // itself, growing out of it over the bars.
-            const MiniCardSlot(),
-            _NavBar(
-              style: ref.watch(settingsProvider).navStyle,
-              tabs: ref.watch(settingsProvider).navOrder,
-              indicator: ref.watch(settingsProvider).navIndicator,
-              labels: ref.watch(settingsProvider).navLabels,
-              homeLogo: ref.watch(settingsProvider).navHomeLogo,
-              branch: shell.currentIndex,
-              onTap: (tab) => shell.goBranch(
-                tab.index,
-                initialLocation: tab.index == shell.currentIndex,
-              ),
+    final branchTab = kBranchTabs[shell.currentIndex];
+    final scaffold = ListenableBuilder(
+      listenable: Listenable.merge([searchOpen, searchOnTop]),
+      builder: (context, _) {
+        if (searchOnTop.value) {
+          _holdBody = true;
+        } else if (MediaQuery.viewInsetsOf(context).bottom == 0) {
+          _holdBody = false;
+        }
+        return Scaffold(
+          // The background picture lies under the shell, which then has no
+          // fill.
+          backgroundColor: ref.watch(backgroundOnProvider)
+              ? Colors.transparent
+              : t.bg,
+          extendBody: true,
+          resizeToAvoidBottomInset: !_holdBody,
+          body: shell,
+          // The bars have their own glass group: they lie over the list, and
+          // with a shared snapshot the rows passing under them wouldn't blur.
+          bottomNavigationBar: GlassGroup(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Room for the mini player card; the player panel draws the
+                // card itself, growing out of it over the bars.
+                const MiniCardSlot(),
+                _NavBar(
+                  style: ref.watch(settingsProvider).navStyle,
+                  tabs: ref.watch(settingsProvider).navOrder,
+                  indicator: ref.watch(settingsProvider).navIndicator,
+                  labels: ref.watch(settingsProvider).navLabels,
+                  homeLogo: ref.watch(settingsProvider).navHomeLogo,
+                  active: searchOpen.value ? NavTab.search : branchTab,
+                  onTap: _onTab,
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
 
-    return ValueListenableBuilder<bool>(
-      valueListenable: playerSheetOpen,
-      builder: (context, open, child) => PopScope(
-        // The open player takes the system Back. It has no route of its own, so
-        // Back would otherwise close the page under the panel or the app,
-        // leaving the player full screen.
-        canPop: !open,
-        onPopInvokedWithResult: (didPop, _) {
-          if (!didPop) collapsePlayerSheet();
-        },
-        child: child!,
-      ),
+    return BackButtonListener(
+      onBackButtonPressed: _onBack,
       // The panel lies OVER the shell with the bars: it is the mini player card
       // grown up, and has to cover the tab bar itself.
       child: Stack(
         fit: StackFit.expand,
         children: [
           scaffold,
-          PlayerSheet(onHome: shell.currentIndex == NavTab.home.index),
+          PlayerSheet(onHome: branchTab == NavTab.home),
         ],
       ),
     );
@@ -359,7 +401,7 @@ class _NavBar extends StatelessWidget {
     required this.indicator,
     required this.labels,
     required this.homeLogo,
-    required this.branch,
+    required this.active,
     required this.onTap,
   });
 
@@ -377,9 +419,8 @@ class _NavBar extends StatelessWidget {
   /// Bloom mark in place of the home icon; see [SettingsState.navHomeLogo].
   final bool homeLogo;
 
-  /// The open shell branch ([NavTab.index]), not a slot in the bar: the order
-  /// is a setting.
-  final int branch;
+  /// The lit tab, not a slot in the bar: the order is a setting.
+  final NavTab active;
 
   final ValueChanged<NavTab> onTap;
 
@@ -413,7 +454,7 @@ class _NavBar extends StatelessWidget {
     final t = context.bloom;
     final floating = style == NavBarStyle.floating || style == NavBarStyle.pill;
     final height = floating ? kNavBarFloatHeight : kNavBarHeight;
-    final slot = tabs.indexWhere((tab) => tab.index == branch);
+    final slot = tabs.indexOf(active);
 
     // Edge-hugging styles differ only in the top corner radius. Dome's is twice
     // the theme's and at least 28, or on a small radius it would repeat

@@ -496,7 +496,6 @@
   "searchHint": "Search",
   "searchSourceAll": "All sources",
   "searchNothingFound": "Nothing found",
-  "searchFindSomething": "Find something",
   "searchSectionEmpty": "Nothing found in this section",
 
   "@_profile": {},
