@@ -4526,12 +4526,6 @@ abstract class AppLocalizations {
   /// **'Nothing disliked yet'**
   String get waveNoDislikes;
 
-  /// No description provided for @waveClearDislikesAsk.
-  ///
-  /// In en, this message translates to:
-  /// **'Clear all dislikes?'**
-  String get waveClearDislikesAsk;
-
   /// No description provided for @waveDislike.
   ///
   /// In en, this message translates to:

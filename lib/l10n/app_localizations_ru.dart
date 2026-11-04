@@ -2605,9 +2605,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get waveNoDislikes => 'Дизлайков пока нет';
 
   @override
-  String get waveClearDislikesAsk => 'Очистить все дизлайки?';
-
-  @override
   String get waveDislike => 'Дизлайк';
 
   @override

@@ -894,7 +894,7 @@ Future<void> _addFonts(BuildContext context, WidgetRef ref) async {
 }
 
 /// "Aa" in its font and the name under it.
-class _FontTile extends StatefulWidget {
+class _FontTile extends StatelessWidget {
   const _FontTile({
     super.key,
     required this.width,
@@ -915,40 +915,21 @@ class _FontTile extends StatefulWidget {
   final VoidCallback? onDelete;
 
   @override
-  State<_FontTile> createState() => _FontTileState();
-}
-
-class _FontTileState extends State<_FontTile> {
-  bool _armed = false;
-
-  void _delete() {
-    if (!_armed) {
-      setState(() => _armed = true);
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) setState(() => _armed = false);
-      });
-      return;
-    }
-    setState(() => _armed = false);
-    widget.onDelete!();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final t = context.bloom;
     final ovl = t.text;
     final font = TextStyle(
-      fontFamily: widget.family,
+      fontFamily: family,
       fontFamilyFallback: const [kDefaultFont],
     );
     return Pressable(
-      onTap: widget.onTap,
+      onTap: onTap,
       scale: 0.97,
       child: Container(
-        width: widget.width,
+        width: width,
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 14),
         decoration: BoxDecoration(
-          color: ovl.withValues(alpha: widget.active ? 0.12 : 0.04),
+          color: ovl.withValues(alpha: active ? 0.12 : 0.04),
           borderRadius: BorderRadius.circular(t.radius * 0.7),
         ),
         child: Stack(
@@ -971,7 +952,7 @@ class _FontTileState extends State<_FontTile> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  widget.name,
+                  name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
@@ -979,21 +960,24 @@ class _FontTileState extends State<_FontTile> {
                 ),
               ],
             ),
-            if (widget.onDelete != null)
+            if (onDelete != null)
               Positioned(
                 top: -10,
                 right: -2,
                 child: Semantics(
                   button: true,
                   label: context.l.apFontRemove,
-                  child: Pressable(
-                    onTap: _delete,
-                    child: Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: BloomIcon(
-                        _armed ? Bi.trashBinTrash : Bi.close,
-                        size: 14,
-                        color: _armed ? t.danger : t.text2,
+                  child: SecondTap(
+                    onConfirm: onDelete!,
+                    builder: (armed, tap) => Pressable(
+                      onTap: tap,
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: BloomIcon(
+                          armed ? Bi.trashBinTrash : Bi.close,
+                          size: 14,
+                          color: armed ? t.danger : t.text2,
+                        ),
                       ),
                     ),
                   ),
@@ -1414,7 +1398,7 @@ class _AutoThemeCard extends StatelessWidget {
 }
 
 /// A plate with a little window of the theme, dots in it, the name below.
-class _PresetCard extends StatefulWidget {
+class _PresetCard extends StatelessWidget {
   const _PresetCard({
     required this.preset,
     required this.width,
@@ -1432,37 +1416,14 @@ class _PresetCard extends StatefulWidget {
   final VoidCallback? onDelete;
 
   @override
-  State<_PresetCard> createState() => _PresetCardState();
-}
-
-class _PresetCardState extends State<_PresetCard> {
-  /// Asks with a second press.
-  bool _armed = false;
-
-  void _delete() {
-    if (!_armed) {
-      setState(() => _armed = true);
-      // Cools off by itself, or an armed cross waits for a slip.
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) setState(() => _armed = false);
-      });
-      return;
-    }
-    setState(() => _armed = false);
-    widget.onDelete!();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final preset = widget.preset;
-    final active = widget.active;
     final preview = preset.tokens();
     return Pressable(
-      onTap: widget.onTap,
+      onTap: onTap,
       scale: 0.97,
       child: Container(
-        width: widget.width,
+        width: width,
         height: 150,
         padding: const EdgeInsets.all(8),
         decoration: _themePlate(context, active),
@@ -1482,17 +1443,20 @@ class _PresetCardState extends State<_PresetCard> {
                     const Spacer(),
                     if (active)
                       BloomIcon(Bi.check, size: 18, color: preview.accent),
-                    if (widget.onDelete != null)
+                    if (onDelete != null)
                       // A larger hit area: the cross is small. Armed it's a red
                       // bin, so the next tap's meaning shows.
-                      Pressable(
-                        onTap: _delete,
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 8),
-                          child: BloomIcon(
-                            _armed ? Bi.trashBinTrash : Bi.close,
-                            size: 18,
-                            color: _armed ? preview.danger : preview.muted,
+                      SecondTap(
+                        onConfirm: onDelete!,
+                        builder: (armed, tap) => Pressable(
+                          onTap: tap,
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: BloomIcon(
+                              armed ? Bi.trashBinTrash : Bi.close,
+                              size: 18,
+                              color: armed ? preview.danger : preview.muted,
+                            ),
                           ),
                         ),
                       ),

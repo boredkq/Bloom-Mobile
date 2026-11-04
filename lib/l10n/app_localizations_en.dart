@@ -2569,9 +2569,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get waveNoDislikes => 'Nothing disliked yet';
 
   @override
-  String get waveClearDislikesAsk => 'Clear all dislikes?';
-
-  @override
   String get waveDislike => 'Dislike';
 
   @override

@@ -1,6 +1,7 @@
 /// Small shared elements.
 library;
 
+import 'dart:async' show Timer;
 import 'dart:math' show max, min;
 import 'dart:ui' show ImageFilter;
 
@@ -774,6 +775,46 @@ class CircleIconButton extends StatelessWidget {
         ? hinted
         : Semantics(button: true, label: label, child: hinted);
   }
+}
+
+/// What can't be undone asks with a second press on the same button: the first
+/// arms it for a few seconds, the next one fires. [builder] draws both states.
+class SecondTap extends StatefulWidget {
+  const SecondTap({super.key, required this.onConfirm, required this.builder});
+
+  final VoidCallback onConfirm;
+  final Widget Function(bool armed, VoidCallback tap) builder;
+
+  @override
+  State<SecondTap> createState() => _SecondTapState();
+}
+
+class _SecondTapState extends State<SecondTap> {
+  bool _armed = false;
+  Timer? _cool;
+
+  void _tap() {
+    _cool?.cancel();
+    if (_armed) {
+      setState(() => _armed = false);
+      widget.onConfirm();
+      return;
+    }
+    setState(() => _armed = true);
+    // It cools off by itself, or an armed button waits for a slip.
+    _cool = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _armed = false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _cool?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(_armed, _tap);
 }
 
 /// Frosted glass under controls on top of a cover. The circle is light because

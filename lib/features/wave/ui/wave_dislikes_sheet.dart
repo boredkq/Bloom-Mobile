@@ -11,7 +11,6 @@ import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
-import '../../../shared/ui/bloom_toast.dart';
 import '../wave_store.dart';
 
 void showWaveDislikesSheet(BuildContext context) => showBloomModal<void>(
@@ -40,18 +39,20 @@ class _DislikesSheet extends ConsumerWidget {
                 children: [
                   SheetCountPill('${tracks.length}'),
                   const SizedBox(width: 8),
-                  CircleIconButton(
-                    icon: Bi.trashBinTrash,
-                    iconSize: 20,
-                    background: Colors.transparent,
-                    // Months of marks go at once, so I ask first.
-                    onTap: () => toaster.show(
-                      context.l.waveClearDislikesAsk,
-                      kind: ToastKind.warn,
-                      action: ToastAction(
-                        label: context.l.commonClear,
-                        fn: ref.read(waveStoreProvider.notifier).clearDislikes,
-                      ),
+                  // Months of marks go at once, so it asks with a second press.
+                  SecondTap(
+                    onConfirm: ref
+                        .read(waveStoreProvider.notifier)
+                        .clearDislikes,
+                    builder: (armed, tap) => CircleIconButton(
+                      icon: Bi.trashBinTrash,
+                      iconSize: 20,
+                      label: context.l.commonClear,
+                      background: armed
+                          ? context.bloom.danger.withValues(alpha: 0.14)
+                          : Colors.transparent,
+                      color: armed ? context.bloom.danger : null,
+                      onTap: tap,
                     ),
                   ),
                 ],
