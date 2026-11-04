@@ -200,7 +200,10 @@ class _BloomShellState extends ConsumerState<BloomShell> {
       // grown up, and has to cover the tab bar itself.
       child: Stack(
         fit: StackFit.expand,
-        children: [scaffold, const PlayerSheet()],
+        children: [
+          scaffold,
+          PlayerSheet(onHome: shell.currentIndex == NavTab.home.index),
+        ],
       ),
     );
   }

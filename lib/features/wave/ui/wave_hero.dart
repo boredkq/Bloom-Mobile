@@ -1,13 +1,13 @@
 /// My Wave atop the home screen: the
 /// living circle on a stage in the wave's colour fills the first screen, the
-/// rest of the home lies below it. The stage always leaves room for the mini
-/// player, so a track coming or going moves nothing on it.
+/// rest of the home lies below it. No mini player over this screen: the stage
+/// reaches the tab bar, and a track coming or going moves nothing on it.
 ///
 /// With nothing in the player, "My Wave" at the circle's heart starts it; else
 /// the circle holds what plays, a wave or not: the artist, the cover, dislike ·
-/// the title on the progress · like (the transport is the mini player's). At
-/// the foot, along an arc, other waves to turn to. A long press on the stage
-/// tunes the wave (the platform, the dislikes).
+/// the title on the progress · like (the transport is in the player, behind the
+/// cover). At the foot, along an arc, other waves to turn to. A long press on
+/// the stage tunes the wave (the platform, the dislikes).
 library;
 
 import 'dart:math' as math;
@@ -113,11 +113,12 @@ class _WaveHeroState extends ConsumerState<WaveHero> {
     final mq = MediaQuery.of(context);
     final width = mq.size.width;
     final track = ref.watch(playbackProvider.select((s) => s.track));
-    // The bars' inset holds the mini player's room only while it shows.
+    // The bars' inset holds the mini player's room while there's a track, but
+    // the player gives way to this screen.
     final height =
         mq.size.height -
-        bottomBarsInset(context) -
-        (track == null ? kMiniCardHeight + kFloatGap : 0);
+        bottomBarsInset(context) +
+        (track == null ? 0 : kMiniCardHeight + kFloatGap);
     final head = mq.padding.top + kHomeHeaderHeight;
     final picks = ref.watch(_picksProvider);
     final playing = ref.watch(playingNowProvider);

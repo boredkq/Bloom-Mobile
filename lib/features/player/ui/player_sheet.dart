@@ -45,6 +45,9 @@ const double kSheetFling = 500;
 /// fill, row and glass show through.
 const double _kBodyIn = 0.3;
 
+/// How far the card sinks while it gives way to the wave.
+const double _kCardSink = kMiniCardHeight / 2;
+
 /// The app's only panel, set by the shell. The mini player card is one too, so
 /// a second can't appear.
 _PlayerSheetState? _sheet;
@@ -67,14 +70,17 @@ bool collapsePlayerSheet() {
 }
 
 class PlayerSheet extends ConsumerStatefulWidget {
-  const PlayerSheet({super.key});
+  const PlayerSheet({super.key, required this.onHome});
+
+  /// The home tab is open: its wave may hold the card back.
+  final bool onHome;
 
   @override
   ConsumerState<PlayerSheet> createState() => _PlayerSheetState();
 }
 
 class _PlayerSheetState extends ConsumerState<PlayerSheet>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   /// Expansion share: 0 is the card above the tab bar, 1 the full player.
   late final AnimationController _t = AnimationController(
     vsync: this,
@@ -91,15 +97,36 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet>
   /// they lie in a separate layer.
   final ValueNotifier<double> _shift = ValueNotifier<double>(0);
 
+  /// 1 while the home's first page is what's open. A change of tab or page
+  /// comes in one frame, so this one eases it.
+  late final AnimationController _wavePage = AnimationController(
+    vsync: this,
+    duration: kTabTransition,
+    value: _onWavePage ? 1 : 0,
+  );
+
+  bool get _onWavePage => widget.onHome && homeOnTop.value;
+
+  void _followPage() => _onWavePage ? _wavePage.forward() : _wavePage.reverse();
+
   @override
   void initState() {
     super.initState();
     _sheet = this;
+    homeOnTop.addListener(_followPage);
+  }
+
+  @override
+  void didUpdateWidget(PlayerSheet old) {
+    super.didUpdateWidget(old);
+    if (old.onHome != widget.onHome) _followPage();
   }
 
   @override
   void dispose() {
     if (_sheet == this) _sheet = null;
+    homeOnTop.removeListener(_followPage);
+    _wavePage.dispose();
     _t.dispose();
     _shift.dispose();
     playerSheetOpen.value = false;
@@ -201,15 +228,23 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet>
         // backdrop snapshot wouldn't blur what's under it.
         return GlassGroup(
           child: AnimatedBuilder(
-            animation: _t,
+            animation: Listenable.merge([_t, _wavePage, waveHoldsCard]),
             builder: (context, _) {
               final v = _t.value;
-              final rect = Rect.lerp(card, Offset.zero & screen, v)!;
               // The card's row leaves quickly: as the panel grows its content
               // is wrong a tenth of the way along. The player fades in
               // overlapping: it's opaque and covers what hasn't gone yet.
               final row = 1 - const Interval(0, 0.14).transform(v);
               final body = const Interval(0.06, _kBodyIn).transform(v);
+              // Over the wave there's no card. The player opened from there
+              // grows out of nothing and folds back into it.
+              final gone = waveHoldsCard.value * _wavePage.value * row;
+              final sink = gone * _kCardSink;
+              final rect = Rect.lerp(
+                card,
+                Offset.zero & screen,
+                v,
+              )!.translate(0, sink);
 
               // The keys aren't about order but about the panel outliving the
               // neighbours. The neighbour layer goes out at `row == 0`, within
@@ -229,11 +264,11 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet>
                       key: const ValueKey('neighbors'),
                       left: 0,
                       right: 0,
-                      top: card.top,
+                      top: card.top + sink,
                       height: kMiniCardHeight,
                       child: IgnorePointer(
                         child: Opacity(
-                          opacity: row,
+                          opacity: row * (1 - gone),
                           child: ClipRect(
                             child: _Neighbors(
                               shift: _shift,
@@ -252,94 +287,106 @@ class _PlayerSheetState extends ConsumerState<PlayerSheet>
                   Positioned.fromRect(
                     key: const ValueKey('sheet'),
                     rect: rect,
-                    child: TrackFlick(
-                      shift: _shift,
-                      carousel: peek,
-                      // Flicking by a swipe on the CARD only. Once the panel
-                      // moves the gesture goes: the player inside has its own,
-                      // and this one would drag the whole panel sideways. A
-                      // nested recognizer wins only where it was asked at all:
-                      // in the gaps of the player's layout the finger came to
-                      // me.
-                      //
-                      // A flag rather than nulled handlers: without both,
-                      // `TrackFlick` changes the tree's shape, and the panel's
-                      // content would rebuild from scratch on the first pixel.
-                      enabled: v == 0,
-                      onLeft: peek
-                          ? () => _flip(ref, forward: true)
-                          : swipes.left == SwipeAction.none
-                          ? null
-                          : () => runSwipeAction(
-                              context,
-                              ref,
-                              swipes.left,
-                              track: track,
-                              fromFlick: true,
-                            ),
-                      onRight: peek
-                          ? () => _flip(ref, forward: false)
-                          : swipes.right == SwipeAction.none
-                          ? null
-                          : () => runSwipeAction(
-                              context,
-                              ref,
-                              swipes.right,
-                              track: track,
-                              fromFlick: true,
-                            ),
-                      builder: (context, shift) => _Slide(
-                        shift: shift,
-                        // The carousel moves a whole card with no fade: what's
-                        // being pulled in must stay visible to the end.
-                        stride: peek ? stride : null,
-                        child: _gestures(
-                          expanded: v > 0,
-                          child: MiniCardSkin(
-                            radius: lerpDouble(cardRadius, 0, v)!,
-                            // Glass stays while the fill shows through the
-                            // player. Beyond that there's no reason to blur a
-                            // full-screen backdrop nobody can see.
-                            glass: v < _kBodyIn,
-                            // Keys for the same reason as the stack above: the
-                            // row goes before the player fades in, and with no
-                            // keys the leaving row would take the player's
-                            // element. It would rebuild mid-expansion, and go
-                            // to the network for lyrics just opened.
-                            child: Stack(
-                              children: [
-                                if (row > 0)
-                                  Positioned(
-                                    key: const ValueKey('row'),
-                                    left: 0,
-                                    right: 0,
-                                    top: 0,
-                                    height: kMiniCardHeight,
-                                    child: Opacity(
-                                      opacity: row,
-                                      child: const MiniCardRow(),
-                                    ),
-                                  ),
-                                // The player is laid out full screen and just
-                                // clipped by the panel's window. Horizontally
-                                // it stays put (hence `-rect.left`), or content
-                                // would slide on every pixel of a pull. The top
-                                // edge is shared: the player's header must ride
-                                // up WITH the panel's edge, which is what makes
-                                // the expansion read.
-                                if (body > 0)
-                                  Positioned(
-                                    key: const ValueKey('body'),
-                                    left: -rect.left,
-                                    top: 0,
-                                    width: screen.width,
-                                    height: screen.height,
-                                    child: Opacity(
-                                      opacity: body,
-                                      child: const FullPlayerBody(),
-                                    ),
-                                  ),
-                              ],
+                    child: IgnorePointer(
+                      // A card on its way out doesn't catch what's meant for
+                      // the wave under it.
+                      ignoring: gone > 0.5,
+                      child: Opacity(
+                        opacity: 1 - gone,
+                        child: TrackFlick(
+                          shift: _shift,
+                          carousel: peek,
+                          // Flicking by a swipe on the CARD only. Once the
+                          // panel moves the gesture goes: the player inside has
+                          // its own, and this one would drag the whole panel
+                          // sideways. A nested recognizer wins only where it
+                          // was asked at all: in the gaps of the player's
+                          // layout the finger came to me.
+                          //
+                          // A flag rather than nulled handlers: without both,
+                          // `TrackFlick` changes the tree's shape, and the
+                          // panel's content would rebuild from scratch on the
+                          // first pixel.
+                          enabled: v == 0,
+                          onLeft: peek
+                              ? () => _flip(ref, forward: true)
+                              : swipes.left == SwipeAction.none
+                              ? null
+                              : () => runSwipeAction(
+                                  context,
+                                  ref,
+                                  swipes.left,
+                                  track: track,
+                                  fromFlick: true,
+                                ),
+                          onRight: peek
+                              ? () => _flip(ref, forward: false)
+                              : swipes.right == SwipeAction.none
+                              ? null
+                              : () => runSwipeAction(
+                                  context,
+                                  ref,
+                                  swipes.right,
+                                  track: track,
+                                  fromFlick: true,
+                                ),
+                          builder: (context, shift) => _Slide(
+                            shift: shift,
+                            // The carousel moves a whole card with no fade:
+                            // what's being pulled in must stay visible to the
+                            // end.
+                            stride: peek ? stride : null,
+                            child: _gestures(
+                              expanded: v > 0,
+                              child: MiniCardSkin(
+                                radius: lerpDouble(cardRadius, 0, v)!,
+                                // Glass stays while the fill shows through the
+                                // player. Beyond that there's no reason to blur
+                                // a full-screen backdrop nobody can see.
+                                glass: v < _kBodyIn,
+                                // Keys for the same reason as the stack above:
+                                // the row goes before the player fades in, and
+                                // with no keys the leaving row would take the
+                                // player's element. It would rebuild
+                                // mid-expansion, and go to the network for
+                                // lyrics just opened.
+                                child: Stack(
+                                  children: [
+                                    if (row > 0)
+                                      Positioned(
+                                        key: const ValueKey('row'),
+                                        left: 0,
+                                        right: 0,
+                                        top: 0,
+                                        height: kMiniCardHeight,
+                                        child: Opacity(
+                                          opacity: row,
+                                          child: const MiniCardRow(),
+                                        ),
+                                      ),
+                                    // The player is laid out full screen and
+                                    // just clipped by the panel's window.
+                                    // Horizontally it stays put (hence
+                                    // `-rect.left`), or content would slide on
+                                    // every pixel of a pull. The top edge is
+                                    // shared: the player's header must ride up
+                                    // WITH the panel's edge, which is what
+                                    // makes the expansion read.
+                                    if (body > 0)
+                                      Positioned(
+                                        key: const ValueKey('body'),
+                                        left: -rect.left,
+                                        top: 0,
+                                        width: screen.width,
+                                        height: screen.height,
+                                        child: Opacity(
+                                          opacity: body,
+                                          child: const FullPlayerBody(),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
                         ),

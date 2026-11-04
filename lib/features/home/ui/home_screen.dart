@@ -16,6 +16,7 @@ import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_mark.dart';
 import '../../../shared/ui/cover_hero.dart';
 import '../../../shared/ui/pressable.dart';
+import '../../player/ui/mini_player.dart';
 import '../../profile/profile_store.dart';
 import '../../profile/ui/profile_avatar.dart';
 import '../../wave/ui/wave_hero.dart';
@@ -24,6 +25,9 @@ import 'for_you_section.dart';
 import 'home_sections.dart';
 import 'magnet_scroll.dart';
 import 'similar_to_section.dart';
+
+/// The mini player is back by this share of the way to the shelves.
+const double _cardBackAt = 0.35;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -39,7 +43,23 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _scroll.addListener(() => _stop.settle(_scroll.offset));
+    _scroll.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    final off = _scroll.offset;
+    _stop.settle(off);
+    waveHoldsCard.value = (1 - off / (_stop.at * _cardBackAt)).clamp(0.0, 1.0);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // The panel listening to this is mid-build too.
+    final top = ModalRoute.isCurrentOf(context) ?? true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      homeOnTop.value = top;
+    });
   }
 
   @override

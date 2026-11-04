@@ -38,6 +38,14 @@ import 'track_swap.dart';
 /// Others get their bottom room from `bottomBarsInset`.
 const double kMiniCardHeight = 64;
 
+/// How far the wave's screen holds the card back: 1 on the wave, 0 once the
+/// shelves come in. It follows the finger.
+final ValueNotifier<double> waveHoldsCard = ValueNotifier<double>(1);
+
+/// Whether the home's first page lies on top of its tab. A page opened over it
+/// brings the card back.
+final ValueNotifier<bool> homeOnTop = ValueNotifier<bool>(true);
+
 /// How much of a neighbour's card shows with neighbours on: a narrow strip at
 /// the very edge. Set RIGHT at the edge rather than within the usual margin: a
 /// gap behind it reads as a layout error.
