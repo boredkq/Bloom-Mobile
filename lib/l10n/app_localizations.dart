@@ -218,12 +218,6 @@ abstract class AppLocalizations {
   /// **'Load more'**
   String get commonLoadMore;
 
-  /// No description provided for @commonTrack.
-  ///
-  /// In en, this message translates to:
-  /// **'Track'**
-  String get commonTrack;
-
   /// No description provided for @commonAlbum.
   ///
   /// In en, this message translates to:
@@ -1297,12 +1291,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Paste a playlist, album or profile link…'**
   String get psAddHint;
-
-  /// No description provided for @psAdd.
-  ///
-  /// In en, this message translates to:
-  /// **'Link'**
-  String get psAdd;
 
   /// No description provided for @psRemove.
   ///

@@ -69,9 +69,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get commonLoadMore => 'Загрузить ещё';
 
   @override
-  String get commonTrack => 'Трек';
-
-  @override
   String get commonAlbum => 'Альбом';
 
   @override
@@ -718,9 +715,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get psAddHint => 'Вставьте ссылку на плейлист, альбом или профиль…';
-
-  @override
-  String get psAdd => 'Привязать';
 
   @override
   String get psRemove => 'Отвязать';

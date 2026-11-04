@@ -144,7 +144,7 @@ class _UsageCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    stats == null ? '—' : formatSize(l, stats!.bytes),
+                    stats == null ? '—' : _formatSize(l, stats!.bytes),
                     style: bloomText(size: 26, weight: 500, color: t.text),
                   ),
                   const SizedBox(height: 4),
@@ -257,7 +257,7 @@ class _CacheRow extends StatelessWidget {
                         ),
                         const SizedBox(width: 12),
                         Text(
-                          stat == null ? '—' : formatSize(l, bytes),
+                          stat == null ? '—' : _formatSize(l, bytes),
                           style: theme.bodySmall?.copyWith(color: t.text2),
                         ),
                       ],
@@ -340,7 +340,7 @@ class _ClearButton extends StatelessWidget {
             ? l.commonClear
             : armed
             ? l.stClearSure
-            : l.stClearSize(formatSize(l, bytes)),
+            : l.stClearSize(_formatSize(l, bytes)),
         tone: armed ? ButtonTone.danger : ButtonTone.ink,
         height: 52,
         busy: busy,
@@ -499,7 +499,7 @@ String _importLabel(AppLocalizations l, LocalImportMode mode) =>
     mode == LocalImportMode.inPlace ? l.ltImportInPlace : l.ltImportCopy;
 
 /// Kilobytes for small things, then megabytes and gigabytes with a decimal.
-String formatSize(AppLocalizations l, int bytes) {
+String _formatSize(AppLocalizations l, int bytes) {
   final mb = bytes / 1048576;
   if (mb >= 1024) return l.stGigabytes((mb / 1024).toStringAsFixed(1));
   if (mb >= 1) return l.stMegabytes(mb.toStringAsFixed(1));

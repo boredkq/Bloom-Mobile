@@ -69,9 +69,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonLoadMore => 'Load more';
 
   @override
-  String get commonTrack => 'Track';
-
-  @override
   String get commonAlbum => 'Album';
 
   @override
@@ -710,9 +707,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get psAddHint => 'Paste a playlist, album or profile link…';
-
-  @override
-  String get psAdd => 'Link';
 
   @override
   String get psRemove => 'Unlink';

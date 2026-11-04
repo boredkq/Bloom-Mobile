@@ -26,7 +26,6 @@
   "commonFollow": "Follow",
   "commonUnfollow": "Unfollow",
   "commonLoadMore": "Load more",
-  "commonTrack": "Track",
   "commonAlbum": "Album",
   "commonPlaylist": "Playlist",
   "commonArtist": "Artist",
@@ -333,7 +332,6 @@
   "psTitle": "Update sources",
   "psHint": "Link playlists, albums or likes from any platform — “Refresh tracks” will add new tracks from them to the top of this playlist.",
   "psAddHint": "Paste a playlist, album or profile link…",
-  "psAdd": "Link",
   "psRemove": "Unlink",
   "psDuplicate": "Source already linked",
 
