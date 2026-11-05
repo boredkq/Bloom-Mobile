@@ -49,6 +49,40 @@ void main() {
       expect(matchScore(hour, src), lessThan(matchScore(_track('Ночь'), src)));
     });
 
+    test('another version is not a sure match, but stays a candidate', () {
+      final src = _track('Tokyo');
+      for (final other in [
+        'Tokyo (Slowed)',
+        'Tokyo [Sped Up]',
+        'Tokyo (Remix)',
+        'Tokyo - Live',
+        'Tokyo (ремикс)',
+      ]) {
+        final score = matchScore(_track(other), src);
+        expect(score, lessThan(kAutoMatchScore), reason: other);
+        expect(score, greaterThan(kMinMatchScore), reason: other);
+      }
+    });
+
+    test('the same version on both sides costs nothing', () {
+      final src = _track('Tokyo (Slowed)');
+
+      expect(
+        matchScore(_track('Tokyo [Slowed]'), src),
+        greaterThanOrEqualTo(kAutoMatchScore),
+      );
+    });
+
+    test('an original wanted over a slowed one comes first', () {
+      final src = _track('Tokyo');
+      final ranked = rankMatches([
+        _track('Tokyo (Slowed)'),
+        _track('Tokyo'),
+      ], src);
+
+      expect(ranked.first.track.name, 'Tokyo');
+    });
+
     test("another track by the same artist doesn't pass as reliable", () {
       final src = _track('Ночь', artist: 'Один');
       final other = _track('Утро', artist: 'Один');

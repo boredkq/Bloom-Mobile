@@ -58,8 +58,7 @@ void main() {
     final items = await scanPlaylistConversion(provider, [src]);
     expect(items.single.status, ConvertStatus.exact);
 
-    final decisions = defaultDecisions(items);
-    expect(convertResult(items, decisions).single.id, 'ytm:1');
+    expect(convertResult(items, const {}).single.id, 'ytm:1');
   });
 
   test('a doubtful one stays the original until picked', () async {
@@ -74,11 +73,14 @@ void main() {
 
     final items = await scanPlaylistConversion(provider, [src]);
     expect(items.single.status, ConvertStatus.ambiguous);
-    expect(convertResult(items, defaultDecisions(items)).single.id, 'sc:1');
+    expect(convertResult(items, const {}).single.id, 'sc:1');
+    expect(convertStats(items, const {}).waiting, 1);
 
     // A candidate picked by hand goes into the copy.
     final picked = {'sc:1': TakeMatch(items.single.cands.first.track)};
     expect(convertResult(items, picked).single.id, 'ytm:1');
+    expect(convertStats(items, picked).waiting, 0);
+    expect(convertStats(items, picked).moved, 1);
   });
 
   test("a track already on the target platform isn't fetched", () async {
@@ -133,15 +135,31 @@ void main() {
         _track('sc:2', name: 'Утро'),
       ]);
 
-      final decisions = {...defaultDecisions(items), 'sc:1': const SkipTrack()};
-      expect(convertResult(items, decisions).map((t) => t.id), ['ytm:2']);
+      final chosen = {'sc:1': const SkipTrack()};
+      expect(convertResult(items, chosen).map((t) => t.id), ['ytm:2']);
 
-      final stats = convertStats(items, decisions);
+      final stats = convertStats(items, chosen);
       expect(stats.moved, 1);
       expect(stats.skipped, 1);
-      expect(stats.kept, 0);
+      expect(stats.waiting, 0);
     },
   );
+
+  test('the best is taken wherever there is one, the rest stays', () async {
+    final provider = _FakeProvider({
+      'Ночь Один': [
+        _track('ytm:1', seconds: 3600, source: MusicSource.ytmusic),
+      ],
+    });
+    final items = await scanPlaylistConversion(provider, [
+      _track('sc:1'),
+      _track('sc:2', name: 'Утро'),
+    ]);
+
+    final chosen = convertTakeBest(items, const {'sc:2': SkipTrack()});
+    expect(convertDecision(items[0], chosen), isA<TakeMatch>());
+    expect(convertDecision(items[1], chosen), isA<SkipTrack>());
+  });
 
   test('progress reaches the end and results keep their order', () async {
     final provider = _FakeProvider(const {});

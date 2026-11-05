@@ -1,34 +1,37 @@
-/// Transfer to platform screen: searches a playlist's tracks on the picked
-/// platform and builds a new playlist from what's found. The platform is picked
-/// in the menu sheet and the scan starts at once: an extra pick-then-press step
-/// adds only a press.
+/// Transfer to platform screen: the new playlist's name for a title, how the
+/// look-up goes, then how it went. Sure matches are taken; the unclear and the
+/// missing ones are listed (all of them a tab away), a row opens a sheet with its
+/// candidates, best first, and Keep the original / Skip.
 ///
-/// The source's cover isn't given to the copy: it's a file in the app's
-/// directory, and with two playlists on one picture, deleting either would
-/// leave the other with none.
+/// The platform is picked before this screen and the scan starts at once. The
+/// result is a new playlist, the old one stays; the toast can undo it.
 library;
+
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/providers.dart';
+import '../../../app/theme/bloom_theme.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/entities/entities.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/l10n/source_label.dart';
-import '../../../core/providers/match.dart';
+import '../../../core/store/cover_store.dart';
 import '../../../core/store/library_store.dart';
 import '../../../shared/ui/atoms.dart';
+import '../../../shared/ui/big_tabs.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/bloom_toast.dart';
-import '../../../shared/ui/platform_logo.dart';
+import '../../../shared/ui/entity_tiles.dart';
 import '../../../shared/ui/pressable.dart';
 import '../../../shared/ui/subpage_header.dart';
 import '../../../shared/ui/track_actions.dart';
+import '../../../shared/util/format.dart';
 import '../convert_playlist.dart';
-import '../../../shared/ui/glass.dart';
 
 /// The platforms a playlist can move to.
 List<MusicSource> convertTargets(WidgetRef ref) => [
@@ -111,12 +114,17 @@ class ConvertScreen extends ConsumerStatefulWidget {
 }
 
 class _ConvertScreenState extends ConsumerState<ConvertScreen> {
-  late final TextEditingController _name;
+  final TextEditingController _name = TextEditingController();
+  final FocusNode _nameFocus = FocusNode();
 
   List<ConvertItem> _items = const [];
-  Map<String, ConvertDecision> _decisions = const {};
+
+  /// Only what the user decided; [convertDecision] knows the rest.
+  Map<String, ConvertDecision> _chosen = const {};
   int _done = 0;
   bool _scanning = true;
+  bool _showAll = false;
+  bool _creating = false;
 
   /// Once the screen closes the scan must stop: it hits the network track by
   /// track, and a hundred requests to nowhere aren't needed.
@@ -125,16 +133,41 @@ class _ConvertScreenState extends ConsumerState<ConvertScreen> {
   @override
   void initState() {
     super.initState();
-    _name = TextEditingController();
+    _nameFocus.addListener(_nameFocusChanged);
     _scan();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_name.text.isEmpty && !_nameFocus.hasFocus) _name.text = _autoName;
   }
 
   @override
   void dispose() {
     _closed = true;
+    _nameFocus.dispose();
     _name.dispose();
     super.dispose();
   }
+
+  /// Emptied and left: the made-up name comes back.
+  void _nameFocusChanged() => setState(() {
+    if (!_nameFocus.hasFocus && _name.text.trim().isEmpty) {
+      _name.text = _autoName;
+    }
+  });
+
+  void _editName() {
+    _nameFocus.requestFocus();
+    _name.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: _name.text.length,
+    );
+  }
+
+  String get _autoName =>
+      '${widget.playlist.name} (${widget.target.label10n(context.l)})';
 
   Future<void> _scan() async {
     final provider = ref.read(registryProvider).byId(widget.target.id);
@@ -153,118 +186,337 @@ class _ConvertScreenState extends ConsumerState<ConvertScreen> {
     if (_closed || !mounted) return;
     setState(() {
       _items = items;
-      _decisions = defaultDecisions(items);
       _scanning = false;
     });
   }
 
-  void _decide(String srcId, ConvertDecision decision) =>
-      setState(() => _decisions = {..._decisions, srcId: decision});
+  void _decide(ConvertItem item, ConvertDecision decision) =>
+      setState(() => _chosen = {..._chosen, item.src.id: decision});
 
-  /// Takes the best candidate everywhere there is one, doubtful ones included.
-  void _takeBest() => setState(() {
-    _decisions = {
-      for (final item in _items)
-        item.src.id: item.cands.isNotEmpty && item.status != ConvertStatus.same
-            ? TakeMatch(item.cands.first.track)
-            : _decisions[item.src.id] ?? const KeepOriginal(),
-    };
-  });
-
-  void _create() {
-    final tracks = convertResult(_items, _decisions);
-    if (tracks.isEmpty) return;
+  Future<void> _create() async {
+    final tracks = convertResult(_items, _chosen);
+    if (_creating || tracks.isEmpty) return;
+    _creating = true;
     final l10n = context.l;
-    // I take the router BEFORE closing the screen: after `pop` this context has
-    // left the tree and can't navigate to the new playlist.
+    // I take these BEFORE closing the screen: after `pop` this context has left
+    // the tree and can't reach them.
     final router = GoRouter.of(context);
+    final library = ref.read(libraryProvider.notifier);
     final name = _name.text.trim().isEmpty ? _autoName : _name.text.trim();
-    final created = ref
-        .read(libraryProvider.notifier)
-        .createPlaylist(name, tracks: tracks);
+
+    final cover = await coverForCopy(widget.playlist.cover);
+    if (!mounted) {
+      unawaited(deleteCover(cover));
+      return;
+    }
+    // Empty, not null: with no picture the copy is a collage, like the source.
+    final created = library.createPlaylist(
+      name,
+      tracks: tracks,
+      cover: cover ?? '',
+    );
+    final location = '/library/list/${created.id}';
 
     Navigator.of(context).pop();
-    router.go('/library/list/${created.id}');
+    router.go(location);
     toaster.show(
       l10n.cvCreated(created.name, l10n.tracksCount(tracks.length)),
-      kind: ToastKind.success,
-    );
-  }
-
-  String get _autoName =>
-      '${widget.playlist.name} (${widget.target.label10n(context.l)})';
-
-  @override
-  Widget build(BuildContext context) {
-    final l = context.l;
-    return BloomPage(
-      body: SubPage(
-        title: l.cvTitle,
-        onBack: () => Navigator.of(context).pop(),
-        child: _scanning
-            ? _Scanning(
-                source: widget.target,
-                done: _done,
-                total: widget.tracks.length,
-              )
-            : _review(),
+      action: ToastAction(
+        fn: () {
+          if (router.state.uri.path == location) router.go('/library');
+          library.deletePlaylist(created.id);
+          unawaited(deleteCover(created.cover));
+        },
       ),
     );
   }
 
-  Widget _review() {
+  String _status() {
     final l = context.l;
-    final stats = convertStats(_items, _decisions);
-    final result = convertResult(_items, _decisions).length;
+    if (_scanning) return l.cvScanning(_done, widget.tracks.length);
+    final stats = convertStats(_items, _chosen);
+    return [
+      l.cvMoved(stats.moved, _items.length),
+      if (stats.waiting > 0) l.cvWaiting(stats.waiting),
+      if (stats.skipped > 0) l.cvSkipped(stats.skipped),
+    ].join(' · ');
+  }
 
-    return Column(
-      children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-            children: [
-              SheetField(
-                controller: _name,
-                hint: _autoName,
-                onChanged: (_) => setState(() {}),
-                onSubmit: _create,
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    final l = context.l;
+    final theme = Theme.of(context).textTheme;
+    final unclear = [
+      for (final item in _items)
+        if (item.unclear) item,
+    ];
+    final shown = _showAll ? _items : unclear;
+    final canTakeBest = unclear.any(
+      (item) =>
+          item.cands.isNotEmpty && convertDecision(item, _chosen) is! TakeMatch,
+    );
+    final canCreate = !_scanning && convertResult(_items, _chosen).isNotEmpty;
+
+    return BloomPage(
+      body: SubPage(
+        title: l.cvTitle,
+        onBack: () => Navigator.of(context).pop(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _NameField(
+                    controller: _name,
+                    focusNode: _nameFocus,
+                    onEdit: _editName,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _status(),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.bodySmall?.copyWith(color: t.text2),
+                  ),
+                  if (_scanning) ...[
+                    const SizedBox(height: 10),
+                    BloomBar(
+                      value: _done / widget.tracks.length,
+                      color: t.accent,
+                      track: t.pill,
+                      animated: const Duration(milliseconds: 200),
+                    ),
+                  ],
+                ],
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 2, 8, 10),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        l.cvSummary(stats.moved, stats.kept, stats.skipped),
-                        style: Theme.of(context).textTheme.bodySmall,
+            ),
+            if (!_scanning) ...[
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: BigTabs<bool>(
+                      size: 18,
+                      current: _showAll,
+                      onPick: (all) => setState(() => _showAll = all),
+                      tabs: [
+                        BigTab(false, l.cvUnclear, count: unclear.length),
+                        BigTab(true, l.commonAllTracks, count: _items.length),
+                      ],
+                    ),
+                  ),
+                  if (canTakeBest)
+                    BloomButton(
+                      label: l.cvTakeBest,
+                      height: 32,
+                      onTap: () => setState(
+                        () => _chosen = convertTakeBest(_items, _chosen),
                       ),
                     ),
-                    BloomButton(label: l.cvTakeBest, onTap: _takeBest),
+                ],
+              ),
+            ],
+            Expanded(
+              child: _scanning || shown.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.fromLTRB(32, 28, 32, 0),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: Text(
+                          _scanning ? l.cvScanHint : l.cvAllSure,
+                          textAlign: TextAlign.center,
+                          style: theme.bodyMedium?.copyWith(color: t.muted),
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.only(top: 6, bottom: 6),
+                      itemCount: shown.length,
+                      itemBuilder: (context, i) {
+                        final item = shown[i];
+                        return _ItemRow(
+                          key: ValueKey(item.src.id),
+                          item: item,
+                          decision: convertDecision(item, _chosen),
+                          onTap: () => _choose(item),
+                        );
+                      },
+                    ),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                8,
+                16,
+                12 + bottomBarsInset(context),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: BloomButton(
+                      label: l.commonCreatePlaylist,
+                      tone: ButtonTone.accent,
+                      height: 48,
+                      onTap: canCreate ? _create : null,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: BloomButton(
+                      label: l.commonClose,
+                      tone: ButtonTone.plate,
+                      height: 48,
+                      onTap: () => Navigator.of(context).pop(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// A track's choice in a sheet: the candidates, or why there are none, and the
+  /// two ways to do without them. The sheet closes through its own navigator:
+  /// from outside `Navigator.of` would find the page's and close the transfer.
+  Future<void> _choose(ConvertItem item) async {
+    final l = context.l;
+    final t = context.bloom;
+    final target = widget.target.label10n(l);
+    final decision = convertDecision(item, _chosen);
+    await showBloomSheetChild<void>(
+      context: context,
+      header: SheetHero(
+        cover: item.src.cover,
+        title: item.src.name,
+        subtitle: _artistLine(item.src),
+      ),
+      child: Builder(
+        builder: (sheet) {
+          void pick(ConvertDecision next) {
+            Navigator.of(sheet).pop();
+            _decide(item, next);
+          }
+
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (item.cands.isNotEmpty)
+                SheetPanel(
+                  children: [
+                    for (final cand in item.cands)
+                      SheetRow(
+                        leading: Cover(url: cand.track.cover, size: 40),
+                        gap: 12,
+                        label: cand.track.name,
+                        subtitle: _artistLine(cand.track),
+                        trailing: BloomCheck(
+                          on: switch (decision) {
+                            TakeMatch(:final track) =>
+                              track.id == cand.track.id,
+                            _ => false,
+                          },
+                        ),
+                        onTap: () => pick(TakeMatch(cand.track)),
+                      ),
+                  ],
+                )
+              else
+                SheetCaption(
+                  item.failed
+                      ? l.cvSearchFailed
+                      : item.status == ConvertStatus.same
+                      ? l.cvAlreadyOn(target)
+                      : l.cvNotFound(target),
+                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  kSheetEdge,
+                  8,
+                  kSheetEdge,
+                  8,
+                ),
+                child: Row(
+                  children: [
+                    BloomTag(
+                      text: l.cvKeepOriginal,
+                      color: t.text,
+                      active: decision is KeepOriginal,
+                      size: 14,
+                      vertical: 11,
+                      onTap: () => pick(const KeepOriginal()),
+                    ),
+                    const SizedBox(width: 8),
+                    BloomTag(
+                      text: l.cvSkip,
+                      color: t.text,
+                      active: decision is SkipTrack,
+                      size: 14,
+                      vertical: 11,
+                      onTap: () => pick(const SkipTrack()),
+                    ),
                   ],
                 ),
               ),
-              for (final item in _items)
-                _ItemRow(
-                  item: item,
-                  target: widget.target,
-                  decision: _decisions[item.src.id] ?? const KeepOriginal(),
-                  onDecide: (d) => _decide(item.src.id, d),
-                ),
             ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// "artist · time", the time only when it's known.
+String _artistLine(Track track) => [
+  if (track.artist.isNotEmpty) track.artist,
+  if (track.duration > Duration.zero) mmss(track.duration),
+].join(' · ');
+
+/// The new playlist's name as a title; the pencil puts the cursor in it.
+class _NameField extends StatelessWidget {
+  const _NameField({
+    required this.controller,
+    required this.focusNode,
+    required this.onEdit,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return Row(
+      children: [
+        Expanded(
+          child: BloomField(
+            controller: controller,
+            focusNode: focusNode,
+            hint: context.l.mgNameHint,
+            style: Theme.of(context).textTheme.titleLarge,
+            padding: EdgeInsets.zero,
+            maxLength: 120,
+            action: TextInputAction.done,
+            onSubmitted: (_) => focusNode.unfocus(),
           ),
         ),
-        Padding(
-          padding: EdgeInsets.fromLTRB(
-            16,
-            6,
-            16,
-            12 + bottomBarsInset(context),
-          ),
-          child: BloomButton(
-            label: l.cvCreate(result),
-            tone: ButtonTone.accent,
-            height: 48,
-            onTap: result == 0 ? null : _create,
+        const SizedBox(width: 12),
+        Pressable(
+          onTap: onEdit,
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: BloomIcon(
+              Bi.pen,
+              size: 20,
+              color: focusNode.hasFocus ? t.text : t.muted,
+            ),
           ),
         ),
       ],
@@ -272,223 +524,66 @@ class _ConvertScreenState extends ConsumerState<ConvertScreen> {
   }
 }
 
-class _Scanning extends StatelessWidget {
-  const _Scanning({
-    required this.source,
-    required this.done,
-    required this.total,
-  });
-
-  final MusicSource source;
-  final int done;
-  final int total;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.bloom;
-    final theme = Theme.of(context).textTheme;
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            PlatformLogo(source, size: 40),
-            const SizedBox(height: 16),
-            Text(
-              context.l.cvScanning(source.label10n(context.l)),
-              textAlign: TextAlign.center,
-              style: theme.titleMedium,
-            ),
-            const SizedBox(height: 6),
-            Text('$done / $total', style: theme.bodyMedium),
-            const SizedBox(height: 16),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(2),
-              child: total == 0
-                  ? LinearProgressIndicator(
-                      minHeight: 4,
-                      backgroundColor: t.pill,
-                      color: t.accent,
-                    )
-                  : BloomBar(
-                      value: done / total,
-                      color: t.accent,
-                      track: t.pill,
-                    ),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              context.l.cvScanHint,
-              textAlign: TextAlign.center,
-              style: theme.bodySmall,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Result row for one track: what was found and what happens to it.
+/// A source track: its cover, name and "artist · time", what it goes in as.
 class _ItemRow extends StatelessWidget {
   const _ItemRow({
+    super.key,
     required this.item,
-    required this.target,
     required this.decision,
-    required this.onDecide,
+    required this.onTap,
   });
 
   final ConvertItem item;
-  final MusicSource target;
   final ConvertDecision decision;
-  final ValueChanged<ConvertDecision> onDecide;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
     final l = context.l;
     final theme = Theme.of(context).textTheme;
-    final skipped = decision is SkipTrack;
-
-    final (String tag, Color color) = switch (decision) {
-      TakeMatch() => (l.cvTagMoved, t.accent),
-      SkipTrack() => (l.cvTagSkipped, t.muted),
+    final tag = switch (decision) {
+      TakeMatch() => l.cvTagMoved,
+      SkipTrack() => l.cvTagSkipped,
       KeepOriginal() => switch (item.status) {
-        ConvertStatus.same => (l.cvTagOnTarget, t.text2),
-        ConvertStatus.notfound => (
-          item.failed ? l.cvSearchFailed : l.cvNotFound(target.label10n(l)),
-          t.danger,
-        ),
-        _ => (l.cvTagOriginal, t.text2),
+        ConvertStatus.same => l.cvTagOnTarget,
+        ConvertStatus.notfound => l.cvTagNotFound,
+        _ => l.cvTagOriginal,
       },
     };
 
-    // Nothing to pick from for those already on the platform or not found: the
-    // row just tells what happens.
-    final canChoose = item.cands.isNotEmpty;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Pressable(
-        onTap: canChoose || item.status != ConvertStatus.same
-            ? () => _choose(context)
-            : null,
-        scale: 0.98,
-        child: GlassBox(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-            child: Opacity(
-              opacity: skipped ? 0.5 : 1,
-              child: Row(
-                children: [
-                  Cover(url: item.src.cover, size: 40),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TwoLines(
-                      item.src.name,
-                      tag,
-                      gap: 3,
-                      titleStyle: theme.titleSmall,
-                      subStyle: theme.bodySmall?.copyWith(color: color),
-                    ),
-                  ),
-                  if (canChoose || item.status != ConvertStatus.same)
-                    const SheetChevron(),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Decision sheet for a track: candidates, keep original, skip.
-  Future<void> _choose(BuildContext context) async {
-    final l = context.l;
-    await showBloomSheetChild<void>(
-      context: context,
-      header: SheetHero(
-        cover: item.src.cover,
-        title: item.src.name,
-        subtitle: item.src.artist,
-      ),
-      // The sheet closes through its own navigator: from outside `Navigator.of`
-      // would find the page's and close the transfer itself.
-      child: Builder(
-        builder: (sheetContext) => Column(
-          mainAxisSize: MainAxisSize.min,
+    return Pressable(
+      onTap: onTap,
+      scale: 0.98,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        child: Row(
           children: [
-            if (item.cands.isNotEmpty)
-              SheetPanel(
-                children: [
-                  for (final cand in item.cands)
-                    _candidateRow(
-                      context,
-                      cand,
-                      picked: switch (decision) {
-                        TakeMatch(:final track) => track.id == cand.track.id,
-                        _ => false,
-                      },
-                      onTap: () {
-                        Navigator.of(sheetContext).pop();
-                        onDecide(TakeMatch(cand.track));
-                      },
-                    ),
-                ],
+            Cover(url: item.src.cover, size: kTrackRowCover),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TwoLines(
+                item.src.name,
+                _artistLine(item.src),
+                gap: 3,
+                titleStyle: theme.titleSmall,
+                subStyle: theme.bodySmall,
               ),
-            SheetPanel(
-              children: [
-                SheetRow(
-                  icon: Bi.undoLeftRound,
-                  label: l.cvKeepOriginal,
-                  trailing: decision is KeepOriginal ? const SheetTick() : null,
-                  onTap: () {
-                    Navigator.of(sheetContext).pop();
-                    onDecide(const KeepOriginal());
-                  },
-                ),
-                SheetRow(
-                  icon: Bi.close,
-                  label: l.cvSkip,
-                  trailing: decision is SkipTrack ? const SheetTick() : null,
-                  danger: true,
-                  onTap: () {
-                    Navigator.of(sheetContext).pop();
-                    onDecide(const SkipTrack());
-                  },
-                ),
-              ],
             ),
+            const SizedBox(width: 10),
+            Text(
+              tag,
+              style: bloomText(
+                size: 12,
+                weight: 700,
+                color: decision is TakeMatch ? t.accent : t.muted,
+              ),
+            ),
+            const SizedBox(width: 4),
+            const SheetChevron(),
           ],
         ),
       ),
     );
   }
-}
-
-/// A track the platform offered: the score is how sure the match is.
-Widget _candidateRow(
-  BuildContext context,
-  ScoredMatch match, {
-  required bool picked,
-  required VoidCallback onTap,
-}) {
-  final t = context.bloom;
-  return SheetRow(
-    leading: Cover(url: match.track.cover, size: 40),
-    gap: 12,
-    label: match.track.name,
-    subtitle: match.track.artist,
-    color: picked ? t.accent : null,
-    trailing: Text(
-      '${(match.score * 100).round()}%',
-      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-        color: match.score >= kAutoMatchScore ? t.accent : t.text2,
-      ),
-    ),
-    onTap: onTap,
-  );
 }

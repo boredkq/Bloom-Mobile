@@ -51,6 +51,10 @@ class ConvertItem {
   /// The platform answered with an error, which differs from an honest nothing
   /// found.
   final bool failed;
+
+  /// Waits for the user: the machine can't tell.
+  bool get unclear =>
+      status == ConvertStatus.ambiguous || status == ConvertStatus.notfound;
 }
 
 /// What the track enters the new playlist as.
@@ -150,22 +154,24 @@ Future<List<ConvertItem>> scanPlaylistConversion(
   return out.whereType<ConvertItem>().toList();
 }
 
-/// What goes in by itself: a confident match as the new version; the rest stays
-/// original until the user decides otherwise.
-Map<String, ConvertDecision> defaultDecisions(List<ConvertItem> items) => {
-  for (final item in items)
-    item.src.id: item.status == ConvertStatus.exact && item.cands.isNotEmpty
+/// What a track goes in as: what the user chose, otherwise a confident match as
+/// the new version and the original for the rest.
+ConvertDecision convertDecision(
+  ConvertItem item,
+  Map<String, ConvertDecision> chosen,
+) =>
+    chosen[item.src.id] ??
+    (item.status == ConvertStatus.exact
         ? TakeMatch(item.cands.first.track)
-        : const KeepOriginal(),
-};
+        : const KeepOriginal());
 
-/// The new playlist's contents by accepted decisions, in source order.
+/// The new playlist's contents by the decisions, in source order.
 List<Track> convertResult(
   List<ConvertItem> items,
-  Map<String, ConvertDecision> decisions,
+  Map<String, ConvertDecision> chosen,
 ) => [
   for (final item in items)
-    ?switch (decisions[item.src.id] ?? const KeepOriginal()) {
+    ?switch (convertDecision(item, chosen)) {
       TakeMatch(:final track) => track,
       KeepOriginal() => item.src,
       // A skipped track isn't in the list at all: the null element drops.
@@ -173,23 +179,35 @@ List<Track> convertResult(
     },
 ];
 
-/// How many went where, for the count line under the list.
-({int moved, int kept, int skipped}) convertStats(
+/// How it went, for the line under the name. [waiting]: unclear tracks with no
+/// choice made yet.
+({int moved, int skipped, int waiting}) convertStats(
   List<ConvertItem> items,
-  Map<String, ConvertDecision> decisions,
+  Map<String, ConvertDecision> chosen,
 ) {
   var moved = 0;
-  var kept = 0;
   var skipped = 0;
+  var waiting = 0;
   for (final item in items) {
-    switch (decisions[item.src.id] ?? const KeepOriginal()) {
+    switch (convertDecision(item, chosen)) {
       case TakeMatch():
         moved++;
-      case KeepOriginal():
-        kept++;
       case SkipTrack():
         skipped++;
+      case KeepOriginal():
+        break;
     }
+    if (item.unclear && !chosen.containsKey(item.src.id)) waiting++;
   }
-  return (moved: moved, kept: kept, skipped: skipped);
+  return (moved: moved, skipped: skipped, waiting: waiting);
 }
+
+/// The choices with the best candidate taken wherever there is one.
+Map<String, ConvertDecision> convertTakeBest(
+  List<ConvertItem> items,
+  Map<String, ConvertDecision> chosen,
+) => {
+  ...chosen,
+  for (final item in items)
+    if (item.cands.isNotEmpty) item.src.id: TakeMatch(item.cands.first.track),
+};

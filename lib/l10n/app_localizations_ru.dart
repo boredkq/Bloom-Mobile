@@ -855,33 +855,52 @@ class AppLocalizationsRu extends AppLocalizations {
   String get cvTitle => 'Перенос на площадку';
 
   @override
-  String cvScanning(String source) {
-    return 'Ищем треки на $source…';
+  String cvScanning(int done, int total) {
+    return 'Ищу треки · $done из $total';
   }
 
   @override
-  String get cvScanHint => 'Можно уйти — перенос отменится';
+  String get cvScanHint => 'Можно закрыть — перенос отменится';
 
   @override
-  String cvSummary(int moved, int kept, int skipped) {
-    return 'Перенесено $moved · оставлено $kept · пропущено $skipped';
+  String cvMoved(int moved, int total) {
+    return 'Перенесено $moved из $total';
   }
 
   @override
-  String get cvTakeBest => 'Взять лучшие';
-
-  @override
-  String cvCreate(int count) {
+  String cvWaiting(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Создать плейлист из $count треков',
-      many: 'Создать плейлист из $count треков',
-      few: 'Создать плейлист из $count треков',
-      one: 'Создать плейлист из $count трека',
+      other: '$count ждут выбора',
+      many: '$count ждут выбора',
+      few: '$count ждут выбора',
+      one: '$count ждёт выбора',
     );
     return '$_temp0';
   }
+
+  @override
+  String cvSkipped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count пропущено',
+      many: '$count пропущено',
+      few: '$count пропущено',
+      one: '$count пропущен',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cvUnclear => 'Спорные';
+
+  @override
+  String get cvAllSure => 'Все треки нашлись уверенно — выбирать нечего';
+
+  @override
+  String get cvTakeBest => 'Взять лучшие';
 
   @override
   String get cvTagMoved => 'Перенесён';
@@ -893,11 +912,19 @@ class AppLocalizationsRu extends AppLocalizations {
   String get cvTagOnTarget => 'Уже здесь';
 
   @override
+  String get cvTagNotFound => 'Не найден';
+
+  @override
   String get cvTagSkipped => 'Пропущен';
 
   @override
   String cvNotFound(String source) {
-    return 'Не найден на $source';
+    return 'Не найден на площадке $source';
+  }
+
+  @override
+  String cvAlreadyOn(String source) {
+    return 'Трек уже с площадки $source';
   }
 
   @override
@@ -907,11 +934,11 @@ class AppLocalizationsRu extends AppLocalizations {
   String get cvKeepOriginal => 'Оставить оригинал';
 
   @override
-  String get cvSkip => 'Пропустить трек';
+  String get cvSkip => 'Пропустить';
 
   @override
   String cvCreated(String name, String tracks) {
-    return '«$name» создан — $tracks';
+    return 'Создан «$name» ($tracks)';
   }
 
   @override

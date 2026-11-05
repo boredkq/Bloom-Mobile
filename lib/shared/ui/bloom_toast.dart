@@ -220,10 +220,9 @@ class _ToastHostState extends State<ToastHost> with TickerProviderStateMixin {
   /// The drag's raw offset: down it gives only a little, see [_onDrag].
   double _dragRaw = 0;
 
-  late final AnimationController _in = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 300),
-  )..addStatusListener(_onIn);
+  // Made in initState: dispose must not be the first to touch them, a host that
+  // never showed a toast has no ticker to make one with by then.
+  late final AnimationController _in;
 
   late final Animation<double> _sprung = CurvedAnimation(
     parent: _in,
@@ -232,19 +231,23 @@ class _ToastHostState extends State<ToastHost> with TickerProviderStateMixin {
   );
 
   /// A message's life, 0 → 1. It stands still while held.
-  late final AnimationController _life = AnimationController(vsync: this)
-    ..addStatusListener((s) {
-      if (s == AnimationStatus.completed) _close();
-    });
+  late final AnimationController _life;
 
   /// The swipe's offset; up is negative.
-  late final AnimationController _dragY = AnimationController.unbounded(
-    vsync: this,
-  );
+  late final AnimationController _dragY;
 
   @override
   void initState() {
     super.initState();
+    _in = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    )..addStatusListener(_onIn);
+    _life = AnimationController(vsync: this)
+      ..addStatusListener((s) {
+        if (s == AnimationStatus.completed) _close();
+      });
+    _dragY = AnimationController.unbounded(vsync: this);
     toaster._host = this;
   }
 

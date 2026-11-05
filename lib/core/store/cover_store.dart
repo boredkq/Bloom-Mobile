@@ -212,6 +212,14 @@ Future<String?> copyLocalFile(File source, {String prefix = 'img'}) async {
   }
 }
 
+/// A list's picture for a copy of it: an own file is copied, since each list
+/// removes its own; a platform's link stays as it is.
+Future<String?> coverForCopy(String? cover) async {
+  final path = localCoverPath(cover);
+  if (path != null) return copyLocalFile(File(path), prefix: 'cover');
+  return isLocalCover(cover) ? null : cover;
+}
+
 /// Whether something in the database still uses this picture. Set by `main()`:
 /// a picture from another device has a hash name, and two playlists or a
 /// playlist and the profile may share it.

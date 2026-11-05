@@ -3,10 +3,10 @@
 /// to manual choice).
 ///
 /// Score = 0.65 × title similarity + 0.35 × artist similarity, adjusted by
-/// duration. Title and artist differ on purpose: the title is symmetric
-/// (Jaccard), since extra words like (Sped Up) or Live usually mean another
-/// version and should cost; the artist is by containment, since "Artist A,
-/// Artist B" and "Artist A" are the same track.
+/// version and duration. Title and artist differ on purpose: the title is
+/// symmetric (Jaccard), since extra words usually mean another song; the artist
+/// is by containment, since "Artist A, Artist B" and "Artist A" are the same
+/// track.
 library;
 
 import '../entities/entities.dart';
@@ -63,6 +63,45 @@ double _containment(Set<String> a, Set<String> b) {
   return a.intersection(b).length / (a.length < b.length ? a.length : b.length);
 }
 
+/// Words that make another version of a song. They usually stand in brackets,
+/// which [_norm] leaves out: "Tokyo (Slowed)" isn't "Tokyo" for sure, though it
+/// may be the closest there is.
+const Set<String> _versionWords = {
+  'slowed',
+  'slow',
+  'sped',
+  'speed',
+  'nightcore',
+  'reverb',
+  'reverbed',
+  'remix',
+  'rmx',
+  'live',
+  'acoustic',
+  'instrumental',
+  'karaoke',
+  'cover',
+  'acapella',
+  'mashup',
+  'bootleg',
+  'hardtekk',
+  'hardstyle',
+  'boosted',
+  '8d',
+  'lofi',
+  'ремикс',
+  'кавер',
+};
+
+Set<String> _versionOf(String title) => {
+  for (final word in title.toLowerCase().split(RegExp(r'[^a-zа-яё0-9]+')))
+    if (_versionWords.contains(word)) word,
+};
+
+/// What versions differing costs: enough to send a sure match to the user's
+/// choice, not enough to hide it.
+const double _otherVersion = 0.6;
+
 /// Duration difference past which the score nearly zeroes.
 const Duration _hardDurDelta = Duration(seconds: 20);
 
@@ -87,6 +126,12 @@ double matchScore(Track cand, Track src) {
   ].reduce((a, b) => a > b ? a : b);
 
   var score = 0.65 * _jaccard(nameA, nameB) + 0.35 * artScore;
+
+  final versionA = _versionOf(src.name);
+  final versionB = _versionOf(cand.name);
+  if (versionA.length != versionB.length || !versionA.containsAll(versionB)) {
+    score *= _otherVersion;
+  }
 
   final want = src.duration;
   final got = cand.duration;

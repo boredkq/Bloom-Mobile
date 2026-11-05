@@ -1547,20 +1547,44 @@ abstract class AppLocalizations {
   /// No description provided for @cvScanning.
   ///
   /// In en, this message translates to:
-  /// **'Looking up tracks on {source}…'**
-  String cvScanning(String source);
+  /// **'Looking up tracks · {done} of {total}'**
+  String cvScanning(int done, int total);
 
   /// No description provided for @cvScanHint.
   ///
   /// In en, this message translates to:
-  /// **'You can leave — the transfer will be cancelled'**
+  /// **'You can close it — the move will be cancelled'**
   String get cvScanHint;
 
-  /// No description provided for @cvSummary.
+  /// No description provided for @cvMoved.
   ///
   /// In en, this message translates to:
-  /// **'Moved {moved} · kept {kept} · skipped {skipped}'**
-  String cvSummary(int moved, int kept, int skipped);
+  /// **'{moved} of {total} moved'**
+  String cvMoved(int moved, int total);
+
+  /// No description provided for @cvWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} needs a choice} other{{count} need a choice}}'**
+  String cvWaiting(int count);
+
+  /// No description provided for @cvSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} skipped'**
+  String cvSkipped(int count);
+
+  /// No description provided for @cvUnclear.
+  ///
+  /// In en, this message translates to:
+  /// **'Unclear'**
+  String get cvUnclear;
+
+  /// No description provided for @cvAllSure.
+  ///
+  /// In en, this message translates to:
+  /// **'Every track matched for sure — nothing to pick'**
+  String get cvAllSure;
 
   /// No description provided for @cvTakeBest.
   ///
@@ -1568,16 +1592,10 @@ abstract class AppLocalizations {
   /// **'Take the best'**
   String get cvTakeBest;
 
-  /// No description provided for @cvCreate.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, one{Create a playlist of {count} track} other{Create a playlist of {count} tracks}}'**
-  String cvCreate(int count);
-
   /// No description provided for @cvTagMoved.
   ///
   /// In en, this message translates to:
-  /// **'Transferred'**
+  /// **'Moved'**
   String get cvTagMoved;
 
   /// No description provided for @cvTagOriginal.
@@ -1589,8 +1607,14 @@ abstract class AppLocalizations {
   /// No description provided for @cvTagOnTarget.
   ///
   /// In en, this message translates to:
-  /// **'Already here'**
+  /// **'Already there'**
   String get cvTagOnTarget;
+
+  /// No description provided for @cvTagNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Not found'**
+  String get cvTagNotFound;
 
   /// No description provided for @cvTagSkipped.
   ///
@@ -1603,6 +1627,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not found on {source}'**
   String cvNotFound(String source);
+
+  /// No description provided for @cvAlreadyOn.
+  ///
+  /// In en, this message translates to:
+  /// **'The track is from {source} already'**
+  String cvAlreadyOn(String source);
 
   /// No description provided for @cvSearchFailed.
   ///
@@ -1619,13 +1649,13 @@ abstract class AppLocalizations {
   /// No description provided for @cvSkip.
   ///
   /// In en, this message translates to:
-  /// **'Skip this track'**
+  /// **'Skip'**
   String get cvSkip;
 
   /// No description provided for @cvCreated.
   ///
   /// In en, this message translates to:
-  /// **'“{name}” created — {tracks}'**
+  /// **'Created “{name}” ({tracks})'**
   String cvCreated(String name, String tracks);
 
   /// No description provided for @spSwitch.

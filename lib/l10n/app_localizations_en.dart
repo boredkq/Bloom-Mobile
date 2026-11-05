@@ -847,40 +847,54 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cvTitle => 'Transfer to source';
 
   @override
-  String cvScanning(String source) {
-    return 'Looking up tracks on $source…';
+  String cvScanning(int done, int total) {
+    return 'Looking up tracks · $done of $total';
   }
 
   @override
-  String get cvScanHint => 'You can leave — the transfer will be cancelled';
+  String get cvScanHint => 'You can close it — the move will be cancelled';
 
   @override
-  String cvSummary(int moved, int kept, int skipped) {
-    return 'Moved $moved · kept $kept · skipped $skipped';
+  String cvMoved(int moved, int total) {
+    return '$moved of $total moved';
   }
 
   @override
-  String get cvTakeBest => 'Take the best';
-
-  @override
-  String cvCreate(int count) {
+  String cvWaiting(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Create a playlist of $count tracks',
-      one: 'Create a playlist of $count track',
+      other: '$count need a choice',
+      one: '$count needs a choice',
     );
     return '$_temp0';
   }
 
   @override
-  String get cvTagMoved => 'Transferred';
+  String cvSkipped(int count) {
+    return '$count skipped';
+  }
+
+  @override
+  String get cvUnclear => 'Unclear';
+
+  @override
+  String get cvAllSure => 'Every track matched for sure — nothing to pick';
+
+  @override
+  String get cvTakeBest => 'Take the best';
+
+  @override
+  String get cvTagMoved => 'Moved';
 
   @override
   String get cvTagOriginal => 'Original';
 
   @override
-  String get cvTagOnTarget => 'Already here';
+  String get cvTagOnTarget => 'Already there';
+
+  @override
+  String get cvTagNotFound => 'Not found';
 
   @override
   String get cvTagSkipped => 'Skipped';
@@ -891,17 +905,22 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String cvAlreadyOn(String source) {
+    return 'The track is from $source already';
+  }
+
+  @override
   String get cvSearchFailed => 'The source didn’t answer';
 
   @override
   String get cvKeepOriginal => 'Keep the original';
 
   @override
-  String get cvSkip => 'Skip this track';
+  String get cvSkip => 'Skip';
 
   @override
   String cvCreated(String name, String tracks) {
-    return '“$name” created — $tracks';
+    return 'Created “$name” ($tracks)';
   }
 
   @override

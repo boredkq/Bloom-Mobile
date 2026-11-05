@@ -10,11 +10,14 @@ import '../../app/theme/tokens.dart';
 import 'pressable.dart';
 
 class BigTab<T> {
-  const BigTab(this.id, this.label, {this.has = true});
+  const BigTab(this.id, this.label, {this.has = true, this.count});
 
   final T id;
   final String label;
   final bool has;
+
+  /// How many are in it, greyed after the label.
+  final int? count;
 }
 
 class BigTabs<T> extends StatelessWidget {
@@ -58,7 +61,23 @@ class BigTabs<T> extends StatelessWidget {
                         ? t.text
                         : t.text.withValues(alpha: tab.has ? 0.42 : 0.16),
                   ),
-                  child: Text(tab.label),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(tab.label),
+                      if (tab.count case final count?) ...[
+                        SizedBox(width: (size * 0.38).roundToDouble()),
+                        Text(
+                          '$count',
+                          style: bloomText(
+                            size: size,
+                            weight: 400,
+                            color: t.muted,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
             ],
