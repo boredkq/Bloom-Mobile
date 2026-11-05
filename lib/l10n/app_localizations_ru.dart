@@ -1621,6 +1621,30 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pvStyleVinyl => 'Пластинка';
 
   @override
+  String get pvStyleFlow => 'Flow';
+
+  @override
+  String get pvStyleAura => 'Aura';
+
+  @override
+  String get pvStyleSleeve => 'Sleeve';
+
+  @override
+  String get pvStylePoster => 'Постер';
+
+  @override
+  String get pvStyleHalo => 'Halo';
+
+  @override
+  String get pvStylePulse => 'Пульс';
+
+  @override
+  String get pvStyleFolio => 'Folio';
+
+  @override
+  String get pvStyleExpressive => 'Expressive';
+
+  @override
   String get pvPlayButtonRow => 'Кнопка воспроизведения';
 
   @override

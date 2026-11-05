@@ -395,6 +395,8 @@ class PickRow<T> extends StatelessWidget {
     required this.picture,
     required this.onTap,
     this.height = 88,
+    this.scrollable = false,
+    this.itemWidth = 92,
   });
 
   final List<T> values;
@@ -405,22 +407,49 @@ class PickRow<T> extends StatelessWidget {
 
   /// `null` lets the picture set it.
   final double? height;
+  final bool scrollable;
+  final double itemWidth;
 
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      for (var i = 0; i < values.length; i++) ...[
-        if (i > 0) const SizedBox(width: 12),
-        Expanded(
-          child: PickCard(
-            height: height,
-            label: label(values[i]),
-            active: active(values[i]),
-            picture: (ink) => picture(values[i], ink),
-            onTap: () => onTap(values[i]),
-          ),
+  Widget build(BuildContext context) {
+    if (scrollable || values.length > 3) {
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        clipBehavior: Clip.none,
+        child: Row(
+          children: [
+            for (var i = 0; i < values.length; i++) ...[
+              if (i > 0) const SizedBox(width: 10),
+              PickCard(
+                width: itemWidth,
+                height: height,
+                label: label(values[i]),
+                active: active(values[i]),
+                picture: (ink) => picture(values[i], ink),
+                onTap: () => onTap(values[i]),
+              ),
+            ],
+          ],
         ),
+      );
+    }
+
+    return Row(
+      children: [
+        for (var i = 0; i < values.length; i++) ...[
+          if (i > 0) const SizedBox(width: 12),
+          Expanded(
+            child: PickCard(
+              height: height,
+              label: label(values[i]),
+              active: active(values[i]),
+              picture: (ink) => picture(values[i], ink),
+              onTap: () => onTap(values[i]),
+            ),
+          ),
+        ],
       ],
-    ],
-  );
+    );
+  }
 }

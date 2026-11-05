@@ -1584,6 +1584,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pvStyleVinyl => 'Vinyl';
 
   @override
+  String get pvStyleFlow => 'Flow';
+
+  @override
+  String get pvStyleAura => 'Aura';
+
+  @override
+  String get pvStyleSleeve => 'Sleeve';
+
+  @override
+  String get pvStylePoster => 'Poster';
+
+  @override
+  String get pvStyleHalo => 'Halo';
+
+  @override
+  String get pvStylePulse => 'Pulse';
+
+  @override
+  String get pvStyleFolio => 'Folio';
+
+  @override
+  String get pvStyleExpressive => 'Expressive';
+
+  @override
   String get pvPlayButtonRow => 'Play button';
 
   @override

@@ -513,6 +513,14 @@ String _sliderLabel(AppLocalizations l, SliderStyle style) => switch (style) {
 String _styleLabel(AppLocalizations l, PlayerStyle style) => switch (style) {
   PlayerStyle.standard => l.pvStyleStandard,
   PlayerStyle.vinyl => l.pvStyleVinyl,
+  PlayerStyle.flow => l.pvStyleFlow,
+  PlayerStyle.aura => l.pvStyleAura,
+  PlayerStyle.sleeve => l.pvStyleSleeve,
+  PlayerStyle.poster => l.pvStylePoster,
+  PlayerStyle.halo => l.pvStyleHalo,
+  PlayerStyle.pulse => l.pvStylePulse,
+  PlayerStyle.folio => l.pvStyleFolio,
+  PlayerStyle.expressive => l.pvStyleExpressive,
 };
 
 String _modeLabel(AppLocalizations l, LyricsMode mode) => switch (mode) {
@@ -520,7 +528,7 @@ String _modeLabel(AppLocalizations l, LyricsMode mode) => switch (mode) {
   LyricsMode.replace => l.pvLyricsModeReplace,
 };
 
-/// A square cover for standard, a disc with a label for vinyl.
+/// Icons for player styles: standard, vinyl, and Levyra player deck styles.
 class _StylePainter extends CustomPainter {
   const _StylePainter({required this.style, required this.color});
 
@@ -547,6 +555,82 @@ class _StylePainter extends CustomPainter {
       case PlayerStyle.vinyl:
         canvas.drawCircle(const Offset(12, 12), 9, stroke);
         canvas.drawCircle(const Offset(12, 12), 3, stroke);
+      case PlayerStyle.flow:
+        canvas.drawRRect(
+          RRect.fromLTRBR(2, 6, 22, 18, const Radius.circular(6)),
+          stroke,
+        );
+        canvas.drawLine(
+          const Offset(6, 12),
+          const Offset(18, 12),
+          stroke..strokeWidth = 1.6,
+        );
+      case PlayerStyle.aura:
+        final faint = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2
+          ..color = color.withValues(alpha: 0.38);
+        canvas.drawCircle(const Offset(12, 12), 10.5, faint);
+        canvas.drawRRect(
+          RRect.fromLTRBR(5, 5, 19, 19, const Radius.circular(4)),
+          stroke,
+        );
+      case PlayerStyle.sleeve:
+        final bg = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.4
+          ..color = color.withValues(alpha: 0.38);
+        canvas.drawRRect(
+          RRect.fromLTRBR(6, 2, 21, 17, const Radius.circular(3)),
+          bg,
+        );
+        canvas.drawRRect(
+          RRect.fromLTRBR(3, 6, 18, 22, const Radius.circular(4)),
+          stroke,
+        );
+      case PlayerStyle.poster:
+        canvas.drawRect(const Rect.fromLTRB(4, 3, 20, 21), stroke);
+        canvas.drawLine(
+          const Offset(7, 16),
+          const Offset(17, 16),
+          stroke..strokeWidth = 1.4,
+        );
+      case PlayerStyle.halo:
+        canvas.drawCircle(const Offset(12, 12), 10, stroke..strokeWidth = 1.2);
+        canvas.drawCircle(const Offset(12, 12), 6, stroke..strokeWidth = 2);
+      case PlayerStyle.pulse:
+        canvas.drawCircle(const Offset(12, 12), 4, stroke);
+        canvas.drawArc(
+          const Rect.fromLTWH(3, 4, 16, 16),
+          math.pi * 0.7,
+          math.pi * 0.6,
+          false,
+          stroke..strokeWidth = 1.6,
+        );
+        canvas.drawArc(
+          const Rect.fromLTWH(5, 4, 16, 16),
+          -math.pi * 0.3,
+          math.pi * 0.6,
+          false,
+          stroke..strokeWidth = 1.6,
+        );
+      case PlayerStyle.folio:
+        canvas.drawRRect(
+          RRect.fromRectAndCorners(
+            const Rect.fromLTRB(3, 3, 21, 21),
+            topLeft: const Radius.circular(9),
+            bottomRight: const Radius.circular(9),
+            topRight: const Radius.circular(2),
+            bottomLeft: const Radius.circular(2),
+          ),
+          stroke,
+        );
+      case PlayerStyle.expressive:
+        canvas.drawRRect(
+          RRect.fromLTRBR(2, 4, 22, 20, const Radius.circular(9)),
+          stroke,
+        );
+        canvas.drawCircle(const Offset(12, 12), 2.5, stroke);
     }
     canvas.restore();
   }

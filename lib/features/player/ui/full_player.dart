@@ -317,39 +317,235 @@ class _Cover extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final track = state.track!;
-    // Vinyl: a round cover, spinning, with a dark label in the centre.
-    final vinyl = ref.watch(playerStyleProvider).isVinyl;
+    final style = ref.watch(playerStyleProvider);
+    final vinyl = style.isVinyl;
+    final spinning = ref.watch(playingNowProvider);
+    final t = context.bloom;
+
     return LayoutBuilder(
       builder: (context, box) {
         final side = box.biggest.shortestSide;
-        // The circle is the same radius taken to half the side, so all the
-        // cover frame clips (picture, text panel) turns round at once.
-        final radius = vinyl ? side / 2 : _coverRadius;
-        // Spins ONLY while sound plays. The state comes from the player itself,
-        // not `PlaybackState`, which lacks it: a pause from the shade or
-        // headset must stop the disc too.
-        final spinning = ref.watch(playingNowProvider);
+        final BorderRadius clipRadius = switch (style) {
+          PlayerStyle.standard => BorderRadius.circular(_coverRadius),
+          PlayerStyle.vinyl => BorderRadius.circular(side / 2),
+          PlayerStyle.flow => BorderRadius.circular(32),
+          PlayerStyle.aura => BorderRadius.circular(24),
+          PlayerStyle.sleeve => BorderRadius.circular(20),
+          PlayerStyle.poster => BorderRadius.circular(8),
+          PlayerStyle.halo => BorderRadius.circular(side / 2.15),
+          PlayerStyle.pulse => BorderRadius.circular(side / 2.25),
+          PlayerStyle.folio => const BorderRadius.only(
+              topLeft: Radius.circular(38),
+              bottomRight: Radius.circular(38),
+              topRight: Radius.circular(12),
+              bottomLeft: Radius.circular(12),
+            ),
+          PlayerStyle.expressive => BorderRadius.circular(46),
+        };
+
         return Stack(
           children: [
-            // The cover's frame clips the track change layers, and pictures
-            // inside have NO radius of their own, or the leaving one shows a
-            // rounded corner mid-frame.
+            // Ambient visual deck decorations behind the artwork
+            if (style == PlayerStyle.aura)
+              Positioned.fill(
+                child: Center(
+                  child: Container(
+                    width: side * 0.92,
+                    height: side * 0.92,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: t.accent.withValues(
+                            alpha: spinning ? 0.42 : 0.22,
+                          ),
+                          blurRadius: 52,
+                          spreadRadius: 14,
+                        ),
+                        BoxShadow(
+                          color: t.card.withValues(alpha: 0.6),
+                          blurRadius: 36,
+                          spreadRadius: 8,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            if (style == PlayerStyle.flow)
+              Positioned.fill(
+                child: Center(
+                  child: Container(
+                    width: side * 0.98,
+                    height: side * 0.98,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(36),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          t.accent.withValues(alpha: 0.25),
+                          t.accent.withValues(alpha: 0.05),
+                          Colors.transparent,
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: t.accent.withValues(
+                            alpha: spinning ? 0.22 : 0.1,
+                          ),
+                          blurRadius: 36,
+                          spreadRadius: 6,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            if (style == PlayerStyle.sleeve)
+              Positioned.fill(
+                child: Center(
+                  child: Container(
+                    width: side,
+                    height: side,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.55),
+                          blurRadius: 28,
+                          offset: const Offset(0, 14),
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            if (style == PlayerStyle.poster)
+              Positioned.fill(
+                child: Center(
+                  child: Container(
+                    width: side,
+                    height: side,
+                    decoration: BoxDecoration(
+                      borderRadius: clipRadius,
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.16),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.4),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            if (style == PlayerStyle.halo)
+              Positioned.fill(
+                child: Center(
+                  child: Container(
+                    width: side * 1.08,
+                    height: side * 1.08,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: t.accent.withValues(
+                          alpha: spinning ? 0.42 : 0.2,
+                        ),
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: t.accent.withValues(
+                            alpha: spinning ? 0.28 : 0.1,
+                          ),
+                          blurRadius: 22,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            if (style == PlayerStyle.pulse)
+              Positioned.fill(
+                child: Center(
+                  child: _PulseWave(
+                    side: side,
+                    spinning: spinning,
+                    accent: t.accent,
+                  ),
+                ),
+              ),
+            if (style == PlayerStyle.folio)
+              Positioned.fill(
+                child: Center(
+                  child: Container(
+                    width: side,
+                    height: side,
+                    decoration: BoxDecoration(
+                      borderRadius: clipRadius,
+                      border: Border.all(
+                        color: t.accent.withValues(alpha: 0.35),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.45),
+                          blurRadius: 26,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            if (style == PlayerStyle.expressive)
+              Positioned.fill(
+                child: Center(
+                  child: Container(
+                    width: side,
+                    height: side,
+                    decoration: BoxDecoration(
+                      borderRadius: clipRadius,
+                      border: Border.all(
+                        color: t.accent.withValues(
+                          alpha: spinning ? 0.45 : 0.25,
+                        ),
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: t.accent.withValues(
+                            alpha: spinning ? 0.25 : 0.1,
+                          ),
+                          blurRadius: 28,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+            // Main artwork container
             SizedBox(
               width: side,
               height: side,
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(radius),
+                borderRadius: clipRadius,
                 child: VinylSpin(
-                  // The whole stack of change layers spins, not just the
-                  // current picture, or the arriving cover stands straight
-                  // while the leaving one spins: two motions in one frame.
                   enabled: vinyl,
                   spinning: spinning,
                   child: TrackSwap(
                     id: track.id,
                     fade: true,
                     child: Cover(
-                      // A custom cover from customization beats the track's.
                       url: ref.watch(playerCoverProvider),
                       size: side,
                       radius: 0,
@@ -358,8 +554,23 @@ class _Cover extends ConsumerWidget {
                 ),
               ),
             ),
-            // The label stands OVER the cover but under the text panel, and
-            // doesn't spin with the disc.
+
+            // Open sleeve slit accent
+            if (style == PlayerStyle.sleeve)
+              Positioned(
+                right: 4,
+                top: 14,
+                bottom: 14,
+                width: 3,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: t.border.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+
+            // Center label for vinyl disc
             if (vinyl)
               Positioned(
                 left: 0,
@@ -368,9 +579,8 @@ class _Cover extends ConsumerWidget {
                 height: side,
                 child: Center(child: VinylLabel(size: side * VinylLabel.share)),
               ),
-            // Text panel over the cover: the block's colour at 96%, appearing
-            // with a fade and a slight zoom. ALWAYS drawn, visibility by
-            // opacity, or the animation has nothing to play.
+
+            // Text panel over the cover
             Positioned(
               left: 0,
               top: 0,
@@ -387,20 +597,109 @@ class _Cover extends ConsumerWidget {
                     duration: const Duration(milliseconds: 250),
                     curve: Curves.easeOut,
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(radius),
+                      borderRadius: clipRadius,
                       child: ColoredBox(
                         color: context.bloom.blockColor.withValues(alpha: 0.96),
                         child: LyricsView(
                           live: lyricsOpen,
-                          // A disc keeps the lines off its edge: 52 on a 380
-                          // disc.
-                          padding: vinyl
+                          padding: vinyl ||
+                                  style == PlayerStyle.halo ||
+                                  style == PlayerStyle.pulse
                               ? EdgeInsets.all(side * 0.14)
                               : const EdgeInsets.fromLTRB(14, 36, 14, 16),
                         ),
                       ),
                     ),
                   ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _PulseWave extends StatefulWidget {
+  const _PulseWave({
+    required this.side,
+    required this.spinning,
+    required this.accent,
+  });
+
+  final double side;
+  final bool spinning;
+  final Color accent;
+
+  @override
+  State<_PulseWave> createState() => _PulseWaveState();
+}
+
+class _PulseWaveState extends State<_PulseWave>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2400),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.spinning) _ctrl.repeat();
+  }
+
+  @override
+  void didUpdateWidget(_PulseWave old) {
+    super.didUpdateWidget(old);
+    if (widget.spinning != old.spinning) {
+      if (widget.spinning) {
+        _ctrl.repeat();
+      } else {
+        _ctrl.stop();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, _) {
+        final t1 = _ctrl.value;
+        final t2 = (t1 + 0.5) % 1.0;
+        final s1 = widget.side * (0.95 + 0.22 * t1);
+        final s2 = widget.side * (0.95 + 0.22 * t2);
+        final a1 = (1.0 - t1) * 0.35;
+        final a2 = (1.0 - t2) * 0.35;
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: s2,
+              height: s2,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: widget.accent.withValues(alpha: a2),
+                  width: 1.5,
+                ),
+              ),
+            ),
+            Container(
+              width: s1,
+              height: s1,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: widget.accent.withValues(alpha: a1),
+                  width: 1.5,
                 ),
               ),
             ),

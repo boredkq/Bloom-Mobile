@@ -2701,12 +2701,15 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Standard'**
   String get pvStyleStandard;
-
-  /// No description provided for @pvStyleVinyl.
-  ///
-  /// In en, this message translates to:
-  /// **'Vinyl'**
   String get pvStyleVinyl;
+  String get pvStyleFlow;
+  String get pvStyleAura;
+  String get pvStyleSleeve;
+  String get pvStylePoster;
+  String get pvStyleHalo;
+  String get pvStylePulse;
+  String get pvStyleFolio;
+  String get pvStyleExpressive;
 
   /// shape of the play/pause button in the player and the mini player
   ///
