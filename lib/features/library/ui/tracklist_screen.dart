@@ -886,7 +886,7 @@ Future<void> showPlaylistMenu(
         // has nothing to transfer.
         if (tracks.isNotEmpty)
           SheetAction(
-            icon: Bi.arrowRight,
+            icon: Bi.shuffle,
             label: context.l.tlConvert,
             subtitle: context.l.tlConvertHint,
             next: true,

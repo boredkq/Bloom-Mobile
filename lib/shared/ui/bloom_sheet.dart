@@ -1226,6 +1226,7 @@ class SheetRow extends StatelessWidget {
     this.icon,
     this.leading,
     required this.label,
+    this.labelMark,
     this.subtitle,
     this.color,
     this.danger = false,
@@ -1239,6 +1240,9 @@ class SheetRow extends StatelessWidget {
   /// Instead of [icon]: a platform's logo, a cover.
   final Widget? leading;
   final String label;
+
+  /// Right after the label, like a playlist's pin.
+  final Widget? labelMark;
   final String? subtitle;
 
   /// The row's own colour instead of the text's.
@@ -1261,6 +1265,15 @@ class SheetRow extends StatelessWidget {
             : onTap != null
             ? t.text
             : t.muted);
+    final title = Text(
+      label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: theme.titleMedium?.copyWith(
+        color: ink,
+        fontWeight: FontWeight.w500,
+      ),
+    );
 
     return Pressable(
       onTap: onTap,
@@ -1277,15 +1290,16 @@ class SheetRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.titleMedium?.copyWith(
-                        color: ink,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    if (labelMark case final mark?)
+                      Row(
+                        children: [
+                          Flexible(child: title),
+                          const SizedBox(width: 6),
+                          mark,
+                        ],
+                      )
+                    else
+                      title,
                     if (subtitle case final subtitle?)
                       Text(
                         subtitle,

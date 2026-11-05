@@ -577,9 +577,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cpFromFile => 'From file';
 
   @override
-  String cpDestination(String target) {
-    return 'To: $target';
-  }
+  String get cpConvert => 'Convert playlist';
+
+  @override
+  String get cpConvertTitle => 'Move tracks to another platform';
+
+  @override
+  String get cpConvertRun => 'Convert';
+
+  @override
+  String get cpNoPlaylists => 'No playlists yet';
 
   @override
   String paEveryMinutes(int count) {

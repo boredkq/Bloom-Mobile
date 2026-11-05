@@ -1088,11 +1088,29 @@ abstract class AppLocalizations {
   /// **'From file'**
   String get cpFromFile;
 
-  /// No description provided for @cpDestination.
+  /// No description provided for @cpConvert.
   ///
   /// In en, this message translates to:
-  /// **'To: {target}'**
-  String cpDestination(String target);
+  /// **'Convert playlist'**
+  String get cpConvert;
+
+  /// No description provided for @cpConvertTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Move tracks to another platform'**
+  String get cpConvertTitle;
+
+  /// No description provided for @cpConvertRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Convert'**
+  String get cpConvertRun;
+
+  /// No description provided for @cpNoPlaylists.
+  ///
+  /// In en, this message translates to:
+  /// **'No playlists yet'**
+  String get cpNoPlaylists;
 
   /// No description provided for @paEveryMinutes.
   ///

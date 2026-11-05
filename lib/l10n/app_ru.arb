@@ -177,7 +177,10 @@
   "cpImport": "Импорт",
   "cpLinkHint": "Вставьте ссылку…",
   "cpFromFile": "Из файла",
-  "cpDestination": "Куда: {target}",
+  "cpConvert": "Конвертировать плейлист",
+  "cpConvertTitle": "Перенос треков на другую платформу",
+  "cpConvertRun": "Конвертировать",
+  "cpNoPlaylists": "Плейлистов пока нет",
 
   "paEveryMinutes": "{count} мин",
   "paEveryHours": "{count} ч",

@@ -585,9 +585,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String get cpFromFile => 'Из файла';
 
   @override
-  String cpDestination(String target) {
-    return 'Куда: $target';
-  }
+  String get cpConvert => 'Конвертировать плейлист';
+
+  @override
+  String get cpConvertTitle => 'Перенос треков на другую платформу';
+
+  @override
+  String get cpConvertRun => 'Конвертировать';
+
+  @override
+  String get cpNoPlaylists => 'Плейлистов пока нет';
 
   @override
   String paEveryMinutes(int count) {

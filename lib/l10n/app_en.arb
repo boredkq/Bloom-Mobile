@@ -264,8 +264,10 @@
   "cpImport": "Import",
   "cpLinkHint": "Paste a link…",
   "cpFromFile": "From file",
-  "cpDestination": "To: {target}",
-  "@cpDestination": { "placeholders": { "target": { "type": "String" } } },
+  "cpConvert": "Convert playlist",
+  "cpConvertTitle": "Move tracks to another platform",
+  "cpConvertRun": "Convert",
+  "cpNoPlaylists": "No playlists yet",
 
   "@_plAuto": {},
   "paEveryMinutes": "{count} min",

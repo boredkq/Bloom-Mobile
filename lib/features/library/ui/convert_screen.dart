@@ -30,6 +30,31 @@ import '../../../shared/ui/track_actions.dart';
 import '../convert_playlist.dart';
 import '../../../shared/ui/glass.dart';
 
+/// The platforms a playlist can move to.
+List<MusicSource> convertTargets(WidgetRef ref) => [
+  for (final provider in ref.read(registryProvider).all)
+    if (provider.source != MusicSource.local) provider.source,
+];
+
+/// Closes the sheet of [sheet] and starts the transfer. The sheet closes through
+/// its own navigator (from outside `Navigator.of` finds the tab's), and the
+/// transfer screen opens with the root one, to cover the tab bar and mini player.
+void closeSheetAndConvert(
+  BuildContext sheet, {
+  required UserPlaylist playlist,
+  required List<Track> tracks,
+  required MusicSource target,
+}) {
+  final root = Navigator.of(sheet, rootNavigator: true);
+  Navigator.of(sheet).pop();
+  root.push<void>(
+    MaterialPageRoute(
+      builder: (_) =>
+          ConvertScreen(playlist: playlist, tracks: tracks, target: target),
+    ),
+  );
+}
+
 /// Platform picker sheet, followed by the transfer itself.
 Future<void> showConvertSheet(
   BuildContext context,
@@ -37,10 +62,7 @@ Future<void> showConvertSheet(
   UserPlaylist playlist,
   List<Track> tracks,
 ) async {
-  final targets = [
-    for (final provider in ref.read(registryProvider).all)
-      if (provider.source != MusicSource.local) provider.source,
-  ];
+  final targets = convertTargets(ref);
   if (targets.isEmpty || tracks.isEmpty) return;
 
   await showBloomSheetChild<void>(
@@ -50,28 +72,18 @@ Future<void> showConvertSheet(
       title: context.l.cvTitle,
       subtitle: playlist.name,
     ),
-    // The sheet closes through its own navigator (from outside `Navigator.of`
-    // finds the tab's), and the transfer screen opens with the root one, to
-    // cover the tab bar and mini player.
     child: Builder(
       builder: (sheetContext) => SheetPanel(
         children: [
           for (final target in targets)
             PlatformRow(
               source: target,
-              onTap: () {
-                final root = Navigator.of(sheetContext, rootNavigator: true);
-                Navigator.of(sheetContext).pop();
-                root.push<void>(
-                  MaterialPageRoute(
-                    builder: (_) => ConvertScreen(
-                      playlist: playlist,
-                      tracks: tracks,
-                      target: target,
-                    ),
-                  ),
-                );
-              },
+              onTap: () => closeSheetAndConvert(
+                sheetContext,
+                playlist: playlist,
+                tracks: tracks,
+                target: target,
+              ),
             ),
         ],
       ),
