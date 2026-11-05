@@ -738,28 +738,8 @@ class _Transport extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = context.bloom;
     final state = ref.watch(playbackProvider);
     final ctrl = ref.read(playbackProvider.notifier);
-
-    // Repeat mode shows by a badge rather than a swapped icon: the button is
-    // always repeat, with a list mark for the whole queue and 1 for one track
-    // at the top right.
-    final repeatMark = switch (state.repeat) {
-      PlayerRepeat.all => BloomIcon(Bi.list, size: 9, color: t.accentText),
-      PlayerRepeat.one => Text(
-        '1',
-        style: TextStyle(
-          fontSize: 8,
-          // The digit sits optically above centre, so I press it down with line
-          // height.
-          height: 1.2,
-          fontWeight: FontWeight.w700,
-          color: t.accentText,
-        ),
-      ),
-      _ => null,
-    };
 
     return _Plate(
       padding: const EdgeInsets.symmetric(vertical: 18),
@@ -767,11 +747,11 @@ class _Transport extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           _FlatIcon(
-            icon: Bi.repeat,
+            icon: state.repeat == PlayerRepeat.one ? Bi.repeatOne : Bi.repeat,
             size: 24,
             active: state.repeat != PlayerRepeat.off,
+            dim: true,
             onTap: ctrl.cycleRepeat,
-            mark: repeatMark,
           ),
           _FlatIcon(icon: Bi.skipPreviousBold, size: 30, onTap: ctrl.prev),
           PlayButton(
@@ -787,6 +767,7 @@ class _Transport extends ConsumerWidget {
             icon: Bi.shuffle,
             size: 24,
             active: state.shuffle,
+            dim: true,
             onTap: ctrl.toggleShuffle,
           ),
         ],
@@ -880,7 +861,7 @@ class _FlatIcon extends StatelessWidget {
     this.onTap,
     this.size = 22,
     this.active = false,
-    this.mark,
+    this.dim = false,
     this.label,
     this.color,
   });
@@ -893,9 +874,9 @@ class _FlatIcon extends StatelessWidget {
   /// Own icon colour instead of the usual: a favourite's ♡ is red.
   final Color? color;
 
-  /// A mini badge in an accent circle over the icon, telling modes apart
-  /// without swapping the icon.
-  final Widget? mark;
+  /// Repeat and shuffle: half as bright while off, so the filled prev · play ·
+  /// next lead. They fade between their states.
+  final bool dim;
 
   /// A caption INSTEAD of the icon: at a speed other than 1× the button shows
   /// the value.
@@ -909,57 +890,39 @@ class _FlatIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
-    final color = this.color ?? (active ? t.accent : t.iconFg);
+    final color =
+        this.color ??
+        (active
+            ? t.accent
+            : dim
+            ? t.iconFg.withValues(alpha: 0.5)
+            : t.iconFg);
     return Pressable(
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.all(8),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            if (label == null)
-              BloomIcon(icon, size: size, color: color)
-            else
-              SizedBox(
-                width: _labelWidth,
-                height: size,
-                child: FittedBox(
-                  child: Text(
-                    label!,
-                    maxLines: 1,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.2,
-                      height: 1,
-                      color: color,
+        child: TweenAnimationBuilder<Color?>(
+          tween: ColorTween(end: color),
+          duration: dim ? const Duration(milliseconds: 120) : Duration.zero,
+          builder: (context, tint, _) => label == null
+              ? BloomIcon(icon, size: size, color: tint)
+              : SizedBox(
+                  width: _labelWidth,
+                  height: size,
+                  child: FittedBox(
+                    child: Text(
+                      label!,
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                        height: 1,
+                        color: tint,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            if (mark != null)
-              Positioned(
-                right: -4,
-                top: -3,
-                child: Container(
-                  width: 14,
-                  height: 14,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: t.accent,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.3),
-                        blurRadius: 3,
-                        offset: const Offset(0, 1),
-                      ),
-                    ],
-                  ),
-                  child: mark,
-                ),
-              ),
-          ],
         ),
       ),
     );
