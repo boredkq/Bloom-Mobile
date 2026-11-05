@@ -2714,6 +2714,7 @@ abstract class AppLocalizations {
   String get pvStyleFolio;
   String get pvStyleExpressive;
   String get playerUpNext;
+  String get playerLyrics;
   String get playerRelated;
   String get playerLossless;
   String get playerSong;

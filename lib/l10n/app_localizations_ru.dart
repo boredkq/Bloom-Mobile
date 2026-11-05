@@ -1657,6 +1657,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get playerUpNext => 'Очередь';
 
   @override
+  String get playerLyrics => 'Текст';
+
+  @override
   String get playerRelated => 'Похожее';
 
   @override

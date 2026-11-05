@@ -1620,6 +1620,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get playerUpNext => 'Up Next';
 
   @override
+  String get playerLyrics => 'Lyrics';
+
+  @override
   String get playerRelated => 'Related';
 
   @override

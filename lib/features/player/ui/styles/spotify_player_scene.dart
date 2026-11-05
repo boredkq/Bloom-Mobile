@@ -26,9 +26,10 @@ import '../../../../shared/util/format.dart';
 import '../../../detail/artists_sheet.dart';
 import '../../../lyrics/lyrics_store.dart';
 import '../../../lyrics/ui/lyrics_view.dart';
+import '../../../customization/custom_store.dart';
 import '../../player_bg_store.dart';
 import '../../player_controller.dart';
-import '../../player_sheet.dart';
+import '../player_sheet.dart';
 import '../artist_avatars.dart';
 import '../queue_sheet.dart';
 import '../sleep_sheet.dart';
@@ -350,7 +351,7 @@ class _SpotifyPlayerSceneState extends ConsumerState<SpotifyPlayerScene> {
     final isShuffle = state.shuffle;
     final repeatMode = state.repeat;
     final isRepeat = repeatMode != PlayerRepeat.off;
-    final isPlaying = state.playing;
+    final isPlaying = ref.watch(playingNowProvider);
     final isLoading = state.loading;
 
     return SizedBox(

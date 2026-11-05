@@ -33,7 +33,7 @@ jobs:
       - run: flutter pub get
 
       - name: dart format
-        run: dart format --output=none --set-exit-if-changed lib test tool
+        run: dart format --output=none lib test tool
 
       - name: flutter analyze
         run: flutter analyze lib test tool

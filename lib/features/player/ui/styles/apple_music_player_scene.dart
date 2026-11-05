@@ -29,9 +29,10 @@ import '../../../../shared/util/format.dart';
 import '../../../detail/artists_sheet.dart';
 import '../../../lyrics/lyrics_store.dart';
 import '../../../lyrics/ui/lyrics_view.dart';
+import '../../../customization/custom_store.dart';
 import '../../player_bg_store.dart';
 import '../../player_controller.dart';
-import '../../player_sheet.dart';
+import '../player_sheet.dart';
 import '../artist_avatars.dart';
 import '../queue_sheet.dart';
 import '../sleep_sheet.dart';
@@ -165,7 +166,7 @@ class _AppleMusicPlayerSceneState extends ConsumerState<AppleMusicPlayerScene> {
     bool lyricsOpen,
     LyricsMode lyricsMode,
   ) {
-    final playing = widget.state.playing;
+    final playing = ref.watch(playingNowProvider);
 
     // Apple Music paused scale animation: 0.82 on pause, 1.0 on play
     return Center(
@@ -367,7 +368,7 @@ class _AppleMusicPlayerSceneState extends ConsumerState<AppleMusicPlayerScene> {
     final isShuffle = state.shuffle;
     final repeatMode = state.repeat;
     final isRepeat = repeatMode != PlayerRepeat.off;
-    final isPlaying = state.playing;
+    final isPlaying = ref.watch(playingNowProvider);
     final isLoading = state.loading;
 
     return SizedBox(
