@@ -69,7 +69,7 @@ class EqualizerSheetContent extends ConsumerWidget {
               ),
               Switch.adaptive(
                 value: state.enabled,
-                activeColor: t.accent,
+                activeTrackColor: t.accent,
                 onChanged: notifier.setEnabled,
               ),
             ],
