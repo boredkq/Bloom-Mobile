@@ -11,6 +11,7 @@ import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../player/player_controller.dart';
 import '../lyrics_store.dart';
+import '../romanization.dart';
 
 /// Sizes of one surface. Over the cover they're centred; in
 /// the cover's place the box is the screen's width, so the lines are larger
@@ -120,6 +121,8 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
     final state = ref.watch(lyricsProvider);
     final current = ref.watch(lyricsLineProvider);
     final lay = widget.layout;
+    final showRomanized =
+        ref.watch(lyricsPrefsProvider.select((p) => p.romanize));
 
     ref.listen(lyricsLineProvider, (_, _) => _center(animated: true));
     ref.listen(lyricsProvider.select((s) => s.lines), (_, _) {
@@ -129,6 +132,11 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
     });
 
     final lines = state.lines;
+    final hasRom = lines.any((l) => l.romanized != null) ||
+        (lines.isEmpty &&
+            state.plain.isNotEmpty &&
+            romanize(state.plain) != null);
+
     final children = <Widget>[
       if (state.status != LyricsStatus.ready)
         Text(
@@ -143,6 +151,18 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
           ),
         )
       else if (lines.isNotEmpty) ...[
+        if (hasRom)
+          Align(
+            alignment: lay.align == TextAlign.left
+                ? Alignment.centerLeft
+                : Alignment.center,
+            child: _RomanizeToggle(
+              active: showRomanized,
+              onTap: () => ref
+                  .read(lyricsPrefsProvider.notifier)
+                  .setRomanize(!showRomanized),
+            ),
+          ),
         _IntroDots(
           key: _key(-1),
           until: lines.first.time,
@@ -153,6 +173,8 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
           _Line(
             key: _key(i),
             text: lines[i].text,
+            romanized: showRomanized ? lines[i].romanized : null,
+            section: lines[i].section,
             active: i == current,
             color: i == current
                 ? t.text
@@ -166,15 +188,29 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
                         Duration(milliseconds: (lines[i].time * 1000).round()),
                       ),
           ),
-      ] else
+      ] else ...[
+        if (hasRom)
+          Align(
+            alignment: lay.align == TextAlign.left
+                ? Alignment.centerLeft
+                : Alignment.center,
+            child: _RomanizeToggle(
+              active: showRomanized,
+              onTap: () => ref
+                  .read(lyricsPrefsProvider.notifier)
+                  .setRomanize(!showRomanized),
+            ),
+          ),
         // Plain text: no times, nothing to follow.
         for (final row in state.plain.split('\n'))
           _Line(
             text: row.trim().isEmpty ? ' ' : row.trim(),
+            romanized: showRomanized ? romanize(row.trim()) : null,
             active: false,
             color: t.text.withValues(alpha: _plain),
             layout: lay,
           ),
+      ],
     ];
 
     return LayoutBuilder(
@@ -202,6 +238,8 @@ class _Line extends StatefulWidget {
   const _Line({
     super.key,
     required this.text,
+    this.romanized,
+    this.section,
     required this.active,
     required this.color,
     required this.layout,
@@ -209,6 +247,8 @@ class _Line extends StatefulWidget {
   });
 
   final String text;
+  final String? romanized;
+  final String? section;
   final bool active;
   final Color color;
   final LyricsLayout layout;
@@ -247,6 +287,7 @@ class _LineState extends State<_Line> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final lay = widget.layout;
+    final t = context.bloom;
     return GestureDetector(
       onTap: widget.onTap,
       behavior: HitTestBehavior.opaque,
@@ -254,30 +295,146 @@ class _LineState extends State<_Line> with SingleTickerProviderStateMixin {
         selected: widget.active,
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: lay.gap),
-          child: AnimatedBuilder(
-            animation: _grow,
-            builder: (context, child) => Transform.scale(
-              scale:
-                  _from +
-                  (1 - _from) * Curves.easeOutQuad.transform(_grow.value),
-              alignment: lay.origin,
-              child: child,
-            ),
-            child: TweenAnimationBuilder<Color?>(
-              tween: ColorTween(end: widget.color),
-              duration: const Duration(milliseconds: 300),
-              builder: (context, color, _) => Text(
-                widget.text,
-                textAlign: lay.align,
-                style: TextStyle(
-                  fontSize: widget.active ? lay.activeSize : lay.fontSize,
-                  height: lay.lineHeight,
-                  fontWeight: widget.active ? FontWeight.w500 : FontWeight.w400,
-                  color: color,
+          child: Column(
+            crossAxisAlignment: lay.align == TextAlign.left
+                ? CrossAxisAlignment.start
+                : CrossAxisAlignment.center,
+            children: [
+              if (widget.section != null) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: widget.active
+                        ? t.accent.withValues(alpha: 0.15)
+                        : t.ovlBg,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: widget.active
+                          ? t.accent.withValues(alpha: 0.35)
+                          : t.ovlLine,
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    widget.section!,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: widget.active ? t.accent : t.muted,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ),
+              ],
+              AnimatedBuilder(
+                animation: _grow,
+                builder: (context, child) => Transform.scale(
+                  scale:
+                      _from +
+                      (1 - _from) * Curves.easeOutQuad.transform(_grow.value),
+                  alignment: lay.origin,
+                  child: child,
+                ),
+                child: TweenAnimationBuilder<Color?>(
+                  tween: ColorTween(end: widget.color),
+                  duration: const Duration(milliseconds: 300),
+                  builder: (context, color, _) => Column(
+                    crossAxisAlignment: lay.align == TextAlign.left
+                        ? CrossAxisAlignment.start
+                        : CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        widget.text,
+                        textAlign: lay.align,
+                        style: TextStyle(
+                          fontSize:
+                              widget.active ? lay.activeSize : lay.fontSize,
+                          height: lay.lineHeight,
+                          fontWeight:
+                              widget.active ? FontWeight.w500 : FontWeight.w400,
+                          color: color,
+                        ),
+                      ),
+                      if (widget.romanized != null &&
+                          widget.romanized != widget.text) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          widget.romanized!,
+                          textAlign: lay.align,
+                          style: TextStyle(
+                            fontSize:
+                                (widget.active
+                                    ? lay.activeSize
+                                    : lay.fontSize) *
+                                0.74,
+                            height: 1.25,
+                            fontStyle: FontStyle.italic,
+                            color: color?.withValues(alpha: 0.72) ??
+                                t.muted.withValues(alpha: 0.72),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RomanizeToggle extends StatelessWidget {
+  const _RomanizeToggle({required this.active, required this.onTap});
+
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.bloom;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        decoration: BoxDecoration(
+          color: active ? t.accent.withValues(alpha: 0.16) : t.ovlBg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: active ? t.accent.withValues(alpha: 0.4) : t.ovlLine,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '文/A',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: active ? t.accent : t.muted,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'Romaji',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: active ? t.accent : t.muted,
+              ),
+            ),
+          ],
         ),
       ),
     );

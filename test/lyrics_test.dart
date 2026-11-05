@@ -56,6 +56,7 @@ ProviderContainer _container({
         required artist,
         required title,
         durationSec,
+        trackId,
       }) {
         onFetch?.call();
         return answer(title);
@@ -121,6 +122,22 @@ void main() {
     test('equal times keep the row order', () {
       final lines = parseLrc('[00:05.00]b\n[00:05.00]a');
       expect(lines.map((l) => l.text), ['b', 'a']);
+    });
+
+    test('parses section markers and attaches to timed lines', () {
+      final lines = parseLrc(
+        '[Chorus]\n[00:15.00]We will rock you\n[Verse 1]\n[00:30.00]Buddy, you\'re a boy',
+      );
+      expect(lines.first.section, 'Chorus');
+      expect(lines.first.text, 'We will rock you');
+      expect(lines.last.section, 'Verse 1');
+      expect(lines.last.text, "Buddy, you're a boy");
+    });
+
+    test('adds romanization to foreign scripts', () {
+      final lines = parseLrc('[00:05.00]さくら\n[00:10.00]Привет');
+      expect(lines.first.romanized, 'sakura');
+      expect(lines.last.romanized, 'Privet');
     });
   });
 

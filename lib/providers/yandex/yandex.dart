@@ -870,3 +870,55 @@ Future<String> streamUrl(String trackId) async {
 
   return url;
 }
+
+/// Fetches lyrics (synced or plain) directly from Yandex Music API for [trackId].
+/// Returns `null` if the track has no lyrics or the request fails.
+Future<({String synced, String plain})?> trackLyrics(
+  String trackId, {
+  http.Client? client,
+}) async {
+  final cleanId = trackId.startsWith('ym:') ? trackId.substring(3) : trackId;
+  if (cleanId.trim().isEmpty) return null;
+
+  try {
+    final c = client ?? _http;
+    final token = _token;
+    final uri = Uri.parse('$kApi/tracks/$cleanId/supplement');
+    final resp = await c
+        .get(
+          uri,
+          headers: token != null
+              ? _authHeaders(token)
+              : {'User-Agent': kUserAgent, 'X-Yandex-Music-Client': kYmClient},
+        )
+        .timeout(const Duration(seconds: 12));
+
+    if (resp.statusCode != 200) return null;
+    final body = _decode(resp.bodyBytes);
+    final result = body?['result'] as Map<String, dynamic>?;
+    final lyrics = result?['lyrics'] as Map<String, dynamic>?;
+    if (lyrics == null) return null;
+
+    final syncUrl = lyrics['syncLyricsUrl'] as String?;
+    var synced = '';
+    if (syncUrl != null && syncUrl.isNotEmpty) {
+      try {
+        final syncResp = await c
+            .get(Uri.parse(syncUrl))
+            .timeout(const Duration(seconds: 10));
+        if (syncResp.statusCode == 200) {
+          synced = utf8.decode(syncResp.bodyBytes, allowMalformed: true);
+        }
+      } catch (_) {}
+    }
+
+    final full =
+        lyrics['fullLyrics'] as String? ?? lyrics['lyrics'] as String? ?? '';
+    if (synced.isEmpty && full.isEmpty) return null;
+
+    return (synced: synced, plain: full);
+  } catch (_) {
+    return null;
+  }
+}
+

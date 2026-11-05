@@ -28,6 +28,7 @@ class LyricsPrefs {
     this.mode = LyricsMode.overlay,
     this.cache = false,
     this.keep = CacheKeep.never,
+    this.romanize = true,
   });
 
   factory LyricsPrefs.fromJson(Map<String, Object?> raw) => LyricsPrefs(
@@ -37,6 +38,7 @@ class LyricsPrefs {
     ),
     cache: raw['cache'] == true,
     keep: CacheKeep.of(raw['keep']),
+    romanize: raw['romanize'] != false,
   );
 
   final LyricsMode mode;
@@ -47,17 +49,26 @@ class LyricsPrefs {
   /// For how long.
   final CacheKeep keep;
 
-  LyricsPrefs copyWith({LyricsMode? mode, bool? cache, CacheKeep? keep}) =>
-      LyricsPrefs(
-        mode: mode ?? this.mode,
-        cache: cache ?? this.cache,
-        keep: keep ?? this.keep,
-      );
+  /// Show Latin transliteration under foreign scripts (Hangul, Kana, Cyrillic).
+  final bool romanize;
+
+  LyricsPrefs copyWith({
+    LyricsMode? mode,
+    bool? cache,
+    CacheKeep? keep,
+    bool? romanize,
+  }) => LyricsPrefs(
+    mode: mode ?? this.mode,
+    cache: cache ?? this.cache,
+    keep: keep ?? this.keep,
+    romanize: romanize ?? this.romanize,
+  );
 
   Map<String, Object?> toJson() => {
     'mode': mode.name,
     'cache': cache,
     'keep': keep.id,
+    'romanize': romanize,
   };
 }
 
@@ -74,6 +85,8 @@ class LyricsPrefsController extends Notifier<LyricsPrefs> {
   void setMode(LyricsMode mode) => _set(state.copyWith(mode: mode));
 
   void setCache(bool on) => _set(state.copyWith(cache: on));
+
+  void setRomanize(bool on) => _set(state.copyWith(romanize: on));
 
   /// A time limit applies at once; returns how many went out of date.
   int setKeep(CacheKeep keep) {
@@ -118,12 +131,18 @@ typedef LyricsFetcher =
       required String artist,
       required String title,
       int? durationSec,
+      String? trackId,
     });
 
 final lyricsFetcherProvider = Provider<LyricsFetcher>(
   (ref) =>
-      ({required artist, required title, durationSec}) =>
-          fetchLyrics(artist: artist, title: title, durationSec: durationSec),
+      ({required artist, required title, durationSec, trackId}) =>
+          fetchLyrics(
+            artist: artist,
+            title: title,
+            durationSec: durationSec,
+            trackId: trackId,
+          ),
 );
 
 /// Whose lyrics to show — swapped in tests.
@@ -172,6 +191,7 @@ class LyricsController extends Notifier<LyricsState> {
         artist: t.artist,
         title: t.name,
         durationSec: t.duration.inSeconds > 0 ? t.duration.inSeconds : null,
+        trackId: t.id,
       );
       cache.remember(key, found, keep: ref.read(lyricsPrefsProvider).cache);
     }

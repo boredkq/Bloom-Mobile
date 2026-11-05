@@ -10,6 +10,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../providers/yandex/yandex.dart' as ym;
 import 'lrc.dart';
 
 /// What was found. Both texts empty — nothing.
@@ -39,12 +40,33 @@ Future<LyricsResult> fetchLyrics({
   required String artist,
   required String title,
   int? durationSec,
+  String? trackId,
   http.Client? client,
 }) async {
   if (title.trim().isEmpty) return LyricsResult.none;
   final c = client ?? _shared;
   final d = durationSec ?? 0;
 
+  // 1. Direct fetch from Yandex Music if track originates from Yandex.
+  if (trackId != null && trackId.startsWith('ym:')) {
+    final ymResult = await ym.trackLyrics(trackId, client: c);
+    if (ymResult != null) {
+      final res = LyricsResult(
+        synced: ymResult.synced,
+        plain: ymResult.plain.isNotEmpty
+            ? ymResult.plain
+            : stripLrc(ymResult.synced),
+        source: 'yandex',
+      );
+      if (res.synced.isNotEmpty) return res;
+      // If Yandex gave plain text, try LRCLIB for synced lyrics.
+      final lrclibFound = await _lrclib(c, artist, title, d);
+      if (lrclibFound.synced.isNotEmpty) return lrclibFound;
+      return res;
+    }
+  }
+
+  // 2. Query LRCLIB.
   final found = await _lrclib(c, artist, title, d);
   if (found.ok) return found;
   // Uploads are often titled "Artist - Title" under someone else's name.
