@@ -7,12 +7,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/store/settings_store.dart';
 import '../../../features/audio_dsp/audio_dsp_models.dart';
 import '../../../features/audio_dsp/audio_dsp_store.dart';
 import '../../../features/audio_dsp/ui/equalizer_sheet.dart';
 import '../../../shared/ui/bloom_icon.dart';
+import '../../../shared/ui/bloom_sheet.dart';
 import '../../../shared/ui/subpage_header.dart';
 import 'settings_rows.dart';
 
@@ -44,11 +46,28 @@ class AudioSettingsScreen extends ConsumerWidget {
         SettingsGroupCard(
           dividerInset: 52,
           rows: [
-            SettingsRow(
+            SettingsRowShell(
               icon: Bi.eq,
               title: l.eqTitle,
-              value: eqStatus,
+              subtitle: l.eqSubtitle,
               onTap: () => showEqualizerSheet(context),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    eqStatus,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: context.bloom.text2,
+                        ),
+                  ),
+                  const SizedBox(width: 8),
+                  BloomIcon(
+                    Bi.altArrowRight,
+                    size: 16,
+                    color: context.bloom.text2,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -58,16 +77,34 @@ class AudioSettingsScreen extends ConsumerWidget {
         SettingsGroupCard(
           dividerInset: 52,
           rows: [
-            SettingsRow(
+            SettingsRowShell(
               icon: Bi.speed,
               title: l.eqCrossfadeTitle,
-              value: dspState.crossfadeSeconds > 0
-                  ? '${dspState.crossfadeSeconds} сек • ${l.eqCrossfadeSub}'
-                  : l.eqDisabled,
-              onTap: () {
-                final nextSeconds = (dspState.crossfadeSeconds + 3) % 15;
-                dspNotifier.setCrossfadeSeconds(nextSeconds);
-              },
+              subtitle: l.eqCrossfadeSub,
+              onTap: () => _pickCrossfade(
+                context,
+                ref,
+                dspState.crossfadeSeconds,
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    dspState.crossfadeSeconds > 0
+                        ? '${dspState.crossfadeSeconds} с'
+                        : l.eqDisabled,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: context.bloom.text2,
+                        ),
+                  ),
+                  const SizedBox(width: 8),
+                  BloomIcon(
+                    Bi.altArrowRight,
+                    size: 16,
+                    color: context.bloom.text2,
+                  ),
+                ],
+              ),
             ),
             SettingsToggleRow(
               icon: Bi.album,
@@ -127,5 +164,61 @@ class AudioSettingsScreen extends ConsumerWidget {
         ),
       ],
     );
+  }
+}
+
+String _formatCrossfadeSeconds(BuildContext context, int sec) {
+  if (sec == 0) return context.l.eqDisabled;
+  final isRu = Localizations.localeOf(context).languageCode == 'ru';
+  if (isRu) {
+    final mod10 = sec % 10;
+    final mod100 = sec % 100;
+    final unit = (mod10 == 1 && mod100 != 11)
+        ? 'секунда'
+        : (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20))
+            ? 'секунды'
+            : 'секунд';
+    return '$sec $unit';
+  }
+  return '$sec ${sec == 1 ? "second" : "seconds"}';
+}
+
+Future<void> _pickCrossfade(
+  BuildContext context,
+  WidgetRef ref,
+  int currentSeconds,
+) async {
+  final l = context.l;
+  final isRu = Localizations.localeOf(context).languageCode == 'ru';
+  const options = [0, 1, 2, 3, 4, 5, 7, 10, 12];
+
+  final picked = await showBloomSheetChild<int>(
+    context: context,
+    header: SheetTitle(
+      l.eqCrossfadeTitle,
+      subtitle: l.eqCrossfadeSub,
+    ),
+    child: Builder(
+      builder: (sheetContext) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final sec in options)
+            SheetOptionTile(
+              icon: sec == 0 ? Bi.close : Bi.speed,
+              label: _formatCrossfadeSeconds(sheetContext, sec),
+              sub: sec == 3
+                  ? (isRu
+                      ? 'Рекомендуемое значение для мягкого перехода'
+                      : 'Recommended duration for seamless transition')
+                  : null,
+              active: sec == currentSeconds,
+              onTap: () => Navigator.of(sheetContext).pop(sec),
+            ),
+        ],
+      ),
+    ),
+  );
+  if (picked != null) {
+    ref.read(audioDspProvider.notifier).setCrossfadeSeconds(picked);
   }
 }
