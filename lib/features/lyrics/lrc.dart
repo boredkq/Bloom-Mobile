@@ -154,8 +154,8 @@ List<LrcLine> parseLrc(String lrc) {
         words.add(LrcWord(
           start: wStart,
           end: wEnd > wStart ? wEnd : wStart + 0.3,
-          text: wText,
-          romanized: romanize(wText),
+          text: wText.trim(),
+          romanized: romanize(wText.trim()),
         ));
       }
       text = text.replaceAll(_anyWordStamp, '').trim();

@@ -48,8 +48,12 @@ List<LrcLine> parseTtml(String ttml) {
       ));
     }
 
+    final hasExplicitSpaces =
+        words.any((w) => w.text.endsWith(' ') || w.text.startsWith(' '));
     final rawText = words.isNotEmpty
-        ? words.map((w) => w.text).join('')
+        ? (hasExplicitSpaces
+            ? words.map((w) => w.text).join('').replaceAll(RegExp(r'\s+'), ' ')
+            : words.map((w) => w.text.trim()).join(' '))
         : _unescapeXml(pBody.replaceAll(RegExp(r'<[^>]+>'), '')).trim();
 
     if (rawText.trim().isEmpty) continue;

@@ -250,6 +250,7 @@ class LyricsController extends Notifier<LyricsState> {
     }
     if (_gone || token != _token) return;
     if (!found.ok) {
+      ref.read(lyricsOpenProvider.notifier).state = false;
       return _set(LyricsState(trackId: t.id, status: LyricsStatus.empty));
     }
     _set(
