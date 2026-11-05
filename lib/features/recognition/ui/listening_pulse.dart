@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
-import '../../../app/theme/bloom_theme.dart';
+import '../../../app/theme/tokens.dart';
 import '../../../shared/ui/bloom_icon.dart';
 import '../../../shared/ui/pressable.dart';
 
@@ -80,7 +80,7 @@ class _ListeningPulseWidgetState extends State<ListeningPulseWidget>
           child: Center(
             child: Pressable(
               onTap: widget.onTap,
-              scaleFactor: 0.94,
+              scale: 0.94,
               child: Container(
                 width: 88,
                 height: 88,

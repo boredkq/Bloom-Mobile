@@ -3,10 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/providers.dart';
-import '../../../app/theme/bloom_theme.dart';
+import '../../../app/router.dart';
+import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../core/providers/registry.dart';
 import '../../../features/player/play_source.dart';
+import '../../../features/player/player_controller.dart';
 import '../../../features/search/search_session.dart';
 import '../../../features/search/ui/search_layer.dart';
 import '../../../shared/ui/atoms.dart';
@@ -317,7 +319,7 @@ class _MatchCard extends StatelessWidget {
               Expanded(
                 child: SheetButton(
                   label: l.recOpenSearch,
-                  icon: Bi.search,
+                  icon: Bi.magnifier,
                   tone: ButtonTone.plate,
                   onTap: onSearch,
                 ),

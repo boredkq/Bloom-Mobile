@@ -459,9 +459,8 @@ class PlaybackController extends Notifier<PlaybackState>
     if (!dsp.enabled || !dsp.headroomGuard) {
       _dspHeadroomVolume = 1.0;
     } else {
-      final req = HeadroomGuard.calculateRequiredHeadroomDb(dsp.bands, dsp.bassBoost);
-      final safeGainDb = HeadroomGuard.calculateSafeInputGainDb(dsp.preampDb, req);
-      _dspHeadroomVolume = pow(10.0, safeGainDb / 20.0).clamp(0.0, 1.0).toDouble();
+      _dspHeadroomVolume =
+          pow(10.0, dsp.safeGainDb / 20.0).clamp(0.0, 1.0).toDouble();
     }
     _applyCombinedVolume();
   }
@@ -644,20 +643,14 @@ class PlaybackController extends Notifier<PlaybackState>
               curTrack != null &&
               nextTrack != null &&
               AlbumGaplessDetector.isSequentialAlbumTracks(
-                currentAlbum: curTrack.album?.name,
-                nextAlbum: nextTrack.album?.name,
-                currentArtist:
-                    curTrack.artists.isNotEmpty
-                        ? curTrack.artists.first.name
-                        : null,
-                nextArtist:
-                    nextTrack.artists.isNotEmpty
-                        ? nextTrack.artists.first.name
-                        : null,
-                currentTrackNum: curTrack.trackNumber,
-                nextTrackNum: nextTrack.trackNumber,
-                currentDiscNum: curTrack.discNumber,
-                nextDiscNum: nextTrack.discNumber,
+                currentAlbum: curTrack.album,
+                nextAlbum: nextTrack.album,
+                currentArtist: curTrack.artist,
+                nextArtist: nextTrack.artist,
+                currentTrackNum: null,
+                nextTrackNum: null,
+                currentDiscNum: null,
+                nextDiscNum: null,
                 isShuffle: _st.shuffle,
               );
           if (!isSequential) {
@@ -936,16 +929,14 @@ class PlaybackController extends Notifier<PlaybackState>
         curTrack != null &&
         nextTrack != null &&
         AlbumGaplessDetector.isSequentialAlbumTracks(
-          currentAlbum: curTrack.album?.name,
-          nextAlbum: nextTrack.album?.name,
-          currentArtist:
-              curTrack.artists.isNotEmpty ? curTrack.artists.first.name : null,
-          nextArtist:
-              nextTrack.artists.isNotEmpty ? nextTrack.artists.first.name : null,
-          currentTrackNum: curTrack.trackNumber,
-          nextTrackNum: nextTrack.trackNumber,
-          currentDiscNum: curTrack.discNumber,
-          nextDiscNum: nextTrack.discNumber,
+          currentAlbum: curTrack.album,
+          nextAlbum: nextTrack.album,
+          currentArtist: curTrack.artist,
+          nextArtist: nextTrack.artist,
+          currentTrackNum: null,
+          nextTrackNum: null,
+          currentDiscNum: null,
+          nextDiscNum: null,
           isShuffle: _st.shuffle,
         );
 

@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../player/player_controller.dart';
+import '../lrc.dart';
 import '../lyrics_store.dart';
 import '../romanization.dart';
 

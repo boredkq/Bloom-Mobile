@@ -223,8 +223,8 @@ void main() {
         crossfadeSeconds: 4,
         smartAlbumGapless: true,
         volumeNormalization: true,
-        customPresets: [
-          const AudioPreset(
+        customPresets: {
+          'my_custom_1': const AudioPreset(
             id: 'my_custom_1',
             name: 'Studio Master',
             levels: [10, 20, 30, 40, 50, 40, 30, 20, 10, 0],
@@ -232,7 +232,7 @@ void main() {
             virtualizer: 5,
             isCustom: true,
           ),
-        ],
+        },
       );
 
       final json = original.toJson();
@@ -249,11 +249,12 @@ void main() {
       expect(restored.smartAlbumGapless, original.smartAlbumGapless);
       expect(restored.volumeNormalization, original.volumeNormalization);
       expect(restored.customPresets.length, 1);
-      expect(restored.customPresets.first.id, 'my_custom_1');
-      expect(restored.customPresets.first.name, 'Studio Master');
-      expect(restored.customPresets.first.levels, [10, 20, 30, 40, 50, 40, 30, 20, 10, 0]);
-      expect(restored.customPresets.first.bassBoost, 15);
-      expect(restored.customPresets.first.isCustom, isTrue);
+      final custom = restored.customPresets['my_custom_1'];
+      expect(custom, isNotNull);
+      expect(custom!.name, 'Studio Master');
+      expect(custom.levels, [10, 20, 30, 40, 50, 40, 30, 20, 10, 0]);
+      expect(custom.bassBoost, 15);
+      expect(custom.isCustom, isTrue);
     });
 
     test('handles fallback defaults on empty or invalid JSON', () {

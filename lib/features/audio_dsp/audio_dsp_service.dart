@@ -23,24 +23,45 @@ class AudioDspService {
   }
 
   /// Pushes current DSP parameters down to native Equalizer and AudioFX.
-  Future<void> apply({
-    required bool enabled,
-    required List<int> bandLevels,
-    required int bassBoost,
-    required int virtualizer,
-    required double safeGainDb,
+  Future<void> apply(dynamic stateOrEnabled, {
+    List<int>? bandLevels,
+    int? bassBoost,
+    int? virtualizer,
+    double? safeGainDb,
   }) async {
     if (defaultTargetPlatform != TargetPlatform.android) return;
 
+    final bool enabled;
+    final List<int> bands;
+    final int bass;
+    final int virt;
+    final double safeGain;
+
+    if (stateOrEnabled is bool) {
+      enabled = stateOrEnabled;
+      bands = bandLevels ?? const [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+      bass = bassBoost ?? 0;
+      virt = virtualizer ?? 0;
+      safeGain = safeGainDb ?? 0.0;
+    } else {
+      // AudioDspState or duck-typed object
+      final dynamic s = stateOrEnabled;
+      enabled = s.enabled as bool;
+      bands = (s.bandLevels ?? s.bands) as List<int>;
+      bass = s.bassBoost as int;
+      virt = s.virtualizer as int;
+      safeGain = s.safeGainDb as double;
+    }
+
     // Convert 10-band levels to millibels (-1200 mB to +1200 mB)
-    final millibels = bandLevels.map((lvl) {
+    final millibels = bands.map((lvl) {
       final db = AudioPresets.levelToDb(lvl);
       return (db * 100.0).round();
     }).toList();
 
     // Map 0-100% to 0-1000 native strength
-    final nativeBass = (bassBoost.clamp(0, 100) * 10).toInt();
-    final nativeVirtualizer = (virtualizer.clamp(0, 100) * 10).toInt();
+    final nativeBass = (bass.clamp(0, 100) * 10).toInt();
+    final nativeVirtualizer = (virt.clamp(0, 100) * 10).toInt();
 
     try {
       await _channel.invokeMethod<void>('apply', {
@@ -48,7 +69,7 @@ class AudioDspService {
         'bandLevels': millibels,
         'bassBoost': nativeBass,
         'virtualizer': nativeVirtualizer,
-        'safeGainDb': safeGainDb,
+        'safeGainDb': safeGain,
       });
     } catch (_) {}
   }

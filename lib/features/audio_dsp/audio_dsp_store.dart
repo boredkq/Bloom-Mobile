@@ -20,16 +20,24 @@ class AudioDspState {
   const AudioDspState({
     this.enabled = false,
     this.presetId = AudioPresets.flatId,
-    required this.bandLevels,
+    List<int>? bandLevels,
+    List<int>? bands,
     this.bassBoost = 0,
     this.virtualizer = 0,
     this.preampDb = 0.0,
-    this.limiterEnabled = true,
+    bool? limiterEnabled,
+    bool? headroomGuard,
     this.crossfadeSeconds = 3,
-    this.smartGapless = true,
-    this.normalizeVolume = true,
+    bool? smartGapless,
+    bool? smartAlbumGapless,
+    bool? normalizeVolume,
+    bool? volumeNormalization,
     this.customPresets = const {},
-  });
+  })  : bandLevels =
+            bandLevels ?? bands ?? const [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        limiterEnabled = limiterEnabled ?? headroomGuard ?? true,
+        smartGapless = smartGapless ?? smartAlbumGapless ?? true,
+        normalizeVolume = normalizeVolume ?? volumeNormalization ?? true;
 
   final bool enabled;
   final String presetId;
@@ -42,6 +50,11 @@ class AudioDspState {
   final bool smartGapless;
   final bool normalizeVolume;
   final Map<String, AudioPreset> customPresets;
+
+  List<int> get bands => bandLevels;
+  bool get headroomGuard => limiterEnabled;
+  bool get smartAlbumGapless => smartGapless;
+  bool get volumeNormalization => normalizeVolume;
 
   double get requiredHeadroomDb =>
       HeadroomGuard.calculateRequiredHeadroomDb(bandLevels, bassBoost);
@@ -95,21 +108,33 @@ class AudioDspState {
     'customPresets': customPresets.map((k, v) => MapEntry(k, v.toJson())),
   };
 
-  factory AudioDspState.fromJson(Map<String, dynamic> json) {
-    final rawLevels = json['bandLevels'] as List?;
+  factory AudioDspState.fromJson(Map<String, dynamic>? json) {
+    if (json == null) {
+      return AudioDspState(
+        bandLevels: List.filled(AudioPresets.bandCount, 0),
+      );
+    }
+    final rawLevels = (json['bandLevels'] ?? json['bands']) as List?;
     final levels =
         rawLevels != null && rawLevels.length == AudioPresets.bandCount
             ? rawLevels.map((e) => (e as num).toInt()).toList()
             : List.filled(AudioPresets.bandCount, 0);
 
-    final rawCustom = json['customPresets'] as Map?;
+    final rawCustom = json['customPresets'];
     final custom = <String, AudioPreset>{};
-    if (rawCustom != null) {
+    if (rawCustom is Map) {
       for (final entry in rawCustom.entries) {
         if (entry.value is Map) {
           custom[entry.key.toString()] = AudioPreset.fromJson(
             (entry.value as Map).cast<String, dynamic>(),
           );
+        }
+      }
+    } else if (rawCustom is List) {
+      for (final item in rawCustom) {
+        if (item is Map) {
+          final p = AudioPreset.fromJson(item.cast<String, dynamic>());
+          custom[p.id] = p;
         }
       }
     }
@@ -121,10 +146,14 @@ class AudioDspState {
       bassBoost: (json['bassBoost'] as num?)?.toInt() ?? 0,
       virtualizer: (json['virtualizer'] as num?)?.toInt() ?? 0,
       preampDb: (json['preampDb'] as num?)?.toDouble() ?? 0.0,
-      limiterEnabled: json['limiterEnabled'] as bool? ?? true,
+      limiterEnabled:
+          (json['limiterEnabled'] ?? json['headroomGuard']) as bool? ?? true,
       crossfadeSeconds: (json['crossfadeSeconds'] as num?)?.toInt() ?? 3,
-      smartGapless: json['smartGapless'] as bool? ?? true,
-      normalizeVolume: json['normalizeVolume'] as bool? ?? true,
+      smartGapless:
+          (json['smartGapless'] ?? json['smartAlbumGapless']) as bool? ?? true,
+      normalizeVolume:
+          (json['normalizeVolume'] ?? json['volumeNormalization']) as bool? ??
+          true,
       customPresets: custom,
     );
   }
