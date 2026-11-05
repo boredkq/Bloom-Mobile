@@ -30,7 +30,6 @@ import '../features/wrapped/ui/wrapped_sheet.dart';
 import '../features/wrapped/wrapped_store.dart';
 import '../shared/ui/atoms.dart';
 import '../shared/ui/bloom_icon.dart';
-import '../shared/ui/bloom_mark.dart';
 import '../shared/ui/bloom_toast.dart';
 import '../shared/ui/cover_hero.dart';
 import '../shared/ui/glass.dart';
@@ -225,7 +224,6 @@ class _BloomShellState extends ConsumerState<BloomShell> {
                   tabs: ref.watch(settingsProvider).navOrder,
                   indicator: ref.watch(settingsProvider).navIndicator,
                   labels: ref.watch(settingsProvider).navLabels,
-                  homeLogo: ref.watch(settingsProvider).navHomeLogo,
                   active: searchOpen.value ? NavTab.search : branchTab,
                   onTap: _onTab,
                 ),
@@ -400,7 +398,6 @@ class _NavBar extends StatelessWidget {
     required this.tabs,
     required this.indicator,
     required this.labels,
-    required this.homeLogo,
     required this.active,
     required this.onTap,
   });
@@ -415,9 +412,6 @@ class _NavBar extends StatelessWidget {
 
   /// Labels under the icons; see [NavLabels].
   final NavLabels labels;
-
-  /// Bloom mark in place of the home icon; see [SettingsState.navHomeLogo].
-  final bool homeLogo;
 
   /// The lit tab, not a slot in the bar: the order is a setting.
   final NavTab active;
@@ -491,7 +485,6 @@ class _NavBar extends StatelessWidget {
             child: _NavItem(
               spec: _items[tabs[i]]!,
               active: i == slot,
-              mark: homeLogo && tabs[i] == NavTab.home,
               iconSize: floating ? _kNavFloatIcon : _kNavIcon,
               textIconSize: floating ? _kNavFloatIconText : _kNavIconText,
               labels: labels,
@@ -748,7 +741,6 @@ class _NavItem extends StatefulWidget {
   const _NavItem({
     required this.spec,
     required this.active,
-    required this.mark,
     required this.iconSize,
     required this.textIconSize,
     required this.labels,
@@ -757,9 +749,6 @@ class _NavItem extends StatefulWidget {
 
   final _NavSpec spec;
   final bool active;
-
-  /// Bloom mark instead of the glyph pair ([SettingsState.navHomeLogo]).
-  final bool mark;
 
   /// Glyph with no label under it.
   final double iconSize;
@@ -913,11 +902,6 @@ class _NavItemState extends State<_NavItem> with TickerProviderStateMixin {
     // Full contrast at rest (`text`), not muted `iconFgSb`: dim glyphs read as
     // disabled. The active tab shows by its fill and accent anyway.
     final color = Color.lerp(t.text, t.accent, m)!;
-    // The brand mark has no glyph pair: it's one fill with nothing to blend, so
-    // selection shows by colour alone. A bit smaller: the star nearly fills its
-    // square while icons have margins in the box, so at equal size it would
-    // stick out.
-    if (widget.mark) return BloomMark(size: size * 0.86, color: color);
     final fill = Curves.easeOut.transform(m);
     final line = 1 - const Interval(0.35, 1).transform(m);
     final spec = widget.spec;

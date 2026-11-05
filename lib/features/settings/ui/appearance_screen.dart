@@ -135,14 +135,6 @@ class AppearanceScreen extends ConsumerWidget {
               subtitle: _navIndicatorLabel(context.l, settings.navIndicator),
               onTap: () => _pickNavIndicator(context, ref),
             ),
-            // A switch: it's either the icon or the mark. Last, since it's
-            // about one tab and not the bar.
-            SettingsToggleRow(
-              title: context.l.apNavHomeLogoRow,
-              subtitle: context.l.apNavHomeLogoSub,
-              value: settings.navHomeLogo,
-              onChanged: controller.setNavHomeLogo,
-            ),
           ],
         ),
         const SizedBox(height: 22),

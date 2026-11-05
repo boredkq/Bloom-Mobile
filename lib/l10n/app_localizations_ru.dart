@@ -1956,12 +1956,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get apNavLabelsActive => 'У активного';
 
   @override
-  String get apNavHomeLogoRow => 'Логотип вместо «Главной»';
-
-  @override
-  String get apNavHomeLogoSub => 'Знак Bloom на месте иконки таба «Главная»';
-
-  @override
   String get scHelp =>
       'Обычно не нужен: ключ подбирается сам — скрейпом сайта, а если не вышло, перебором известных. Своё значение имеет смысл вбить, если SoundCloud перестал отвечать.';
 

@@ -3392,18 +3392,6 @@ abstract class AppLocalizations {
   /// **'Active only'**
   String get apNavLabelsActive;
 
-  /// No description provided for @apNavHomeLogoRow.
-  ///
-  /// In en, this message translates to:
-  /// **'Logo instead of Home'**
-  String get apNavHomeLogoRow;
-
-  /// No description provided for @apNavHomeLogoSub.
-  ///
-  /// In en, this message translates to:
-  /// **'Show the Bloom mark in place of the Home tab icon'**
-  String get apNavHomeLogoSub;
-
   /// No description provided for @scHelp.
   ///
   /// In en, this message translates to:

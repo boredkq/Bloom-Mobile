@@ -230,10 +230,6 @@ class SettingsState {
   /// Labels under icons; see [NavLabels].
   final NavLabels navLabels;
 
-  /// Bloom mark instead of the home icon. The tab's glyph pair stays: the mark
-  /// is one fill with nothing to blend, so only colour shows selection.
-  final bool navHomeLogo;
-
   /// The playing cover as the app background. A custom background picture
   /// overrides this.
   final bool coverAsBg;
@@ -271,7 +267,6 @@ class SettingsState {
     this.navOrder = kDefaultNavOrder,
     this.navIndicator = NavIndicator.pill,
     this.navLabels = NavLabels.none,
-    this.navHomeLogo = false,
     this.coverAsBg = false,
     this.localImport = LocalImportMode.inPlace,
     this.restoreQueue = false,
@@ -325,7 +320,6 @@ class SettingsState {
     List<NavTab>? navOrder,
     NavIndicator? navIndicator,
     NavLabels? navLabels,
-    bool? navHomeLogo,
     bool? coverAsBg,
     LocalImportMode? localImport,
     bool? restoreQueue,
@@ -346,7 +340,6 @@ class SettingsState {
     navOrder: navOrder ?? this.navOrder,
     navIndicator: navIndicator ?? this.navIndicator,
     navLabels: navLabels ?? this.navLabels,
-    navHomeLogo: navHomeLogo ?? this.navHomeLogo,
     coverAsBg: coverAsBg ?? this.coverAsBg,
     localImport: localImport ?? this.localImport,
     restoreQueue: restoreQueue ?? this.restoreQueue,
@@ -397,7 +390,6 @@ class SettingsController extends Notifier<SettingsState> {
       navOrder: readNavOrder(raw),
       navIndicator: readNavIndicator(raw),
       navLabels: readNavLabels(raw['navLabels']),
-      navHomeLogo: raw['navHomeLogo'] as bool? ?? false,
       coverAsBg: raw['coverAsBg'] as bool? ?? false,
       localImport: readLocalImportMode(raw['localImport']),
       restoreQueue: raw['restoreQueue'] as bool? ?? false,
@@ -427,7 +419,6 @@ class SettingsController extends Notifier<SettingsState> {
       'navTabs': [for (final tab in state.navOrder) tab.name],
       'navIndicator': state.navIndicator.name,
       'navLabels': state.navLabels.name,
-      'navHomeLogo': state.navHomeLogo,
       'coverAsBg': state.coverAsBg,
       'localImport': state.localImport.name,
       'restoreQueue': state.restoreQueue,
@@ -600,11 +591,6 @@ class SettingsController extends Notifier<SettingsState> {
 
   void setNavLabels(NavLabels value) {
     state = state.copyWith(navLabels: value);
-    _save();
-  }
-
-  void setNavHomeLogo(bool value) {
-    state = state.copyWith(navHomeLogo: value);
     _save();
   }
 

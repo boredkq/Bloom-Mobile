@@ -1928,13 +1928,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apNavLabelsActive => 'Active only';
 
   @override
-  String get apNavHomeLogoRow => 'Logo instead of Home';
-
-  @override
-  String get apNavHomeLogoSub =>
-      'Show the Bloom mark in place of the Home tab icon';
-
-  @override
   String get scHelp =>
       'Usually not needed: the key is picked up automatically — by scraping the site, and failing that by trying known ones. Setting your own makes sense if SoundCloud stopped responding.';
 
