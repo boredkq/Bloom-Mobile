@@ -23,35 +23,15 @@ class AudioDspService {
   }
 
   /// Pushes current DSP parameters down to native Equalizer and AudioFX.
-  Future<void> apply(dynamic stateOrEnabled, {
-    List<int>? bandLevels,
-    int? bassBoost,
-    int? virtualizer,
-    double? safeGainDb,
-  }) async {
+  Future<void> apply(dynamic state) async {
     if (defaultTargetPlatform != TargetPlatform.android) return;
 
-    final bool enabled;
-    final List<int> bands;
-    final int bass;
-    final int virt;
-    final double safeGain;
-
-    if (stateOrEnabled is bool) {
-      enabled = stateOrEnabled;
-      bands = bandLevels ?? const [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-      bass = bassBoost ?? 0;
-      virt = virtualizer ?? 0;
-      safeGain = safeGainDb ?? 0.0;
-    } else {
-      // AudioDspState or duck-typed object
-      final dynamic s = stateOrEnabled;
-      enabled = s.enabled as bool;
-      bands = (s.bandLevels ?? s.bands) as List<int>;
-      bass = s.bassBoost as int;
-      virt = s.virtualizer as int;
-      safeGain = s.safeGainDb as double;
-    }
+    final dynamic s = state;
+    final bool enabled = s.enabled as bool;
+    final List<int> bands = (s.bandLevels ?? s.bands) as List<int>;
+    final int bass = s.bassBoost as int;
+    final int virt = s.virtualizer as int;
+    final double safeGain = s.safeGainDb as double;
 
     // Convert 10-band levels to millibels (-1200 mB to +1200 mB)
     final millibels = bands.map((lvl) {

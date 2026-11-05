@@ -88,7 +88,7 @@ class _ListeningPulseWidgetState extends State<ListeningPulseWidget>
                   shape: BoxShape.circle,
                   color: widget.isListening || widget.isIdentifying
                       ? accentColor
-                      : t.surface,
+                      : t.card,
                   boxShadow: [
                     BoxShadow(
                       color: (widget.isListening || widget.isIdentifying
@@ -121,7 +121,7 @@ class _ListeningPulseWidgetState extends State<ListeningPulseWidget>
                       : BloomIcon(
                           Bi.soundwaveBold,
                           size: 38,
-                          color: widget.isListening ? t.bg : t.fg,
+                          color: widget.isListening ? t.bg : t.text,
                         ),
                 ),
               ),

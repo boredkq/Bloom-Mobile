@@ -47,7 +47,7 @@ class AudioSettingsScreen extends ConsumerWidget {
             SettingsRow(
               icon: Bi.eq,
               title: l.eqTitle,
-              subtitle: eqStatus,
+              value: eqStatus,
               onTap: () => showEqualizerSheet(context),
             ),
           ],
@@ -61,7 +61,7 @@ class AudioSettingsScreen extends ConsumerWidget {
             SettingsRow(
               icon: Bi.speed,
               title: l.eqCrossfadeTitle,
-              subtitle: dspState.crossfadeSeconds > 0
+              value: dspState.crossfadeSeconds > 0
                   ? '${dspState.crossfadeSeconds} сек • ${l.eqCrossfadeSub}'
                   : l.eqDisabled,
               onTap: () {

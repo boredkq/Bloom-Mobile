@@ -89,7 +89,7 @@ class _RecognitionSheetContentState
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: t.fg,
+                color: t.text,
               ),
             ),
             const SizedBox(height: 6),
@@ -105,7 +105,7 @@ class _RecognitionSheetContentState
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: t.fg,
+                color: t.text,
               ),
             ),
           ] else if (state is RecognitionMatch) ...[
@@ -157,7 +157,7 @@ class _RecognitionSheetContentState
                       ref.read(recognitionHistoryProvider.notifier).clear(),
                   child: Text(
                     l.recClearHistory,
-                    style: TextStyle(fontSize: 12, color: t.subtle),
+                    style: TextStyle(fontSize: 12, color: t.muted),
                   ),
                 ),
               ],
@@ -253,7 +253,7 @@ class _MatchCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: t.surface,
+        color: t.card,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: t.ovlLine),
       ),
@@ -275,7 +275,7 @@ class _MatchCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: t.fg,
+                        color: t.text,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -331,12 +331,12 @@ class _MatchCard extends StatelessWidget {
                   height: 48,
                   width: 48,
                   decoration: BoxDecoration(
-                    color: t.surface,
+                    color: t.card,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: t.ovlLine),
                   ),
                   child: Center(
-                    child: BloomIcon(Bi.copy, size: 20, color: t.fg),
+                    child: BloomIcon(Bi.copy, size: 20, color: t.text),
                   ),
                 ),
               ),
@@ -384,7 +384,7 @@ class _NoMatchView extends StatelessWidget {
           style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.bold,
-            color: t.fg,
+            color: t.text,
           ),
         ),
         const SizedBox(height: 4),
@@ -431,7 +431,7 @@ class _ErrorView extends StatelessWidget {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: t.fg,
+            color: t.text,
           ),
         ),
         const SizedBox(height: 14),
@@ -469,7 +469,7 @@ class _HistorySection extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                color: t.surface.withValues(alpha: 0.5),
+                color: t.card.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: t.ovlLine.withValues(alpha: 0.5)),
               ),
@@ -488,7 +488,7 @@ class _HistorySection extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: t.fg,
+                            color: t.text,
                           ),
                         ),
                         Text(

@@ -187,13 +187,7 @@ class AudioDspNotifier extends StateNotifier<AudioDspState> {
   }
 
   void _syncService() {
-    _service.apply(
-      enabled: state.enabled,
-      bandLevels: state.bandLevels,
-      bassBoost: state.bassBoost,
-      virtualizer: state.virtualizer,
-      safeGainDb: state.safeGainDb,
-    );
+    _service.apply(state);
   }
 
   void toggleEnabled() {

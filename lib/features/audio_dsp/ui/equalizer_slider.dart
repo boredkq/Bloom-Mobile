@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../app/theme/bloom_theme.dart';
+import '../../../app/theme/tokens.dart';
 import '../audio_dsp_models.dart';
 
 /// Single vertical slider for an EQ frequency band.
@@ -70,7 +70,7 @@ class EqualizerBandSlider extends StatelessWidget {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: enabled ? t.fg : t.muted,
+            color: enabled ? t.text : t.muted,
           ),
         ),
       ],

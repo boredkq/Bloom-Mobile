@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/theme/bloom_theme.dart';
+import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/bloom_icon.dart';
@@ -62,7 +62,7 @@ class EqualizerSheetContent extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: t.fg,
+                      color: t.text,
                     ),
                   ),
                 ],
@@ -94,7 +94,7 @@ class EqualizerSheetContent extends ConsumerWidget {
                     decoration: BoxDecoration(
                       color: isSelected
                           ? t.accent
-                          : t.surface.withValues(alpha: 0.8),
+                          : t.card.withValues(alpha: 0.8),
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(
                         color: isSelected ? t.accent : t.ovlLine,
@@ -105,7 +105,7 @@ class EqualizerSheetContent extends ConsumerWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: isSelected ? t.bg : t.fg,
+                        color: isSelected ? t.bg : t.text,
                       ),
                     ),
                   ),
@@ -120,7 +120,7 @@ class EqualizerSheetContent extends ConsumerWidget {
             height: 190,
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
             decoration: BoxDecoration(
-              color: t.surface.withValues(alpha: 0.5),
+              color: t.card.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: t.ovlLine),
             ),
@@ -180,7 +180,7 @@ class EqualizerSheetContent extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: t.surface.withValues(alpha: 0.4),
+              color: t.card.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: t.ovlLine.withValues(alpha: 0.6)),
             ),
@@ -201,7 +201,7 @@ class EqualizerSheetContent extends ConsumerWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: t.fg,
+                          color: t.text,
                         ),
                       ),
                       Text(
@@ -303,7 +303,7 @@ class _EffectCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: t.surface.withValues(alpha: 0.5),
+        color: t.card.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: t.ovlLine),
       ),
@@ -322,7 +322,7 @@ class _EffectCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: t.fg,
+                      color: t.text,
                     ),
                   ),
                 ],
