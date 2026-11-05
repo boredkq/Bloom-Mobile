@@ -26,6 +26,7 @@ import '../../../features/customization/ui/app_background.dart';
 import '../../../features/detail/detail_nav.dart';
 import '../../../features/player/play_source.dart';
 import '../../../features/player/ui/player_sheet.dart';
+import '../../../features/recognition/ui/recognition_sheet.dart';
 import '../../../shared/ui/atoms.dart';
 import '../../../shared/ui/big_tabs.dart';
 import '../../../shared/ui/bloom_icon.dart';
@@ -336,6 +337,15 @@ class _SearchBar extends StatelessWidget {
                     ),
             ),
           ),
+        ),
+        const SizedBox(width: kFloatGap),
+        CircleIconButton(
+          icon: Bi.soundwave,
+          tooltip: context.l.recTitle,
+          onTap: () {
+            focus.unfocus();
+            showRecognitionSheet(context);
+          },
         ),
         const SizedBox(width: kFloatGap),
         // A platform change restarts the search: results belong wholly to the

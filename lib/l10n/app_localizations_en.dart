@@ -3302,4 +3302,40 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commonFollowHint => 'The artist joins your library';
+
+  @override
+  String get recTitle => 'Music recognition';
+
+  @override
+  String get recListening => 'Listening to music around you...';
+
+  @override
+  String get recIdentifying => 'Identifying track...';
+
+  @override
+  String get recTapToListen => 'Tap to start listening';
+
+  @override
+  String get recNoMatch => 'No match found';
+
+  @override
+  String get recNoMatchDesc => 'Try holding your device closer to the sound source';
+
+  @override
+  String get recPermDenied => 'Microphone permission is required';
+
+  @override
+  String get recPlayInBloom => 'Play in Bloom';
+
+  @override
+  String get recOpenSearch => 'Open in search';
+
+  @override
+  String get recHistory => 'Recognition history';
+
+  @override
+  String get recClearHistory => 'Clear history';
+
+  @override
+  String get recTryAgain => 'Listen again';
 }

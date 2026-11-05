@@ -5677,6 +5677,19 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The artist joins your library'**
   String get commonFollowHint;
+
+  String get recTitle;
+  String get recListening;
+  String get recIdentifying;
+  String get recTapToListen;
+  String get recNoMatch;
+  String get recNoMatchDesc;
+  String get recPermDenied;
+  String get recPlayInBloom;
+  String get recOpenSearch;
+  String get recHistory;
+  String get recClearHistory;
+  String get recTryAgain;
 }
 
 class _AppLocalizationsDelegate

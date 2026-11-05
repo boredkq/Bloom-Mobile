@@ -3,6 +3,9 @@ package com.bxzlik.bloom
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioFormat
+import android.media.AudioRecord
+import android.media.MediaRecorder
 import android.os.Build
 import android.provider.Settings
 import com.ryanheise.audioservice.AudioServiceActivity
@@ -19,6 +22,11 @@ class MainActivity : AudioServiceActivity() {
 
     /** System file dialogs (SAF): customization presets and own tracks. */
     private val files by lazy { FilesChannel(this) }
+
+    private var pendingRecordPermissionResult: MethodChannel.Result? = null
+    private var activeAudioRecord: AudioRecord? = null
+    @Volatile
+    private var isCapturingAudio = false
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -101,6 +109,56 @@ class MainActivity : AudioServiceActivity() {
                 else -> result.notImplemented()
             }
         }
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "bloom/recognition",
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "hasPermission" -> {
+                    val granted = checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
+                        PackageManager.PERMISSION_GRANTED
+                    result.success(granted)
+                }
+                "requestPermission" -> {
+                    val granted = checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
+                        PackageManager.PERMISSION_GRANTED
+                    if (granted) {
+                        result.success(true)
+                    } else {
+                        pendingRecordPermissionResult = result
+                        requestPermissions(
+                            arrayOf(Manifest.permission.RECORD_AUDIO),
+                            REQ_RECORD_AUDIO,
+                        )
+                    }
+                }
+                "captureAudio" -> {
+                    val durationMs = call.argument<Int>("durationMs") ?: 6500
+                    captureAudio(durationMs.toLong(), result)
+                }
+                "cancelCapture" -> {
+                    cancelAudioCapture()
+                    result.success(true)
+                }
+                else -> result.notImplemented()
+            }
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        if (requestCode == REQ_RECORD_AUDIO) {
+            val granted = grantResults.isNotEmpty() &&
+                grantResults[0] == PackageManager.PERMISSION_GRANTED
+            pendingRecordPermissionResult?.success(granted)
+            pendingRecordPermissionResult = null
+            return
+        }
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
     /**
@@ -199,8 +257,95 @@ class MainActivity : AudioServiceActivity() {
         }
     }
 
+    private fun captureAudio(durationMs: Long, result: MethodChannel.Result) {
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            result.error("permission_denied", "RECORD_AUDIO not granted", null)
+            return
+        }
+
+        Thread {
+            val sampleRate = 16000
+            val channelConfig = AudioFormat.CHANNEL_IN_MONO
+            val audioFormat = AudioFormat.ENCODING_PCM_16BIT
+            val minBufSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
+            if (minBufSize <= 0) {
+                runOnUiThread { result.error("init_failed", "Invalid buffer size", null) }
+                return@Thread
+            }
+
+            val bufferSize = maxOf(minBufSize, 4096 * 2) * 2
+            val record = try {
+                AudioRecord(
+                    MediaRecorder.AudioSource.MIC,
+                    sampleRate,
+                    channelConfig,
+                    audioFormat,
+                    bufferSize,
+                )
+            } catch (e: Exception) {
+                runOnUiThread { result.error("init_failed", e.message, null) }
+                return@Thread
+            }
+
+            if (record.state != AudioRecord.STATE_INITIALIZED) {
+                record.release()
+                runOnUiThread { result.error("init_failed", "AudioRecord not initialized", null) }
+                return@Thread
+            }
+
+            activeAudioRecord = record
+            isCapturingAudio = true
+
+            val targetSampleCount = ((durationMs * sampleRate) / 1000L).toInt().coerceAtLeast(1)
+            val outputBytes = ByteArray(targetSampleCount * 2)
+            val chunk = ByteArray(4096)
+            var bytesCaptured = 0
+
+            try {
+                record.startRecording()
+                while (isCapturingAudio && bytesCaptured < outputBytes.size) {
+                    val toRead = minOf(chunk.size, outputBytes.size - bytesCaptured)
+                    val read = record.read(chunk, 0, toRead)
+                    if (read < 0) {
+                        break
+                    }
+                    if (read == 0) continue
+                    System.arraycopy(chunk, 0, outputBytes, bytesCaptured, read)
+                    bytesCaptured += read
+                }
+                record.stop()
+            } catch (_: Exception) {
+            } finally {
+                record.release()
+                activeAudioRecord = null
+                isCapturingAudio = false
+            }
+
+            runOnUiThread {
+                if (bytesCaptured > 0) {
+                    val finalBytes = if (bytesCaptured == outputBytes.size) {
+                        outputBytes
+                    } else {
+                        outputBytes.copyOf(bytesCaptured)
+                    }
+                    result.success(finalBytes)
+                } else {
+                    result.error("capture_failed", "No audio captured", null)
+                }
+            }
+        }.start()
+    }
+
+    private fun cancelAudioCapture() {
+        isCapturingAudio = false
+        try {
+            activeAudioRecord?.stop()
+        } catch (_: Exception) {}
+    }
+
     private companion object {
         const val REQ_NOTIFICATIONS = 1001
         const val REQ_STORAGE = 1002
+        const val REQ_RECORD_AUDIO = 1003
     }
 }

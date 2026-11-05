@@ -989,5 +989,17 @@
   "tlFindDupsHint": "Повторы в этом списке",
   "tlExportHint": "В файл переноса",
   "artistImportHint": "В вашу библиотеку",
-  "commonFollowHint": "Артист появится в библиотеке"
+  "commonFollowHint": "Артист появится в библиотеке",
+  "recTitle": "Распознавание музыки",
+  "recListening": "Слушаю музыку вокруг...",
+  "recIdentifying": "Определяю трек...",
+  "recTapToListen": "Нажмите, чтобы включить прослушивание",
+  "recNoMatch": "Трек не найден",
+  "recNoMatchDesc": "Попробуйте поднести устройство ближе к источнику звука",
+  "recPermDenied": "Требуется доступ к микрофону",
+  "recPlayInBloom": "Слушать в Bloom",
+  "recOpenSearch": "Открыть в поиске",
+  "recHistory": "История распознаваний",
+  "recClearHistory": "Очистить историю",
+  "recTryAgain": "Слушать снова"
 }

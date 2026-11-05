@@ -36,6 +36,8 @@
 	     code uses the same discovery and may not see it on iOS. -->
 	<key>NSCameraUsageDescription</key>
 	<string>Bloom reads the pairing QR code from your computer's screen.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Bloom listens to recognize songs playing around you.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Bloom syncs your library with Bloom on your computer at home.</string>
 	<key>LSRequiresIPhoneOS</key>

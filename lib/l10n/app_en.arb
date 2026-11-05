@@ -1292,5 +1292,17 @@
   "tlFindDupsHint": "Repeats in this list",
   "tlExportHint": "To a transfer file",
   "artistImportHint": "Into your library",
-  "commonFollowHint": "The artist joins your library"
+  "commonFollowHint": "The artist joins your library",
+  "recTitle": "Music recognition",
+  "recListening": "Listening to music around you...",
+  "recIdentifying": "Identifying track...",
+  "recTapToListen": "Tap to start listening",
+  "recNoMatch": "No match found",
+  "recNoMatchDesc": "Try holding your device closer to the sound source",
+  "recPermDenied": "Microphone permission is required",
+  "recPlayInBloom": "Play in Bloom",
+  "recOpenSearch": "Open in search",
+  "recHistory": "Recognition history",
+  "recClearHistory": "Clear history",
+  "recTryAgain": "Listen again"
 }

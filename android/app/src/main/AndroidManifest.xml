@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Ambient song recognition via microphone -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <!-- Background playback: a foreground service plus the notification.
          WAKE_LOCK keeps the sound from breaking off when the screen sleeps;
          POST_NOTIFICATIONS, Android 13+, is needed for the playback

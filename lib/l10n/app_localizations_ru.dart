@@ -3372,4 +3372,40 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get commonFollowHint => 'Артист появится в библиотеке';
+
+  @override
+  String get recTitle => 'Распознавание музыки';
+
+  @override
+  String get recListening => 'Слушаю музыку вокруг...';
+
+  @override
+  String get recIdentifying => 'Определяю трек...';
+
+  @override
+  String get recTapToListen => 'Нажмите, чтобы включить прослушивание';
+
+  @override
+  String get recNoMatch => 'Трек не найден';
+
+  @override
+  String get recNoMatchDesc => 'Попробуйте поднести устройство ближе к источнику звука';
+
+  @override
+  String get recPermDenied => 'Требуется доступ к микрофону';
+
+  @override
+  String get recPlayInBloom => 'Слушать в Bloom';
+
+  @override
+  String get recOpenSearch => 'Открыть в поиске';
+
+  @override
+  String get recHistory => 'История распознаваний';
+
+  @override
+  String get recClearHistory => 'Очистить историю';
+
+  @override
+  String get recTryAgain => 'Слушать снова';
 }
