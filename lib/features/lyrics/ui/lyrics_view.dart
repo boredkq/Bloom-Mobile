@@ -173,6 +173,7 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
           _Line(
             key: _key(i),
             text: lines[i].text,
+            words: lines[i].words,
             romanized: showRomanized ? lines[i].romanized : null,
             section: lines[i].section,
             active: i == current,
@@ -238,6 +239,7 @@ class _Line extends StatefulWidget {
   const _Line({
     super.key,
     required this.text,
+    this.words = const [],
     this.romanized,
     this.section,
     required this.active,
@@ -247,6 +249,7 @@ class _Line extends StatefulWidget {
   });
 
   final String text;
+  final List<LrcWord> words;
   final String? romanized;
   final String? section;
   final bool active;
@@ -347,18 +350,30 @@ class _LineState extends State<_Line> with SingleTickerProviderStateMixin {
                         ? CrossAxisAlignment.start
                         : CrossAxisAlignment.center,
                     children: [
-                      Text(
-                        widget.text,
-                        textAlign: lay.align,
-                        style: TextStyle(
-                          fontSize:
-                              widget.active ? lay.activeSize : lay.fontSize,
-                          height: lay.lineHeight,
-                          fontWeight:
-                              widget.active ? FontWeight.w500 : FontWeight.w400,
-                          color: color,
+                      if (widget.active && widget.words.isNotEmpty)
+                        _KaraokeLineText(
+                          words: widget.words,
+                          fullText: widget.text,
+                          activeColor: color ?? t.text,
+                          pendingColor:
+                              (color ?? t.text).withValues(alpha: 0.35),
+                          fontSize: lay.activeSize,
+                          lineHeight: lay.lineHeight,
+                          align: lay.align,
+                        )
+                      else
+                        Text(
+                          widget.text,
+                          textAlign: lay.align,
+                          style: TextStyle(
+                            fontSize:
+                                widget.active ? lay.activeSize : lay.fontSize,
+                            height: lay.lineHeight,
+                            fontWeight:
+                                widget.active ? FontWeight.w500 : FontWeight.w400,
+                            color: color,
+                          ),
                         ),
-                      ),
                       if (widget.romanized != null &&
                           widget.romanized != widget.text) ...[
                         const SizedBox(height: 2),
@@ -384,6 +399,124 @@ class _LineState extends State<_Line> with SingleTickerProviderStateMixin {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _KaraokeLineText extends ConsumerWidget {
+  const _KaraokeLineText({
+    required this.words,
+    required this.fullText,
+    required this.activeColor,
+    required this.pendingColor,
+    required this.fontSize,
+    required this.lineHeight,
+    required this.align,
+  });
+
+  final List<LrcWord> words;
+  final String fullText;
+  final Color activeColor;
+  final Color pendingColor;
+  final double fontSize;
+  final double lineHeight;
+  final TextAlign align;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pos = ref.watch(
+      playheadProvider.select((h) => h.value?.position ?? Duration.zero),
+    );
+    final posSec = pos.inMilliseconds / 1000.0;
+
+    return Wrap(
+      alignment: align == TextAlign.left
+          ? WrapAlignment.start
+          : WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        for (final word in words)
+          _KaraokeWordView(
+            word: word,
+            currentSec: posSec,
+            activeColor: activeColor,
+            pendingColor: pendingColor,
+            fontSize: fontSize,
+            lineHeight: lineHeight,
+          ),
+      ],
+    );
+  }
+}
+
+class _KaraokeWordView extends StatelessWidget {
+  const _KaraokeWordView({
+    required this.word,
+    required this.currentSec,
+    required this.activeColor,
+    required this.pendingColor,
+    required this.fontSize,
+    required this.lineHeight,
+  });
+
+  final LrcWord word;
+  final double currentSec;
+  final Color activeColor;
+  final Color pendingColor;
+  final double fontSize;
+  final double lineHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = '${word.text} ';
+
+    // Word not yet sung
+    if (currentSec < word.start) {
+      return Text(
+        text,
+        style: TextStyle(
+          fontSize: fontSize,
+          height: lineHeight,
+          fontWeight: FontWeight.w400,
+          color: pendingColor,
+        ),
+      );
+    }
+
+    // Word completely sung
+    if (currentSec >= word.end) {
+      return Text(
+        text,
+        style: TextStyle(
+          fontSize: fontSize,
+          height: lineHeight,
+          fontWeight: FontWeight.w600,
+          color: activeColor,
+        ),
+      );
+    }
+
+    // Currently being sung: smooth fill animation
+    final progress =
+        ((currentSec - word.start) / word.duration).clamp(0.0, 1.0);
+
+    return ShaderMask(
+      blendMode: BlendMode.srcIn,
+      shaderCallback: (bounds) {
+        return LinearGradient(
+          colors: [activeColor, activeColor, pendingColor, pendingColor],
+          stops: [0.0, progress, progress, 1.0],
+        ).createShader(bounds);
+      },
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: fontSize,
+          height: lineHeight,
+          fontWeight: FontWeight.w600,
+          color: activeColor,
         ),
       ),
     );

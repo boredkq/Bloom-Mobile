@@ -57,6 +57,7 @@ ProviderContainer _container({
         required title,
         durationSec,
         trackId,
+        album,
       }) {
         onFetch?.call();
         return answer(title);
@@ -138,6 +139,20 @@ void main() {
       final lines = parseLrc('[00:05.00]さくら\n[00:10.00]Привет');
       expect(lines.first.romanized, 'sakura');
       expect(lines.last.romanized, 'Privet');
+    });
+
+    test('parses enhanced LRC word timestamps', () {
+      final lines = parseLrc(
+        '[00:10.00] <00:10.00>Never <00:10.50>gonna <00:11.00>give',
+      );
+      expect(lines.single.time, 10.0);
+      expect(lines.single.text, 'Never gonna give');
+      expect(lines.single.words.length, 3);
+      expect(lines.single.words[0].text, 'Never');
+      expect(lines.single.words[0].start, 10.0);
+      expect(lines.single.words[0].end, 10.5);
+      expect(lines.single.words[1].text, 'gonna');
+      expect(lines.single.words[2].text, 'give');
     });
   });
 

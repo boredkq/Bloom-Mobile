@@ -132,16 +132,18 @@ typedef LyricsFetcher =
       required String title,
       int? durationSec,
       String? trackId,
+      String? album,
     });
 
 final lyricsFetcherProvider = Provider<LyricsFetcher>(
   (ref) =>
-      ({required artist, required title, durationSec, trackId}) =>
+      ({required artist, required title, durationSec, trackId, album}) =>
           fetchLyrics(
             artist: artist,
             title: title,
             durationSec: durationSec,
             trackId: trackId,
+            album: album,
           ),
 );
 
@@ -192,6 +194,7 @@ class LyricsController extends Notifier<LyricsState> {
         title: t.name,
         durationSec: t.duration.inSeconds > 0 ? t.duration.inSeconds : null,
         trackId: t.id,
+        album: t.album,
       );
       cache.remember(key, found, keep: ref.read(lyricsPrefsProvider).cache);
     }
@@ -203,7 +206,9 @@ class LyricsController extends Notifier<LyricsState> {
       LyricsState(
         trackId: t.id,
         status: LyricsStatus.ready,
-        lines: found.synced.trim().isEmpty ? const [] : parseLrc(found.synced),
+        lines: found.lines.isNotEmpty
+            ? found.lines
+            : (found.synced.trim().isEmpty ? const [] : parseLrc(found.synced)),
         plain: found.plain.trim().isEmpty
             ? stripLrc(found.synced)
             : found.plain.trim(),

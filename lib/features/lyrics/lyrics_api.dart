@@ -12,20 +12,32 @@ import 'package:http/http.dart' as http;
 
 import '../../providers/yandex/yandex.dart' as ym;
 import 'lrc.dart';
+import 'lyrics_plus.dart';
 
 /// What was found. Both texts empty — nothing.
 class LyricsResult {
-  const LyricsResult({this.synced = '', this.plain = '', this.source = ''});
+  const LyricsResult({
+    this.synced = '',
+    this.plain = '',
+    this.source = '',
+    this.lines = const [],
+  });
 
   static const none = LyricsResult();
 
   final String synced;
   final String plain;
 
-  /// Where they came from: `lrclib`.
+  /// Where they came from: `lyricsplus`, `yandex`, `lrclib`.
   final String source;
 
-  bool get ok => synced.trim().isNotEmpty || plain.trim().isNotEmpty;
+  /// Parsed lines with word-by-word karaoke, if available.
+  final List<LrcLine> lines;
+
+  bool get ok =>
+      lines.isNotEmpty ||
+      synced.trim().isNotEmpty ||
+      plain.trim().isNotEmpty;
 }
 
 const String _base = 'https://lrclib.net/api/';
@@ -41,13 +53,30 @@ Future<LyricsResult> fetchLyrics({
   required String title,
   int? durationSec,
   String? trackId,
+  String? album,
   http.Client? client,
 }) async {
   if (title.trim().isEmpty) return LyricsResult.none;
   final c = client ?? _shared;
   final d = durationSec ?? 0;
 
-  // 1. Direct fetch from Yandex Music if track originates from Yandex.
+  // 1. Try LyricsPlus mirrors pool (all tracks including Yandex Music!).
+  final plusResult = await fetchLyricsPlus(
+    title: title,
+    artist: artist,
+    durationSec: d > 0 ? d : null,
+    album: album,
+    client: c,
+  );
+  if (plusResult != null && plusResult.lines.isNotEmpty) {
+    return LyricsResult(
+      source: plusResult.source,
+      lines: plusResult.lines,
+      plain: plusResult.lines.map((l) => l.text).join('\n'),
+    );
+  }
+
+  // 2. Direct fetch from Yandex Music if track originates from Yandex.
   if (trackId != null && trackId.startsWith('ym:')) {
     final ymResult = await ym.trackLyrics(trackId, client: c);
     if (ymResult != null) {
@@ -66,7 +95,7 @@ Future<LyricsResult> fetchLyrics({
     }
   }
 
-  // 2. Query LRCLIB.
+  // 3. Query LRCLIB.
   final found = await _lrclib(c, artist, title, d);
   if (found.ok) return found;
   // Uploads are often titled "Artist - Title" under someone else's name.
