@@ -6,6 +6,9 @@ import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.media.audiofx.BassBoost
+import android.media.audiofx.Equalizer
+import android.media.audiofx.Virtualizer
 import android.os.Build
 import android.provider.Settings
 import com.ryanheise.audioservice.AudioServiceActivity
@@ -27,6 +30,11 @@ class MainActivity : AudioServiceActivity() {
     private var activeAudioRecord: AudioRecord? = null
     @Volatile
     private var isCapturingAudio = false
+
+    private var nativeEqualizer: Equalizer? = null
+    private var nativeBassBoost: BassBoost? = null
+    private var nativeVirtualizer: Virtualizer? = null
+    private var currentAudioSessionId: Int = 0
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -139,6 +147,32 @@ class MainActivity : AudioServiceActivity() {
                 }
                 "cancelCapture" -> {
                     cancelAudioCapture()
+                    result.success(true)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "bloom/audio_fx",
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "attach" -> {
+                    val sessionId = call.argument<Int>("sessionId") ?: 0
+                    attachAudioFx(sessionId)
+                    result.success(true)
+                }
+                "apply" -> {
+                    val enabled = call.argument<Boolean>("enabled") ?: false
+                    val bandLevels = call.argument<List<Int>>("bandLevels") ?: emptyList()
+                    val bassBoost = call.argument<Int>("bassBoost") ?: 0
+                    val virtualizer = call.argument<Int>("virtualizer") ?: 0
+                    applyAudioFx(enabled, bandLevels, bassBoost, virtualizer)
+                    result.success(true)
+                }
+                "release" -> {
+                    releaseAudioFx()
                     result.success(true)
                 }
                 else -> result.notImplemented()
@@ -341,6 +375,87 @@ class MainActivity : AudioServiceActivity() {
         try {
             activeAudioRecord?.stop()
         } catch (_: Exception) {}
+    }
+
+    private fun attachAudioFx(sessionId: Int) {
+        if (sessionId == 0 || sessionId == currentAudioSessionId) return
+        releaseAudioFx()
+        currentAudioSessionId = sessionId
+        try {
+            nativeEqualizer = Equalizer(0, sessionId).apply { enabled = false }
+            nativeBassBoost = BassBoost(0, sessionId).apply { enabled = false }
+            nativeVirtualizer = Virtualizer(0, sessionId).apply { enabled = false }
+        } catch (_: Exception) {}
+    }
+
+    private fun applyAudioFx(
+        enabled: Boolean,
+        bandLevels: List<Int>,
+        bassBoostStrength: Int,
+        virtualizerStrength: Int,
+    ) {
+        try {
+            val eq = nativeEqualizer
+            if (eq != null) {
+                eq.enabled = enabled
+                if (enabled && bandLevels.isNotEmpty()) {
+                    val numBands = eq.numberOfBands.toInt()
+                    val range = eq.bandLevelRange
+                    val minLevel = range[0].toInt()
+                    val maxLevel = range[1].toInt()
+
+                    val targetFreqs = intArrayOf(31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000)
+                    for (band in 0 until numBands) {
+                        val centerFreq = eq.getCenterFreq(band.toShort()) / 1000
+                        var closestIndex = 0
+                        var minDiff = Int.MAX_VALUE
+                        for (i in targetFreqs.indices) {
+                            val diff = kotlin.math.abs(targetFreqs[i] - centerFreq)
+                            if (diff < minDiff) {
+                                minDiff = diff
+                                closestIndex = i
+                            }
+                        }
+                        val level = if (closestIndex < bandLevels.size) bandLevels[closestIndex] else 0
+                        val clampedLevel = level.coerceIn(minLevel, maxLevel).toShort()
+                        eq.setBandLevel(band.toShort(), clampedLevel)
+                    }
+                }
+            }
+
+            val bb = nativeBassBoost
+            if (bb != null) {
+                bb.enabled = enabled && bassBoostStrength > 0
+                if (bb.enabled) {
+                    bb.setStrength(bassBoostStrength.coerceIn(0, 1000).toShort())
+                }
+            }
+
+            val virt = nativeVirtualizer
+            if (virt != null) {
+                virt.enabled = enabled && virtualizerStrength > 0
+                if (virt.enabled) {
+                    virt.setStrength(virtualizerStrength.coerceIn(0, 1000).toShort())
+                }
+            }
+        } catch (_: Exception) {}
+    }
+
+    private fun releaseAudioFx() {
+        try {
+            nativeEqualizer?.release()
+            nativeEqualizer = null
+            nativeBassBoost?.release()
+            nativeBassBoost = null
+            nativeVirtualizer?.release()
+            nativeVirtualizer = null
+            currentAudioSessionId = 0
+        } catch (_: Exception) {}
+    }
+
+    override fun onDestroy() {
+        releaseAudioFx()
+        super.onDestroy()
     }
 
     private companion object {

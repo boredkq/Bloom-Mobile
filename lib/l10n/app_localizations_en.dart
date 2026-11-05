@@ -3338,4 +3338,61 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get recTryAgain => 'Listen again';
+
+  @override
+  String get eqTitle => 'Equalizer & Sound';
+
+  @override
+  String get eqSubtitle => '10-band studio EQ and Bass Boost';
+
+  @override
+  String get eqEnable => 'Enable equalizer';
+
+  @override
+  String get eqActive => 'On';
+
+  @override
+  String get eqDisabled => 'Off';
+
+  @override
+  String get eqBassBoost => 'Bass Boost';
+
+  @override
+  String get eqVirtualizer => 'Spatial Audio';
+
+  @override
+  String get eqHeadroomGuard => 'True-Peak Headroom Guard';
+
+  @override
+  String get eqSafeGain => 'Safe gain level';
+
+  @override
+  String get eqReset => 'Reset (Flat)';
+
+  @override
+  String get eqSavePreset => 'Save preset';
+
+  @override
+  String get eqPresetNameHint => 'Preset name';
+
+  @override
+  String get eqPresetSaved => 'Preset saved';
+
+  @override
+  String get eqCrossfadeTitle => 'Track crossfade';
+
+  @override
+  String get eqCrossfadeSub => 'Smooth equal-power fade between tracks';
+
+  @override
+  String get eqSmartGaplessTitle => 'Smart Album Gapless';
+
+  @override
+  String get eqSmartGaplessSub => 'Preserves continuous flow for sequential album tracks';
+
+  @override
+  String get eqNormalizationTitle => 'Volume normalization';
+
+  @override
+  String get eqNormalizationSub => 'Levels volume across quiet and loud tracks';
 }

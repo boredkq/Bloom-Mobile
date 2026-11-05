@@ -5690,6 +5690,26 @@ abstract class AppLocalizations {
   String get recHistory;
   String get recClearHistory;
   String get recTryAgain;
+
+  String get eqTitle;
+  String get eqSubtitle;
+  String get eqEnable;
+  String get eqActive;
+  String get eqDisabled;
+  String get eqBassBoost;
+  String get eqVirtualizer;
+  String get eqHeadroomGuard;
+  String get eqSafeGain;
+  String get eqReset;
+  String get eqSavePreset;
+  String get eqPresetNameHint;
+  String get eqPresetSaved;
+  String get eqCrossfadeTitle;
+  String get eqCrossfadeSub;
+  String get eqSmartGaplessTitle;
+  String get eqSmartGaplessSub;
+  String get eqNormalizationTitle;
+  String get eqNormalizationSub;
 }
 
 class _AppLocalizationsDelegate

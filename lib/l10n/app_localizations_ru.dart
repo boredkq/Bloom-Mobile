@@ -3408,4 +3408,61 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get recTryAgain => 'Слушать снова';
+
+  @override
+  String get eqTitle => 'Эквалайзер и звук';
+
+  @override
+  String get eqSubtitle => '10-полосный эквалайзер и Bass Boost';
+
+  @override
+  String get eqEnable => 'Включить эквалайзер';
+
+  @override
+  String get eqActive => 'Включен';
+
+  @override
+  String get eqDisabled => 'Отключен';
+
+  @override
+  String get eqBassBoost => 'Усиление баса';
+
+  @override
+  String get eqVirtualizer => 'Объёмный звук';
+
+  @override
+  String get eqHeadroomGuard => 'Защита от клиппинга (True-Peak)';
+
+  @override
+  String get eqSafeGain => 'Безопасный уровень';
+
+  @override
+  String get eqReset => 'Сброс (Flat)';
+
+  @override
+  String get eqSavePreset => 'Сохранить пресет';
+
+  @override
+  String get eqPresetNameHint => 'Название пресета';
+
+  @override
+  String get eqPresetSaved => 'Пресет сохранён';
+
+  @override
+  String get eqCrossfadeTitle => 'Кроссфейд треков';
+
+  @override
+  String get eqCrossfadeSub => 'Плавный переход между треками';
+
+  @override
+  String get eqSmartGaplessTitle => 'Умный Gapless для альбомов';
+
+  @override
+  String get eqSmartGaplessSub => 'Бесшовный переход для треков одного альбома подряд';
+
+  @override
+  String get eqNormalizationTitle => 'Нормализация громкости';
+
+  @override
+  String get eqNormalizationSub => 'Выравнивание перепадов громкости (ReplayGain)';
 }

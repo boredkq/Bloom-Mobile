@@ -32,6 +32,8 @@ import '../offline/offline_store.dart';
 import '../wave/wave_controller.dart';
 import '../../core/store/play_log.dart';
 import '../pc/pc_remote.dart';
+import '../audio_dsp/audio_dsp_models.dart';
+import '../audio_dsp/audio_dsp_store.dart';
 import 'audio_handler.dart';
 import 'nightcore_ios.dart';
 import 'notification_permission.dart';
@@ -314,6 +316,21 @@ class PlaybackController extends Notifier<PlaybackState>
         _reportToPc(); // a computer showing this phone syncs its clock
       }
     });
+
+    // Audio DSP: attach to Android AudioFX MethodChannel and listen for preset / EQ changes
+    final dspService = ref.read(audioDspServiceProvider);
+    final audioSessionSub = handler.player.androidAudioSessionIdStream.listen((sessionId) {
+      if (sessionId != null) {
+        dspService.attach(sessionId);
+        dspService.apply(ref.read(audioDspProvider));
+      }
+    });
+    ref.listen(audioDspProvider, (_, next) {
+      dspService.apply(next);
+      _updateDspGain();
+    });
+    _updateDspGain();
+
     ref.onDispose(() {
       ticker.cancel();
       _queueSave?.cancel();
@@ -321,6 +338,9 @@ class PlaybackController extends Notifier<PlaybackState>
       for (final s in subs) {
         s.cancel();
       }
+      audioSessionSub.cancel();
+      _stopCrossfade();
+      dspService.release();
       if (handler.commands == this) handler.commands = null;
     });
     // Speed and pitch are a separate setting while the player is here, so I
@@ -408,9 +428,7 @@ class PlaybackController extends Notifier<PlaybackState>
       _stopFade();
       return;
     }
-    final left = endsAt.difference(ref.read(sleepClockProvider)());
-    final k = (left.inMilliseconds / kSleepFade.inMilliseconds).clamp(0.0, 1.0);
-    unawaited(_player.setVolume(k));
+    _applyCombinedVolume();
     // Zero is no reason to pause here: the store's tick does it through
     // [_fireSleep], and one stopping point leaves less to drift apart.
   }
@@ -421,7 +439,7 @@ class PlaybackController extends Notifier<PlaybackState>
     if (_fadeTick == null) return;
     _fadeTick!.cancel();
     _fadeTick = null;
-    unawaited(_player.setVolume(1));
+    _applyCombinedVolume();
   }
 
   /// Time's up: pause, restore the volume, clear the timer.
@@ -429,8 +447,81 @@ class PlaybackController extends Notifier<PlaybackState>
     _fadeTick?.cancel();
     _fadeTick = null;
     unawaited(_player.pause());
-    unawaited(_player.setVolume(1));
+    _applyCombinedVolume();
     ref.read(sleepTimerProvider.notifier).cancel();
+  }
+
+  double _dspHeadroomVolume = 1.0;
+  Timer? _crossfadeTimer;
+
+  void _updateDspGain() {
+    final dsp = ref.read(audioDspProvider);
+    if (!dsp.enabled || !dsp.headroomGuard) {
+      _dspHeadroomVolume = 1.0;
+    } else {
+      final req = HeadroomGuard.calculateRequiredHeadroomDb(dsp.bands, dsp.bassBoost);
+      final safeGainDb = HeadroomGuard.calculateSafeInputGainDb(dsp.preampDb, req);
+      _dspHeadroomVolume = pow(10.0, safeGainDb / 20.0).clamp(0.0, 1.0).toDouble();
+    }
+    _applyCombinedVolume();
+  }
+
+  void _stopCrossfade() {
+    _crossfadeTimer?.cancel();
+    _crossfadeTimer = null;
+  }
+
+  void _applyCombinedVolume([double modifier = 1.0]) {
+    double sleepFactor = 1.0;
+    final sleep = ref.read(sleepTimerProvider);
+    if (sleep.mode == SleepMode.timer && sleep.fade) {
+      final endsAt = sleep.endsAt;
+      if (endsAt != null) {
+        final left = endsAt.difference(ref.read(sleepClockProvider)());
+        sleepFactor = (left.inMilliseconds / kSleepFade.inMilliseconds).clamp(0.0, 1.0);
+      }
+    }
+    final target = (_dspHeadroomVolume * modifier * sleepFactor).clamp(0.0, 1.0);
+    unawaited(_player.setVolume(target));
+  }
+
+  Future<void> _fadeOutEqualPower({int durationMs = 350}) async {
+    _stopCrossfade();
+    if (!_player.playing) return;
+    final completer = Completer<void>();
+    final start = DateTime.now();
+    _crossfadeTimer = Timer.periodic(const Duration(milliseconds: 25), (timer) {
+      final elapsed = DateTime.now().difference(start).inMilliseconds;
+      final progress = (elapsed / durationMs).clamp(0.0, 1.0);
+      final (outgoing, _) = CrossfadeMath.equalPowerGains(progress);
+      _applyCombinedVolume(outgoing);
+      if (progress >= 1.0) {
+        timer.cancel();
+        _crossfadeTimer = null;
+        if (!completer.isCompleted) completer.complete();
+      }
+    });
+    await completer.future.timeout(
+      Duration(milliseconds: durationMs + 100),
+      onTimeout: () {},
+    );
+  }
+
+  void _fadeInEqualPower({int durationMs = 1200}) {
+    _stopCrossfade();
+    final start = DateTime.now();
+    _applyCombinedVolume(0.0);
+    _crossfadeTimer = Timer.periodic(const Duration(milliseconds: 25), (timer) {
+      final elapsed = DateTime.now().difference(start).inMilliseconds;
+      final progress = (elapsed / durationMs).clamp(0.0, 1.0);
+      final (_, incoming) = CrossfadeMath.equalPowerGains(progress);
+      _applyCombinedVolume(incoming);
+      if (progress >= 1.0) {
+        timer.cancel();
+        _crossfadeTimer = null;
+        _applyCombinedVolume(1.0);
+      }
+    });
   }
 
   /// Speed and pitch on the player. No need to repeat per track: just_audio
@@ -536,6 +627,52 @@ class PlaybackController extends Notifier<PlaybackState>
     if (_st.loading) return;
     _maybeCredit(position);
     ref.read(lastfmProvider.notifier).onProgress(position, _player.duration);
+
+    final dsp = ref.read(audioDspProvider);
+    if (dsp.crossfadeSeconds > 0 && _player.playing && _crossfadeTimer == null) {
+      final total = _player.duration;
+      if (total != null && total > Duration(seconds: dsp.crossfadeSeconds + 2)) {
+        final remaining = total - position;
+        final fadeWindow = Duration(seconds: dsp.crossfadeSeconds);
+        if (remaining <= fadeWindow && remaining > Duration.zero) {
+          final nextIndex = (_st.index + 1) % _st.queue.length;
+          final nextTrack =
+              (nextIndex < _st.queue.length) ? _st.queue[nextIndex] : null;
+          final curTrack = _st.track;
+          final isSequential =
+              dsp.smartAlbumGapless &&
+              curTrack != null &&
+              nextTrack != null &&
+              AlbumGaplessDetector.isSequentialAlbumTracks(
+                currentAlbum: curTrack.album?.name,
+                nextAlbum: nextTrack.album?.name,
+                currentArtist:
+                    curTrack.artists.isNotEmpty
+                        ? curTrack.artists.first.name
+                        : null,
+                nextArtist:
+                    nextTrack.artists.isNotEmpty
+                        ? nextTrack.artists.first.name
+                        : null,
+                currentTrackNum: curTrack.trackNumber,
+                nextTrackNum: nextTrack.trackNumber,
+                currentDiscNum: curTrack.discNumber,
+                nextDiscNum: nextTrack.discNumber,
+                isShuffle: _st.shuffle,
+              );
+          if (!isSequential) {
+            final progress =
+                1.0 -
+                (remaining.inMilliseconds / fadeWindow.inMilliseconds).clamp(
+                  0.0,
+                  1.0,
+                );
+            final (outgoing, _) = CrossfadeMath.equalPowerGains(progress);
+            _applyCombinedVolume(outgoing);
+          }
+        }
+      }
+    }
   }
 
   /// Position tick: at the threshold the play counts. While a new track loads,
@@ -789,6 +926,35 @@ class PlaybackController extends Notifier<PlaybackState>
     commitSwapDir(_st.queue, index);
     final gen = ++_generation;
     _loadingAt = startAt ?? Duration.zero;
+
+    final dsp = ref.read(audioDspProvider);
+    final curTrack = _st.track;
+    final nextTrack =
+        (index >= 0 && index < _st.queue.length) ? _st.queue[index] : null;
+    final isSequential =
+        dsp.smartAlbumGapless &&
+        curTrack != null &&
+        nextTrack != null &&
+        AlbumGaplessDetector.isSequentialAlbumTracks(
+          currentAlbum: curTrack.album?.name,
+          nextAlbum: nextTrack.album?.name,
+          currentArtist:
+              curTrack.artists.isNotEmpty ? curTrack.artists.first.name : null,
+          nextArtist:
+              nextTrack.artists.isNotEmpty ? nextTrack.artists.first.name : null,
+          currentTrackNum: curTrack.trackNumber,
+          nextTrackNum: nextTrack.trackNumber,
+          currentDiscNum: curTrack.discNumber,
+          nextDiscNum: nextTrack.discNumber,
+          isShuffle: _st.shuffle,
+        );
+
+    if (dsp.crossfadeSeconds > 0 && !isSequential && _player.playing) {
+      await _fadeOutEqualPower(
+        durationMs: min(dsp.crossfadeSeconds * 1000, 450),
+      );
+    }
+
     // The last track goes quiet AT ONCE, not when the new link arrives.
     // just_audio swaps the source only in setUrl, after the network trip, and
     // the old track would keep playing under the new title. No waiting: pause
@@ -881,7 +1047,16 @@ class PlaybackController extends Notifier<PlaybackState>
       // just_audio's play() completes NOT when playback starts but when the
       // track ends or pauses. Waiting on it leaves `loading` up all song and
       // the play button a spinner.
-      if (autoplay) unawaited(_player.play());
+      if (autoplay) {
+        if (dsp.crossfadeSeconds > 0 && !isSequential) {
+          _fadeInEqualPower(
+            durationMs: min(dsp.crossfadeSeconds * 1000, 1500),
+          );
+        } else {
+          _applyCombinedVolume(1.0);
+        }
+        unawaited(_player.play());
+      }
     } catch (e) {
       if (gen != _generation) return;
       final code = playErrorCode(e);

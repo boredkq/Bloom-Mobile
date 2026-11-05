@@ -29,6 +29,8 @@ import '../../lyrics/lyrics_store.dart';
 import '../../lyrics/ui/lyrics_view.dart';
 import '../../pc/pc_remote.dart';
 import '../../pc/pc_store.dart';
+import '../../audio_dsp/audio_dsp_store.dart';
+import '../../audio_dsp/ui/equalizer_sheet.dart';
 import '../play_error.dart';
 import '../player_bg_store.dart';
 import '../player_controller.dart';
@@ -978,6 +980,12 @@ class _Tools extends ConsumerWidget {
         ),
         _ToolPill(
           children: [
+            _FlatIcon(
+              icon: Bi.eq,
+              size: 25,
+              active: ref.watch(audioDspProvider.select((s) => s.enabled)),
+              onTap: () => showEqualizerSheet(context),
+            ),
             const _PlayOnButton(),
             _FlatIcon(
               icon: Bi.speed,
