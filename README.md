@@ -34,6 +34,19 @@ A mobile player: local library, Yandex Music, SoundCloud, and YouTube Music in a
   - **Syllable-by-Syllable Tracking**: TTML word-level timing with GPU shader glow mask.
   - **Universal Mirror Pool**: Multi-tier mirror fallback (LyricsPlus pool, direct Yandex `/tracks/{id}/supplement`, Musixmatch, Spotify).
   - **Automatic Romanization**: Instant phonetic transcription for Korean (Hangul), Japanese (Kana to Romaji), and Cyrillic.
+  - **Customizable Lyrics Preferences**: Real-time syllable toggle, romanization, font sizing (compact/normal/large), alignment, and offline caching.
+
+- 🎨 **10 Player Deck Styles (ported from Levyra)**:
+  - **Standard**: Classic clean album artwork presentation.
+  - **Vinyl**: Realistic rotating vinyl disc with center label and realistic grooves.
+  - **Flow**: Flowing soft-corner artwork with ambient gradient wash.
+  - **Aura (Velvet)**: Multi-layer atmospheric reactive neon glow behind the cover.
+  - **Sleeve**: Vinyl jacket card with 3D drop shadow and physical disc slit.
+  - **Poster**: Full-bleed cinematic gallery print framing.
+  - **Halo**: Floating artwork surrounded by an ethereal glowing halo ring.
+  - **Pulse**: Concentric audio-reactive rhythm ripple waves.
+  - **Folio**: Two-tone asymmetric editorial magazine layout.
+  - **Expressive**: Bouncy Material 3 Expressive squircle geometry.
 
 - 🌐 **Unified Streaming & Library**:
   - SoundCloud, YouTube Music, Yandex Music, and local device audio files.
