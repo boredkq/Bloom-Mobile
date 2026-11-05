@@ -7,6 +7,8 @@
 /// among its kind (the pinned among the pinned).
 library;
 
+import 'dart:math' show max;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -45,8 +47,9 @@ const double _kLine = 17;
 double _captionOf(List<_Entry> entries) =>
     entries.any((e) => e.system != null) ? _kCaption + _kLine : _kCaption;
 
-/// Cards stand three to the screen, in a row and in a grid alike.
-double _cardWidth(BuildContext context) =>
+/// Three cards to the screen would be this wide. On most phones that's narrower
+/// than a card on home, so rows and grids don't take it as it is.
+double _thirdOfScreen(BuildContext context) =>
     (MediaQuery.sizeOf(context).width - 2 * _kSide - 2 * _kGap) / 3;
 
 class LibraryScreen extends ConsumerWidget {
@@ -309,7 +312,8 @@ class _RowsSliver extends ConsumerWidget {
   }
 }
 
-/// A kind in "all" with the grid on: one row of cards scrolling sideways.
+/// A kind in "all" with the grid on: one row of cards scrolling sideways, never
+/// narrower than a card on home.
 class _CardRow extends ConsumerWidget {
   const _CardRow({required this.entries, required this.draggable});
 
@@ -318,7 +322,7 @@ class _CardRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final width = _cardWidth(context);
+    final width = max(_thirdOfScreen(context), kCardWidth);
     return SizedBox(
       height: width + _captionOf(entries),
       child: ListView.separated(
@@ -343,7 +347,8 @@ class _CardRow extends ConsumerWidget {
   }
 }
 
-/// A kind's tab with the grid on: three columns.
+/// A kind's tab with the grid on: three columns where they'd be no narrower
+/// than a card on home, otherwise two.
 class _GridSliver extends ConsumerWidget {
   const _GridSliver({required this.entries, required this.draggable});
 
@@ -352,12 +357,17 @@ class _GridSliver extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cell = _cardWidth(context);
+    final columns = _thirdOfScreen(context) < kCardWidth ? 2 : 3;
+    final cell =
+        (MediaQuery.sizeOf(context).width -
+            2 * _kSide -
+            (columns - 1) * _kGap) /
+        columns;
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: _kSide),
       sliver: SliverGrid(
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
+          crossAxisCount: columns,
           crossAxisSpacing: _kGap,
           mainAxisSpacing: 14,
           mainAxisExtent: cell + _captionOf(entries),

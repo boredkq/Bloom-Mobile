@@ -14,9 +14,9 @@ import '../../player/player_controller.dart';
 import '../for_you.dart';
 import 'cover_fan.dart';
 
-/// Stack geometry: the top cover is level with a neighbouring card's (132), or
-/// the stack eats half the strip.
-const double _k = 132 / 158;
+/// Stack geometry: the top cover is level with a neighbouring card's, or the
+/// stack eats half the strip.
+const double _k = kCardWidth / 158;
 const double _fyWidth = 272 * _k;
 const double _fyHeight = 158 * _k;
 const double _fyFront = 158 * _k;

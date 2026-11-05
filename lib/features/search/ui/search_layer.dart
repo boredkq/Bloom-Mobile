@@ -656,7 +656,7 @@ class _AllSkeleton extends StatelessWidget {
         const SectionLabelSkeleton(width: 62),
         const CarouselSkeleton(height: 168, card: 104, circle: true),
         const SectionLabelSkeleton(width: 58),
-        const CarouselSkeleton(height: 212, card: 132),
+        const CarouselSkeleton(height: 212, card: kCardWidth),
       ],
     );
   }

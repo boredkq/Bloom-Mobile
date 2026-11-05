@@ -568,6 +568,10 @@ class _SetRowState extends State<SetRow> {
   }
 }
 
+/// How wide a card stands in a carousel, and the least it's given anywhere that
+/// fits the width to the screen.
+const double kCardWidth = 132;
+
 /// A card: a square on top, a title and lines under it, all of it pressing.
 class EntityCard extends StatelessWidget {
   const EntityCard({
@@ -649,7 +653,7 @@ class TrackCard extends ConsumerWidget {
     required this.queue,
     required this.index,
     this.source,
-    this.size = 132,
+    this.size = kCardWidth,
   });
 
   final Track track;
@@ -788,14 +792,15 @@ double setCaption(Iterable<Playlist> sets) =>
 
 /// A carousel of [SetCard]s at their default width: the cover, the caption
 /// and some air under it.
-double setRowHeight(Iterable<Playlist> sets) => 146 + setCaption(sets);
+double setRowHeight(Iterable<Playlist> sets) =>
+    kCardWidth + 14 + setCaption(sets);
 
 /// Playlist or album card: cover, title and [setLines].
 ///
 /// With a `null` [size] it fills the grid cell; a number is a fixed carousel
 /// width.
 class SetCard extends StatefulWidget {
-  const SetCard({super.key, required this.set, this.size = 132});
+  const SetCard({super.key, required this.set, this.size = kCardWidth});
 
   final Playlist set;
   final double? size;

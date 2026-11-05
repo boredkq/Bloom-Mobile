@@ -77,7 +77,7 @@ class SimilarToSection extends ConsumerWidget {
             ),
             SimilarArtistItem(:final artist) => ArtistCard(
               artist: artist,
-              size: 132,
+              size: kCardWidth,
               centerLabel: true,
             ),
           },

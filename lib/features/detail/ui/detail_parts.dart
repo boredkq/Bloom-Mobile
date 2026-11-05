@@ -115,7 +115,7 @@ class DetailSkeleton extends StatelessWidget {
           for (var i = 0; i < (artist ? 5 : 8); i++) TrackRowSkeleton(index: i),
           if (artist) ...[
             title(110),
-            const CarouselSkeleton(height: 212, card: 132),
+            const CarouselSkeleton(height: 212, card: kCardWidth),
           ],
         ],
       ),
