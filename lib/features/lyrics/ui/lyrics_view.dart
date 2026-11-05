@@ -221,7 +221,7 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
                       decoration: BoxDecoration(
                         color: t.card,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: t.divider),
+                        border: Border.all(color: t.border),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
