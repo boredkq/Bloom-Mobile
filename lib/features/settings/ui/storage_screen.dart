@@ -237,7 +237,7 @@ class _CacheRow extends StatelessWidget {
             children: [
               Opacity(
                 opacity: empty ? 0.35 : 1,
-                child: _Tick(on: on, color: tone),
+                child: BloomCheck(on: on, size: 26, color: tone),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -281,37 +281,6 @@ class _CacheRow extends StatelessWidget {
       ),
     );
   }
-}
-
-class _Tick extends StatelessWidget {
-  const _Tick({required this.on, required this.color});
-
-  final bool on;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => AnimatedContainer(
-    duration: const Duration(milliseconds: 150),
-    width: 26,
-    height: 26,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      color: on ? color : Colors.transparent,
-      border: Border.all(color: color, width: 1.6),
-    ),
-    alignment: Alignment.center,
-    child: on
-        ? BloomIcon(
-            Bi.check,
-            size: 15,
-            // The shades run from the text's colour to grey: either ink can
-            // be the one that shows.
-            color: color.computeLuminance() > 0.18
-                ? Colors.black
-                : Colors.white,
-          )
-        : null,
-  );
 }
 
 /// Clears what's ticked and says how much. It asks with a second press, and a

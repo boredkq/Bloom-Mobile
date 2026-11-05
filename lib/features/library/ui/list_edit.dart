@@ -824,32 +824,42 @@ class _EditBar extends StatelessWidget {
     return _BarShell(
       child: Row(
         children: [
-          CircleIconButton(
-            size: 44,
-            background: Colors.transparent,
-            icon: allSelected
-                ? Bi.checklistMinimalisticBold
-                : Bi.checklistMinimalistic,
-            color: allSelected ? t.accent : null,
-            onTap: onToggleAll,
-          ),
-          const SizedBox(width: 4),
-          // The denominator is muted: selected is what's counted, and the total
-          // only measures how near that is to all.
-          Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(
-                  text: '$count',
-                  style: TextStyle(color: some ? t.text : t.text2),
+          // The count presses along with the tick: the two read as one control.
+          Semantics(
+            checked: allSelected,
+            enabled: onToggleAll != null,
+            child: Pressable(
+              onTap: onToggleAll,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    Opacity(
+                      opacity: onToggleAll == null ? 0.35 : 1,
+                      child: BloomCheck(on: allSelected),
+                    ),
+                    const SizedBox(width: 12),
+                    // The denominator is muted: selected is what's counted, and
+                    // the total only measures how near that is to all.
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: '$count',
+                            style: TextStyle(color: some ? t.text : t.text2),
+                          ),
+                          TextSpan(
+                            text: '/$total',
+                            style: TextStyle(color: t.text2),
+                          ),
+                        ],
+                      ),
+                      style: theme.titleLarge,
+                    ),
+                  ],
                 ),
-                TextSpan(
-                  text: '/$total',
-                  style: TextStyle(color: t.text2),
-                ),
-              ],
+              ),
             ),
-            style: theme.titleLarge,
           ),
           const Spacer(),
           if (some) ...[

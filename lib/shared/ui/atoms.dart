@@ -271,26 +271,42 @@ class BloomSpinner extends StatelessWidget {
   );
 }
 
-/// A square that fills with accent and a tick: an item of a set, where several
-/// can be on.
+/// A circle that fills and shows a tick: an item of a set, where several can be
+/// on.
 class BloomCheck extends StatelessWidget {
-  const BloomCheck({super.key, required this.on});
+  const BloomCheck({super.key, required this.on, this.size = 22, this.color});
 
   final bool on;
+  final double size;
+
+  /// Fill and outline. Accent with a faint outline when not set.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
     final t = context.bloom;
+    final tone = color;
+    final fill = tone ?? t.accent;
+    // A given colour can be any shade: either ink can be the one that shows.
+    final ink = tone == null
+        ? t.accentText
+        : tone.computeLuminance() > 0.18
+        ? Colors.black
+        : Colors.white;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
-      width: 22,
-      height: 22,
+      width: size,
+      height: size,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: on ? t.accent : Colors.transparent,
-        border: Border.all(color: on ? t.accent : t.muted, width: 1.6),
-        borderRadius: BorderRadius.circular(6),
+        shape: BoxShape.circle,
+        color: on ? fill : Colors.transparent,
+        border: Border.all(
+          color: on ? fill : tone ?? t.text.withValues(alpha: 0.25),
+          width: 1.6,
+        ),
       ),
-      child: on ? BloomIcon(Bi.check, size: 15, color: t.accentText) : null,
+      child: on ? BloomIcon(Bi.check, size: size * 0.6, color: ink) : null,
     );
   }
 }
