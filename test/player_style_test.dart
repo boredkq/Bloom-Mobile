@@ -39,6 +39,18 @@ void main() {
 
     final flow = _container(JsonStore.memory({'playerStyle': 'flow'}));
     expect(flow.read(playerStyleProvider), PlayerStyle.flow);
+
+    final apple = _container(JsonStore.memory({'playerStyle': 'appleMusic'}));
+    expect(apple.read(playerStyleProvider), PlayerStyle.appleMusic);
+    expect(apple.read(playerStyleProvider).isAppleMusic, isTrue);
+
+    final spotify = _container(JsonStore.memory({'playerStyle': 'spotify'}));
+    expect(spotify.read(playerStyleProvider), PlayerStyle.spotify);
+    expect(spotify.read(playerStyleProvider).isSpotify, isTrue);
+
+    final ytm = _container(JsonStore.memory({'playerStyle': 'youtubeMusic'}));
+    expect(ytm.read(playerStyleProvider), PlayerStyle.youtubeMusic);
+    expect(ytm.read(playerStyleProvider).isYouTubeMusic, isTrue);
   });
 
   test('levyra aliases map to identical styles', () {
@@ -52,6 +64,14 @@ void main() {
     expect(PlayerStyle.of('halo'), PlayerStyle.halo);
     expect(PlayerStyle.of('pulse'), PlayerStyle.pulse);
     expect(PlayerStyle.of('expressive'), PlayerStyle.expressive);
+    expect(PlayerStyle.of('apple_music'), PlayerStyle.appleMusic);
+    expect(PlayerStyle.of('apple'), PlayerStyle.appleMusic);
+    expect(PlayerStyle.of('applemusic'), PlayerStyle.appleMusic);
+    expect(PlayerStyle.of('spotify'), PlayerStyle.spotify);
+    expect(PlayerStyle.of('spotify_style'), PlayerStyle.spotify);
+    expect(PlayerStyle.of('youtube_music'), PlayerStyle.youtubeMusic);
+    expect(PlayerStyle.of('ytm'), PlayerStyle.youtubeMusic);
+    expect(PlayerStyle.of('youtube'), PlayerStyle.youtubeMusic);
   });
 
   test("a style I don't have means the regular player", () {

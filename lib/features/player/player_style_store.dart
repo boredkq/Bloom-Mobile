@@ -12,6 +12,15 @@ enum PlayerStyle {
   /// A round cover that spins while playing.
   vinyl,
 
+  /// Apple Music player with ambient backdrop, SF typography, Apple transports.
+  appleMusic,
+
+  /// Spotify player with dark gradient, green accents, white circular play.
+  spotify,
+
+  /// YouTube Music player with pill tabs, thumbs up/down, and YTM transport.
+  youtubeMusic,
+
   /// Fluid ambient surface with flowing light (Levyra Flow).
   flow,
 
@@ -37,14 +46,30 @@ enum PlayerStyle {
   expressive;
 
   bool get isVinyl => this == PlayerStyle.vinyl;
+  bool get isAppleMusic => this == PlayerStyle.appleMusic;
+  bool get isSpotify => this == PlayerStyle.spotify;
+  bool get isYouTubeMusic => this == PlayerStyle.youtubeMusic;
+  bool get isFolio => this == PlayerStyle.folio;
 
   static PlayerStyle of(Object? name) {
     if (name is! String) return PlayerStyle.standard;
     for (final s in values) {
       if (s.name == name) return s;
     }
-    // Backward compatibility with Levyra storage identifiers:
+    // Backward compatibility with Levyra storage identifiers & aliases:
     switch (name.toLowerCase()) {
+      case 'apple_music':
+      case 'applemusic':
+      case 'apple':
+        return appleMusic;
+      case 'spotify':
+      case 'spotify_style':
+        return spotify;
+      case 'youtube_music':
+      case 'ytm':
+      case 'youtube':
+      case 'youtubemusic':
+        return youtubeMusic;
       case 'canvas_card':
       case 'card':
         return sleeve;

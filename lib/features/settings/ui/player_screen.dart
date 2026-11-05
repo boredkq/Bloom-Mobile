@@ -513,6 +513,9 @@ String _sliderLabel(AppLocalizations l, SliderStyle style) => switch (style) {
 String _styleLabel(AppLocalizations l, PlayerStyle style) => switch (style) {
   PlayerStyle.standard => l.pvStyleStandard,
   PlayerStyle.vinyl => l.pvStyleVinyl,
+  PlayerStyle.appleMusic => l.pvStyleAppleMusic,
+  PlayerStyle.spotify => l.pvStyleSpotify,
+  PlayerStyle.youtubeMusic => l.pvStyleYouTubeMusic,
   PlayerStyle.flow => l.pvStyleFlow,
   PlayerStyle.aura => l.pvStyleAura,
   PlayerStyle.sleeve => l.pvStyleSleeve,
@@ -555,6 +558,40 @@ class _StylePainter extends CustomPainter {
       case PlayerStyle.vinyl:
         canvas.drawCircle(const Offset(12, 12), 9, stroke);
         canvas.drawCircle(const Offset(12, 12), 3, stroke);
+      case PlayerStyle.appleMusic:
+        canvas.drawRRect(
+          RRect.fromLTRBR(3, 3, 21, 21, const Radius.circular(6)),
+          stroke,
+        );
+        final note = Path()
+          ..moveTo(10, 16)
+          ..addOval(Rect.fromLTWH(8, 14, 4, 3))
+          ..moveTo(12, 15)
+          ..lineTo(12, 8)
+          ..lineTo(16, 9.5)
+          ..lineTo(16, 13)
+          ..addOval(Rect.fromLTWH(12.5, 12.5, 4, 3));
+        canvas.drawPath(note, stroke..strokeWidth = 1.3);
+      case PlayerStyle.spotify:
+        canvas.drawCircle(const Offset(12, 12), 9.5, stroke);
+        final arc1 = Path()
+          ..addArc(const Rect.fromLTWH(6.5, 7, 11, 10), -0.85, 1.7);
+        final arc2 = Path()
+          ..addArc(const Rect.fromLTWH(7.5, 9.5, 9, 8), -0.85, 1.7);
+        final arc3 = Path()
+          ..addArc(const Rect.fromLTWH(8.5, 12, 7, 6), -0.85, 1.7);
+        canvas.drawPath(arc1, stroke..strokeWidth = 1.4);
+        canvas.drawPath(arc2, stroke..strokeWidth = 1.3);
+        canvas.drawPath(arc3, stroke..strokeWidth = 1.2);
+      case PlayerStyle.youtubeMusic:
+        canvas.drawCircle(const Offset(12, 12), 9.5, stroke);
+        canvas.drawCircle(const Offset(12, 12), 5.5, stroke..strokeWidth = 1.2);
+        final tri = Path()
+          ..moveTo(10.5, 9.5)
+          ..lineTo(14.5, 12)
+          ..lineTo(10.5, 14.5)
+          ..close();
+        canvas.drawPath(tri, Paint()..color = color..style = PaintingStyle.fill);
       case PlayerStyle.flow:
         canvas.drawRRect(
           RRect.fromLTRBR(2, 6, 22, 18, const Radius.circular(6)),

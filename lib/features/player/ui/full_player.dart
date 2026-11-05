@@ -48,6 +48,10 @@ import 'sleep_sheet.dart';
 import 'slider_shapes.dart';
 import 'source_pill.dart';
 import 'speed_sheet.dart';
+import 'styles/apple_music_player_scene.dart';
+import 'styles/folio_player_scene.dart';
+import 'styles/spotify_player_scene.dart';
+import 'styles/youtube_music_player_scene.dart';
 import 'track_swap.dart';
 import 'vinyl_disc.dart';
 
@@ -127,14 +131,129 @@ class _FullPlayerBodyState extends ConsumerState<FullPlayerBody> {
     LyricsMode lyricsMode,
     SwipePair swipes,
   ) {
+    if (track == null) return const SizedBox.shrink();
+
+    final style = ref.watch(playerStyleProvider);
+
+    // Spotify style player scene
+    if (style == PlayerStyle.spotify) {
+      return TrackFlick(
+        behavior: HitTestBehavior.opaque,
+        onLeft: swipes.left == SwipeAction.none
+            ? null
+            : () => runSwipeAction(
+                context,
+                ref,
+                swipes.left,
+                track: track,
+                fromFlick: true,
+              ),
+        onRight: swipes.right == SwipeAction.none
+            ? null
+            : () => runSwipeAction(
+                context,
+                ref,
+                swipes.right,
+                track: track,
+                fromFlick: true,
+              ),
+        builder: (context, shift) => FlickSlide(
+          shift: shift,
+          child: SpotifyPlayerScene(state: state, track: track),
+        ),
+      );
+    }
+
+    // Apple Music style player scene
+    if (style == PlayerStyle.appleMusic) {
+      return TrackFlick(
+        behavior: HitTestBehavior.opaque,
+        onLeft: swipes.left == SwipeAction.none
+            ? null
+            : () => runSwipeAction(
+                context,
+                ref,
+                swipes.left,
+                track: track,
+                fromFlick: true,
+              ),
+        onRight: swipes.right == SwipeAction.none
+            ? null
+            : () => runSwipeAction(
+                context,
+                ref,
+                swipes.right,
+                track: track,
+                fromFlick: true,
+              ),
+        builder: (context, shift) => FlickSlide(
+          shift: shift,
+          child: AppleMusicPlayerScene(state: state, track: track),
+        ),
+      );
+    }
+
+    // YouTube Music style player scene
+    if (style == PlayerStyle.youtubeMusic) {
+      return TrackFlick(
+        behavior: HitTestBehavior.opaque,
+        onLeft: swipes.left == SwipeAction.none
+            ? null
+            : () => runSwipeAction(
+                context,
+                ref,
+                swipes.left,
+                track: track,
+                fromFlick: true,
+              ),
+        onRight: swipes.right == SwipeAction.none
+            ? null
+            : () => runSwipeAction(
+                context,
+                ref,
+                swipes.right,
+                track: track,
+                fromFlick: true,
+              ),
+        builder: (context, shift) => FlickSlide(
+          shift: shift,
+          child: YouTubeMusicPlayerScene(state: state, track: track),
+        ),
+      );
+    }
+
+    // Folio / Editorial style player scene
+    if (style == PlayerStyle.folio) {
+      return TrackFlick(
+        behavior: HitTestBehavior.opaque,
+        onLeft: swipes.left == SwipeAction.none
+            ? null
+            : () => runSwipeAction(
+                context,
+                ref,
+                swipes.left,
+                track: track,
+                fromFlick: true,
+              ),
+        onRight: swipes.right == SwipeAction.none
+            ? null
+            : () => runSwipeAction(
+                context,
+                ref,
+                swipes.right,
+                track: track,
+                fromFlick: true,
+              ),
+        builder: (context, shift) => FlickSlide(
+          shift: shift,
+          child: FolioPlayerScene(state: state, track: track),
+        ),
+      );
+    }
+
     return TrackFlick(
-      // The gesture must be caught ACROSS the screen, not just where
-      // something's drawn: beside a square cover and in the column's gaps
-      // there's no content, and `deferToChild` let it through to the panel
-      // below, which with neighbours on moves as a whole card, carrying the
-      // open player sideways.
       behavior: HitTestBehavior.opaque,
-      onLeft: track == null || swipes.left == SwipeAction.none
+      onLeft: swipes.left == SwipeAction.none
           ? null
           : () => runSwipeAction(
               context,
@@ -143,7 +262,7 @@ class _FullPlayerBodyState extends ConsumerState<FullPlayerBody> {
               track: track,
               fromFlick: true,
             ),
-      onRight: track == null || swipes.right == SwipeAction.none
+      onRight: swipes.right == SwipeAction.none
           ? null
           : () => runSwipeAction(
               context,
@@ -328,6 +447,9 @@ class _Cover extends ConsumerWidget {
         final BorderRadius clipRadius = switch (style) {
           PlayerStyle.standard => BorderRadius.circular(_coverRadius),
           PlayerStyle.vinyl => BorderRadius.circular(side / 2),
+          PlayerStyle.appleMusic => BorderRadius.circular(24),
+          PlayerStyle.spotify => BorderRadius.circular(10),
+          PlayerStyle.youtubeMusic => BorderRadius.circular(12),
           PlayerStyle.flow => BorderRadius.circular(32),
           PlayerStyle.aura => BorderRadius.circular(24),
           PlayerStyle.sleeve => BorderRadius.circular(20),
@@ -1013,21 +1135,38 @@ class _NextUpPill extends ConsumerWidget {
 }
 
 /// The plate under the player's buttons, with softer corners than a card's.
-class _Plate extends StatelessWidget {
-  const _Plate({required this.padding, required this.child});
+class _Plate extends ConsumerWidget {
+  const _Plate({
+    required this.padding,
+    required this.child,
+    this.borderRadius,
+  });
 
   final EdgeInsets padding;
   final Widget child;
+  final BorderRadius? borderRadius;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
+    final style = ref.watch(playerStyleProvider);
+    final radius =
+        borderRadius ??
+        switch (style) {
+          PlayerStyle.flow => BorderRadius.circular(32),
+          PlayerStyle.aura => BorderRadius.circular(24),
+          PlayerStyle.expressive => BorderRadius.circular(28),
+          PlayerStyle.sleeve => BorderRadius.circular(16),
+          PlayerStyle.poster => BorderRadius.circular(8),
+          _ => BorderRadius.circular(t.radius * 1.8),
+        };
+
     return Container(
       padding: padding,
       decoration: BoxDecoration(
         color: t.ovlBg,
         border: Border.all(color: t.ovlLine),
-        borderRadius: BorderRadius.circular(t.radius * 1.8),
+        borderRadius: radius,
       ),
       child: child,
     );
@@ -1041,37 +1180,53 @@ class _Transport extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(playbackProvider);
     final ctrl = ref.read(playbackProvider.notifier);
+    final style = ref.watch(playerStyleProvider);
+    final t = context.bloom;
 
-    return _Plate(
-      padding: const EdgeInsets.symmetric(vertical: 18),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _FlatIcon(
-            icon: state.repeat == PlayerRepeat.one ? Bi.repeatOne : Bi.repeat,
-            size: 24,
-            active: state.repeat != PlayerRepeat.off,
-            dim: true,
-            onTap: ctrl.cycleRepeat,
-          ),
-          _FlatIcon(icon: Bi.skipPreviousBold, size: 30, onTap: ctrl.prev),
-          PlayButton(
-            size: 68,
-            iconSize: 28,
-            plainIconSize: 40,
-            spinnerSize: 28,
-            loading: state.loading,
-            onTap: ctrl.toggle,
-          ),
-          _FlatIcon(icon: Bi.skipNextBold, size: 30, onTap: ctrl.next),
-          _FlatIcon(
-            icon: Bi.shuffle,
-            size: 24,
-            active: state.shuffle,
-            dim: true,
-            onTap: ctrl.toggleShuffle,
-          ),
-        ],
+    return Container(
+      decoration: style == PlayerStyle.aura
+          ? BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: t.accent.withValues(alpha: 0.2),
+                  blurRadius: 28,
+                  spreadRadius: 2,
+                ),
+              ],
+            )
+          : null,
+      child: _Plate(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _FlatIcon(
+              icon: state.repeat == PlayerRepeat.one ? Bi.repeatOne : Bi.repeat,
+              size: 24,
+              active: state.repeat != PlayerRepeat.off,
+              dim: true,
+              onTap: ctrl.cycleRepeat,
+            ),
+            _FlatIcon(icon: Bi.skipPreviousBold, size: 30, onTap: ctrl.prev),
+            PlayButton(
+              size: 68,
+              iconSize: 28,
+              plainIconSize: 40,
+              spinnerSize: 28,
+              loading: state.loading,
+              onTap: ctrl.toggle,
+            ),
+            _FlatIcon(icon: Bi.skipNextBold, size: 30, onTap: ctrl.next),
+            _FlatIcon(
+              icon: Bi.shuffle,
+              size: 24,
+              active: state.shuffle,
+              dim: true,
+              onTap: ctrl.toggleShuffle,
+            ),
+          ],
+        ),
       ),
     );
   }

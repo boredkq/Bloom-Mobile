@@ -2702,6 +2702,9 @@ abstract class AppLocalizations {
   /// **'Standard'**
   String get pvStyleStandard;
   String get pvStyleVinyl;
+  String get pvStyleAppleMusic;
+  String get pvStyleSpotify;
+  String get pvStyleYouTubeMusic;
   String get pvStyleFlow;
   String get pvStyleAura;
   String get pvStyleSleeve;
@@ -2710,6 +2713,11 @@ abstract class AppLocalizations {
   String get pvStylePulse;
   String get pvStyleFolio;
   String get pvStyleExpressive;
+  String get playerUpNext;
+  String get playerRelated;
+  String get playerLossless;
+  String get playerSong;
+  String get playerVideo;
 
   /// shape of the play/pause button in the player and the mini player
   ///

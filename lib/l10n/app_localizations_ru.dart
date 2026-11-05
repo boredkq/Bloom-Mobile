@@ -1621,6 +1621,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pvStyleVinyl => 'Пластинка';
 
   @override
+  String get pvStyleAppleMusic => 'Apple Music';
+
+  @override
+  String get pvStyleSpotify => 'Spotify';
+
+  @override
+  String get pvStyleYouTubeMusic => 'YouTube Music';
+
+  @override
   String get pvStyleFlow => 'Flow';
 
   @override
@@ -1643,6 +1652,21 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get pvStyleExpressive => 'Expressive';
+
+  @override
+  String get playerUpNext => 'Очередь';
+
+  @override
+  String get playerRelated => 'Похожее';
+
+  @override
+  String get playerLossless => 'Lossless';
+
+  @override
+  String get playerSong => 'Песня';
+
+  @override
+  String get playerVideo => 'Клип';
 
   @override
   String get pvPlayButtonRow => 'Кнопка воспроизведения';
