@@ -29,7 +29,23 @@ List<LrcLine> parseTtml(String ttml) {
 
     final start = _parseTtmlTime(pAttrs['begin'] ?? '0');
     final end = _parseTtmlTime(pAttrs['end'] ?? '${start + 3.0}');
-    final songPart = pAttrs['songPart'] ?? pAttrs['lrc:songPart'];
+    var songPart = pAttrs['songPart'] ?? pAttrs['lrc:songPart'];
+    if (songPart == null) {
+      final prefix = ttml.substring(0, pMatch.start);
+      final lastDivOpen =
+          prefix.lastIndexOf(RegExp(r'<div\b[^>]*>', caseSensitive: false));
+      final lastDivClose =
+          prefix.lastIndexOf(RegExp(r'<\/div\s*>', caseSensitive: false));
+      if (lastDivOpen != -1 && lastDivOpen > lastDivClose) {
+        final divEnd = prefix.indexOf('>', lastDivOpen);
+        final divTag = prefix.substring(
+          lastDivOpen,
+          divEnd != -1 ? divEnd + 1 : prefix.length,
+        );
+        final divAttrs = _parseAttrs(divTag);
+        songPart = divAttrs['songPart'] ?? divAttrs['lrc:songPart'];
+      }
+    }
 
     final words = <LrcWord>[];
     for (final sMatch in _spanRegex.finditer(pBody)) {

@@ -26,7 +26,7 @@ class AudioDspState {
     this.preampDb = 0.0,
     bool? limiterEnabled,
     bool? headroomGuard,
-    this.crossfadeSeconds = 3,
+    this.crossfadeSeconds = 0,
     bool? smartGapless,
     bool? smartAlbumGapless,
     bool? normalizeVolume,
@@ -147,7 +147,7 @@ class AudioDspState {
       preampDb: (json['preampDb'] as num?)?.toDouble() ?? 0.0,
       limiterEnabled:
           (json['limiterEnabled'] ?? json['headroomGuard']) as bool? ?? true,
-      crossfadeSeconds: (json['crossfadeSeconds'] as num?)?.toInt() ?? 3,
+      crossfadeSeconds: (json['crossfadeSeconds'] as num?)?.toInt() ?? 0,
       smartGapless:
           (json['smartGapless'] ?? json['smartAlbumGapless']) as bool? ?? true,
       normalizeVolume:
