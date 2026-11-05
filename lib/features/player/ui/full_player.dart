@@ -948,8 +948,6 @@ class _Tools extends ConsumerWidget {
     // Speed: at 1× a plain speedometer; otherwise the value in its place.
     final rate = ref.watch(speedProvider).rate;
     final lyricsOpen = ref.watch(lyricsOpenProvider);
-    // No lyrics button until lyrics are found. It survives an open panel in any
-    // case, or there'd be nothing to close it with.
     final lyricsFound = ref.watch(lyricsProvider).status == LyricsStatus.ready;
 
     return Row(
@@ -968,14 +966,14 @@ class _Tools extends ConsumerWidget {
               size: 25,
               onTap: () => showAddToPlaylistSheet(context, ref, track),
             ),
-            if (lyricsFound || lyricsOpen)
-              _FlatIcon(
-                icon: Bi.text,
-                size: 25,
-                active: lyricsOpen,
-                onTap: () =>
-                    ref.read(lyricsOpenProvider.notifier).state = !lyricsOpen,
-              ),
+            _FlatIcon(
+              icon: Bi.text,
+              size: 25,
+              active: lyricsOpen,
+              dim: !lyricsFound && !lyricsOpen,
+              onTap: () =>
+                  ref.read(lyricsOpenProvider.notifier).state = !lyricsOpen,
+            ),
           ],
         ),
         _ToolPill(

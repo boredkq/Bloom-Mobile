@@ -393,12 +393,15 @@ void main() {
   });
 
   group('LyricsPrefs', () {
-    test('defaults — over the cover, not kept', () {
+    test('defaults — over the cover, not kept, syllables on, normal size', () {
       final c = _container(answer: (_) async => LyricsResult.none);
       final prefs = c.read(lyricsPrefsProvider);
       expect(prefs.mode, LyricsMode.overlay);
       expect(prefs.cache, isFalse);
       expect(prefs.keep, CacheKeep.never);
+      expect(prefs.syllables, isTrue);
+      expect(prefs.fontSize, LyricsFontSize.normal);
+      expect(prefs.align, LyricsAlign.auto);
     });
 
     test('saved and read back; unknown values fall back', () {
@@ -409,22 +412,35 @@ void main() {
       );
       first.read(lyricsPrefsProvider.notifier)
         ..setMode(LyricsMode.replace)
-        ..setKeep(CacheKeep.week);
+        ..setKeep(CacheKeep.week)
+        ..setSyllables(false)
+        ..setFontSize(LyricsFontSize.large)
+        ..setAlign(LyricsAlign.center);
       final second = _container(
         answer: (_) async => LyricsResult.none,
         store: store,
       );
       expect(second.read(lyricsPrefsProvider).mode, LyricsMode.replace);
       expect(second.read(lyricsPrefsProvider).keep, CacheKeep.week);
+      expect(second.read(lyricsPrefsProvider).syllables, isFalse);
+      expect(second.read(lyricsPrefsProvider).fontSize, LyricsFontSize.large);
+      expect(second.read(lyricsPrefsProvider).align, LyricsAlign.center);
 
       final odd = _container(
         answer: (_) async => LyricsResult.none,
         store: JsonStore.memory({
-          'lyrics': {'mode': 'nonsense', 'keep': '2y'},
+          'lyrics': {
+            'mode': 'nonsense',
+            'keep': '2y',
+            'fontSize': 'huge',
+            'align': 'justify',
+          },
         }),
       );
       expect(odd.read(lyricsPrefsProvider).mode, LyricsMode.overlay);
       expect(odd.read(lyricsPrefsProvider).keep, CacheKeep.never);
+      expect(odd.read(lyricsPrefsProvider).fontSize, LyricsFontSize.normal);
+      expect(odd.read(lyricsPrefsProvider).align, LyricsAlign.auto);
     });
   });
 

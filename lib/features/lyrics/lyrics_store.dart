@@ -22,6 +22,26 @@ export '../../core/store/cache_keep.dart' show CacheKeep;
 /// Where the lyrics go in the player: over the cover, or in its place.
 enum LyricsMode { overlay, replace }
 
+/// Font size presets for lyrics text.
+enum LyricsFontSize {
+  compact,
+  normal,
+  large;
+
+  static LyricsFontSize of(Object? id) =>
+      values.firstWhere((v) => v.name == id, orElse: () => normal);
+}
+
+/// Text alignment presets for lyrics.
+enum LyricsAlign {
+  auto,
+  center,
+  left;
+
+  static LyricsAlign of(Object? id) =>
+      values.firstWhere((v) => v.name == id, orElse: () => auto);
+}
+
 @immutable
 class LyricsPrefs {
   const LyricsPrefs({
@@ -29,6 +49,9 @@ class LyricsPrefs {
     this.cache = false,
     this.keep = CacheKeep.never,
     this.romanize = true,
+    this.syllables = true,
+    this.fontSize = LyricsFontSize.normal,
+    this.align = LyricsAlign.auto,
   });
 
   factory LyricsPrefs.fromJson(Map<String, Object?> raw) => LyricsPrefs(
@@ -39,6 +62,9 @@ class LyricsPrefs {
     cache: raw['cache'] == true,
     keep: CacheKeep.of(raw['keep']),
     romanize: raw['romanize'] != false,
+    syllables: raw['syllables'] != false,
+    fontSize: LyricsFontSize.of(raw['fontSize']),
+    align: LyricsAlign.of(raw['align']),
   );
 
   final LyricsMode mode;
@@ -52,16 +78,31 @@ class LyricsPrefs {
   /// Show Latin transliteration under foreign scripts (Hangul, Kana, Cyrillic).
   final bool romanize;
 
+  /// Highlight lyrics word-by-word and syllable-by-syllable when timing is available.
+  final bool syllables;
+
+  /// Font size for lyrics text.
+  final LyricsFontSize fontSize;
+
+  /// Text alignment.
+  final LyricsAlign align;
+
   LyricsPrefs copyWith({
     LyricsMode? mode,
     bool? cache,
     CacheKeep? keep,
     bool? romanize,
+    bool? syllables,
+    LyricsFontSize? fontSize,
+    LyricsAlign? align,
   }) => LyricsPrefs(
     mode: mode ?? this.mode,
     cache: cache ?? this.cache,
     keep: keep ?? this.keep,
     romanize: romanize ?? this.romanize,
+    syllables: syllables ?? this.syllables,
+    fontSize: fontSize ?? this.fontSize,
+    align: align ?? this.align,
   );
 
   Map<String, Object?> toJson() => {
@@ -69,6 +110,9 @@ class LyricsPrefs {
     'cache': cache,
     'keep': keep.id,
     'romanize': romanize,
+    'syllables': syllables,
+    'fontSize': fontSize.name,
+    'align': align.name,
   };
 }
 
@@ -87,6 +131,12 @@ class LyricsPrefsController extends Notifier<LyricsPrefs> {
   void setCache(bool on) => _set(state.copyWith(cache: on));
 
   void setRomanize(bool on) => _set(state.copyWith(romanize: on));
+
+  void setSyllables(bool on) => _set(state.copyWith(syllables: on));
+
+  void setFontSize(LyricsFontSize size) => _set(state.copyWith(fontSize: size));
+
+  void setAlign(LyricsAlign align) => _set(state.copyWith(align: align));
 
   /// A time limit applies at once; returns how many went out of date.
   int setKeep(CacheKeep keep) {
@@ -171,8 +221,8 @@ class LyricsController extends Notifier<LyricsState> {
     return const LyricsState();
   }
 
-  Future<void> load(Track? t) async {
-    if (_gone || t?.id == _id) return;
+  Future<void> load(Track? t, {bool force = false}) async {
+    if (_gone || (!force && t?.id == _id && state.status == LyricsStatus.ready)) return;
     _id = t?.id;
     final token = ++_token;
     if (t == null || t.name.trim().isEmpty) {
@@ -187,7 +237,7 @@ class LyricsController extends Notifier<LyricsState> {
 
     final cache = ref.read(lyricsCacheProvider);
     final key = LyricsCache.keyOf(t.artist, t.name);
-    var found = cache.read(key);
+    var found = force ? null : cache.read(key);
     if (found == null) {
       found = await ref.read(lyricsFetcherProvider)(
         artist: t.artist,
@@ -217,12 +267,7 @@ class LyricsController extends Notifier<LyricsState> {
   }
 
   void _set(LyricsState next) {
-    final gone =
-        next.status == LyricsStatus.empty && state.status != LyricsStatus.empty;
     state = next;
-    // A track without lyrics closes them: an empty panel would stay, with the
-    // lyrics button only to close it. Loading between tracks leaves them be.
-    if (gone) ref.read(lyricsOpenProvider.notifier).state = false;
   }
 }
 

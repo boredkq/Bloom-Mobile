@@ -35,7 +35,8 @@ class PlayerSettingsScreen extends ConsumerWidget {
     final coverFx = ref.watch(coverBgFxProvider);
     final align = ref.watch(titleAlignProvider);
     final playShape = ref.watch(playButtonShapeProvider);
-    final lyricsMode = ref.watch(lyricsPrefsProvider.select((p) => p.mode));
+    final lyricsPrefs = ref.watch(lyricsPrefsProvider);
+    final lyricsMode = lyricsPrefs.mode;
     final l = context.l;
 
     return SubPage(
@@ -145,6 +146,48 @@ class PlayerSettingsScreen extends ConsumerWidget {
             painter: _ModePainter(mode: v, color: ink),
           ),
           onTap: ref.read(lyricsPrefsProvider.notifier).setMode,
+        ),
+        const SizedBox(height: 12),
+        SettingsGroupCard(
+          rows: [
+            SettingsToggleRow(
+              title: l.pvLyricsSyllables,
+              subtitle: l.pvLyricsSyllablesSub,
+              value: lyricsPrefs.syllables,
+              onChanged: ref.read(lyricsPrefsProvider.notifier).setSyllables,
+            ),
+            SettingsToggleRow(
+              title: l.pvLyricsRomanize,
+              subtitle: l.pvLyricsRomanizeSub,
+              value: lyricsPrefs.romanize,
+              onChanged: ref.read(lyricsPrefsProvider.notifier).setRomanize,
+            ),
+            SettingsRow(
+              title: l.pvLyricsFontSize,
+              value: _lyricsFontSizeLabel(l, lyricsPrefs.fontSize),
+              onTap: () =>
+                  _pickLyricsFontSize(context, ref, lyricsPrefs.fontSize),
+            ),
+            SettingsRow(
+              title: l.pvLyricsAlign,
+              value: _lyricsAlignLabel(l, lyricsPrefs.align),
+              onTap: () =>
+                  _pickLyricsAlign(context, ref, lyricsPrefs.align),
+            ),
+            SettingsToggleRow(
+              title: l.stLyricsKeep,
+              subtitle: l.stLyricsKeepSub,
+              value: lyricsPrefs.cache,
+              onChanged: ref.read(lyricsPrefsProvider.notifier).setCache,
+            ),
+            if (lyricsPrefs.cache)
+              SettingsRow(
+                title: l.stLyricsKeepFor,
+                value: _keepLabel(l, lyricsPrefs.keep),
+                onTap: () =>
+                    _pickLyricsKeep(context, ref, lyricsPrefs.keep),
+              ),
+          ],
         ),
       ],
     );
@@ -626,3 +669,71 @@ BloomGlyph _coverFxIcon(CoverBgFx fx) => switch (fx) {
   CoverBgFx.blur => Bi.waterdrop,
   CoverBgFx.original => Bi.magicStick,
 };
+
+// ── Lyrics options
+// ─────────────────────────────────────────────────────────────
+
+String _lyricsFontSizeLabel(AppLocalizations l, LyricsFontSize size) =>
+    switch (size) {
+      LyricsFontSize.compact => l.pvLyricsSizeCompact,
+      LyricsFontSize.normal => l.pvLyricsSizeNormal,
+      LyricsFontSize.large => l.pvLyricsSizeLarge,
+    };
+
+Future<void> _pickLyricsFontSize(
+  BuildContext context,
+  WidgetRef ref,
+  LyricsFontSize current,
+) =>
+    pickOneSheet<LyricsFontSize>(
+      context: context,
+      title: context.l.pvLyricsFontSize,
+      values: LyricsFontSize.values,
+      current: current,
+      label: (size) => _lyricsFontSizeLabel(context.l, size),
+      apply: ref.read(lyricsPrefsProvider.notifier).setFontSize,
+    );
+
+String _lyricsAlignLabel(AppLocalizations l, LyricsAlign align) =>
+    switch (align) {
+      LyricsAlign.auto => l.pvLyricsAlignAuto,
+      LyricsAlign.center => l.pvLyricsAlignCenter,
+      LyricsAlign.left => l.pvLyricsAlignLeft,
+    };
+
+Future<void> _pickLyricsAlign(
+  BuildContext context,
+  WidgetRef ref,
+  LyricsAlign current,
+) =>
+    pickOneSheet<LyricsAlign>(
+      context: context,
+      title: context.l.pvLyricsAlign,
+      values: LyricsAlign.values,
+      current: current,
+      label: (align) => _lyricsAlignLabel(context.l, align),
+      apply: ref.read(lyricsPrefsProvider.notifier).setAlign,
+    );
+
+String _keepLabel(AppLocalizations l, CacheKeep keep) => switch (keep) {
+  CacheKeep.never => l.stKeepNever,
+  CacheKeep.restart => l.stKeepRestart,
+  CacheKeep.day => l.stKeepDay,
+  CacheKeep.days3 => l.stKeep3Days,
+  CacheKeep.week => l.stKeepWeek,
+  CacheKeep.month => l.stKeepMonth,
+};
+
+Future<void> _pickLyricsKeep(
+  BuildContext context,
+  WidgetRef ref,
+  CacheKeep current,
+) =>
+    pickOneSheet<CacheKeep>(
+      context: context,
+      title: context.l.stLyricsKeepFor,
+      values: CacheKeep.values,
+      current: current,
+      label: (k) => _keepLabel(context.l, k),
+      apply: (k) => ref.read(lyricsPrefsProvider.notifier).setKeep(k),
+    );

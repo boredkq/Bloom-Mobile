@@ -1654,6 +1654,48 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pvLyricsModeReplace => 'Вместо обложки';
 
   @override
+  String get pvLyricsSyllables => 'Синхронизация по слогам';
+
+  @override
+  String get pvLyricsSyllablesSub => 'Анимация подсветки каждого слова и слога в реальном времени';
+
+  @override
+  String get pvLyricsRomanize => 'Романизация текста';
+
+  @override
+  String get pvLyricsRomanizeSub => 'Латинская транслитерация для K-Pop, J-Pop и кириллицы';
+
+  @override
+  String get pvLyricsFontSize => 'Размер шрифта текста';
+
+  @override
+  String get pvLyricsSizeCompact => 'Компактный';
+
+  @override
+  String get pvLyricsSizeNormal => 'Обычный';
+
+  @override
+  String get pvLyricsSizeLarge => 'Крупный';
+
+  @override
+  String get pvLyricsAlign => 'Выравнивание текста';
+
+  @override
+  String get pvLyricsAlignAuto => 'По умолчанию';
+
+  @override
+  String get pvLyricsAlignCenter => 'По центру';
+
+  @override
+  String get pvLyricsAlignLeft => 'По левому краю';
+
+  @override
+  String get stLyricsKeepSub => 'Сохранять найденные тексты на устройстве для офлайн-доступа';
+
+  @override
+  String get lyricsRetry => 'Повторить поиск';
+
+  @override
   String get pvGroupQueue => 'Очередь';
 
   @override

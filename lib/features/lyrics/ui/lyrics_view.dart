@@ -9,6 +9,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
+import '../../../shared/ui/bloom_icon.dart';
+import '../../../shared/ui/pressable.dart';
 import '../../player/player_controller.dart';
 import '../lrc.dart';
 import '../lyrics_store.dart';
@@ -121,9 +123,31 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
     final l = context.l;
     final state = ref.watch(lyricsProvider);
     final current = ref.watch(lyricsLineProvider);
-    final lay = widget.layout;
-    final showRomanized =
-        ref.watch(lyricsPrefsProvider.select((p) => p.romanize));
+    final baseLay = widget.layout;
+    final prefs = ref.watch(lyricsPrefsProvider);
+    final showRomanized = prefs.romanize;
+    final showSyllables = prefs.syllables;
+
+    final double fontScale = switch (prefs.fontSize) {
+      LyricsFontSize.compact => 0.88,
+      LyricsFontSize.normal => 1.0,
+      LyricsFontSize.large => 1.20,
+    };
+
+    final TextAlign effectiveAlign = switch (prefs.align) {
+      LyricsAlign.auto => baseLay.align,
+      LyricsAlign.center => TextAlign.center,
+      LyricsAlign.left => TextAlign.left,
+    };
+
+    final lay = LyricsLayout(
+      fontSize: baseLay.fontSize * fontScale,
+      activeSize: baseLay.activeSize * fontScale,
+      align: effectiveAlign,
+      lineHeight: baseLay.lineHeight,
+      gap: baseLay.gap * fontScale,
+      introPad: baseLay.introPad,
+    );
 
     ref.listen(lyricsLineProvider, (_, _) => _center(animated: true));
     ref.listen(lyricsProvider.select((s) => s.lines), (_, _) {
@@ -133,6 +157,7 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
     });
 
     final lines = state.lines;
+    final track = ref.watch(lyricsTrackProvider);
     final hasRom = lines.any((l) => l.romanized != null) ||
         (lines.isEmpty &&
             state.plain.isNotEmpty &&
@@ -140,15 +165,84 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
 
     final children = <Widget>[
       if (state.status != LyricsStatus.ready)
-        Text(
-          state.status == LyricsStatus.empty
-              ? l.lyricsNotFound
-              : l.lyricsLoading,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 12,
-            height: 1.6,
-            color: t.text.withValues(alpha: _status),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              if (state.status == LyricsStatus.loading) ...[
+                SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    color: t.accent,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  l.lyricsLoading,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: t.text.withValues(alpha: 0.6),
+                  ),
+                ),
+              ] else ...[
+                BloomIcon(
+                  Bi.text,
+                  size: 36,
+                  color: t.muted.withValues(alpha: 0.5),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  l.lyricsNotFound,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: t.text.withValues(alpha: 0.65),
+                  ),
+                ),
+                if (track != null) ...[
+                  const SizedBox(height: 14),
+                  Pressable(
+                    onTap: () => ref
+                        .read(lyricsProvider.notifier)
+                        .load(track, force: true),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: t.card,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: t.divider),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          BloomIcon(Bi.refresh, size: 16, color: t.accent),
+                          const SizedBox(width: 8),
+                          Text(
+                            l.lyricsRetry,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: t.text,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ],
           ),
         )
       else if (lines.isNotEmpty) ...[
@@ -174,7 +268,7 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
           _Line(
             key: _key(i),
             text: lines[i].text,
-            words: lines[i].words,
+            words: showSyllables ? lines[i].words : const [],
             romanized: showRomanized ? lines[i].romanized : null,
             section: lines[i].section,
             active: i == current,

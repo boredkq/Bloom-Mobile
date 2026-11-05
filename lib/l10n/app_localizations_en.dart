@@ -1617,6 +1617,48 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pvLyricsModeReplace => 'Instead of the cover';
 
   @override
+  String get pvLyricsSyllables => 'Syllable karaoke';
+
+  @override
+  String get pvLyricsSyllablesSub => 'Real-time glowing highlight for each word and syllable';
+
+  @override
+  String get pvLyricsRomanize => 'Romanize lyrics';
+
+  @override
+  String get pvLyricsRomanizeSub => 'Latin transliteration for non-Latin writing systems';
+
+  @override
+  String get pvLyricsFontSize => 'Text size';
+
+  @override
+  String get pvLyricsSizeCompact => 'Compact';
+
+  @override
+  String get pvLyricsSizeNormal => 'Normal';
+
+  @override
+  String get pvLyricsSizeLarge => 'Large';
+
+  @override
+  String get pvLyricsAlign => 'Text alignment';
+
+  @override
+  String get pvLyricsAlignAuto => 'Default';
+
+  @override
+  String get pvLyricsAlignCenter => 'Centered';
+
+  @override
+  String get pvLyricsAlignLeft => 'Left-aligned';
+
+  @override
+  String get stLyricsKeepSub => 'Save downloaded lyrics on device for offline playback';
+
+  @override
+  String get lyricsRetry => 'Retry search';
+
+  @override
   String get pvGroupQueue => 'Queue';
 
   @override

@@ -2774,6 +2774,21 @@ abstract class AppLocalizations {
   /// **'Instead of the cover'**
   String get pvLyricsModeReplace;
 
+  String get pvLyricsSyllables;
+  String get pvLyricsSyllablesSub;
+  String get pvLyricsRomanize;
+  String get pvLyricsRomanizeSub;
+  String get pvLyricsFontSize;
+  String get pvLyricsSizeCompact;
+  String get pvLyricsSizeNormal;
+  String get pvLyricsSizeLarge;
+  String get pvLyricsAlign;
+  String get pvLyricsAlignAuto;
+  String get pvLyricsAlignCenter;
+  String get pvLyricsAlignLeft;
+  String get stLyricsKeepSub;
+  String get lyricsRetry;
+
   /// the group holding the queue view cards
   ///
   /// In en, this message translates to:
