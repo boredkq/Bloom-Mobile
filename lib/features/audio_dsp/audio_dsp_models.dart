@@ -8,6 +8,7 @@ class AudioPreset {
     required this.levels,
     this.bassBoost = 0,
     this.virtualizer = 0,
+    this.isCustom = false,
   });
 
   final String id;
@@ -22,12 +23,16 @@ class AudioPreset {
   /// Spatial audio / virtualizer percentage (0 to 100).
   final int virtualizer;
 
+  /// Whether this preset was created by the user.
+  final bool isCustom;
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
     'levels': levels,
     'bassBoost': bassBoost,
     'virtualizer': virtualizer,
+    'isCustom': isCustom,
   };
 
   factory AudioPreset.fromJson(Map<String, dynamic> json) => AudioPreset(
@@ -37,6 +42,7 @@ class AudioPreset {
         List.filled(AudioPresets.bandCount, 0),
     bassBoost: (json['bassBoost'] as num?)?.toInt() ?? 0,
     virtualizer: (json['virtualizer'] as num?)?.toInt() ?? 0,
+    isCustom: json['isCustom'] as bool? ?? false,
   );
 }
 
@@ -71,6 +77,15 @@ class AudioPresets {
     16000,
   ];
 
+  static List<int> get bandFrequencies => bandFrequenciesHz;
+
+  static String frequencyLabel(int hz) {
+    if (hz >= 1000) {
+      return '${hz ~/ 1000}kHz';
+    }
+    return '${hz}Hz';
+  }
+
   static double levelToDb(int level) =>
       (level.clamp(-100, 100) / 100.0) * maxBandDb;
 
@@ -79,6 +94,15 @@ class AudioPresets {
 
   static const String flatId = 'flat';
   static const String customId = 'custom';
+
+  static List<AudioPreset> get builtIns => builtIn;
+
+  static AudioPreset? findById(String id) {
+    for (final p in builtIn) {
+      if (p.id == id) return p;
+    }
+    return null;
+  }
 
   static const List<AudioPreset> builtIn = [
     AudioPreset(

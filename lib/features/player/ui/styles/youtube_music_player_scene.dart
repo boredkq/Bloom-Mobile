@@ -12,10 +12,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../app/theme/tokens.dart';
 import '../../../../core/entities/entities.dart';
 import '../../../../core/l10n/l10n.dart';
-import '../../../../core/store/cover_store.dart';
 import '../../../../core/store/library_store.dart';
 import '../../../../shared/ui/atoms.dart';
 import '../../../../shared/ui/marquee_text.dart';
@@ -53,7 +51,6 @@ class _YouTubeMusicPlayerSceneState
 
   static const Color _ytmBg = Color(0xFF030303);
   static const Color _ytmTextSecondary = Color(0xFFAAAAAA);
-  static const Color _ytmChipFill = Color(0x26FFFFFF);
 
   @override
   Widget build(BuildContext context) {

@@ -13,26 +13,25 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../app/theme/tokens.dart';
 import '../../../../core/entities/entities.dart';
 import '../../../../core/l10n/l10n.dart';
-import '../../../../core/store/cover_store.dart';
 import '../../../../core/store/library_store.dart';
 import '../../../../shared/ui/atoms.dart';
 import '../../../../shared/ui/marquee_text.dart';
 import '../../../../shared/ui/pressable.dart';
 import '../../../../shared/ui/track_actions.dart';
 import '../../../../shared/util/format.dart';
+import '../../../customization/custom_store.dart';
 import '../../../detail/artists_sheet.dart';
 import '../../../lyrics/lyrics_store.dart';
 import '../../../lyrics/ui/lyrics_view.dart';
-import '../../../customization/custom_store.dart';
 import '../../player_bg_store.dart';
 import '../../player_controller.dart';
-import '../player_sheet.dart';
 import '../artist_avatars.dart';
+import '../player_sheet.dart';
 import '../queue_sheet.dart';
 import '../sleep_sheet.dart';
+import '../source_pill.dart';
 import '../speed_sheet.dart';
 
 class SpotifyPlayerScene extends ConsumerStatefulWidget {
@@ -110,10 +109,6 @@ class _SpotifyPlayerSceneState extends ConsumerState<SpotifyPlayerScene> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    final l = context.l;
-    final src = widget.state.source;
-    final sourceName = src?.name(l) ?? l.libQueue;
-
     return Row(
       children: [
         IconButton(
@@ -123,35 +118,14 @@ class _SpotifyPlayerSceneState extends ConsumerState<SpotifyPlayerScene> {
             color: Colors.white,
           ),
           onPressed: collapsePlayerSheet,
-          tooltip: l.playerBack,
         ),
         Expanded(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'PLAYING FROM PLAYLIST'.toUpperCase(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.2,
-                  color: _spotifySubdued,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                sourceName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
-            ],
+          child: SourcePill(
+            source: widget.state.source,
+            shuffle: widget.state.shuffle,
+            count: widget.state.queue.length,
+            background: Colors.white.withValues(alpha: 0.12),
+            borderColor: Colors.transparent,
           ),
         ),
         IconButton(

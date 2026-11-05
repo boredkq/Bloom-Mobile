@@ -19,7 +19,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/tokens.dart';
 import '../../../../core/entities/entities.dart';
 import '../../../../core/l10n/l10n.dart';
-import '../../../../core/store/cover_store.dart';
 import '../../../../core/store/library_store.dart';
 import '../../../../shared/ui/atoms.dart';
 import '../../../../shared/ui/marquee_text.dart';

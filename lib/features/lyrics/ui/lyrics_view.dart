@@ -63,7 +63,6 @@ class LyricsLayout {
 const double _next = 0.45;
 const double _past = 0.15;
 const double _plain = 0.6;
-const double _status = 0.25;
 
 class LyricsView extends ConsumerStatefulWidget {
   const LyricsView({

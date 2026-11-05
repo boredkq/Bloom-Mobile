@@ -277,17 +277,15 @@ class _FullPlayerBodyState extends ConsumerState<FullPlayerBody> {
         // looks like a layout jump. The full iOS home indicator inset (34)
         // would also lift everything well above Android.
         bottom: false,
-        child: track == null
-            ? const SizedBox.shrink()
-            : Padding(
-                // Air on top: the header shouldn't stick to the status bar.
-                padding: EdgeInsets.fromLTRB(
-                  16,
-                  14,
-                  16,
-                  bottomEdgeInset(context),
-                ),
-                child: Column(
+        child: Padding(
+          // Air on top: the header shouldn't stick to the status bar.
+          padding: EdgeInsets.fromLTRB(
+            16,
+            14,
+            16,
+            bottomEdgeInset(context),
+          ),
+          child: Column(
                   children: [
                     _Header(track: track, state: state),
                     const SizedBox(height: 16),
@@ -1139,27 +1137,23 @@ class _Plate extends ConsumerWidget {
   const _Plate({
     required this.padding,
     required this.child,
-    this.borderRadius,
   });
 
   final EdgeInsets padding;
   final Widget child;
-  final BorderRadius? borderRadius;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.bloom;
     final style = ref.watch(playerStyleProvider);
-    final radius =
-        borderRadius ??
-        switch (style) {
-          PlayerStyle.flow => BorderRadius.circular(32),
-          PlayerStyle.aura => BorderRadius.circular(24),
-          PlayerStyle.expressive => BorderRadius.circular(28),
-          PlayerStyle.sleeve => BorderRadius.circular(16),
-          PlayerStyle.poster => BorderRadius.circular(8),
-          _ => BorderRadius.circular(t.radius * 1.8),
-        };
+    final radius = switch (style) {
+      PlayerStyle.flow => BorderRadius.circular(32),
+      PlayerStyle.aura => BorderRadius.circular(24),
+      PlayerStyle.expressive => BorderRadius.circular(28),
+      PlayerStyle.sleeve => BorderRadius.circular(16),
+      PlayerStyle.poster => BorderRadius.circular(8),
+      _ => BorderRadius.circular(t.radius * 1.8),
+    };
 
     return Container(
       padding: padding,

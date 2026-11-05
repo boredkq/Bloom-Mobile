@@ -8,7 +8,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'lrc.dart';
-import 'lyrics_api.dart' show normalizeForSearch, scoreHit;
+import 'lyrics_api.dart' show scoreHit;
 import 'romanization.dart';
 import 'ttml.dart';
 

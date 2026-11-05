@@ -6,7 +6,6 @@ import '../../../app/providers.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/l10n/l10n.dart';
-import '../../../core/providers/registry.dart';
 import '../../../features/player/play_source.dart';
 import '../../../features/player/player_controller.dart';
 import '../../../features/search/search_session.dart';

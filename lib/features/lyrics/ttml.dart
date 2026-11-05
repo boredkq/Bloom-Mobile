@@ -16,10 +16,6 @@ final RegExp _spanRegex = RegExp(
   dotAll: true,
 );
 final RegExp _attrRegex = RegExp(r'([a-zA-Z0-9:_-]+)="([^"]*)"');
-final RegExp _divPartRegex = RegExp(
-  r'songPart="([^"]+)"',
-  caseSensitive: false,
-);
 
 /// Parses TTML document string into a list of [LrcLine]s with word timings.
 List<LrcLine> parseTtml(String ttml) {

@@ -14,24 +14,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme/tokens.dart';
 import '../../../../core/entities/entities.dart';
-import '../../../../core/l10n/l10n.dart';
-import '../../../../core/store/cover_store.dart';
 import '../../../../core/store/library_store.dart';
 import '../../../../shared/ui/atoms.dart';
 import '../../../../shared/ui/marquee_text.dart';
 import '../../../../shared/ui/pressable.dart';
 import '../../../../shared/ui/track_actions.dart';
 import '../../../../shared/util/format.dart';
+import '../../../customization/custom_store.dart';
 import '../../../detail/artists_sheet.dart';
 import '../../../lyrics/lyrics_store.dart';
 import '../../../lyrics/ui/lyrics_view.dart';
-import '../../../customization/custom_store.dart';
 import '../../player_bg_store.dart';
 import '../../player_controller.dart';
-import '../player_sheet.dart';
 import '../artist_avatars.dart';
+import '../player_sheet.dart';
 import '../queue_sheet.dart';
-import '../sleep_sheet.dart';
 import '../speed_sheet.dart';
 
 class FolioPlayerScene extends ConsumerStatefulWidget {
@@ -208,7 +205,7 @@ class _FolioPlayerSceneState extends ConsumerState<FolioPlayerScene> {
 
   Widget _buildEditorialMetadata(BuildContext context) {
     final track = widget.track;
-    final album = track.album.trim().toUpperCase();
+    final album = (track.album ?? '').trim().toUpperCase();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
